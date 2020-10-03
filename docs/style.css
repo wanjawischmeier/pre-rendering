@@ -5,3 +5,13 @@ html, body {
 canvas {
   display: block;
 }
+
+iframe {
+  width:auto;
+}
+iframe:focus {
+  outline: none;
+}
+iframe[seamless] {
+  display: block;
+}
