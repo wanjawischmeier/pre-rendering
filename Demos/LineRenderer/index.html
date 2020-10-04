@@ -3,16 +3,16 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>LineRenderer</title>
+    <title>Unity WebGL Player | IntraFrames</title>
   </head>
   <body style="text-align: center">
-    <canvas id="unity-canvas"></canvas>
-    <script src="Build/V6.loader.js"></script>
+    <canvas id="unity-canvas" style="width: 480px; height: 300px; background: #231F20"></canvas>
+    <script src="Build/V7.loader.js"></script>
     <script>
       createUnityInstance(document.querySelector("#unity-canvas"), {
-        dataUrl: "Build/V6.data",
-        frameworkUrl: "Build/V6.framework.js",
-        codeUrl: "Build/V6.wasm",
+        dataUrl: "Build/V7.data",
+        frameworkUrl: "Build/V7.framework.js",
+        codeUrl: "Build/V7.wasm",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "DefaultCompany",
         productName: "IntraFrames",
