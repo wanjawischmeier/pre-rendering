@@ -11,9 +11,6 @@ let frame = 0;
 
 function setup() {
   createCanvas(windowWidth -4, windowHeight -40);
-  // frameRate(10);
-  // fullscreen();
-  
   init();
 }
 
