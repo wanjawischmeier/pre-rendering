@@ -6,7 +6,7 @@
     <title>LineRenderer</title>
   </head>
   <body style="text-align: center">
-    <h1>Loading WebGL, please wait</h1>
+    <h1 id="#header">Loading WebGL, please wait</h1>
     <canvas id="unity-canvas" style="width: 960px; height: 600px; background: #231F20"></canvas>
     <script src="Build/V6.loader.js"></script>
     <script>
@@ -19,6 +19,7 @@
         productName: "IntraFrames",
         productVersion: "1.0",
       });
+      document.querySelector("#header").remove();
     </script>
   </body>
 </html>
