@@ -1,3 +1,5 @@
+import bpy
+
 def setRenderSettings(scene: object, camera: object, resolution: tuple, frame_end: int) -> None:
     camera.data.type = 'PANO'
     camera.data.cycles.panorama_type = 'EQUIRECTANGULAR'

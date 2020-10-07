@@ -2,7 +2,7 @@
 bl_info = {
     "name":         "PreRendering",
     "author":       "Wanja Wischmeier",
-    "version":      (0, 1),
+    "version":      (0, 2),
     "blender":      (2, 80, 0),
     "location":     "Render > PreRender",
     "description":  "Generates a map file from the current scene",
