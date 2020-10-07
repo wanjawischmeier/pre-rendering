@@ -12,7 +12,7 @@ bl_info = {
 }
 
 
-operatorModules = ["setup", "prerender"]
+modulesNames = ["setup", "prerender", "methods", "data"]
  
 import sys
 import importlib
@@ -26,7 +26,7 @@ for currentModuleFullName in modulesFullNames.values():
         importlib.reload(sys.modules[currentModuleFullName])
     else:
         globals()[currentModuleFullName] = importlib.import_module(currentModuleFullName)
-        setattr(globals()[currentModuleFullName], "operatorModules", modulesFullNames)
+        setattr(globals()[currentModuleFullName], "modulesNames", modulesFullNames)
  
 def register():
     for currentModuleName in modulesFullNames.values():
