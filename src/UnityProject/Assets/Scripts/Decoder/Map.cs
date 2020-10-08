@@ -38,8 +38,9 @@ namespace PreRendering
         [Serializable]
         public class Data
         {
-            public Dictionary<string, int> data { get; set; }
-            public string videoPath { get; set; }
+            public int width;
+            public string tstvalue;
+            public string videoPath;
         }
     }
 }

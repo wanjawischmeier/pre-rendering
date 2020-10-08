@@ -30,9 +30,8 @@ def getMapData(mapPath: str, targetVideoPath: str) -> dict:
 
     return data
 
-"""
-path = getcwd() + "\\src\\BlenderPlugin\\PreRendering"
+
+path = "C:\\Users\\wanja\\Documents\\Programmieren\\C#\\pre-rendering\\src"   # getcwd() + "\\src\\BlenderPlugin\\PreRendering"
 
 videoToMap(path + "\\TestVideo.mp4", path + "\\TestMap.map", 24)
-output = getMapData(path + "\\TestMap.map", path + "\\OutVideo.mp4")
-"""
+# output = getMapData(path + "\\TestMap.map", path + "\\OutVideo.mp4")

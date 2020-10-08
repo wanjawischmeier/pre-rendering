@@ -46,23 +46,40 @@ class TOPBAR_OT_prerender_setup(Operator):
 
     def execute(self, context):
         cache["camera"] = context.object
+        start = (self.start.x, self.start.y, self.start.z)
+        end = (self.end.x, self.end.y, self.end.z)
         
         bpy.ops.anim.keyframe_clear_v3d()
         setKeyframe(0, rotation = toRadians([90, 0, 0]))
 
-        width = round(self.end.x - self.start.x)
-        height = round(self.end.y - self.start.y)
-        z = round((self.start.z + self.end.z) /2)
+        width = round(end[0] - start[0]) +1
+        height = round(end[1] - start[1])
+        z = round((start[2] + end[2]) /2)
 
         bpy.context.scene.frame_start = 0
         bpy.context.scene.frame_end = (width * height) -1
 
         index = 0
-
+        """
         for x in range(width):
+            setKeyframe(index, [x, 0, z])
+            index += height
+
+            setKeyframe(index, [x, height, z])
+            index += 1
+
             for y in range(height):
                 setKeyframe(index, [x, y, z])
                 index += 1
+        """
+        for x in range(width):
+            setKeyframe(index, [x, start[1], z])
+            index += height
+
+            setKeyframe(index, [x, height, z])
+            index += 1
+
+        # bpy.ops.action.interpolation_type(type='LINEAR')
 
         cache["setup"] = True
 

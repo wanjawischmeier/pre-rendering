@@ -170,6 +170,9 @@ MonoBehaviour:
   bufferRadius: 2
   threads: 4
   map: {fileID: 32900000, guid: cc2700e74f705514c9dbd5cd481fd6ac, type: 3}
+  mainPath: C:\\Users\\wanja\\Documents\\Programmieren\\C#\\pre-rendering\\src\\
+  mapFile: TestMap.prm
+  videoFile: extracted.mp4
 --- !u!1 &1724665833
 GameObject:
   m_ObjectHideFlags: 0
