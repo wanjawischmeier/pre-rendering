@@ -1,6 +1,6 @@
 from json import dumps as serialize, loads as deserialize
-from os import getcwd
 from os.path import splitext
+# from os import getcwd
 
 def videoToMap(videoPath: str, targetPath: str, mapWidth: int):
     data = {
