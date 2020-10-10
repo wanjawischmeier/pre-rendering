@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 using UnityEngine.Video;
 
 namespace PreRendering
@@ -6,6 +7,7 @@ namespace PreRendering
     /// <summary>
     /// A class for the multithreaded decoding of video frames
     /// </summary>
+    [Serializable]
     public class DecodingThread
     {
         GameObject gameObject;
@@ -21,8 +23,20 @@ namespace PreRendering
             decoder.playbackSpeed = 0;
             decoder.renderMode = VideoRenderMode.APIOnly;
             decoder.audioOutputMode = VideoAudioOutputMode.None;
+            decoder.sendFrameReadyEvents = true;
+            decoder.frameReady += DecodingComplete;
 
             Manager.availabe.Add(this);                                 // Add this DecodingThread to the list of available threads
+        }
+
+        private void DecodingComplete(VideoPlayer source, long frameIdx)
+        {
+            Debug.Log("Decoding complete " + frameIdx.ToString());
+            Manager.availabe.Add(this);                                 // Set this thread as available again
+
+            FrameBuffer.Push(frameIdx, decoder.texture);                // Get and push the decoded texture
+
+            Manager.pending.Remove(frameIdx);
         }
 
         /// <summary>
@@ -30,13 +44,19 @@ namespace PreRendering
         /// </summary>
         public void Decode(long frameIdx)
         {
-            Manager.availabe.Remove(this);                              // Remove this thread from the list of available threads
+            try
+            {
+                Debug.Log("Decoding " + frameIdx.ToString());
+                Manager.availabe.Remove(this);                              // Remove this thread from the list of available threads
 
-            decoder.frame = frameIdx;                                   // Set the frame of the decoder to the parameter
+                decoder.frame = frameIdx;                                   // Set the frame of the decoder to the parameter
+                Debug.Log("Decoding started " + frameIdx.ToString());
+            }
+            catch (Exception e)
+            {
 
-            Manager.availabe.Add(this);                                 // Set this thread as available again
-
-            FrameBuffer.Push(frameIdx, decoder.texture);                // Get and push the decoded texture
+                Debug.LogError(e.Message);
+            }
         }
     }
 }

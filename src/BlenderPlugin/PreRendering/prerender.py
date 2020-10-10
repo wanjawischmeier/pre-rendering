@@ -1,4 +1,5 @@
 import bpy
+from tempfile import gettempdir as temp
 
 from bpy.types import (
     AddonPreferences,
@@ -8,7 +9,8 @@ from bpy.types import (
 )
 from bpy.props import (
     FloatVectorProperty,
-    EnumProperty
+    EnumProperty,
+    StringProperty
 )
 
 from .data import (
@@ -30,6 +32,13 @@ class TOPBAR_OT_prerender(Operator):
     bl_space_type = "VIEW3D"
     bl_region_type = "UI"
     bl_options = {'REGISTER', 'UNDO'}
+    bl_description = "PreRender the setup area"
+
+    path: StringProperty(
+        name = "Target Path",
+        default = temp() + "\\Map.prm",
+        description = "Where the map file should be saved"
+    )
 
     quality: EnumProperty(
         name = "Quality",
@@ -51,7 +60,7 @@ class TOPBAR_OT_prerender(Operator):
         
         resolution = resolutions.get(self.quality, resolution_default)
         setRenderSettings(scene, cache["camera"], resolution, 10)
-        print(resolution)
+
         # bpy.ops.render.render(animation = True)
         # bpy.ops.render.play_rendered_anim()
 

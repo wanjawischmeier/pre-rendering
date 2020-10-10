@@ -24,6 +24,7 @@ class TOPBAR_OT_prerender_setup(Operator):
     bl_space_type = "VIEW3D"
     bl_region_type = "UI"
     bl_options = {'REGISTER', 'UNDO'}
+    bl_description = "Setup a fixed area for PreRendering"
 
     start: FloatVectorProperty(
         name="Start Position",
@@ -46,18 +47,17 @@ class TOPBAR_OT_prerender_setup(Operator):
 
     def execute(self, context):
         cache["camera"] = context.object
-        start = (self.start.x, self.start.y, self.start.z)
-        end = (self.end.x, self.end.y, self.end.z)
+        start = (round(self.start.x), round(self.start.y), round(self.start.z))
+        end = (round(self.end.x), round(self.end.y), round(self.end.z))
         
         bpy.ops.anim.keyframe_clear_v3d()
         setKeyframe(0, rotation = toRadians([90, 0, 0]))
 
-        width = round(end[0] - start[0]) +1
+        width = round(end[0] - start[0])
         height = round(end[1] - start[1])
         z = round((start[2] + end[2]) /2)
 
         bpy.context.scene.frame_start = 0
-        bpy.context.scene.frame_end = (width * height) -1
 
         index = 0
         """
@@ -72,15 +72,17 @@ class TOPBAR_OT_prerender_setup(Operator):
                 setKeyframe(index, [x, y, z])
                 index += 1
         """
-        for x in range(width):
-            setKeyframe(index, [x, start[1], z])
-            index += height
+        for y in range(start[1], start[1] + height):
+            setKeyframe(index, [start[0], y, z])
+            index += width
 
-            setKeyframe(index, [x, height, z])
+            setKeyframe(index, [width, y, z])
             index += 1
 
         # bpy.ops.action.interpolation_type(type='LINEAR')
+        bpy.context.scene.frame_end = index -1
 
+        cache["width"] = width +1
         cache["setup"] = True
 
         return {'FINISHED'}

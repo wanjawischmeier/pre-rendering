@@ -1,6 +1,7 @@
 cache = {
     "setup":    False,
-    "camera":   None
+    "camera":   None,
+    "width":    0
 }
 
 qualitys = [

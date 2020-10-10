@@ -2,12 +2,7 @@ from json import dumps as serialize, loads as deserialize
 from os.path import splitext
 # from os import getcwd
 
-def videoToMap(videoPath: str, targetPath: str, mapWidth: int):
-    data = {
-        "width":    mapWidth,
-        "tstvalue": "whatever" 
-    }
-
+def videoToMap(data: dict, videoPath: str, targetPath: str, mapWidth: int):
     data_bytes = bytearray(serialize(data), "utf-8")
     data_bytes.extend(bytearray("\n", "utf-8"))
 
@@ -31,7 +26,7 @@ def getMapData(mapPath: str, targetVideoPath: str) -> dict:
     return data
 
 
-path = "C:\\Users\\wanja\\Documents\\Programmieren\\C#\\pre-rendering\\src"   # getcwd() + "\\src\\BlenderPlugin\\PreRendering"
+# path = "C:\\Users\\wanja\\Documents\\Programmieren\\C#\\pre-rendering\\src"   # getcwd() + "\\src\\BlenderPlugin\\PreRendering"
 
-videoToMap(path + "\\TestVideo.mp4", path + "\\TestMap.map", 24)
+# videoToMap(path + "\\TestVideo.mp4", path + "\\TestMap.map", 24)
 # output = getMapData(path + "\\TestMap.map", path + "\\OutVideo.mp4")

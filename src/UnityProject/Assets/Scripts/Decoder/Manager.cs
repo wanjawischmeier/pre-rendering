@@ -1,8 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Video;
+using Debug = UnityEngine.Debug;
 
 /// <summary>
 /// Namespace for the dynamic PreRendering and buffering of video frames using the VideoPlayer class
@@ -15,6 +17,7 @@ namespace PreRendering
         /// The frames that need to be decoded
         /// </summary>
         public static List<long> toDecode;
+        readonly object toDecodeLock = new object();
         /// <summary>
         /// The frames that are currently being decoded
         /// </summary>
@@ -30,47 +33,73 @@ namespace PreRendering
         {
             get
             {
-                return (mainLoop.Status == TaskStatus.WaitingToRun);
+                return (mainLoop.ThreadState == ThreadState.Running);
             }
 
             set
             {
                 if (value) mainLoop.Start();
-                else mainLoop.Wait();
+                else mainLoop.Interrupt();
             }
         }
-        Transform player;
-        Task mainLoop;
+        /// <summary>
+        /// The player's position, should be set in the Update/FixedUpdate loop from the MonoBehaviour this cass instance was created in
+        /// </summary>
+        public Vector3 position;
+        public long iters;
+        Thread mainLoop;
+        // Thread neededFrames;
         int mapSize;
         int bufferRadius;
+        int bufferSize;
 
         /// <summary>
         /// Creates a new instance of the Manager class, needs the mapSize of the videoClip being used
         /// </summary>
-        public Manager(int mapSize, int bufferRadius, Transform player, int threads, VideoClip map)
+        public Manager(int mapSize, int bufferRadius, int bufferSize, int threads, VideoClip map)
         {
             this.mapSize = mapSize;
             this.bufferRadius = bufferRadius;
-            this.player = player;
+            this.bufferSize = bufferSize;
             
             toDecode = new List<long>();
             pending = new List<long>();
             availabe = new List<DecodingThread>();
 
             for (int i = 0; i < threads; i++) new DecodingThread(map, i);   // Initialize threads for decoding
-            
-            mainLoop = Task.Run(() => MainLoop());                          // Start the mainloop on a new thread and store it
+
+            mainLoop = new Thread(new ThreadStart(MainLoop));               // Start the mainloop on a new thread and store it
+            // neededFrames = new Thread(new ThreadStart(SetNeededFrames));
+
+            mainLoop.Priority = System.Threading.ThreadPriority.Lowest;
+            mainLoop.IsBackground = false;
+
+            mainLoop.Start();
+            // neededFrames.Start();
         }
 
         void MainLoop()
         {
             while (true)
             {
-                SetNeededFrames(bufferRadius, mapSize, new Vector2(player.position.x, player.position.z), out toDecode);
+                toDecode.Clear();
 
+                for (int w = 0; w < bufferRadius; w++)
+                {
+                    for (int i = -w; i < w; i++)
+                    {
+                        toDecode.Add(Mathf.RoundToInt((position.x + i) + (position.y + w) * mapSize));
+                        toDecode.Add(Mathf.RoundToInt((position.x - i) + (position.y - w) * mapSize));
+                        toDecode.Add(Mathf.RoundToInt((position.x + w) + (position.y - i) * mapSize));
+                        toDecode.Add(Mathf.RoundToInt((position.x - w) + (position.y + i) * mapSize));
+                    }
+                }
                 foreach (long frame in toDecode)
                 {
-                    if (!pending.Contains(frame))                           // Check if the frame is already being decoded
+                    if (                                                    // Check if the frame is already being decoded
+                        !pending.Contains(frame) && !FrameBuffer.Contains(frame) && 
+                        availabe.Count != 0 && pending.Count < bufferSize
+                    )
                     {
                         DecodingThread thread = availabe.ElementAt(0);      // Get the first available decoder
 
@@ -79,22 +108,40 @@ namespace PreRendering
                         Task.Run(() => thread.Decode(frame));               // Start decoding on a new thread
                     }
                 }
+
+                Thread.Sleep(10);
+                iters++;
             }
         }
 
-        void SetNeededFrames(int searchRadius, int width, Vector2 position, out List<long> toDecode)
+        void SetNeededFrames()
         {
-            toDecode = new List<long>();
-            
-            for (int w = 0; w < searchRadius; w++)
+            while (true)
             {
-                for (int i = -w; i < w; i++)
+                toDecode.Clear();
+
+                for (int w = 0; w < bufferRadius; w++)
                 {
-                    toDecode.Add(Mathf.RoundToInt((position.x + i) + (position.y + w) * width));
-                    toDecode.Add(Mathf.RoundToInt((position.x - i) + (position.y - w) * width));
-                    toDecode.Add(Mathf.RoundToInt((position.x + w) + (position.y - i) * width));
-                    toDecode.Add(Mathf.RoundToInt((position.x - w) + (position.y + i) * width));
+                    for (int i = -w; i < w; i++)
+                    {
+                        toDecode.Add(Mathf.RoundToInt((position.x + i) + (position.y + w) * mapSize));
+                        toDecode.Add(Mathf.RoundToInt((position.x - i) + (position.y - w) * mapSize));
+                        toDecode.Add(Mathf.RoundToInt((position.x + w) + (position.y - i) * mapSize));
+                        toDecode.Add(Mathf.RoundToInt((position.x - w) + (position.y + i) * mapSize));
+                    }
                 }
+            }
+        }
+
+
+        public static class Extensions
+        {
+            /// <summary>
+            /// Static class for simple convertion between coordinates (x, y) and indices
+            /// </summary>
+            public static long CoordinatesToIndex(int x, int y, int width)
+            {
+                return (x + y * width);                                         // Apply simple formula
             }
         }
     }
@@ -107,6 +154,17 @@ namespace PreRendering
         public static long CoordinatesToIndex(int x, int y, int width)
         {
             return (x + y * width);                                         // Apply simple formula
+        }
+
+        public static Vector3Int FloorToInt(this Vector3 vector)
+        {
+            Vector3Int conv = new Vector3Int();
+
+            conv.x = Mathf.FloorToInt(vector.x);
+            conv.y = Mathf.FloorToInt(vector.y);
+            conv.z = Mathf.FloorToInt(vector.z);
+
+            return conv;
         }
     }
 }

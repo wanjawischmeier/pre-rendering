@@ -6,6 +6,7 @@ namespace PreRendering
 {
     public static class FrameBuffer
     {
+        public static Texture[] values { get { return buffer.Values.ToArray(); } }
         static Dictionary<long, Texture> buffer = new Dictionary<long, Texture>();
 
         /// <summary>
@@ -30,6 +31,11 @@ namespace PreRendering
             );
 
             return true;
+        }
+
+        public static bool Contains(long frameIdx)
+        {
+            return buffer.ContainsKey(frameIdx);
         }
     }
 }
