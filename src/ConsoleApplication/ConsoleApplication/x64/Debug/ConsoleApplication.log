@@ -1,6 +1,0 @@
-﻿  ConsoleApplication.cpp
-ConsoleApplication.obj : error LNK2019: Verweis auf nicht aufgelöstes externes Symbol ""void __cdecl cv::fastFree(void *)" (?fastFree@cv@@YAXPEAX@Z)" in Funktion ""public: __cdecl cv::Mat::~Mat(void)" (??1Mat@cv@@QEAA@XZ)".
-ConsoleApplication.obj : error LNK2019: Verweis auf nicht aufgelöstes externes Symbol ""public: void __cdecl cv::Mat::deallocate(void)" (?deallocate@Mat@cv@@QEAAXXZ)" in Funktion ""public: void __cdecl cv::Mat::release(void)" (?release@Mat@cv@@QEAAXXZ)".
-ConsoleApplication.obj : error LNK2019: Verweis auf nicht aufgelöstes externes Symbol ""int __cdecl cv::_interlockedExchangeAdd(int *,int)" (?_interlockedExchangeAdd@cv@@YAHPEAHH@Z)" in Funktion ""public: void __cdecl cv::Mat::release(void)" (?release@Mat@cv@@QEAAXXZ)".
-ConsoleApplication.obj : error LNK2019: Verweis auf nicht aufgelöstes externes Symbol ""class cv::Mat __cdecl cv::imread(class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const &,int)" (?imread@cv@@YA?AVMat@1@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@H@Z)" in Funktion "main".
-C:\Users\wanja\Documents\Programmieren\C#\pre-rendering\src\ConsoleApplication\x64\Debug\ConsoleApplication.exe : fatal error LNK1120: 4 nicht aufgelöste Externe

@@ -21,7 +21,6 @@ public class DecodingThreadManager : MonoBehaviour
     void FrameDecoded(VideoPlayer source, long frameIdx)
     {
         FrameBuffer.Push(frameIdx, player.texture);
-        Debug.Log("Decoded " + frameIdx.ToString());
         PortedManager.availabe.Add(this);
         decoding = false;
     }
@@ -33,7 +32,6 @@ public class DecodingThreadManager : MonoBehaviour
             frameIdx = PortedManager.toDecode.ElementAt(0);
             PortedManager.pending.Add(frameIdx);
             player.frame = frameIdx;
-            Debug.Log("Decoding " + frameIdx.ToString());
             PortedManager.availabe.Remove(this);
             decoding = true;
         }

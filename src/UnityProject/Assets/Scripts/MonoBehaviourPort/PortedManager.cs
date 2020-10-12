@@ -33,6 +33,7 @@ public class PortedManager : MonoBehaviour
     public int bufferRadius;
     public List<long> toDecodeView;
     public List<long> pendingView;
+    public long[] inBuffer;
 
     void Start()
     {
@@ -57,6 +58,11 @@ public class PortedManager : MonoBehaviour
         {
             for (int i = -w; i < w; i++)
             {
+                Debug.Log(string.Format(
+                    "Position: {0}, {1}\t|\tw: {2}\t|\th: {3}", 
+                    position.x.ToString(), position.y.ToString(), 
+                    w.ToString(), i.ToString()
+                ));
                 toDecode.CheckAndAdd(Mathf.RoundToInt((position.x + i) + (position.y + w) * mapSize));
                 toDecode.CheckAndAdd(Mathf.RoundToInt((position.x - i) + (position.y - w) * mapSize));
                 toDecode.CheckAndAdd(Mathf.RoundToInt((position.x + w) + (position.y - i) * mapSize));
@@ -66,11 +72,13 @@ public class PortedManager : MonoBehaviour
 
         for (int i = 0; i < threads; i++)
         {
-            images[i].texture = videoPlayers[i].texture;
+            if (i < images.Length) images[i].texture = videoPlayers[i].texture;
+            else break;
         }
 
         toDecodeView = toDecode;
         pendingView = pending;
+        inBuffer = FrameBuffer.keys;
     }
 }
 

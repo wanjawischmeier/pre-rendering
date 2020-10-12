@@ -721,6 +721,7 @@ MonoBehaviour:
   bufferRadius: 4
   toDecodeView: 
   pendingView: 
+  inBuffer: 
 --- !u!1 &1759370021
 GameObject:
   m_ObjectHideFlags: 0
