@@ -69,6 +69,9 @@
     <Compile Include="Assets\Scripts\Visualization\LineTest.cs" />
     <Compile Include="Assets\Scripts\Visualization\CanvasTest.cs" />
     <Compile Include="Assets\Scripts\Decoder\FrameBuffer.cs" />
+    <Compile Include="Assets\Scripts\MonoBehaviourPort\DecodingThreadManager.cs" />
+    <Compile Include="Assets\Scripts\MonoBehaviourPort\PortedManager.cs" />
+    <Compile Include="Assets\Scripts\MonoBehaviourPort\PortedMap.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">
