@@ -146,7 +146,7 @@ namespace PreRendering
         }
     }
 
-    public static class Extensions
+    public static class Helper
     {
         /// <summary>
         /// Static class for simple convertion between coordinates (x, y) and indices

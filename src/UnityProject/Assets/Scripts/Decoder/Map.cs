@@ -24,6 +24,11 @@ namespace PreRendering
             return data;
         }
 
+        public static long ToMapCoordinate(this Vector2Int vector, int width)
+        {
+            return (vector.x + vector.y * width);                                         // Apply simple formula
+        }
+
         static T[][] SplitArray<T>(T[] array, T seperator)
         {
             int idx = Array.IndexOf(array, seperator);

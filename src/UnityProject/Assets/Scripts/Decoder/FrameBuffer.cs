@@ -44,4 +44,14 @@ namespace PreRendering
             return buffer.ContainsKey(frameIdx);
         }
     }
+
+    public static class Extensions
+    {
+        public static void RemoveAt<TKey, TValue>(this Dictionary<TKey, TValue> dict, int index)
+        {
+            dict.Remove(
+                dict.ElementAt(index).Key
+            );
+        }
+    }
 }
