@@ -1,0 +1,5 @@
+C:\Users\User\Documents\Programmieren\C#\pre-rendering\src\Decoder\Decoder\bin\Debug\netstandard2.0\Decoder.deps.json
+C:\Users\User\Documents\Programmieren\C#\pre-rendering\src\Decoder\Decoder\bin\Debug\netstandard2.0\Decoder.dll
+C:\Users\User\Documents\Programmieren\C#\pre-rendering\src\Decoder\Decoder\obj\Debug\netstandard2.0\Decoder.csprojAssemblyReference.cache
+C:\Users\User\Documents\Programmieren\C#\pre-rendering\src\Decoder\Decoder\obj\Debug\netstandard2.0\Decoder.AssemblyInfoInputs.cache
+C:\Users\User\Documents\Programmieren\C#\pre-rendering\src\Decoder\Decoder\obj\Debug\netstandard2.0\Decoder.AssemblyInfo.cs
