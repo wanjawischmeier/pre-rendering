@@ -1,5 +1,14 @@
 __pycache__
 Library
+bin
+obj
+ipch
+debug
 
 launch.json
 settings.json
+
+.suo
+.user
+.ncb
+.sbr
