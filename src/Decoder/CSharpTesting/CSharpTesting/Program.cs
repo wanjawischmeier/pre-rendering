@@ -10,6 +10,8 @@ namespace CSharpTesting
 
         [DllImport(decoderdll)]
         public static extern void ShowImage(ref string window, ref string path);
+        [DllImport(decoderdll)]
+        public static extern * CreateDecoder();
 
         public static string window = "Test Image OMG";
         public static string path = "C:\\Users\\User\\Pictures\\Wallpaper\\tstimg.jpg";
