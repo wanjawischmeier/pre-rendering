@@ -5,10 +5,58 @@
 using namespace std;
 using namespace cv;
 
-static string mapFile_;
-static VideoCapture cap_;
+static VideoCapture* caps_;
+static int threads_;
+static int c_thread_;
 
-void ShowImage(string* window, string* path)
+
+void Initialize(int* threads)
+{
+    cout << "Initializing " + to_string(*threads) + " threads..." << endl;
+
+    threads_ = *threads;
+    c_thread_ = 0;
+
+    caps_ = new VideoCapture[*threads];
+}
+
+/// <summary>
+/// Create a new Decoder instance. Will return the id of this instance.
+/// </summary>
+/// <param name="mapFile"></param>
+/// <returns></returns>
+int Create(string* mapFile)
+{    
+    caps_[c_thread_] = *new VideoCapture(*mapFile);
+    
+    if (!caps_[c_thread_].isOpened())
+    {
+        cout << "Error opening video stream or file (" + *mapFile + ")" << endl;
+        
+        return -1;
+    }
+
+    return c_thread_;
+}
+
+double SetFrame(int* id, double* index)
+{
+    caps_[c_thread_].set(CAP_PROP_POS_FRAMES, *index);
+    return caps_[c_thread_].get(CAP_PROP_POS_FRAMES);
+}
+
+void ShowCustomImage(string* window, string* path)
+{
+    cout << "Reading custom image...";
+
+    Mat img = imread("C:\\Users\\User\\Pictures\\Wallpaper\\tstimg.jpg");
+
+    imshow("Test Image", img);
+
+    waitKey();
+}
+
+void ShowImage(int* id, string* window)
 {
     cout << "Reading...";
 
@@ -19,31 +67,9 @@ void ShowImage(string* window, string* path)
     waitKey();
 }
 
-bool Create(string* mapFile)
+void Destroy(int* id)
 {
-    mapFile_ = *mapFile;
-    
-    cap_ = *new VideoCapture(mapFile_);
-
-    if (!cap_.isOpened())
-    {
-        cout << "Error opening video stream or file (" + mapFile_ + ")" << endl;
-        
-        return -1;
-    }
-
-    return 0;
-}
-
-double SetFrame(double* index)
-{
-    cap_.set(CAP_PROP_POS_FRAMES, *index);
-    return cap_.get(CAP_PROP_POS_FRAMES);
-}
-
-void Destroy()
-{
-
+    free(caps_);
 }
 
 /*

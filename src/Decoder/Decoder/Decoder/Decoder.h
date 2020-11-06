@@ -5,7 +5,11 @@
 #include <iostream>
 using namespace std;
 
-extern "C" DECODER void ShowImage(string * window, string * path);
-extern "C" DECODER bool Create(string * mapFile);
-extern "C" DECODER double SetFrame(double * index);
-extern "C" DECODER void Destroy();
+// extern "C" DECODER void GetDecoderID(string * window, string * path);
+
+extern "C" DECODER void Initialize(int * threads);
+extern "C" DECODER int Create(string * mapFile);
+extern "C" DECODER double SetFrame(int* id, double * index);
+extern "C" DECODER void ShowCustomImage(string * window, string * path);
+extern "C" DECODER void ShowImage(int* threads, string * window);
+extern "C" DECODER void Destroy(int * id);
