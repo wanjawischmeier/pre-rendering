@@ -1,0 +1,111 @@
+<!DOCTYPE html><html lang="en"><head>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.1.9/lib/p5.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <meta charset="utf-8">
+
+  </head>
+  <body>
+    <script>
+        let c; let r;
+        let w; let h;
+        let col_d; let col;
+        let debug = true;
+        let canv;
+
+        function cx(x) { return (width/2)+x; }
+        function cy(y) { return (height/2)+y; }
+
+        function setup() {
+            if (debug) canv = createCanvas(windowWidth, windowHeight);
+            else createCanvas(windowWidth -10, windowHeight -40);
+            background(250);
+            rectMode(CENTER);
+            noStroke();
+
+            c = 100;
+            w = width/c;
+            h = height/c;
+            r = c/2;
+
+            let needed = getNeeded2(r*2+2);
+            col_d = 400/needed.length;
+            let i = 0;
+            let l;
+            print(needed)
+            needed.forEach(e => {
+                col = i*col_d;
+                fill(255-col/2, col/2, col);
+                stroke(255-col/2, col/2, col);
+                strokeWeight(4);
+                
+                if (l != null) line(cx(l[0]*w), cy(l[1]*h), cx(e[0]*w), cy(e[1]*h));
+                noStroke();
+                
+                circle(cx(e[0]*w), cy(e[1]*h), w/2, h/2);
+
+                l = e;
+                i++;
+            });
+
+            // saveCanvas(canv, "order_" + random(1000).toString(), "jpg");
+        }
+
+        function getNeeded(r) {
+            let n = [];
+            n.push([0, 0]);
+                
+            for (x = 1; x < r; x++) {
+                n.push([ x,  0]);
+                n.push([-x,  0]);
+                n.push([ 0,  x]);
+                n.push([ 0, -x]);
+                
+                for (y = 1; y < r; y++) {
+                    n.push([ x,  y]);
+                    n.push([-x,  y]);
+                    n.push([ x, -y]);
+                    n.push([-x, -y]);
+                }
+            }
+
+            return n;
+        }
+
+        function getNeeded2(r) {
+            let n = [];
+            n.push([0, 0]);
+
+            let xdir = 0;
+            let ydir = 0;
+            let x = 0; let y = 0;
+                
+            for (i = 1; i < r; i += 4) {
+                x += i;
+                n.push([x, y]);
+                for (let j = n[n.length -2][0]; j < x; j++) {
+                    n.push([j, y]);
+                }
+
+                y += i+1;
+                n.push([x, y]);
+                for (let j = n[n.length -2][1]; j < y; j++) {
+                    n.push([x, j]);
+                }
+
+                x -= i+2;
+                n.push([x, y]);
+                for (let j = n[n.length -2][0]; j > x; j--) {
+                    n.push([j, y]);
+                }
+
+                y -= i+3;
+                n.push([x, y]);
+                for (let j = n[n.length -2][1]; j > y; j--) {
+                    n.push([x, j]);
+                }
+            }
+
+            return n;
+        }
+    </script>
+</body></html>
