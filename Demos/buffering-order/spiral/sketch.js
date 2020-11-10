@@ -2,7 +2,7 @@ let c; let r;
 let w; let h;
 let col_d; let col;
 let i; let l;
-let debug = false;
+let debug = true;
 let canv;
 let needed;
 let slider;
