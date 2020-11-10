@@ -23,7 +23,7 @@ function setup(init = true) {
     h = height/1.5/c;
     r = c/2;
     
-    background(250);
+    background(255);
     frameRate(30);
     rectMode(CENTER);
     noStroke();
