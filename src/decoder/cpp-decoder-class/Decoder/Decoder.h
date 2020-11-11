@@ -3,6 +3,7 @@
 #define DECODER __declspec(dllimport)
 
 #include <iostream>
+#include <opencv2\opencv.hpp>
 using namespace std;
 
 // extern "C" DECODER void GetDecoderID(string * window, string * path);
@@ -12,4 +13,5 @@ extern "C" DECODER int Create(string * mapFile);
 extern "C" DECODER double SetFrame(int* id, double * index);
 extern "C" DECODER void ShowCustomImage(string * window, string * path);
 extern "C" DECODER void ShowImage(int* threads, string * window);
+extern "C" DECODER void GetImage(int* id);
 extern "C" DECODER void Destroy(int * id);

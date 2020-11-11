@@ -13,7 +13,11 @@ namespace CSharpTesting
         {
             DLLWrapper.Initialize(ref threads);
 
-            DLLWrapper.ShowCustomImage(ref window, ref path);
+            // DLLWrapper.ShowCustomImage(ref window, ref path);
+
+            DLLWrapper.GetImage(ref threads);
+
+            DLLWrapper.Destroy(ref threads);
         }
     }
 }

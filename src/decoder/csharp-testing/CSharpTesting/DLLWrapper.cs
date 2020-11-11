@@ -4,7 +4,7 @@ namespace CSharpTesting
 {
     public static class DLLWrapper
     {
-        const string decoderdll = "C:\\Users\\User\\Documents\\Programmieren\\Multi-Language\\pre-rendering\\src\\Decoder\\Decoder\\x64\\Debug\\Decoder.dll";
+        const string decoderdll = "C:\\Users\\User\\Documents\\Programmieren\\Multi-Language\\pre-rendering\\src\\decoder\\cpp-decoder-class\\x64\\Debug\\Decoder.dll";
 
         [DllImport(decoderdll)]
         public static extern void Initialize(ref int threads);
@@ -16,6 +16,8 @@ namespace CSharpTesting
         public static extern void ShowCustomImage(ref string window, ref string path);
         [DllImport(decoderdll)]
         public static extern void ShowImage(ref int id, ref string window);
+        [DllImport(decoderdll)]
+        public static extern byte[] GetImage(ref int id);
         [DllImport(decoderdll)]
         public static extern void Destroy(ref int id);
     }
