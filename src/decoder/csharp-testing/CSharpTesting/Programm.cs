@@ -1,5 +1,5 @@
 ﻿using System;
-
+using System.Runtime.InteropServices;
 
 namespace CSharpTesting
 {
@@ -14,9 +14,14 @@ namespace CSharpTesting
             DLLWrapper.Initialize(ref threads);
 
             // DLLWrapper.ShowCustomImage(ref window, ref path);
-
-            DLLWrapper.GetImage(ref threads);
-
+            IntPtr ptr = new IntPtr();
+            DLLWrapper.GetImage(ref ptr, out int size, ref threads);
+            byte[] target = new byte[size];
+            //IntPtr read = Marshal.ReadIntPtr(data, 20000);
+            byte readb = Marshal.ReadByte(ptr);
+            //byte[] ptr = *data.ToPointer();
+            Marshal.Copy(ptr, target, 0, size);
+            
             DLLWrapper.Destroy(ref threads);
         }
     }

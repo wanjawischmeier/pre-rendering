@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System;
+using System.Runtime.InteropServices;
 
 namespace CSharpTesting
 {
@@ -17,7 +18,7 @@ namespace CSharpTesting
         [DllImport(decoderdll)]
         public static extern void ShowImage(ref int id, ref string window);
         [DllImport(decoderdll)]
-        public static extern byte[] GetImage(ref int id);
+        public static extern void GetImage(ref IntPtr data, out int size, ref int id);
         [DllImport(decoderdll)]
         public static extern void Destroy(ref int id);
     }
