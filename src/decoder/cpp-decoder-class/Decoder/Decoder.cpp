@@ -1,4 +1,5 @@
 #include "pch.h"
+#include <combaseapi.h>
 #include "decoder.h"
 #include <opencv2/opencv.hpp>
 
@@ -8,7 +9,7 @@ using namespace cv;
 static VideoCapture* caps_;
 static int threads_;
 static int c_thread_;
-static Mat c_img_;
+//static Mat* c_img_;
 //static byte* c_image_;
 
 
@@ -66,41 +67,64 @@ void ShowImage(int* id, string* window)
     waitKey();
 }
 
-void GetImage(unsigned char* *data, int *size, int* id)
+unsigned char** GetImage(int* id)
 {
     cout << "Reading..." << endl;
-    c_img_ = imread("C:\\Users\\User\\Pictures\\Wallpaper\\tstimg.jpg");
+    Mat c_img_ = imread("C:\\Users\\User\\Pictures\\Wallpaper\\tstimg.jpg");
 
     cout << "Extracting bytes ";
-    //byte[] raw = new byte[(int)(c_img_.total() * c_img_.channels())];
-    uchar* arr = c_img_.isContinuous() ? c_img_.data : c_img_.clone().data;
-    uint length = c_img_.total() * c_img_.channels();
 
-    *data = arr;
-    //*size = length;
-    /*
+
+    int size = c_img_.total() * c_img_.elemSize();
+    unsigned char** bytes = new unsigned char*[size];  // you will have to delete[] that later
+    memcpy(bytes, c_img_.data, size * sizeof(std::byte));
+    //memcpy(*data, c_img_.data, size * sizeof(byte));
+    //data = bytes;
+
+    //string s(reinterpret_cast<char const*>(bytes), size * sizeof(byte));
+    //cout << s << endl;
+
+    return nullptr;
+}
+
+char* GetBytes(int* id)
+{
+    cout << "Reading ";
+
+    Mat img = imread("C:\\Users\\User\\Pictures\\Wallpaper\\tstimg.jpg");
+
+
     int size = img.total() * img.elemSize();
-    cout << "(at " + to_string(sizeof(byte)) + "bits) from image of size " + to_string(size) + "..." << endl;
+    cout << to_string(size) + " bytes..." << endl;
+    char* bytes = new char[size];
+    char* bytes_two = (char*)(img.data);
+    cout << "Copying " + to_string(strlen(bytes_two)) + " bytes..." << endl;
+    memcpy(bytes, img.data, size * sizeof(std::byte));
     
-    //byte* c_image_ = new byte[size];
-    cout << "Copying bytes..." << endl;
-    //memcpy(target, img.data, size * sizeof(byte));
-    */
-    //memcpy(*data, c_img_.data, sizeof(*c_img_.data));
-    //*data = c_img_.data;
-    //*size = sizeof(*c_img_.data);
-    //char str[sizeof(*img.data) +1];
-    //memcpy(str, img.data, sizeof(*img.data));
-    //str[sizeof(*img.data)] = 0;
-    //cout << str;
-    
-    // return c_image_;
+    cout << to_string(size) << endl;
+    cout << to_string(img.total()) << endl;
+    cout << to_string(img.elemSize()) << endl;
+    cout << to_string(sizeof(std::byte)) << endl;
+    cout << to_string(sizeof(bytes)) << endl;
+    cout << to_string(sizeof(img.data)) << endl;
+
+    return marshal((char*)(img.data));
 }
 
 void Destroy(int* id)
 {
-    free(caps_);
-    //free(c_image_);
+    // delete(caps_);
+    // free(c_image_);
     // delete(caps_);
     // delete(c_image_);
+}
+
+char* marshal(char* in)
+{
+    size_t stSize = strlen(in) + sizeof(char);
+    char* pszReturn = NULL;
+
+    pszReturn = (char*)::CoTaskMemAlloc(stSize);
+    strcpy_s(pszReturn, stSize, in);
+    return pszReturn;
 }

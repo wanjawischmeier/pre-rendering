@@ -13,5 +13,7 @@ extern "C" DECODER int Create(string * mapFile);
 extern "C" DECODER double SetFrame(int* id, double * index);
 extern "C" DECODER void ShowCustomImage(string * window, string * path);
 extern "C" DECODER void ShowImage(int* threads, string * window);
-extern "C" DECODER void GetImage(unsigned char** data, int* size, int* id);
+extern "C" DECODER unsigned char** GetImage(int* id);
+extern "C" DECODER char* GetBytes(int* id);
 extern "C" DECODER void Destroy(int * id);
+extern "C" DECODER char* marshal(char* in);

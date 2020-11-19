@@ -18,7 +18,14 @@ namespace CSharpTesting
         [DllImport(decoderdll)]
         public static extern void ShowImage(ref int id, ref string window);
         [DllImport(decoderdll)]
-        public static extern void GetImage(ref IntPtr data, out int size, ref int id);
+        public static extern string GetImage(ref int id);
+        [DllImport(decoderdll, EntryPoint = "GetBytes", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
+        public static extern string GetBytes(ref int id);
+
+        [DllImport(decoderdll, EntryPoint = "testString2", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.LPStr)]
+        public static extern string testString2();
+
         [DllImport(decoderdll)]
         public static extern void Destroy(ref int id);
     }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace CSharpTesting
 {
@@ -13,15 +14,24 @@ namespace CSharpTesting
         {
             DLLWrapper.Initialize(ref threads);
 
-            // DLLWrapper.ShowCustomImage(ref window, ref path);
-            IntPtr ptr = new IntPtr();
-            DLLWrapper.GetImage(ref ptr, out int size, ref threads);
-            byte[] target = new byte[size];
-            //IntPtr read = Marshal.ReadIntPtr(data, 20000);
-            byte readb = Marshal.ReadByte(ptr);
-            //byte[] ptr = *data.ToPointer();
-            Marshal.Copy(ptr, target, 0, size);
-            
+            Console.WriteLine("Starting...");
+            string raw = DLLWrapper.GetBytes(ref threads);
+            // char[] chars = raw;
+            Console.WriteLine("Ended");
+
+            Console.WriteLine(raw.Length.ToString());
+            byte[] raw_bytes = Encoding.ASCII.GetBytes(raw);
+            /* ASCII
+             * UTF-8
+             *    -7
+             *    -32
+             * Unicode
+             * BigEndianUnicode */
+            Console.WriteLine(raw_bytes.Length);
+            string hex = BitConverter.ToString(raw_bytes);
+
+            // Console.WriteLine(hex);
+
             DLLWrapper.Destroy(ref threads);
         }
     }
