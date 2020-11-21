@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Runtime.InteropServices;
+using System.IO;
 using System.Text;
 
 namespace CSharpTesting
@@ -7,7 +7,9 @@ namespace CSharpTesting
     class Programm
     {
         static string window = "Test Image OMG";
-        static string path = "C:\\Users\\User\\Pictures\\Wallpaper\\tstimg.jpg";
+        static string tstpath1 = "C:\\Users\\User\\Pictures\\Wallpaper\\";
+        static string tstpath2 = "C:\\Users\\wanja\\Pictures\\Wallpapers\\";
+        static string tstimg = tstpath2 + "tstimg.jpg";
         static int threads = 4;
 
         static void Main(string[] args)
@@ -15,7 +17,7 @@ namespace CSharpTesting
             DLLWrapper.Initialize(ref threads);
 
             Console.WriteLine("Starting...");
-            string raw = DLLWrapper.GetBytes(ref threads);
+            string raw = DLLWrapper.GetBytes(ref threads, tstimg);
             // char[] chars = raw;
             Console.WriteLine("Ended");
 
@@ -30,6 +32,7 @@ namespace CSharpTesting
             Console.WriteLine(raw_bytes.Length);
             string hex = BitConverter.ToString(raw_bytes);
 
+            File.WriteAllBytes("tstbinary.bin", raw_bytes);
             // Console.WriteLine(hex);
 
             DLLWrapper.Destroy(ref threads);

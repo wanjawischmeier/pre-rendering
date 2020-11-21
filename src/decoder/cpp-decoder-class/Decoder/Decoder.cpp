@@ -91,7 +91,7 @@ char* GetBytes(int* id)
 {
     cout << "Reading ";
 
-    Mat img = imread("C:\\Users\\User\\Pictures\\Wallpaper\\tstimg.jpg");
+    Mat img = imread("C:\\Users\\wanja\\Pictures\\Wallpapers\\tstimg.jpg");
 
 
     int size = img.total() * img.elemSize();
