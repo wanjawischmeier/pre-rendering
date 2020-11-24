@@ -79,7 +79,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>C:\Users\User\Documents\Programmieren\C++\lib\opencv\build\include;C:\Users\wanja\Documents\dev\lib\opencv\build\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Users\wanja\Documents\dev\lib\opencv\build\x64\vc15\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>C:\Users\wanja\Documents\dev\lib\opencv\build\x64\vc15\lib;C:\Users\User\Documents\Programmieren\C++\lib\opencv\build\x64\vc15\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>

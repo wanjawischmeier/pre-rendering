@@ -7,17 +7,19 @@ namespace CSharpTesting
     class Programm
     {
         static string window = "Test Image OMG";
-        static string tstpath1 = "C:\\Users\\User\\Pictures\\Wallpaper\\";
+        static string tstpath1 = "C:\\Users\\User\\Pictures\\Wallpapers\\";
         static string tstpath2 = "C:\\Users\\wanja\\Pictures\\Wallpapers\\";
-        static string tstimg = tstpath2 + "tstimg.jpg";
+        static string tstimg = tstpath1 + "tst3.jpg";
         static int threads = 4;
 
         static void Main(string[] args)
         {
+            tstimg = "C:\\Users\\User\\Pictures\\Wallpapers\\tst3.jpg";
+
             DLLWrapper.Initialize(ref threads);
 
             Console.WriteLine("Starting...");
-            string raw = DLLWrapper.GetBytes(ref threads, tstimg);
+            string raw = DLLWrapper.GetBytes(threads, tstimg);
             // char[] chars = raw;
             Console.WriteLine("Ended");
 
@@ -29,7 +31,7 @@ namespace CSharpTesting
              *    -32
              * Unicode
              * BigEndianUnicode */
-            Console.WriteLine(raw_bytes.Length);
+            Console.WriteLine(string.Format("{0}MB ({1} bytes)", (raw_bytes.Length / 1000000).ToString(), raw_bytes.Length));
             string hex = BitConverter.ToString(raw_bytes);
 
             File.WriteAllBytes("tstbinary.bin", raw_bytes);

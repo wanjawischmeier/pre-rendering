@@ -87,12 +87,17 @@ unsigned char** GetImage(int* id)
     return nullptr;
 }
 
-char* GetBytes(int* id)
+char* GetBytes(int* id, char* testimage)
 {
     cout << "Reading ";
+    //string test = *reinterpret_cast<string*>(testimage);
+    cout << testimage;
 
-    Mat img = imread("C:\\Users\\wanja\\Pictures\\Wallpapers\\tstimg.jpg");
+    Mat img = imread("C:\\Users\\User\\Pictures\\Wallpapers\\tst3.jpg");
+    vector<uchar> buffer;
 
+    imencode(".jpg", img, buffer);
+    char* test = reinterpret_cast<char*>(buffer.data());
 
     int size = img.total() * img.elemSize();
     cout << to_string(size) + " bytes..." << endl;
@@ -107,8 +112,19 @@ char* GetBytes(int* id)
     cout << to_string(sizeof(std::byte)) << endl;
     cout << to_string(sizeof(bytes)) << endl;
     cout << to_string(sizeof(img.data)) << endl;
-
-    return marshal((char*)(img.data));
+    cout << buffer.size() << endl;
+    cout << test[100000];
+    /*
+    char* conv = new char[buffer.size()];
+    for (size_t i = 0; i < buffer.size(); i++)
+    {
+        conv[i] = buffer[i];
+        cout << conv[i];
+    }
+    cout << conv;
+    //cout << ;
+    */
+    return marshalwithsize(test, buffer.size());
 }
 
 void Destroy(int* id)
@@ -126,5 +142,15 @@ char* marshal(char* in)
 
     pszReturn = (char*)::CoTaskMemAlloc(stSize);
     strcpy_s(pszReturn, stSize, in);
+    return pszReturn;
+}
+
+char* marshalwithsize(char* in, size_t size)
+{
+    char* pszReturn = NULL;
+
+    pszReturn = (char*)::CoTaskMemAlloc(size);
+    strcpy_s(pszReturn, size, in);
+    cout << "conv_size: " + to_string(strlen(pszReturn)) << endl;
     return pszReturn;
 }
