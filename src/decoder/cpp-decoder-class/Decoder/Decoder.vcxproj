@@ -78,8 +78,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\Users\User\Documents\Programmieren\C++\lib\opencv\build\include;C:\Users\wanja\Documents\dev\lib\opencv\build\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Users\wanja\Documents\dev\lib\opencv\build\x64\vc15\lib;C:\Users\User\Documents\Programmieren\C++\lib\opencv\build\x64\vc15\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>E:\lib\opencv\build\include;C:\Users\wanja\Documents\dev\lib\opencv\build\include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Users\wanja\Documents\dev\lib\opencv\build\x64\vc15\lib;E:\lib\opencv\build\x64\vc15\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -156,11 +156,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="archive.h" />
     <ClInclude Include="decoder.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="archive.cpp" />
     <ClCompile Include="decoder.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="pch.cpp">

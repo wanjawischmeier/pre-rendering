@@ -24,6 +24,9 @@
     <ClInclude Include="decoder.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="archive.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -33,6 +36,9 @@
       <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="decoder.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="archive.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>
