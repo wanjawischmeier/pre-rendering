@@ -8,7 +8,6 @@ using UnityEngine;
 
 public class ToTexture : MonoBehaviour
 {
-    static string window = "Test Image OMG";
     static string tstpath1 = "C:\\Users\\User\\Pictures\\Wallpapers\\";
     static string tstpath2 = "C:\\Users\\wanja\\Pictures\\Wallpapers\\";
     static string tstimg = tstpath1 + "tstimg.jpg";

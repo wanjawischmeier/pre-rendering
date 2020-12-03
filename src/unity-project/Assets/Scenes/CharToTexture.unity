@@ -216,7 +216,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 2129964878}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d0e6774ec295f2048ac16e5a3fd36a70, type: 3}
+  m_Script: {fileID: 11500000, guid: 8ff6b8845b3e9644cb0f0895cd7e0118, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  read: {fileID: 0}
+  resolution: {x: 1920, y: 1080}
+  channels: 3
+  texture: {fileID: 0}

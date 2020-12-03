@@ -74,6 +74,7 @@
     <Compile Include="Assets\Scripts\Visualization\CanvasTest.cs" />
     <Compile Include="Assets\Scripts\Decoder\FrameBuffer.cs" />
     <Compile Include="Assets\Scripts\MonoBehaviourPort\PortedMap.cs" />
+    <Compile Include="Assets\Scripts\CharToTexture\MatToTexture.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">
