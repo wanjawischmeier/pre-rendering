@@ -39,6 +39,18 @@ unsigned char* getFrame(int id, int frame, int* bytes_count)
     return toByteArray(tex, bytes_count);
 }
 
+void release(int id)
+{
+    if (id == -1) decoders[id].release();
+    else
+    {
+        for (size_t i = 0; i < decoders.size() -1; i++)
+        {
+            decoders[id].release();
+        }
+    }
+}
+
 unsigned char* toByteArray(Mat in, int* bytes_count)
 {
     int size = in.total() * in.elemSize();

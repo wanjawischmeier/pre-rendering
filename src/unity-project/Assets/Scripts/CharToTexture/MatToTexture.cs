@@ -14,6 +14,8 @@ public class MatToTexture : MonoBehaviour
     public static extern int NewDecoder(string path);
     [DllImport(devbuild, EntryPoint = "setFrame")]
     public static extern bool SetFrame(int id, int frame);
+    [DllImport(devbuild, EntryPoint = "getFrame")]
+    public static extern IntPtr GetFrame(int id, int frame, out int bytes_count);
     [DllImport(devbuild, EntryPoint = "getUnsignedBytes")]
     public static extern IntPtr GetUnsignedBytes(string path, out int bytes_count, bool debug = false);
 
@@ -27,36 +29,65 @@ public class MatToTexture : MonoBehaviour
     {
         IntPtr ptr = GetUnsignedBytes(image_path, out int bytes_count);
 
-        byte[] bytes = new byte[bytes_count];
-        Marshal.Copy(ptr, bytes, 0, bytes_count);
+        ptr.ToTexture2D(Utility.Image.Presets.FULL_HD);
+    }
 
-        texture = new Texture2D(resolution.x, resolution.y);
+    void Update()
+    {
+        
+    }
+}
 
-        Color32[] colorArray = new Color32[bytes.Length / channels];
-
-        for (int i, x = 0; x < resolution.x; x++)
+public static class Utility
+{
+    public struct Image
+    {
+        public struct Dimensions
         {
-            for (int y = 0; y < resolution.y; y++)
+            public int width; public int height; public int channels;
+            public int total
             {
-                i = (x * channels) + (y * channels) * resolution.x;
+                get { return this.width * this.height * this.channels; }
+            }
+        }
+
+        public struct Presets
+        {
+            public static Dimensions FULL_HD =          new Dimensions() { width = 1920, height = 1080, channels = 3 };
+            public static Dimensions FULL_HD_ALPHA =    new Dimensions() { width = 1920, height = 1080, channels = 4 };
+            public static Dimensions HD =               new Dimensions() { width = 1280, height = 720,  channels = 3 };
+            public static Dimensions HD_ALPHA =         new Dimensions() { width = 1280, height = 720,  channels = 4 };
+        }
+        
+    }
+
+    public static Texture2D ToTexture2D(this IntPtr ptr, Image.Dimensions resolution)
+    {
+        byte[] bytes = new byte[resolution.total];
+        Marshal.Copy(ptr, bytes, 0, resolution.total);
+        
+        Texture2D texture = new Texture2D(resolution.width, resolution.height);
+
+        Color32[] colorArray = new Color32[bytes.Length / resolution.channels];
+
+        for (int i, x = 0; x < resolution.width; x++)
+        {
+            for (int y = 0; y < resolution.height; y++)
+            {
+                i = (x * resolution.channels) + (y * resolution.channels) * resolution.width;
 
                 var color = new Color32(
                     bytes[i + 2], bytes[i + 1],
                     bytes[i + 0], 255 // bytes[i + 3]
                 );
 
-                colorArray[x + (resolution.y - y -1) * resolution.x] = color;
+                colorArray[x + (resolution.height - y - 1) * resolution.width] = color;
             }
         }
 
         texture.SetPixels32(colorArray);
         texture.Apply();
 
-        File.WriteAllText("testfile.txt", "thisisjustatest");
-    }
-
-    void Update()
-    {
-        
+        return texture;
     }
 }
