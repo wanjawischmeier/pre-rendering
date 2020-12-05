@@ -1,21 +1,18 @@
 ﻿using System;
+using System.IO;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
 public class MatToTexture : MonoBehaviour
 {
-    const string window = "Test Image OMG";
-    const string tstpath1 = "E:\\users\\wanja\\Bilder\\Wallpapers\\";
-    const string tstpath2 = "C:\\Users\\wanja\\Pictures\\Wallpapers\\";
-    const string filepath1 = "E:\\users\\wanja\\Dokumente\\Programmieren\\C#\\pre-rendering\\src\\decoder\\files";
-    string tstimg = tstpath1 + "tst3.jpg";
-
     const string projectpath1 = "E:\\users\\wanja\\Dokumente\\Programmieren\\C#\\pre-rendering\\";
     const string projectpath2 = "C:\\Users\\wanja\\Documents\\dev\\csharp\\pre-rendering\\";
-    const string decoderdll = projectpath1 + "src\\decoder\\cpp-decoder-class\\x64\\Debug\\Decoder.dll";
+    const string decoderdll = projectpath2 + "src\\decoder\\cpp-decoder-class\\x64\\Debug\\Decoder.dll";
 
     [DllImport(decoderdll)]
     public static extern IntPtr GetUnsignedBytes(string path, out int bytes_count, bool debug = false);
+
+    public string image_path;
 
     public Vector2Int resolution;
     public int channels = 3;
@@ -23,11 +20,9 @@ public class MatToTexture : MonoBehaviour
 
     void Start()
     {
-        tstimg = "E:\\users\\wanja\\Bilder\\Wallpapers\\tstimg.jpg";
-
         Debug.Log("Starting...");
 
-        IntPtr ptr = GetUnsignedBytes(tstimg, out int bytes_count);
+        IntPtr ptr = GetUnsignedBytes(image_path, out int bytes_count);
         byte[] bytes = new byte[bytes_count];
         Marshal.Copy(ptr, bytes, 0, bytes_count);
 
@@ -48,18 +43,25 @@ public class MatToTexture : MonoBehaviour
             colorArray[i / channels] = color;
         }
         */
-        for (var i = bytes.Length -1; i > 0; i -= channels)
+        for (int i, x = 0; x < resolution.x; x++)
         {
-            var color = new Color32(
-                bytes[i + 2], bytes[i + 1],
-                bytes[i + 0], 255 // bytes[i + 3]
-            );
+            for (int y = 0; y < resolution.y; y++)
+            {
+                i = (x * channels) + (y * channels) * resolution.x;
 
-            colorArray[i / channels] = color;
+                var color = new Color32(
+                    bytes[i + 0], bytes[i + 1],
+                    bytes[i + 2], 255 // bytes[i + 3]
+                );
+
+                colorArray[i / channels] = color;
+            }
         }
 
         texture.SetPixels32(colorArray);
         texture.Apply();
+
+        File.WriteAllBytes(Application.dataPath + "\\outimg4.png", texture.EncodeToPNG());
     }
 
     void Update()
