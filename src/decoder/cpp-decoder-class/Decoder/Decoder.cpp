@@ -9,18 +9,16 @@ using namespace cv;
 static vector<VideoCapture> decoders;
 
 
-int newDecoder(char* path)
+bool initialize(int threads, char* path)
 {
-    try
+    for (size_t i = 0; i < threads; i++)
     {
         decoders.push_back(VideoCapture(path));
 
-        return decoders.size() -1;
+        if (!decoders[i].isOpened()) return false;
     }
-    catch (const std::exception&)
-    {
-        return -1;
-    }
+
+    return true;
 }
 
 bool setFrame(int id, int frame)
@@ -32,23 +30,52 @@ bool setFrame(int id, int frame)
 unsigned char* getFrame(int id, int frame, int* bytes_count)
 {
     decoders[id].set(CAP_PROP_POS_FRAMES, frame);
-    decoders[id].grab();
-
+    
     Mat tex;
     decoders[id].read(tex);
+
     return toByteArray(tex, bytes_count);
+}
+
+unsigned char* getUnsignedBytes(char* image, int* bytes_count, bool* debug)
+{
+    Mat img = imread(image);
+
+    return toByteArray(img, bytes_count);
 }
 
 void release(int id)
 {
-    if (id == -1) decoders[id].release();
-    else
+    if (id == -1)
     {
-        for (size_t i = 0; i < decoders.size() -1; i++)
+        if (decoders.size() != 0)
         {
-            decoders[id].release();
+            for (size_t i = 0; i < decoders.size() - 1; i++)
+            {
+                decoders[i].release();
+            }
         }
+        
+        decoders.clear();
     }
+    else decoders[id].release();
+}
+
+int threads()
+{
+    return decoders.size();
+}
+
+int loaded()
+{
+    int loaded = 0;
+
+    for (size_t i = 0; i < decoders.size() -1; i++)
+    {
+        if (decoders[i].isOpened()) loaded++;
+    }
+
+    return loaded;
 }
 
 unsigned char* toByteArray(Mat in, int* bytes_count)
@@ -60,23 +87,5 @@ unsigned char* toByteArray(Mat in, int* bytes_count)
 
     *bytes_count = size;
 
-    return raw_bytes;
-}
-
-unsigned char* getUnsignedBytes(char* image, int* bytes_count, bool* debug)
-{
-    if (debug) cout << "Reading..." << endl;
-
-    Mat img = imread(image);
-
-    int size = img.total() * img.elemSize();
-    unsigned char* raw_bytes = new unsigned char[size];
-
-    if (debug) cout << "Copying " + to_string(size) + " bytes..." << endl;
-    memcpy(raw_bytes, img.data, size * sizeof(std::byte));
-
-    *bytes_count = size;
-
-    if (debug) cout << "Reading done, returning pointer to bytes" << endl;
     return raw_bytes;
 }

@@ -220,6 +220,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   image_path: C:\\Users\\wanja\\Pictures\\Wallpapers\\tstimg_small.jpg
-  resolution: {x: 1920, y: 1080}
-  channels: 3
-  texture: {fileID: 0}
+  video_path: C:\\Users\\wanja\\Documents\\dev\\csharp\\pre-rendering\\src\\unity-project\\Assets\\Videos\\0000-0155.mp4
+  threads: 2
+  loaded: 0
+  frames: 180000002a000000
+  resolution:
+    width: 1920
+    height: 1080
+    channels: 3
+  textures: []

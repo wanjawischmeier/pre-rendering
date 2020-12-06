@@ -195,3 +195,21 @@ char* marshalwithsize(char* in, size_t size)
     cout << "conv_size: " + to_string(strlen(pszReturn)) << endl;
     return pszReturn;
 }
+
+unsigned char* getUnsignedBytes(char* image, int* bytes_count, bool* debug)
+{
+    if (debug) cout << "Reading..." << endl;
+
+    Mat img = imread(image);
+
+    int size = img.total() * img.elemSize();
+    unsigned char* raw_bytes = new unsigned char[size];
+
+    if (debug) cout << "Copying " + to_string(size) + " bytes..." << endl;
+    memcpy(raw_bytes, img.data, size * sizeof(std::byte));
+
+    *bytes_count = size;
+
+    if (debug) cout << "Reading done, returning pointer to bytes" << endl;
+    return raw_bytes;
+}

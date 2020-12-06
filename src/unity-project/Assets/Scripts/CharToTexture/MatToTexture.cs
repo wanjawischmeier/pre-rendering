@@ -1,5 +1,4 @@
 ﻿using System;
-using System.IO;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
@@ -7,41 +6,69 @@ public class MatToTexture : MonoBehaviour
 {
     const string builddir1 = "E:\\users\\wanja\\Dokumente\\Programmieren\\C#\\pre-rendering\\";
     const string builddir2 = "C:\\Users\\wanja\\Documents\\dev\\csharp\\pre-rendering\\";
-    const string devbuild = builddir2 + "src\\decoder\\cpp-decoder-class\\x64\\Debug\\Decoder.dll";
-    // const string devbuild = "Assets/Plugins/Decoder.dll";
+    // const string devbuild = builddir2 + "src\\decoder\\cpp-decoder-class\\x64\\Debug\\Decoder.dll";
+    const string devbuild = "Assets/Plugins/_ecoder 1.dll";
 
-    [DllImport(devbuild, EntryPoint = "newDecoder")]
-    public static extern int NewDecoder(string path);
+    [DllImport(devbuild, EntryPoint = "initialize")]
+    public static extern bool Initialize(int threads, string path);
     [DllImport(devbuild, EntryPoint = "setFrame")]
     public static extern bool SetFrame(int id, int frame);
     [DllImport(devbuild, EntryPoint = "getFrame")]
-    public static extern IntPtr GetFrame(int id, int frame, out int bytes_count);
+    public static extern IntPtr GetFrame(int id, int frame, ref int bytes_count);
+    [DllImport(devbuild, EntryPoint = "release")]
+    public static extern void Release(int id = -1);
+    [DllImport(devbuild, EntryPoint = "threads")]
+    public static extern int Threads();
+    [DllImport(devbuild, EntryPoint = "loaded")]
+    public static extern int Loaded();
     [DllImport(devbuild, EntryPoint = "getUnsignedBytes")]
     public static extern IntPtr GetUnsignedBytes(string path, out int bytes_count, bool debug = false);
 
     public string image_path;
+    public string video_path;
 
-    public Vector2Int resolution;
-    public int channels = 3;
-    public Texture2D texture;
+    public int threads;
+    public bool loaded;
+
+    public int[] frames;
+
+    public Utility.Image.Dimensions resolution;
+    public Texture2D[] textures;
 
     void Start()
     {
-        IntPtr ptr = GetUnsignedBytes(image_path, out int bytes_count);
+        // IntPtr ptr = GetUnsignedBytes(image_path, out int bytes_count);
 
-        ptr.ToTexture2D(Utility.Image.Presets.FULL_HD);
-    }
+        // texture = ptr.ToTexture2D(Utility.Image.Presets.FULL_HD);
+        textures = new Texture2D[threads];
 
-    void Update()
-    {
-        
+        loaded = Initialize(threads, video_path);
+
+        Debug.Log(Threads());
+        int vid_bytes_count = 0;
+
+        int thread;
+        IntPtr vid_ptr;
+
+        thread = 0;
+        vid_ptr = GetFrame(thread, frames[thread], ref vid_bytes_count);
+        Debug.Log(vid_bytes_count);
+        textures[thread] = vid_ptr.ToTexture2D(Utility.Image.Presets.FULL_HD);
+
+        thread = 1;
+        vid_ptr = GetFrame(thread, frames[thread], ref vid_bytes_count);
+        Debug.Log(vid_bytes_count);
+        textures[thread] = vid_ptr.ToTexture2D(Utility.Image.Presets.FULL_HD);
+
+        Release();
     }
 }
 
 public static class Utility
 {
-    public struct Image
+    public class Image
     {
+        [Serializable]
         public struct Dimensions
         {
             public int width; public int height; public int channels;
