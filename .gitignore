@@ -4,6 +4,7 @@ bin
 obj
 ipch
 debug
+unity-project
 
 launch.json
 settings.json
