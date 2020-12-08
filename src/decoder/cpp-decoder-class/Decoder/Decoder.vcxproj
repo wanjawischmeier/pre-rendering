@@ -156,14 +156,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="archive.h" />
-    <ClInclude Include="decoder.h" />
+    <ClInclude Include="decoder.h">
+      <DeploymentContent>false</DeploymentContent>
+    </ClInclude>
+    <ClInclude Include="decoding.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="archive.cpp" />
     <ClCompile Include="decoder.cpp" />
+    <ClCompile Include="decoding.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

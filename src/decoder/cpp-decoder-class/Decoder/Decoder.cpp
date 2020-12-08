@@ -1,91 +1,41 @@
 #include "pch.h"
 #include <combaseapi.h>
-#include "decoder.h"
 #include <opencv2/opencv.hpp>
+#include "decoder.h"
 
 using namespace std;
 using namespace cv;
 
-static vector<VideoCapture> decoders;
-
-
-bool initialize(int threads, char* path)
+Decoder::Decoder(char* path)
 {
-    for (size_t i = 0; i < threads; i++)
-    {
-        decoders.push_back(VideoCapture(path));
-
-        if (!decoders[i].isOpened()) return false;
-    }
-
-    return true;
+	this->cap = VideoCapture(path);
 }
 
-bool setFrame(int id, int frame)
+Decoder::~Decoder()
 {
-    decoders[id].set(CAP_PROP_POS_FRAMES, frame);
-    return (decoders[id].get(CAP_PROP_POS_FRAMES) == frame);
+	this->cap.release();
 }
 
-unsigned char* getFrame(int id, int frame, int* bytes_count)
+bool Decoder::isOpened()
 {
-    decoders[id].set(CAP_PROP_POS_FRAMES, frame);
-    
-    Mat tex;
-    decoders[id].read(tex);
-
-    return toByteArray(tex, bytes_count);
+	return this->cap.isOpened();
 }
 
-unsigned char* getUnsignedBytes(char* image, int* bytes_count, bool* debug)
+unsigned char* Decoder::getFrame(int frame)
 {
-    Mat img = imread(image);
+	this->cap.set(CAP_PROP_POS_FRAMES, frame);
 
-    return toByteArray(img, bytes_count);
+	this->cap.read(this->frame);
+
+	return toBytes();
 }
 
-void release(int id)
+unsigned char* Decoder::toBytes()
 {
-    if (id == -1)
-    {
-        if (decoders.size() != 0)
-        {
-            for (size_t i = 0; i < decoders.size() - 1; i++)
-            {
-                decoders[i].release();
-            }
-        }
-        
-        decoders.clear();
-    }
-    else decoders[id].release();
-}
+	int size = this->frame.total() * this->frame.elemSize();
+	unsigned char* raw_bytes = new unsigned char[size];
 
-int threads()
-{
-    return decoders.size();
-}
+	memcpy(raw_bytes, this->frame.data, size * sizeof(std::byte));
 
-int loaded()
-{
-    int loaded = 0;
-
-    for (size_t i = 0; i < decoders.size() -1; i++)
-    {
-        if (decoders[i].isOpened()) loaded++;
-    }
-
-    return loaded;
-}
-
-unsigned char* toByteArray(Mat in, int* bytes_count)
-{
-    int size = in.total() * in.elemSize();
-    unsigned char* raw_bytes = new unsigned char[size];
-
-    memcpy(raw_bytes, in.data, size * sizeof(std::byte));
-
-    *bytes_count = size;
-
-    return raw_bytes;
+	return raw_bytes;
 }

@@ -24,7 +24,7 @@
     <ClInclude Include="decoder.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="archive.h">
+    <ClInclude Include="decoding.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
@@ -38,7 +38,7 @@
     <ClCompile Include="decoder.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="archive.cpp">
+    <ClCompile Include="decoding.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>

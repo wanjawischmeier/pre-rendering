@@ -1,17 +1,23 @@
-#pragma once
-
-#define DECODER __declspec(dllimport)
-
+#include "pch.h"
 #include <iostream>
 #include <opencv2\opencv.hpp>
+
 using namespace std;
+using namespace cv;
 
-extern "C" DECODER bool initialize(int threads, char* path);
-extern "C" DECODER bool setFrame(int id, int frame);
-extern "C" DECODER unsigned char* getFrame(int id, int frame, int* bytes_count);
-extern "C" DECODER void release(int id = -1);
+class Decoder
+{
+public:
+	VideoCapture cap;
+	
+	Decoder(char* path);
+	~Decoder();
 
-extern "C" DECODER int threads();
-extern "C" DECODER int loaded();
-extern "C" DECODER unsigned char* toByteArray(cv::Mat in, int* bytes_count);
-extern "C" DECODER unsigned char* getUnsignedBytes(char* image, int* bytes_count, bool* debug);
+	bool isOpened();
+	unsigned char* getFrame(int frame);
+
+private:
+	Mat frame;
+
+	unsigned char* toBytes();
+};

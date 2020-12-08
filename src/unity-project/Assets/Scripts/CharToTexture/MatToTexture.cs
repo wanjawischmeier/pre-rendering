@@ -25,7 +25,10 @@ public class MatToTexture : MonoBehaviour
     public static extern IntPtr GetUnsignedBytes(string path, out int bytes_count, bool debug = false);
 
     public string image_path;
-    public string video_path;
+    public string[] videos;
+    public string[] project_paths;
+    public int system_id;
+    public int video_id;
 
     public int threads;
     public bool loaded;
@@ -37,6 +40,8 @@ public class MatToTexture : MonoBehaviour
 
     void Start()
     {
+        string video_path = string.Format("{0}\\src\\unity-project\\Assets\\Videos\\{1}.mp4", project_paths[system_id], videos[video_id]);
+
         // IntPtr ptr = GetUnsignedBytes(image_path, out int bytes_count);
 
         // texture = ptr.ToTexture2D(Utility.Image.Presets.FULL_HD);
