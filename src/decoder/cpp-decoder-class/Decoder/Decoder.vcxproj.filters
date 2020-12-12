@@ -24,7 +24,7 @@
     <ClInclude Include="decoder.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="decoding.h">
+    <ClInclude Include="decoding_manager.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
@@ -38,7 +38,7 @@
     <ClCompile Include="decoder.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="decoding.cpp">
+    <ClCompile Include="decoding_magager.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>

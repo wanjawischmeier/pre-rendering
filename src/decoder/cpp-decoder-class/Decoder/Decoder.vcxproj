@@ -159,13 +159,13 @@
     <ClInclude Include="decoder.h">
       <DeploymentContent>false</DeploymentContent>
     </ClInclude>
-    <ClInclude Include="decoding.h" />
+    <ClInclude Include="decoding_manager.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="decoder.cpp" />
-    <ClCompile Include="decoding.cpp" />
+    <ClCompile Include="decoding_magager.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

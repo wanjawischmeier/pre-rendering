@@ -219,7 +219,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8ff6b8845b3e9644cb0f0895cd7e0118, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  image_path: C:\\Users\\wanja\\Pictures\\Wallpapers\\tstimg_small.jpg
   videos:
   - 0000-0155
   - clip
@@ -229,9 +228,10 @@ MonoBehaviour:
   - Low_Res_Realtime
   project_paths:
   - E:\\users\\wanja\\Dokumente\\Programmieren\C#\\pre-rendering
-  system_id: 0
+  - C:\\Users\\wanja\\Documents\\dev\\csharp\\pre-rendering
+  system_id: 1
   video_id: 2
-  threads: 2
+  threads: 1
   loaded: 0
   frames: 180000002a000000
   resolution:

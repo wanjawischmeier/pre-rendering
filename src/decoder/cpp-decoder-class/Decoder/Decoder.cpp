@@ -8,34 +8,34 @@ using namespace cv;
 
 Decoder::Decoder(char* path)
 {
-	this->cap = VideoCapture(path);
+	cap = VideoCapture(path);
 }
 
 Decoder::~Decoder()
 {
-	this->cap.release();
+	cap.release();
 }
 
 bool Decoder::isOpened()
 {
-	return this->cap.isOpened();
+	return cap.isOpened();
 }
 
-unsigned char* Decoder::getFrame(int frame)
+unsigned char* Decoder::getFrame(int frameIdx)
 {
-	this->cap.set(CAP_PROP_POS_FRAMES, frame);
+	cap.set(CAP_PROP_POS_FRAMES, frameIdx);
 
-	this->cap.read(this->frame);
+	cap.read(frame);
 
-	return toBytes();
+	return toBytes(frame);
 }
 
-unsigned char* Decoder::toBytes()
+unsigned char* toBytes(Mat frame)
 {
-	int size = this->frame.total() * this->frame.elemSize();
+	int size = frame.total() * frame.elemSize();
 	unsigned char* raw_bytes = new unsigned char[size];
 
-	memcpy(raw_bytes, this->frame.data, size * sizeof(std::byte));
+	memcpy(raw_bytes, frame.data, size * sizeof(std::byte));
 
 	return raw_bytes;
 }

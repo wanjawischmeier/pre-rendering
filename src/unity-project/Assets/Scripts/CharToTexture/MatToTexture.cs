@@ -7,16 +7,13 @@ public class MatToTexture : MonoBehaviour
     const string builddir1 = "E:\\users\\wanja\\Dokumente\\Programmieren\\C#\\pre-rendering\\";
     const string builddir2 = "C:\\Users\\wanja\\Documents\\dev\\csharp\\pre-rendering\\";
     // const string devbuild = builddir2 + "src\\decoder\\cpp-decoder-class\\x64\\Debug\\Decoder.dll";
-    const string devbuild = "Assets/Plugins/_ecoder 1.dll";
-
-    [DllImport(devbuild, EntryPoint = "initialize")]
-    public static extern bool Initialize(int threads, string path);
+    const string devbuild = "Assets/Plugins/_ecoder.dll";
+    
+    // static
     [DllImport(devbuild, EntryPoint = "setFrame")]
     public static extern bool SetFrame(int id, int frame);
     [DllImport(devbuild, EntryPoint = "getFrame")]
     public static extern IntPtr GetFrame(int id, int frame, ref int bytes_count);
-    [DllImport(devbuild, EntryPoint = "release")]
-    public static extern void Release(int id = -1);
     [DllImport(devbuild, EntryPoint = "threads")]
     public static extern int Threads();
     [DllImport(devbuild, EntryPoint = "loaded")]
@@ -24,7 +21,15 @@ public class MatToTexture : MonoBehaviour
     [DllImport(devbuild, EntryPoint = "getUnsignedBytes")]
     public static extern IntPtr GetUnsignedBytes(string path, out int bytes_count, bool debug = false);
 
-    public string image_path;
+
+    // object-oriented
+    [DllImport(devbuild, EntryPoint = "initialize")]
+    public static extern bool Initialize(string path, int res_x, int res_y, int threads, int col_channels = 3);
+    [DllImport(devbuild, EntryPoint = "decode")]
+    public static extern IntPtr Decode(int frame);
+    [DllImport(devbuild, EntryPoint = "release")]
+    public static extern void Release();
+
     public string[] videos;
     public string[] project_paths;
     public int system_id;
@@ -47,23 +52,27 @@ public class MatToTexture : MonoBehaviour
         // texture = ptr.ToTexture2D(Utility.Image.Presets.FULL_HD);
         textures = new Texture2D[threads];
 
-        loaded = Initialize(threads, video_path);
+        loaded = Initialize(video_path, resolution.width, resolution.height, threads, resolution.channels);
 
-        Debug.Log(Threads());
+        // Debug.Log(Threads());
         int vid_bytes_count = 0;
 
         int thread;
         IntPtr vid_ptr;
-
+        /*
         thread = 0;
         vid_ptr = GetFrame(thread, frames[thread], ref vid_bytes_count);
         Debug.Log(vid_bytes_count);
         textures[thread] = vid_ptr.ToTexture2D(Utility.Image.Presets.FULL_HD);
-
+        
         thread = 1;
         vid_ptr = GetFrame(thread, frames[thread], ref vid_bytes_count);
         Debug.Log(vid_bytes_count);
         textures[thread] = vid_ptr.ToTexture2D(Utility.Image.Presets.FULL_HD);
+        */
+
+        vid_ptr = Decode(frames[0]);
+        textures[0] = vid_ptr.ToTexture2D(resolution);
 
         Release();
     }

@@ -14,10 +14,10 @@ public:
 	~Decoder();
 
 	bool isOpened();
-	unsigned char* getFrame(int frame);
+	unsigned char* getFrame(int frameIdx);
 
 private:
 	Mat frame;
-
-	unsigned char* toBytes();
 };
+
+static unsigned char* toBytes(Mat frame);
