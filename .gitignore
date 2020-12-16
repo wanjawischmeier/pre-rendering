@@ -6,9 +6,7 @@ ipch
 debug
 unity-project
 
-launch.json
-settings.json
-
+.vscode
 .suo
 .user
 .ncb
