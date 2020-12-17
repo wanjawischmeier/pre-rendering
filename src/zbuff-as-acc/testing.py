@@ -1,5 +1,6 @@
 import wave
 
+
 path = input("Enter path to wav file:\t")
 
 with wave.open(path, 'rb') as wav:
