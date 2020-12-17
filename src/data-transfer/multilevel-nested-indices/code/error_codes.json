@@ -1,0 +1,20 @@
+{
+    "warnings":{
+
+    },
+
+    "errors":{
+        "ERR_NO_REFERENCE":{
+            "TITLE":"Error: No reference found (%e)",
+            "EXPL":"The executable wasn't called with a valid or no reference argument (Arguments: %s).",
+            "REASON":"This could be due to an error while the installation process.",
+            "FIX":"Try uninstalling the programm via the 'uninstall.exe' in the programm folder, and then reinstalling it."
+        },
+        "ERR_INVALID_FILE":{
+            "TITLE":"Error: Invalid file type (%e)",
+            "EXPL":"The requested file type (%s) cannot be opened via this programm.",
+            "REASON":"When this happened automatically, there is something incorrectly configured with this file type.",
+            "FIX":"Try right-clicking the file, and then choosing 'Open with' from the dropdown. Here select the programm you want this filetype to be opened with."
+        }
+    }
+}
