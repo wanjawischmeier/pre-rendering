@@ -1,4 +1,5 @@
 import wave
+import math
 
 
 path = input("Enter path to wav file:\t")
@@ -49,4 +50,21 @@ __________________________________________
                 16 -> 8 bit
 1st         |   255         |   65.280
 2nd         |   255         |   16.711.680
+2vec        |   255         |   65.280
+3vec        |   255         |   16.646.655
+
+Option 1:
+8-bit in (255) - 16-bit out (65.536) - 48.000 samples - 2vec (max: 65.280)
+stereo
+
+ratio:  1 sample - 4 pixels (2 per bit, 2 samples stereo -> 2*2) -> 4/1
+pixels: 192.000
+res:    583*328 (x = sqrt(192000*(1920/1080)), y = 192000/x)
+
+calculations:
+r = x / y
+p = x * y
+
+x = sqrt(p * r) 
+y = p / x
 '''
