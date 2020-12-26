@@ -7,9 +7,10 @@ public class MatToTexture : MonoBehaviour
     const string builddir1 = "E:\\users\\wanja\\Dokumente\\Programmieren\\C#\\pre-rendering\\";
     const string builddir2 = "C:\\Users\\wanja\\Documents\\dev\\csharp\\pre-rendering\\";
     // const string devbuild = builddir2 + "src\\decoder\\cpp-decoder-class\\x64\\Debug\\Decoder.dll";
-    const string devbuild = "Assets/Plugins/_ecoder.dll";
-    
+    const string devbuild = "Assets/Plugins/_ecoder 2.dll";
+
     // static
+    /*
     [DllImport(devbuild, EntryPoint = "setFrame")]
     public static extern bool SetFrame(int id, int frame);
     [DllImport(devbuild, EntryPoint = "getFrame")]
@@ -20,7 +21,7 @@ public class MatToTexture : MonoBehaviour
     public static extern int Loaded();
     [DllImport(devbuild, EntryPoint = "getUnsignedBytes")]
     public static extern IntPtr GetUnsignedBytes(string path, out int bytes_count, bool debug = false);
-
+    */
 
     // object-oriented
     [DllImport(devbuild, EntryPoint = "initialize")]
@@ -53,13 +54,11 @@ public class MatToTexture : MonoBehaviour
         textures = new Texture2D[threads];
 
         loaded = Initialize(video_path, resolution.width, resolution.height, threads, resolution.channels);
-
-        // Debug.Log(Threads());
+        /*
+        Debug.Log(Threads());
         int vid_bytes_count = 0;
 
         int thread;
-        IntPtr vid_ptr;
-        /*
         thread = 0;
         vid_ptr = GetFrame(thread, frames[thread], ref vid_bytes_count);
         Debug.Log(vid_bytes_count);
@@ -70,10 +69,12 @@ public class MatToTexture : MonoBehaviour
         Debug.Log(vid_bytes_count);
         textures[thread] = vid_ptr.ToTexture2D(Utility.Image.Presets.FULL_HD);
         */
+        /*
+        IntPtr vid_ptr;
 
         vid_ptr = Decode(frames[0]);
         textures[0] = vid_ptr.ToTexture2D(resolution);
-
+        */
         Release();
     }
 }
