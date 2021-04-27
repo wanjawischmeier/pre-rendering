@@ -5,6 +5,7 @@ obj
 ipch
 debug
 unity-project
+unity-plugin
 
 launch.json
 settings.json
