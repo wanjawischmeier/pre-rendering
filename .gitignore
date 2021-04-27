@@ -4,8 +4,8 @@ bin
 obj
 ipch
 debug
-unity-project
-unity-plugin
+tmp
+pre-rendering-unity
 
 launch.json
 settings.json
