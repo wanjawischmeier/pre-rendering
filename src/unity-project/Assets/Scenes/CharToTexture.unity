@@ -231,7 +231,7 @@ MonoBehaviour:
   - C:\\Users\\wanja\\Documents\\dev\\csharp\\pre-rendering
   system_id: 1
   video_id: 2
-  threads: 1
+  threads: 4
   loaded: 0
   frames: 180000002a000000
   resolution:
