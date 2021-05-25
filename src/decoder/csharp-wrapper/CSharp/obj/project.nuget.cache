@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "BMxgj/QXiERBqAYyytKxVr5QSj9tdIsQ4uj05ZAfVjiffcMo+6yKhZaQAS0yF2ICjILYTDxod5MBwk/w44G/ig==",
+  "success": true,
+  "projectFilePath": "C:\\Users\\User\\Documents\\Programmieren\\Multi-Language\\pre-rendering\\src\\Decoder\\CSharp\\CSharp\\CSharp.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\User\\.nuget\\packages\\microsoft.netcore.platforms\\1.1.0\\microsoft.netcore.platforms.1.1.0.nupkg.sha512",
+    "C:\\Users\\User\\.nuget\\packages\\netstandard.library\\2.0.3\\netstandard.library.2.0.3.nupkg.sha512"
+  ],
+  "logs": []
+}

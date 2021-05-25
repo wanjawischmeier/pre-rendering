@@ -1,0 +1,14 @@
+﻿  Decoder.cpp
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\Decoder\Decoder\Decoder.cpp(14,1): warning C4273: "Initialize": Inkonsistente DLL-Bindung.
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\Decoder\Decoder\Decoder.h(10,25): message : Siehe vorherige Definition von "Initialize"
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\Decoder\Decoder\Decoder.cpp(29,1): warning C4273: "Create": Inkonsistente DLL-Bindung.
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\Decoder\Decoder\Decoder.h(11,24): message : Siehe vorherige Definition von "Create"
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\Decoder\Decoder\Decoder.cpp(43,1): warning C4273: "SetFrame": Inkonsistente DLL-Bindung.
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\Decoder\Decoder\Decoder.h(12,27): message : Siehe vorherige Definition von "SetFrame"
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\Decoder\Decoder\Decoder.cpp(49,1): warning C4273: "ShowCustomImage": Inkonsistente DLL-Bindung.
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\Decoder\Decoder\Decoder.h(13,25): message : Siehe vorherige Definition von "ShowCustomImage"
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\Decoder\Decoder\Decoder.cpp(60,1): warning C4273: "ShowImage": Inkonsistente DLL-Bindung.
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\Decoder\Decoder\Decoder.h(14,25): message : Siehe vorherige Definition von "ShowImage"
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\Decoder\Decoder\Decoder.cpp(71,1): warning C4273: "Destroy": Inkonsistente DLL-Bindung.
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\Decoder\Decoder\Decoder.h(15,25): message : Siehe vorherige Definition von "Destroy"
+  Decoder.vcxproj -> C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\Decoder\x64\Debug\Decoder.dll
