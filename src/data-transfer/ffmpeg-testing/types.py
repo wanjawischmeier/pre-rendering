@@ -2,8 +2,13 @@ from subprocess import check_output, call, check_call, Popen, PIPE, STDOUT
 from sys import argv
 import re
 
-ffmpeg_exe = argv[1]
-file_path = argv[2]
+if len(argv) == 3: 
+    ffmpeg_exe = argv[1]
+    file_path = argv[2]
+
+else:
+    ffmpeg_exe = input("ffmpeg_exe: ")
+    file_path = input("file_path: ")
 # ffmpeg.exe -i C:\Users\User\Documents\Blender\out_libx264_interframe.mp4 -vf select='eq(n,34)',showinfo -f null -
 
 # C:\ProgramData\ffmpeg\bin\ffmpeg.exe -i C:\Users\User\Documents\Blender\interframe.mp4 -vf select='eq(n, 31)', showinfo -f null -

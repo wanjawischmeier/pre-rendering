@@ -4,7 +4,11 @@ bin
 obj
 ipch
 debug
-unity-project
+<<<<<<< Updated upstream
+tmp
+=======
+>>>>>>> Stashed changes
+pre-rendering-unity
 
 .vscode
 .suo
