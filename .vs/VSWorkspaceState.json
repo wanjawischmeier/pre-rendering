@@ -1,0 +1,11 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\src",
+    "\\src\\decoder",
+    "\\src\\decoder\\cpp-decoder-class",
+    "\\src\\decoder\\csharp-testing"
+  ],
+  "SelectedNode": "\\src\\decoder\\cpp-decoder-class\\Decoder.sln",
+  "PreviewInSolutionExplorer": false
+}

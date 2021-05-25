@@ -1,5 +1,13 @@
 __pycache__
 Library
+bin
+obj
+ipch
+debug
+unity-project
 
-launch.json
-settings.json
+.vscode
+.suo
+.user
+.ncb
+.sbr
