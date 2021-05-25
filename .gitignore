@@ -4,7 +4,10 @@ bin
 obj
 ipch
 debug
+<<<<<<< Updated upstream
 tmp
+=======
+>>>>>>> Stashed changes
 pre-rendering-unity
 
 launch.json
