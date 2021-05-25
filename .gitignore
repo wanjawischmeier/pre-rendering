@@ -10,9 +10,7 @@ tmp
 >>>>>>> Stashed changes
 pre-rendering-unity
 
-launch.json
-settings.json
-
+.vscode
 .suo
 .user
 .ncb

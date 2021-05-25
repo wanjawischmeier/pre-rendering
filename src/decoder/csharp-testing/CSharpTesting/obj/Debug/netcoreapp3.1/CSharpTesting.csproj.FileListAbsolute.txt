@@ -1,0 +1,13 @@
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\CSharpTesting\CSharpTesting\bin\Debug\netcoreapp3.1\CSharpTesting.exe
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\CSharpTesting\CSharpTesting\bin\Debug\netcoreapp3.1\CSharpTesting.deps.json
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\CSharpTesting\CSharpTesting\bin\Debug\netcoreapp3.1\CSharpTesting.runtimeconfig.json
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\CSharpTesting\CSharpTesting\bin\Debug\netcoreapp3.1\CSharpTesting.runtimeconfig.dev.json
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\CSharpTesting\CSharpTesting\bin\Debug\netcoreapp3.1\CSharpTesting.dll
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\CSharpTesting\CSharpTesting\bin\Debug\netcoreapp3.1\CSharpTesting.pdb
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\CSharpTesting\CSharpTesting\obj\Debug\netcoreapp3.1\CSharpTesting.csprojAssemblyReference.cache
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\CSharpTesting\CSharpTesting\obj\Debug\netcoreapp3.1\CSharpTesting.AssemblyInfoInputs.cache
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\CSharpTesting\CSharpTesting\obj\Debug\netcoreapp3.1\CSharpTesting.AssemblyInfo.cs
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\CSharpTesting\CSharpTesting\obj\Debug\netcoreapp3.1\CSharpTesting.csproj.CoreCompileInputs.cache
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\CSharpTesting\CSharpTesting\obj\Debug\netcoreapp3.1\CSharpTesting.dll
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\CSharpTesting\CSharpTesting\obj\Debug\netcoreapp3.1\CSharpTesting.pdb
+C:\Users\User\Documents\Programmieren\Multi-Language\pre-rendering\src\Decoder\CSharpTesting\CSharpTesting\obj\Debug\netcoreapp3.1\CSharpTesting.genruntimeconfig.cache
