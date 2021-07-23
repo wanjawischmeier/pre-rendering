@@ -1,0 +1,124 @@
+#include "Assets/SphereIntersection/Materials/Utility/Types.cginc"
+
+
+float2 Resolution;
+
+float PI, Latitude, Longitude;
+float3 C, V_XP, V_XN, V_YP, V_YN;
+
+
+#pragma kernel CSMain
+
+Texture2D<float4> Input_XP;
+Texture2D<float4> Input_XN;
+Texture2D<float4> Input_YP;
+Texture2D<float4> Input_YN;
+
+RWTexture2D<float4> Translated;
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    latlon ll1 = float2ToLatLon(id.xy / Resolution, PI);
+    ll1.lon += PI;
+    
+    float CP_XP = map(Input_XP[id.xy].a, 0, 1, 0, 10);
+    float CP_XN = map(Input_XN[id.xy].a, 0, 1, 0, 10);
+    float CP_YP = map(Input_YP[id.xy].a, 0, 1, 0, 10);
+    float CP_YN = map(Input_YN[id.xy].a, 0, 1, 0, 10);
+    
+    float3 P_XP = latLonToVector(ll1, CP_XP);
+    float3 P_XN = latLonToVector(ll1, CP_XN);
+    float3 P_YP = latLonToVector(ll1, CP_YP);
+    float3 P_YN = latLonToVector(ll1, CP_YN);
+    
+    P_XP += V_XP;
+    P_XN += V_XP;
+    P_YP += V_XP;
+    P_YN += V_XP;
+    
+    P_XP.x -= 1;
+    P_XN.x += 1;
+    P_YP.z -= 1;
+    P_YN.z += 1;
+    
+    /*
+    float f = V_XN.x;
+    float3 O_XP = float3(-f, 0, 0);
+    // float3 O_XN = float3(f, 0, 0);
+    // float3 O_YP = float3(0, 0, -f);
+    // float3 O_YN = float3(0, 0, f);
+    */
+    // P_XP = (P_XP / 2) + O_XP + V_XP;
+    // P_XN = (P_XN / 2) + O_XN + V_XP;
+    // P_YP = (P_YP / 2) + O_YP + V_XP;
+    // P_YN = (P_YN / 2) + O_YN + V_XP;
+    
+    float D_XP = distance(C, P_XP);
+    float D_XN = distance(C, P_XN);
+    float D_YP = distance(C, P_YP);
+    float D_YN = distance(C, P_YN);
+    
+    latlon ll2_XP = vectorToLatLon(P_XP, D_XP);
+    latlon ll2_XN = vectorToLatLon(P_XN, D_XN);
+    latlon ll2_YP = vectorToLatLon(P_YP, D_YP);
+    latlon ll2_YN = vectorToLatLon(P_YN, D_YN);
+    
+    float2 a_XP = latLonToFloat2(ll2_XP, PI); a_XP.x += 0.5;
+    float2 a_XN = latLonToFloat2(ll2_XN, PI); a_XN.x += 0.5;
+    float2 a_YP = latLonToFloat2(ll2_YP, PI); a_YP.x += 0.5;
+    float2 a_YN = latLonToFloat2(ll2_YN, PI); a_YN.x += 0.5;
+    
+    Translated[round(a_XP * Resolution)] = Input_XP[id.xy]; // * float4(0, 1, 0, 1);
+    Translated[round(a_XN * Resolution)] = Input_XN[id.xy]; // * float4(0, 0, 1, 1);
+    Translated[round(a_YP * Resolution)] = Input_YP[id.xy];
+    Translated[round(a_YN * Resolution)] = Input_YN[id.xy];
+    
+    /*
+    float VP1 = distance(V, P1);
+    float VP2 = distance(V, P2);
+    
+    latlon ll2_1 = vectorToLatLon(P1 - V, VP1);
+    latlon ll2_2 = vectorToLatLon(P2 - V, VP2);
+    
+    float3 vec1 = latLonToVector(ll1);
+    latlon ll3 = vectorToLatLon(vec1);
+    
+    float2 a1 = latLonToFloat2(ll2_1, PI); a1.x += 0.5;
+    float2 a2 = latLonToFloat2(ll2_2, PI); a2.x += 0.5;
+    
+    // Translated[round(a1 * Resolution)] = toFloat4((round(a1 * Resolution) / Resolution / 2) + (round(a2 * Resolution) / Resolution / 2));
+    // Translated[id.xy] = float4(id.xy / Resolution, 0, 1);
+    /*
+    Translated[round(a1 * Resolution)] = float4(id.xy / Resolution, 0, 1);
+    Translated[round(a2 * Resolution)] = float4(id.xy / Resolution, 0, 1);
+    
+    Translated[round(a1 * Resolution)] = InputXP[id.xy];
+    Translated[round(a2 * Resolution)] = InputXN[id.xy];
+    /*
+    float2 ll1 = float2(
+        id.y * (PI * 1),
+        id.x * (PI * 2)
+    );
+    float2 out1 = float2(
+        ll1.y / (PI * 1),
+        ll1.x / (PI * 2)
+    );
+    float2 out2 = float2(
+        round(id.x * (PI * 1) / (PI * 1)),
+        round(id.y * (PI * 2) / (PI * 2))
+    );
+    Result[out2.xy] = float4(id.xy / Resolution, 0, 1);
+    */
+}
+
+#pragma kernel Test
+
+Texture2D<float4> TranslatedIn;
+RWTexture2D<float4> Result;
+
+[numthreads(8, 8, 1)]
+void Test(uint3 id : SV_DispatchThreadID)
+{
+    Result[id.xy] = TranslatedIn[id.xy];
+}

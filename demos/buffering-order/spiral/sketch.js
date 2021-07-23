@@ -13,7 +13,7 @@ function setup(init = true) {
     if (init) {
         if (debug) canv = createCanvas(windowWidth, windowHeight);
         else createCanvas(windowWidth-10, windowHeight-40);
-        slider = createSlider(10, 50, 20);
+        slider = createSlider(1, 10, 2);
         slider.style('width', (width-25).toString()+'px');
         slider.position(12, height-25);
     }
@@ -30,6 +30,7 @@ function setup(init = true) {
     textSize(width/height/c*100);
     textAlign(CENTER, CENTER);
     needed = getNeeded2(r*2+2);
+    console.log(needed);
     col_d = 600/needed.length;
     i = 0;
 }
@@ -95,6 +96,34 @@ function getNeeded2(r) {
     let x = 0; let y = 0;
         
     for (i = 1; i < r; i += 2) {
+        for (let x_ = x; x_ < i-i/2; x_++) {
+            n.push([x_, y]);
+        }
+        x += i;
+        for (let y_ = y; y_ < i-i/2; y_++) {
+            n.push([x, y_]);
+        }
+        y += i;
+        for (let x_ = x; x_ > -i+i/2; x_--) {
+            n.push([x_, y]);
+        }
+        x -= i+1;
+        for (let y_ = y; y_ > -i+i/2; y_--) {
+            n.push([x, y_]);
+        }
+        y -= i+1;
+    }
+    return n;
+}
+function getNeeded3(r) {
+    let n = [];
+    append(n, [0, 0]);
+    let xdir = 0;
+    let ydir = 0;
+    let x = 0; let y = 0;
+        
+    for (i = 0; i < r; i += 1) {
+        
         for (let x_ = x; x_ < i-i/2; x_++) {
             n.push([x_, y]);
         }
