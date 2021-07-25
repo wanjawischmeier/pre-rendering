@@ -5,7 +5,6 @@ obj
 ipch
 debug
 tmp
-pre-rendering-unity
 builds
 
 .vscode
@@ -13,3 +12,4 @@ builds
 .user
 .ncb
 .sbr
+.meta
