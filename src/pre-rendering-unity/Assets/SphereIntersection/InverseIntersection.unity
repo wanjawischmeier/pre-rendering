@@ -132,11 +132,11 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 786967401283974170, guid: fc243675728653a4093f82ccb2e59921, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 20
+      value: 70
       objectReference: {fileID: 0}
     - target: {fileID: 786967401283974170, guid: fc243675728653a4093f82ccb2e59921, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -10
+      value: -35
       objectReference: {fileID: 0}
     - target: {fileID: 786967401283974173, guid: fc243675728653a4093f82ccb2e59921, type: 3}
       propertyPath: m_FontData.m_MinSize
@@ -335,7 +335,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   computeShader: {fileID: 7200000, guid: 205f05dea134e2f4d88b3b410a5b7ea4, type: 3}
-  texPath: Assets\Resources\Panoramas\Cubes\Test2Axis
+  texPath: 
   debug: 0
 --- !u!114 &1464708542
 MonoBehaviour:

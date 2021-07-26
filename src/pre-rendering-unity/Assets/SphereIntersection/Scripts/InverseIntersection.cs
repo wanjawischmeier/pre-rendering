@@ -26,6 +26,9 @@ public class InverseIntersection : MonoBehaviour
 
     void Start()
     {
+        if (!File.Exists(Application.dataPath + "\\DataPath.txt")) return;
+        texPath = File.ReadAllText(Application.dataPath + "\\DataPath.txt");
+
         string[] imageFiles = Directory.GetFiles(texPath, "*.png");
         rawTexArray = new Texture2D[imageFiles.Length];
         offArray = new Vector3[imageFiles.Length];
@@ -77,14 +80,6 @@ public class InverseIntersection : MonoBehaviour
         computeShader.SetTexture(kernelTranslate, "Translated", translated);
         computeShader.SetTexture(kernelProject, "Translated", translated);
         computeShader.SetTexture(kernelProject, "Result", result);
-    }
-
-    void Update()
-    {
-        computeShader.SetVector("Position", transform.position);
-        computeShader.SetVector("Rotation", transform.eulerAngles * Mathf.Deg2Rad);
-        computeShader.SetFloat("FOV", (180 - Camera.main.fieldOfView) * Mathf.Deg2Rad);
-        computeShader.SetBool("Debug", debug);
 
         for (int i = 0; i < rawTexArray.Length; i++)
         {
@@ -92,6 +87,17 @@ public class InverseIntersection : MonoBehaviour
         }
 
         offBuffer.SetData(offArray);
+    }
+
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Escape)) Application.Quit();
+
+        computeShader.SetVector("Position", transform.position);
+        computeShader.SetVector("Rotation", transform.eulerAngles * Mathf.Deg2Rad);
+        computeShader.SetFloat("FOV", (180 - Camera.main.fieldOfView) * Mathf.Deg2Rad);
+        computeShader.SetBool("Debug", debug);
+
 
         computeShader.Dispatch(kernelTranslate, textureWidth / (int)translateThreadsX, textureHeight / (int)translateThreadsY, rawTexArray.Length);
         computeShader.Dispatch(kernelProject, screenWidth / (int)projectThreadsX, screenHeight / (int)projectThreadsY, 1);

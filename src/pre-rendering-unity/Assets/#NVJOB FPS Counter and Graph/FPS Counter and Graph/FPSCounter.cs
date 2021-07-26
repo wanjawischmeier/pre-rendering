@@ -42,6 +42,7 @@ public class FPSCounter : MonoBehaviour
     Transform graphTr;
     Vector3Int allFps;
     Text counterText;
+    string dataPath;
     float ofsetX;
     int lineCount;
 
@@ -63,7 +64,7 @@ public class FPSCounter : MonoBehaviour
         CreateCounter();
         counter.SetActive(!counter.activeSelf);
         graph.SetActive(!graph.activeSelf);
-
+        dataPath = Application.dataPath;
         //--------------
     }
 
@@ -104,13 +105,13 @@ public class FPSCounter : MonoBehaviour
         // StFPS.Counter(Time Update).x - min fps
         // StFPS.Counter(Time Update).y - avg fps
         // StFPS.Counter(Time Update).z - max fps
-
         allFps = StFPS.Counter(timeUpdate);
         counterText.text = "MIN " + allFps.x.ToString() +
             " | AVG " + allFps.y.ToString() +
             " | MAX " + allFps.z.ToString() +
             "\nScreen Resolution " + Screen.width.ToString() + "x" + Screen.height.ToString() +
-            "\nTexture Resolution " + textureResolution.x.ToString() + "x" + textureResolution.y.ToString();
+            "\nTexture Resolution " + textureResolution.x.ToString() + "x" + textureResolution.y.ToString() +
+            "\nData Path " + dataPath;
 
         //-------------- 
 
