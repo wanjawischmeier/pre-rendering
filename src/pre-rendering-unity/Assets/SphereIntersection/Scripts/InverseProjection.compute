@@ -1,0 +1,14 @@
+#pragma kernel CSMain
+
+Texture2D<float4> Input;
+RWTexture2D<float4> Result;
+
+float2 PanResolution;
+float2 Resolution;
+
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    Result[id.xy] = Input[id.xy / Resolution * PanResolution];
+}

@@ -4,14 +4,12 @@ bin
 obj
 ipch
 debug
-<<<<<<< Updated upstream
 tmp
-=======
->>>>>>> Stashed changes
-pre-rendering-unity
+builds
 
 .vscode
 .suo
 .user
 .ncb
 .sbr
+.meta
