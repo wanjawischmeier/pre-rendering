@@ -219,9 +219,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 03bb147d5477ad94eb109ec9e547e160, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  importMode: 1
-  texPath: Assets\Resources\Test16b
-  files: []
+  importMode: 0
+  texPath: C:\Users\wanja\Documents\dev\csharp\pre-rendering\src\files\panoramas\cubes\Test16b
   rawTexArray: []
 --- !u!1 &1411163705
 GameObject:
