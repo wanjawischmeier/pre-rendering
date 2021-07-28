@@ -2,7 +2,6 @@
 
 
 float2 Resolution;
-
 float PI, Latitude, Longitude;
 float3 C, V_XP, V_XN, V_YP, V_YN;
 
