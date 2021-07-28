@@ -354,10 +354,26 @@ MonoBehaviour:
   importMode: 3
   texPath: Assets/MapBundles/maps/test1080p
   rawTexArray:
-  - {fileID: 2800000, guid: 2c9fa2983b7f6fc4aafbdb038f86705e, type: 3}
-  - {fileID: 2800000, guid: c8a2dcefe1b8c5d479b3cf8874d0afe6, type: 3}
-  - {fileID: 2800000, guid: 7e32c0b10cde414468dcdc16f7820173, type: 3}
-  - {fileID: 2800000, guid: 2271f4880dbbb3c4dbbeee3c1b2b9fcd, type: 3}
+  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
+  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
+  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
+  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
+  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
+  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
+  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
+  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
+  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
+  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
+  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
+  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
+  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
+  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
+  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
+  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
+  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
+  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
+  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
+  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
 --- !u!114 &1464708542
 MonoBehaviour:
   m_ObjectHideFlags: 0
