@@ -2,7 +2,6 @@ using System.IO;
 using UnityEngine;
 using UnityEditor;
 
-// [RequireComponent(typeof(BufferManager))]
 public class TextureLoader : MonoBehaviour
 {
     public ImportMode importMode;

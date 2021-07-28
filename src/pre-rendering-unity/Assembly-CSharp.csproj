@@ -72,8 +72,8 @@
     <Compile Include="Assets\SphereIntersection\Scripts\InverseTest.cs" />
     <Compile Include="Assets\SphereIntersection\Scripts\VisualizeIntersection.cs" />
     <Compile Include="Assets\Projection\Scripts\RenderTest.cs" />
-    <Compile Include="Assets\#NVJOB FPS Counter and Graph\Example Scenes\Scripts\Rotation.cs" />
     <Compile Include="Assets\#NVJOB FPS Counter and Graph\FPS Counter and Graph\FPSCounter.cs" />
+    <Compile Include="Assets\#NVJOB FPS Counter and Graph\Example Scenes\Scripts\Rotation.cs" />
     <Compile Include="Assets\Visualization\Scripts\CanvasTest.cs" />
     <Compile Include="Assets\Decoder\Scripts\Old\MultithreadedPlayer.cs" />
     <Compile Include="Assets\Decoder\Scripts\Old\VideoController.cs" />
@@ -98,11 +98,9 @@
     <Compile Include="Assets\Decoder\Scripts\DecodingThread.cs" />
     <Compile Include="Assets\Pooling\Scripts\Pooling.cs" />
     <Compile Include="Assets\Visualization\Scripts\LineTesting2.cs" />
+    <Compile Include="Assets\DepthTesting\LoadTextureToMat.cs" />
     <Compile Include="Assets\SphereIntersection\Scripts\BufferManager.cs" />
     <Compile Include="Assets\Other\Scripts\Cube.cs" />
-    <Compile Include="Assets\AssetManagement\TextureLoader.cs" />
-    <Compile Include="Assets\AssetManagement\WebReq.cs" />
-    <Compile Include="Assets\DepthTesting\LoadTextureToMat.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\SphereIntersection\Materials\CombinedTesting.shader" />
@@ -704,6 +702,9 @@
     <Reference Include="System.Xml.Serialization">
       <HintPath>C:\Users\wanja\Documents\dev\Unity\2020.3.5f1\Editor\Data\NetStandard\compat\2.0.0\shims\netfx\System.Xml.Serialization.dll</HintPath>
     </Reference>
+    <Reference Include="Unity.ShaderGraph.Editor">
+      <HintPath>Library\ScriptAssemblies\Unity.ShaderGraph.Editor.dll</HintPath>
+    </Reference>
     <Reference Include="Unity.VSCode.Editor">
       <HintPath>Library\ScriptAssemblies\Unity.VSCode.Editor.dll</HintPath>
     </Reference>
@@ -712,6 +713,9 @@
     </Reference>
     <Reference Include="Unity.VisualStudio.Editor">
       <HintPath>Library\ScriptAssemblies\Unity.VisualStudio.Editor.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.RenderPipelines.ShaderGraph.ShaderGraphLibrary">
+      <HintPath>Library\ScriptAssemblies\Unity.RenderPipelines.ShaderGraph.ShaderGraphLibrary.dll</HintPath>
     </Reference>
     <Reference Include="Unity.Timeline.Editor">
       <HintPath>Library\ScriptAssemblies\Unity.Timeline.Editor.dll</HintPath>
@@ -722,6 +726,12 @@
     <Reference Include="Unity.TextMeshPro">
       <HintPath>Library\ScriptAssemblies\Unity.TextMeshPro.dll</HintPath>
     </Reference>
+    <Reference Include="Unity.Searcher.Editor">
+      <HintPath>Library\ScriptAssemblies\Unity.Searcher.Editor.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.RenderPipelines.Core.Runtime">
+      <HintPath>Library\ScriptAssemblies\Unity.RenderPipelines.Core.Runtime.dll</HintPath>
+    </Reference>
     <Reference Include="UnityEditor.UI">
       <HintPath>Library\ScriptAssemblies\UnityEditor.UI.dll</HintPath>
     </Reference>
@@ -731,26 +741,14 @@
     <Reference Include="Unity.Rider.Editor">
       <HintPath>Library\ScriptAssemblies\Unity.Rider.Editor.dll</HintPath>
     </Reference>
-    <Reference Include="UnityEngine.UI">
-      <HintPath>Library\ScriptAssemblies\UnityEngine.UI.dll</HintPath>
-    </Reference>
-    <Reference Include="Unity.RenderPipelines.Core.Runtime">
-      <HintPath>Library\ScriptAssemblies\Unity.RenderPipelines.Core.Runtime.dll</HintPath>
-    </Reference>
-    <Reference Include="Unity.Searcher.Editor">
-      <HintPath>Library\ScriptAssemblies\Unity.Searcher.Editor.dll</HintPath>
-    </Reference>
-    <Reference Include="Unity.RenderPipelines.Core.Editor">
-      <HintPath>Library\ScriptAssemblies\Unity.RenderPipelines.Core.Editor.dll</HintPath>
-    </Reference>
     <Reference Include="Unity.RenderPipelines.Core.ShaderLibrary">
       <HintPath>Library\ScriptAssemblies\Unity.RenderPipelines.Core.ShaderLibrary.dll</HintPath>
     </Reference>
-    <Reference Include="Unity.RenderPipelines.ShaderGraph.ShaderGraphLibrary">
-      <HintPath>Library\ScriptAssemblies\Unity.RenderPipelines.ShaderGraph.ShaderGraphLibrary.dll</HintPath>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>Library\ScriptAssemblies\UnityEngine.UI.dll</HintPath>
     </Reference>
-    <Reference Include="Unity.ShaderGraph.Editor">
-      <HintPath>Library\ScriptAssemblies\Unity.ShaderGraph.Editor.dll</HintPath>
+    <Reference Include="Unity.RenderPipelines.Core.Editor">
+      <HintPath>Library\ScriptAssemblies\Unity.RenderPipelines.Core.Editor.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
