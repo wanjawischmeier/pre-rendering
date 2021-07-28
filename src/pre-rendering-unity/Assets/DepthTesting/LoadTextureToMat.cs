@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -10,22 +11,12 @@ public class LoadTextureToMat : MonoBehaviour
 
     void Start()
     {
-        StartCoroutine(GetText());
-    }
-    IEnumerator GetText()
-    {
-        using (UnityWebRequest uwr = UnityWebRequestTexture.GetTexture(new System.Uri(path)))
-        {
-            yield return uwr.SendWebRequest();
+        Texture2D texture = new Texture2D(0, 0);
+        texture.LoadImage(File.ReadAllBytes(path));
+        Texture2D high = new Texture2D(texture.width, texture.height, TextureFormat.RGBA64, false);
+        high.SetPixels(texture.GetPixels());
+        high.Apply();
 
-            if (uwr.result != UnityWebRequest.Result.Success)
-            {
-                Debug.Log(uwr.error);
-            }
-            else
-            {
-                material.SetTexture("_MainTex", DownloadHandlerTexture.GetContent(uwr));
-            }
-        }
+        material.SetTexture("_MainTex", high);
     }
 }

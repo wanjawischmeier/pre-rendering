@@ -330,7 +330,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1464708536}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e8b587fc5aa01394b93cdb830ec0fc1e, type: 3}
   m_Name: 
@@ -351,9 +351,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 03bb147d5477ad94eb109ec9e547e160, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  importMode: 2
+  importMode: 3
   texPath: Assets/MapBundles/maps/test1080p
-  rawTexArray: []
+  rawTexArray:
+  - {fileID: 2800000, guid: 2c9fa2983b7f6fc4aafbdb038f86705e, type: 3}
+  - {fileID: 2800000, guid: c8a2dcefe1b8c5d479b3cf8874d0afe6, type: 3}
+  - {fileID: 2800000, guid: 7e32c0b10cde414468dcdc16f7820173, type: 3}
+  - {fileID: 2800000, guid: 2271f4880dbbb3c4dbbeee3c1b2b9fcd, type: 3}
 --- !u!114 &1464708542
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -361,7 +365,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1464708536}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1294e014c405bac4a86ffd9f1f87b9f2, type: 3}
   m_Name: 

@@ -10,10 +10,10 @@ public class TextureLoader : MonoBehaviour
     public string texPath;
     public Texture2D[] rawTexArray;
     BufferManager manager;
-
-    void Start()
+    
+    void Awake()
     {
-        // manager = GetComponent<BufferManager>();
+        manager = GetComponent<BufferManager>();
         string[] imageFiles;
 
         switch (importMode)
@@ -73,30 +73,30 @@ public class TextureLoader : MonoBehaviour
             case ImportMode.Manual:
                 if (rawTexArray.Length != 0)
                 {
-                    // manager.offArray = new Vector3[rawTexArray.Length];
+                    manager.offArray = new Vector3[rawTexArray.Length];
 
                     for (int i = 0; i < rawTexArray.Length; i++)
                     {
                         string[] split = rawTexArray[i].name
                             .Split('_');
-                        /*manager.offArray[i] = new Vector3(
+                        manager.offArray[i] = new Vector3(
                             float.Parse(split[0]),
                             float.Parse(split[1]),
-                            float.Parse(split[2]));*/
+                            float.Parse(split[2]));
                     }
                 }
                 break;
             default:
                 break;
         }
-        /*
+        
         manager.texArray = new Texture2DArray(rawTexArray[0].width, rawTexArray[0].height, rawTexArray.Length, rawTexArray[0].format, false);
 
         for (int i = 0; i < rawTexArray.Length; i++)
         {
 
             Graphics.CopyTexture(rawTexArray[i], 0, 0, manager.texArray, i, 0);
-        }*/
+        }
     }
 }
 

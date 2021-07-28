@@ -1,0 +1,10 @@
+ManifestFileVersion: 0
+CRC: 3676058721
+AssetBundleManifest:
+  AssetBundleInfos:
+    Info_0:
+      Name: maps/test1080p.test16b
+      Dependencies: {}
+    Info_1:
+      Name: maps/test1080p.test2k
+      Dependencies: {}
