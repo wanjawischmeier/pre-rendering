@@ -66,6 +66,7 @@
     <Compile Include="Assets\Projection\Scripts\Test.cs" />
     <Compile Include="Assets\TriangleIntersection\Scripts\TriangleDemo.cs" />
     <Compile Include="Assets\Visualization\Scripts\CanvasRenderer.cs" />
+    <Compile Include="Assets\MapManager\TextureLoader.cs" />
     <Compile Include="Assets\SphereIntersection\Scripts\Testing.cs" />
     <Compile Include="Assets\Projection\Scripts\FlipNormals.cs" />
     <Compile Include="Assets\LatLonToVec\Scripts\VisualizeConversion.cs" />
@@ -101,6 +102,7 @@
     <Compile Include="Assets\DepthTesting\LoadTextureToMat.cs" />
     <Compile Include="Assets\SphereIntersection\Scripts\BufferManager.cs" />
     <Compile Include="Assets\Other\Scripts\Cube.cs" />
+    <Compile Include="Assets\MapManager\Map.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\SphereIntersection\Materials\CombinedTesting.shader" />

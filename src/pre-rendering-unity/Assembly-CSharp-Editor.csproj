@@ -56,12 +56,8 @@
     <Analyzer Include="C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity\Analyzers\Microsoft.Unity.Analyzers.dll" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Assets\Editor\MapManager\MapWindowManager.cs" />
-    <Compile Include="Assets\Editor\MapManager\MapImporter.cs" />
-    <Compile Include="Assets\Editor\TextureLoader.cs" />
-    <Compile Include="Assets\Editor\WebReq.cs" />
-    <Compile Include="Assets\Editor\MapManager\MapInspector.cs" />
-    <Compile Include="Assets\Editor\TestScript.cs" />
+    <Compile Include="Assets\Editor\MapImporter.cs" />
+    <Compile Include="Assets\Editor\MapInspector.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">

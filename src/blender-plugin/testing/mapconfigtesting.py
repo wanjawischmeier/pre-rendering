@@ -4,6 +4,7 @@ import numpy as np
 a = {
     "resolution": 4096,
     "fclip": 10,
+    "mx_width": 10,
     "offsets": np.array([
         (1, 2, 3),
         (4, 5, 6),

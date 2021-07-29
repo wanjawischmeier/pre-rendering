@@ -4,6 +4,13 @@ using UnityEngine;
 
 public class MapInspector : EditorWindow
 {
+    [MenuItem("Assets/Maps/Test")]
+    static void Test()
+    {
+        Vector3 vector = Vector3.up;
+        Debug.Log(vector.ToString());
+    }
+
     [MenuItem("Assets/Maps/Inspect Map Bundle")]
     static void InspectMapBundle()
     {
