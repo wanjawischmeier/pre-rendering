@@ -2,66 +2,69 @@ using System.IO;
 using UnityEditor;
 using UnityEngine;
 
-namespace MapManager
+public class MapInspector : EditorWindow
 {
-    public class MapInspector : EditorWindow
+    [MenuItem("Assets/Maps/Inspect Map Bundle")]
+    static void InspectMapBundle()
     {
-        string bundleDirectory;
-        Texture2D[] textures;
-        Vector2 texScroll = Vector2.zero;
+        GetWindow<MapInspector>();
+    }
 
-        private void OnEnable()
+    string bundleDirectory;
+    Texture2D[] textures;
+    Vector2 texScroll = Vector2.zero;
+
+    private void OnEnable()
+    {
+        titleContent = new GUIContent("Map Bundler");
+
+        bundleDirectory = EditorUtility.OpenFilePanel("Target Directory", Path.Combine(Application.streamingAssetsPath, "MapBundles"), "*");
+        try
         {
-            titleContent = new GUIContent("Map Bundler");
-
-            bundleDirectory = EditorUtility.OpenFilePanel("Target Directory", Path.Combine(Application.streamingAssetsPath, "MapBundles"), "*");
-            try
-            {
-                AssetBundle bundle = AssetBundle.LoadFromFile(bundleDirectory);
-                textures = bundle.LoadAllAssets<Texture2D>();
-            }
-            catch (System.Exception)
-            {
-                Debug.LogError("Unable to load textures from asset bundle");
-            }
+            AssetBundle bundle = AssetBundle.LoadFromFile(bundleDirectory);
+            textures = bundle.LoadAllAssets<Texture2D>();
         }
-        
-        private void OnGUI()
+        catch (System.Exception)
         {
-            if (textures == null)
+            Debug.LogError("Unable to load textures from asset bundle");
+        }
+    }
+    
+    private void OnGUI()
+    {
+        if (textures == null)
+        {
+            EditorGUILayout.HelpBox("Unable to load textures from the selected asset bundle", MessageType.Error);
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Try again"))
             {
-                EditorGUILayout.HelpBox("Unable to load textures from the selected asset bundle", MessageType.Error);
-                GUILayout.FlexibleSpace();
-                if (GUILayout.Button("Try again"))
-                {
-                    Close();
-                    GetWindow<MapInspector>();
-                }
-                return;
+                Close();
+                GetWindow<MapInspector>();
             }
-            if (textures.Length == 0)
+            return;
+        }
+        if (textures.Length == 0)
+        {
+            EditorGUILayout.HelpBox("No textures inside the selected asset bundle", MessageType.Error);
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Try again"))
             {
-                EditorGUILayout.HelpBox("No textures inside the selected asset bundle", MessageType.Error);
-                GUILayout.FlexibleSpace();
-                if (GUILayout.Button("Try again"))
-                {
-                    Close();
-                    GetWindow<MapInspector>();
-                }
-                return;
+                Close();
+                GetWindow<MapInspector>();
             }
-
-            texScroll = GUILayout.BeginScrollView(texScroll);
-            foreach (Texture2D texture in textures)
-            {
-                EditorGUILayout.ObjectField(texture, typeof(Texture2D), false);
-            }
-            GUILayout.EndScrollView();
+            return;
         }
 
-        private void OnDestroy()
+        texScroll = GUILayout.BeginScrollView(texScroll);
+        foreach (Texture2D texture in textures)
         {
-            AssetBundle.UnloadAllAssetBundles(false);
+            EditorGUILayout.ObjectField(texture, typeof(Texture2D), false);
         }
+        GUILayout.EndScrollView();
+    }
+
+    private void OnDestroy()
+    {
+        AssetBundle.UnloadAllAssetBundles(false);
     }
 }

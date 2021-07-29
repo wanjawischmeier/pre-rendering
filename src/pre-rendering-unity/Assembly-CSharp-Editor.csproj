@@ -57,10 +57,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Editor\MapManager\MapWindowManager.cs" />
+    <Compile Include="Assets\Editor\MapManager\MapImporter.cs" />
     <Compile Include="Assets\Editor\TextureLoader.cs" />
     <Compile Include="Assets\Editor\WebReq.cs" />
-    <Compile Include="Assets\Editor\MapManager\MapImporter.cs" />
-    <Compile Include="Assets\Editor\MapManager\MapBundler.cs" />
+    <Compile Include="Assets\Editor\MapManager\MapInspector.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">

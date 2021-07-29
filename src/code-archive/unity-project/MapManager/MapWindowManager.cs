@@ -14,5 +14,11 @@ namespace MapManager
 
             BuildPipeline.BuildAssetBundles(mapBundleDirectory, BuildAssetBundleOptions.None, BuildTarget.StandaloneWindows);
         }
+
+        [MenuItem("Assets/Maps/Inspect Map Bundle")]
+        static void InspectMapBundle()
+        {
+            GetWindow<MapInspector>();
+        }
     }
 }
