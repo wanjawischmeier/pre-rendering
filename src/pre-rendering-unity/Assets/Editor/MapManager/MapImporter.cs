@@ -24,11 +24,11 @@ public class MapImporter
         string plattform = BuildTarget.StandaloneWindows.ToString();
         string tempGUID;
 
-        string texturePath = EditorUtility.OpenFolderPanel("Raw Texture Directory", Application.streamingAssetsPath, "");
+        string texturePath = EditorUtility.OpenFolderPanel("Raw Texture Directory", Application.dataPath, "");
         if (!Directory.Exists(texturePath)) return;
 
         string targetPath = EditorUtility.SaveFilePanel("Save Map File", Application.streamingAssetsPath, Path.GetFileNameWithoutExtension(texturePath), "");
-        string mapName = Path.GetFileNameWithoutExtension(targetPath);
+        string mapName = Path.GetFileName(targetPath);
         if (!Directory.Exists(Path.GetDirectoryName(texturePath))) return;
 
         string[] imagePaths = Directory.GetFiles(texturePath, "*.png");
@@ -49,12 +49,8 @@ public class MapImporter
                 config.offsets[i * 3 + 1],
                 config.offsets[i * 3 + 2]);
         }
-        foreach (Vector3 vector in standaloneConfig.vectorOffsets)
-        {
-            Debug.Log(vector);
-        }
 
-        tempGUID = AssetDatabase.CreateFolder("Assets/StreamingAssets", "Temp");
+        tempGUID = AssetDatabase.CreateFolder("Assets", "Temp");
         string tempDir = AssetDatabase.GUIDToAssetPath(tempGUID);
 
         string standaloneConfigString = JsonUtility.ToJson(standaloneConfig);
@@ -69,6 +65,7 @@ public class MapImporter
             string targetImagePath = Path.Combine(tempDir, Path.GetFileName(imagePath));
             File.Copy(imagePath, targetImagePath);
             AssetDatabase.ImportAsset(targetImagePath);
+            Debug.Log(targetImagePath);
             TextureImporter textureImporter = (TextureImporter)AssetImporter.GetAtPath(targetImagePath);
 
             textureImporter.mipmapEnabled = false;
@@ -90,65 +87,10 @@ public class MapImporter
         Enum.TryParse(plattform, out BuildTarget target);
         BuildPipeline.BuildAssetBundles(bundleDirectory, BuildAssetBundleOptions.None, target);
 
+        string mapBundlePath = Path.Combine(bundleDirectory, mapName.ToLower());
+        File.Copy(mapBundlePath, targetPath);
+
         AssetBundle.UnloadAllAssetBundles(false);
-        // AssetDatabase.DeleteAsset(tempDir);
+        AssetDatabase.DeleteAsset(tempDir);
     }
-    /*
-    private void OnGUI()
-    {
-            string[] imagePaths = Directory.GetFiles(textureDirectory, "*.png");
-
-            if (imagePaths.Length == 0) EditorGUILayout.HelpBox("No Textures found in " + Path.GetFileNameWithoutExtension(textureDirectory), MessageType.Warning);
-            else if (imagePaths.Length != 0)
-            {
-                EditorGUILayout.HelpBox(imagePaths.Length.ToString() + " Textures found in " + Path.GetFileNameWithoutExtension(textureDirectory), MessageType.Info);
-
-                filterMode = (FilterMode)EditorGUILayout.EnumPopup("Filter Mode", filterMode);
-                textureFormat = (TextureImporterFormat)EditorGUILayout.EnumPopup("Texture Format", textureFormat);
-                textureSize = (TextureSizes)EditorGUILayout.EnumFlagsField("Texture Size", textureSize);
-                mipEnabled = EditorGUILayout.Toggle("Generate Mip Maps", mipEnabled);
-
-                scrollPos = EditorGUILayout.BeginScrollView(scrollPos);
-                for (int i = 0; i < plattforms.Length; i++)
-                {
-                    checkedPlattforms[i] = EditorGUILayout.Toggle(plattforms[i], checkedPlattforms[i]);
-                    if (plattforms[i] != "Standalone" && plattforms[i] != "Android" && checkedPlattforms[i] && textureFormat == TextureImporterFormat.RGBA64)
-                    {
-                        EditorGUILayout.HelpBox(textureFormat.ToString() + " might not be supported by " + plattforms[i], MessageType.Warning);
-                    }
-                }
-                EditorGUILayout.EndScrollView();
-
-                GUILayout.FlexibleSpace();
-                if (GUILayout.Button("Import Map"))
-                {
-                    for (int i = 0; i < imagePaths.Length; i++)
-                    {
-                        string filePath = Path.Combine(targetDirectory, "img" + i.ToString() + ".png");
-                        string assetPath = filePath.Replace(Application.dataPath, "Assets/");
-                        File.Copy(imagePaths[i], filePath);
-
-                        AssetDatabase.ImportAsset(assetPath);
-                        TextureImporter importer = (TextureImporter)AssetImporter.GetAtPath(assetPath);
-
-                        importer.mipmapEnabled = mipEnabled;
-                        importer.filterMode = filterMode;
-                        for (int j = 0; j < plattforms.Length; j++)
-                        {
-                            TextureImporterPlatformSettings settings = importer.GetPlatformTextureSettings(plattforms[j]);
-                            if (checkedPlattforms[j])
-                            {
-                                settings.overridden = checkedPlattforms[j];
-                                settings.maxTextureSize = (int)textureSize;
-                                settings.format = textureFormat;
-                                importer.SetPlatformTextureSettings(settings);
-                            }
-                            else importer.ClearPlatformTextureSettings(plattforms[j]);
-                        }
-                        importer.SaveAndReimport();
-                    }
-                }
-            }
-        }
-    }*/
 }

@@ -61,6 +61,7 @@
     <Compile Include="Assets\Editor\TextureLoader.cs" />
     <Compile Include="Assets\Editor\WebReq.cs" />
     <Compile Include="Assets\Editor\MapManager\MapInspector.cs" />
+    <Compile Include="Assets\Editor\TestScript.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">
