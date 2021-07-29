@@ -7,13 +7,14 @@ from bpy.types import (
     PropertyGroup
 )
 from bpy.props import (
-    FloatVectorProperty,
+    IntProperty,
+    IntVectorProperty,
     EnumProperty
 )
 
 import os
-from math import pi, radians
-from .data import cache
+from .data import *
+from .methods import setRenderSettings, setKeyframes, getNeeded
 
 preview_collections = {}
 
@@ -26,15 +27,31 @@ class TOPBAR_OT_prerender_setup(Operator):
     bl_options = {'REGISTER', 'UNDO'}
     bl_description = "Setup a fixed area for PreRendering"
 
-    start: FloatVectorProperty(
+    start: IntVectorProperty(
         name="Start Position",
         subtype='XYZ',
         description="The start of the area to prerender",
     )
-    end: FloatVectorProperty(
+    end: IntVectorProperty(
         name="End Position",
         subtype='XYZ',
-        description="The start of the area to prerender",
+        description="The end of the area to prerender",
+    )
+    step_size: IntProperty(
+        name="Step Size",
+        default=1,
+        description="The size of the gap between renders",
+    )
+    far_clip: IntProperty(
+        name="Far Clip",
+        default=10,
+        description="",
+    )
+    quality: EnumProperty(
+        name = "Quality",
+        items = qualitys,
+        default = "medium",
+        description = "The quality of the map file, mainly determined by it's resolution"
     )
 
     @classmethod
@@ -46,67 +63,25 @@ class TOPBAR_OT_prerender_setup(Operator):
             return context.window_manager.invoke_props_dialog(self)
 
     def execute(self, context):
-        cache["camera"] = context.object
-        start = (round(self.start.x), round(self.start.y), round(self.start.z))
-        end = (round(self.end.x), round(self.end.y), round(self.end.z))
+        # cache["camera"] = context.object
+        # start = (round(self.start.x), round(self.start.y), round(self.start.z))
+        # end = (round(self.end.x), round(self.end.y), round(self.end.z))
+        camera = context.object
         
+        # rStart = roundList(self.start)
+        # rEnd = roundList(self.end)
+
+        positions = getNeeded(self.start, self.end, self.step_size)
+
         bpy.ops.anim.keyframe_clear_v3d()
-        setKeyframe(0, rotation = toRadians([90, 0, 0]))
+        resolution = resolutions.get(self.quality, resolution_default)
+        setRenderSettings(bpy.context.scene, camera, resolution, len(positions), self.far_clip)
 
-        width = round(end[0] - start[0])
-        height = round(end[1] - start[1])
-        z = round((start[2] + end[2]) /2)
+        setKeyframes(camera, positions)
 
-        bpy.context.scene.frame_start = 0
-
-        index = 0
-        """
-        for x in range(width):
-            setKeyframe(index, [x, 0, z])
-            index += height
-
-            setKeyframe(index, [x, height, z])
-            index += 1
-
-            for y in range(height):
-                setKeyframe(index, [x, y, z])
-                index += 1
-        """
-        for y in range(start[1], start[1] + height):
-            setKeyframe(index, [start[0], y, z])
-            index += width
-
-            setKeyframe(index, [width, y, z])
-            index += 1
-
-        # bpy.ops.action.interpolation_type(type='LINEAR')
-        bpy.context.scene.frame_end = index -1
-
-        cache["width"] = width +1
-        cache["setup"] = True
-
+        # cache["setup"] = True
         return {'FINISHED'}
 
-
-def setKeyframe(frame: int, location = [], rotation = []) -> None:
-    bpy.context.scene.frame_current = frame
-
-    if not location == []:
-        cache["camera"].location = location
-        bpy.ops.anim.keyframe_insert_menu(type='Location')
-
-    if not rotation == []:
-        cache["camera"].rotation_euler = rotation
-        bpy.ops.anim.keyframe_insert_menu(type='Rotation')
-
-
-def toRadians(degrees: list) -> list:
-    radians_list = []
-
-    for degree in degrees:
-        radians_list.append(radians(degree))
-
-    return radians_list
 
 def add_setup_button(self, context):
     layout = self.layout
@@ -117,11 +92,11 @@ def add_setup_button(self, context):
 
     layout.operator(
         TOPBAR_OT_prerender_setup.bl_idname,
-        text="Setup map file",
+        text="Setup map file test",
         icon_value=l_icon.icon_id)
 
 def add_object_manual_map():
-    url_manual_prefix = "https://sites.google.com/view/prerendering/"
+    url_manual_prefix = "https://github.com/wanjawischmeier/pre-rendering"
     url_manual_mapping = (
         ("bpy.ops.render.prerender", "scene_layout/object/types.html"),
     )

@@ -5,9 +5,9 @@ cache = {
 }
 
 qualitys = [
-    ("low",     "Low quality (720p)",       "Low filesize and fast reading, but may look bad"),
+    ("low",     "Low quality (720p)",  "Low filesize and fast reading, but may look bad"),
     ("medium",  "Medium quality (1080p)",   "Propably the best option for large maps"),
-    ("high",    "High quality (2k)",        "Will result in a large map file, but capture the most detail"),
+    ("high",    "High quality (2k)",        "Will result in a large map file, but capture more detail"),
     ("ultra",   "Very high quality (4k)",   "Very large filesize, only for very good PC's")
 ]
 

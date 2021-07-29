@@ -81,7 +81,7 @@ def add_generate_button(self, context):
 
 
 def add_object_manual_map():
-    url_manual_prefix = "https://sites.google.com/view/prerendering/"
+    url_manual_prefix = "https://github.com/wanjawischmeier/pre-rendering"
     url_manual_mapping = (
         ("bpy.ops.render.prerender", "scene_layout/object/types.html"),
     )

@@ -7,7 +7,7 @@ bl_info = {
     "location":     "Render > PreRender",
     "description":  "Generates a map file from the current scene",
     "warning":      "This is still very experimental, always make sure to save your project first.",
-    "doc_url":      "https://sites.google.com/view/prerendering/",
+    "doc_url":      "https://github.com/wanjawischmeier/pre-rendering",
     "category":     "Render"
 }
 
