@@ -1,7 +1,7 @@
 # Plugin info
 bl_info = {
     "name":         "PreRendering",
-    "author":       "Wanja Wischmeier",
+    "author":       "Wanja Wischmeier Test",
     "version":      (0, 2),
     "blender":      (2, 80, 0),
     "location":     "Render > PreRender",

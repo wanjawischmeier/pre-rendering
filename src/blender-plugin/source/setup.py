@@ -14,7 +14,7 @@ from bpy.props import (
 
 import os
 from .data import *
-from .methods import setRenderSettings, setKeyframes, getNeeded
+from .methods import setRenderSettings, setKeyframes, getNeeded, setLoc
 
 preview_collections = {}
 
@@ -35,6 +35,7 @@ class TOPBAR_OT_prerender_setup(Operator):
     end: IntVectorProperty(
         name="End Position",
         subtype='XYZ',
+        default=(10, 10, 1),
         description="The end of the area to prerender",
     )
     step_size: IntProperty(
@@ -72,13 +73,14 @@ class TOPBAR_OT_prerender_setup(Operator):
         # rEnd = roundList(self.end)
 
         positions = getNeeded(self.start, self.end, self.step_size)
-
+        print(positions)
         bpy.ops.anim.keyframe_clear_v3d()
         resolution = resolutions.get(self.quality, resolution_default)
-        setRenderSettings(bpy.context.scene, camera, resolution, len(positions), self.far_clip)
+        setRenderSettings(bpy.context.scene, camera, resolution, len(positions) -1, self.far_clip)
 
         setKeyframes(camera, positions)
-
+        camera.location = [1, 2, 3]
+        setLoc(camera, [2, 3, 4])
         # cache["setup"] = True
         return {'FINISHED'}
 

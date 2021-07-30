@@ -23,5 +23,5 @@ def getNeeded(start: tuple, end: tuple, step_size: float) -> list:
                 needed.append((x, y, z))
     return needed
 
-n = getNeeded((0, 0, 0), (10, 10, 1), 1)
+n = getNeeded((0, 0, 0), (10, 10, 0), 1)
 print(n)

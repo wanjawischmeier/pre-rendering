@@ -31,13 +31,16 @@ def setRenderSettings(scene: object, camera: object, resolution: tuple, frame_en
     scene.frame_start = 0
     scene.frame_end = frame_end
 
+def setLoc(object, location: list) -> None:
+    object.location = location
+
 def setKeyframe(object, frame: int, location: list) -> None:
+    print(f"Setting frame2 {str(frame)} to {str(location)}")
     bpy.context.scene.frame_current = frame
-
-    if not location == []:
-        object.location = location
-        bpy.ops.anim.keyframe_insert_menu(type='Location')
-
+    object.location = location
+    print(f"Location: {str(object.location)} | target: {str(location)}")
+    bpy.ops.anim.keyframe_insert(type='Location')
+"""
 def setKeyframeOld(frame: int, location = [], rotation = []) -> None:
     bpy.context.scene.frame_current = frame
 
@@ -48,7 +51,7 @@ def setKeyframeOld(frame: int, location = [], rotation = []) -> None:
     if not rotation == []:
         cache["camera"].rotation_euler = rotation
         bpy.ops.anim.keyframe_insert_menu(type='Rotation')
-
+"""
 def setKeyframes(object, locations: list) -> None:
     for i in range(len(locations)):
         setKeyframe(object, i, locations[i])

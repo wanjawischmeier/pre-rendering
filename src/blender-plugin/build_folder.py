@@ -6,7 +6,10 @@ def zipdir(path, target):
     ziph = ZipFile(target, 'w', ZIP_DEFLATED)
     for root, dirs, files in walk(path):
         for file in files:
-            ziph.write(join(root, file))
+            if splitext(file)[1] == ".py":
+                ziph.write(join(root, file), join("source", file))
+            else:
+                ziph.write(join(root, file), join("source\\icons", file))
 
 build_path = join(dirname(__file__), "source")
 target_path = join(getcwd(), "builds\\blender-plugin")
