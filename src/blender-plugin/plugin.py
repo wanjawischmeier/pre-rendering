@@ -4,12 +4,12 @@
 # ________________________________________________________ #
 
 bl_info = {
-    "name":         "PreRendering",
-    "author":       "Wanja Wischmeier Test",
-    "version":      (0, 2),
+    "name":         "PreRendering Blender Plugin",
+    "author":       "Wanja Wischmeier",
+    "version":      (1, 0),
     "blender":      (2, 80, 0),
     "location":     "Render > PreRender",
-    "description":  "Generates a map file from the current scene",
+    "description":  "Allows you to set your scene up for PreRendering. This plugin also creates the according .mapconfig file required for loading the render into unity.",
     "warning":      "This is still very experimental, always make sure to save your project first.",
     "doc_url":      "https://github.com/wanjawischmeier/pre-rendering",
     "category":     "Render"
@@ -21,6 +21,7 @@ bl_info = {
 # ________________________________________________________ #
 
 # Blender modules
+from os import name
 import bpy
 from bpy.types import (
     Operator,
@@ -32,7 +33,7 @@ from bpy.types import (
 from bpy.props import (
     FloatProperty,
     StringProperty,
-    FloatVectorProperty,
+    BoolProperty,
     EnumProperty
 )
 # Libraries
@@ -83,11 +84,12 @@ Object.setUpForRendering = setUpForRendering
 
 def setRenderSettings(self, path: str, resolution: tuple, frame_end: int) -> None:
     self.render.engine = 'CYCLES'
-    self.render.filepath = path
+    self.render.filepath = path + '\\frame'
     self.render.image_settings.file_format = 'PNG'
+    self.render.image_settings.color_depth = 16
     self.render.fps = 30
-    self.render.resolution_x = resolution[0]
-    self.render.resolution_y = resolution[1]
+    self.render.resolution_x = resolution
+    self.render.resolution_y = resolution / 2
     self.frame_start = 0
     self.frame_end = frame_end
 Scene.setRenderSettings = setRenderSettings
@@ -108,75 +110,92 @@ def createConfigFile(path: str, resolution: int, fclip: float, mx_width: float, 
 # ________________________________________________________ #
 
 qualitys = [
-    ("low",     "Low quality (720p)",  "Low filesize and fast reading, but may look bad"),
-    ("medium",  "Medium quality (1080p)",   "Propably the best option for large maps"),
-    ("high",    "High quality (2k)",        "Will result in a large map file, but capture more detail"),
-    ("ultra",   "Very high quality (4k)",   "Very large filesize, only for very good PC's")
+    ("low",     "Low quality (1k)",  "Low filesize and fast reading, but may look bad"),
+    ("medium",  "Medium quality (2k)",   "Propably the best option for large maps"),
+    ("high",    "High quality (4k)",        "Will result in a large map file, but capture more detail"),
+    ("ultra",   "Very high quality (8k)",   "Very large filesize, only for very good PC's")
 ]
 
 resolutions = {
-    "low":      1280,
-    "medium":   1920,
-    "high":     3840,
-    "ultra":    7680
+    "low":      1080,
+    "medium":   2160,
+    "high":     4320,
+    "ultra":    8640
 }
-resolution_default = resolutions.get("medium")
 
 # ________________________________________________________ #
 
 #                           UI                             #
 # ________________________________________________________ #
 
+def add_create_domain_button(self, context):
+    layout = self.layout
+    layout.operator(TOPBAR_OT_prerender_create_domain.bl_idname)
+
+class TOPBAR_OT_prerender_create_domain(Operator):
+    bl_idname = "render.prerender_create_domain"
+    bl_label = "Create Domain"
+    bl_space_type = "VIEW3D"
+    bl_region_type = "UI"
+    bl_options = {'REGISTER', 'UNDO'}
+    bl_description = "Create a domain to define an area to PreRender"
+
+    @classmethod
+    def poll(cls, context):
+        return 'PreRendering Domain' not in bpy.data.objects
+
+    def execute(self, context):
+        bpy.ops.mesh.primitive_cube_add(scale = [10, 10, 1])
+        domain = context.object
+        domain.name = 'PreRendering Domain'
+        domain.display_type = 'WIRE'
+
+        return {'FINISHED'}
+
 def add_setup_button(self, context):
     layout = self.layout
     layout.operator(
         TOPBAR_OT_prerender_setup.bl_idname,
-        text="Setup map file test")
+        text="Set up the scene")
 
 class TOPBAR_OT_prerender_setup(Operator):
     bl_idname = "render.prerender_setup"
-    bl_label = "Setup selected camera for PreRendering"
+    bl_label = "PreRendering Setup"
     bl_space_type = "VIEW3D"
     bl_region_type = "UI"
     bl_options = {'REGISTER', 'UNDO'}
-    bl_description = "Setup a fixed area for PreRendering"
+    bl_description = "Set up the selected camera for PreRendering inside a fixed area defined by the PreRendering domain"
 
-    start: FloatVectorProperty(
-        name="Start Position",
-        subtype='XYZ',
-        description="The start of the area to prerender",
-    )
-    end: FloatVectorProperty(
-        name="End Position",
-        subtype='XYZ',
-        default=(10, 10, 0),
-        description="The end of the area to prerender",
-    )
     step_size: FloatProperty(
         name="Step Size",
         default=1,
-        description="The size of the gap between renders",
+        description="The size of the gap between renders"
     )
     far_clip: FloatProperty(
         name="Far Clip",
         default=10,
-        description="",
+        description="The distance of the far clipping plane from the camera. High values may lead to imprecisions."
     )
     quality: EnumProperty(
         name = "Quality",
         items = qualitys,
         default = "medium",
-        description = "The quality of the map file, mainly determined by it's resolution"
+        description = "The quality of the map file, mainly determined by it's resolution. Please don't change the resolution manually after running this setup (You can change the amount of compression)."
     )
     path: StringProperty(
         name = "Target Path",
         default = "",
-        description = "Where the map file should be saved"
+        description = "Where the render and the .mapconfig file should be saved."
+    )
+    delete_domain: BoolProperty(
+        name = "Delete Domain",
+        default = False,
+        description = "Wether the domain should be deleted after setting up the camera."
     )
 
     @classmethod
     def poll(cls, context):
-        return context.object != None and context.object.type == 'CAMERA'
+        return 'PreRendering Domain' in bpy.data.objects and context.object != None and context.object.type == 'CAMERA'
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
@@ -187,10 +206,19 @@ class TOPBAR_OT_prerender_setup(Operator):
 # ________________________________________________________ #
 
     def execute(self, context):
-        frames = getNeeded(self.start, self.end, self.step_size)
+        domain = bpy.data.objects['PreRendering Domain']
+        start = domain.matrix_world @ domain.data.vertices[0].co
+        end   = domain.matrix_world @ domain.data.vertices[7].co
 
-        resolution = resolutions.get(self.quality, resolution_default)
-        mx_width = max(self.end)
+        frames = getNeeded(start, end, self.step_size)
+
+        resolution = resolutions.get(self.quality)
+        
+        mx_width = max(
+            end[0] - start[0],
+            end[1] - start[1],
+            end[2] - start[2]
+        )
 
         scene = context.scene
         scene.setRenderSettings(self.path, resolution, len(frames) -1)
@@ -200,6 +228,12 @@ class TOPBAR_OT_prerender_setup(Operator):
         cam.setKeyframes(context, frames)
 
         createConfigFile(self.path, resolution, self.far_clip, mx_width, frames)
+
+        if self.delete_domain:
+            cam.select_set(False)
+            domain.select_set(True)
+            bpy.ops.object.delete()
+            cam.select_set(True)
 
         return {'FINISHED'}
 
@@ -216,13 +250,17 @@ def add_object_manual_map():
     return url_manual_prefix, url_manual_mapping
 
 def register():
-    bpy.utils.register_class(TOPBAR_OT_prerender_setup)
     bpy.utils.register_manual_map(add_object_manual_map)
+    bpy.utils.register_class(TOPBAR_OT_prerender_create_domain)
+    bpy.utils.register_class(TOPBAR_OT_prerender_setup)
+    TOPBAR_MT_render.append(add_create_domain_button)
     TOPBAR_MT_render.append(add_setup_button)
 
 def unregister():
-    bpy.utils.unregister_class(TOPBAR_OT_prerender_setup)
     bpy.utils.unregister_manual_map(add_object_manual_map)
+    bpy.utils.unregister_class(TOPBAR_OT_prerender_create_domain)
+    bpy.utils.unregister_class(TOPBAR_OT_prerender_setup)
+    TOPBAR_MT_render.remove(add_create_domain_button)
     TOPBAR_MT_render.remove(add_setup_button)
 
 if __name__ == "__main__":

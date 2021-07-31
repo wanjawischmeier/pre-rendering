@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace MapManagement
@@ -15,67 +15,52 @@ namespace MapManagement
     {
         public int fclip;
         public int mx_width;
+        public int textureWidth;
+        public int textureHeight;
         public Vector3[] vectorOffsets;
     }
 
     public class Map
     {
-        public delegate void FrameData(Texture2D frame, Vector3 offset);
-        public event FrameData FrameReady;
-
-        public float fClip;
-        public int textureWidth, textureHeight;
-        public TextureFormat textureFormat;
-
-        Vector3[] offsets;
+        public StandaloneMapConfig config;
         AssetBundle bundle;
-        StandaloneMapConfig mapConfig;
-        Dictionary<Vector3, AssetBundleRequest> requests;
 
         public Map(string path)
         {
             bundle = AssetBundle.LoadFromFile(path);
-            requests = new Dictionary<Vector3, AssetBundleRequest>();
 
-            TextAsset config = bundle.LoadAllAssets<TextAsset>()[0];
-            mapConfig = JsonUtility.FromJson<StandaloneMapConfig>(config.text);
-            fClip = mapConfig.fclip;
-            offsets = mapConfig.vectorOffsets;
-            
-            Texture2D sample = bundle.LoadAllAssets<Texture2D>()[0];
-            textureWidth = sample.width;
-            textureHeight = sample.height;
-            textureFormat = sample.format;
+            TextAsset rawConfig = bundle.LoadAllAssets<TextAsset>()[0];
+            config = JsonUtility.FromJson<StandaloneMapConfig>(rawConfig.text);
         }
 
-        public Map(AssetBundle assetBundle)
+        public void SetTexturesAtPositions(Vector3[] requests, ref Texture2DArray textures, ref Texture2D[] texture2s)
         {
-            bundle = assetBundle;
-            requests = new Dictionary<Vector3, AssetBundleRequest>();
-        }
-
-        public void Request(Vector3 reqest)
-        {
-            AssetBundleRequest assetRequest = bundle.LoadAssetAsync<Texture2D>(VectorToFileName(reqest, mapConfig.mx_width));
-            assetRequest.completed += AssetRequest_completed;
-            requests.Add(reqest, assetRequest);
-        }
-
-        void AssetRequest_completed(AsyncOperation obj)
-        {
-            foreach (Vector3 key in requests.Keys)
+            for (int i = 0; i < requests.Length; i++)
             {
-                if (requests[key].isDone)
-                {
-                    FrameReady.Invoke((Texture2D)requests[key].asset, key);
-                    requests.Remove(key);
-                }
+                Texture2D texture = bundle.LoadAsset<Texture2D>(VectorToFileName(requests[i], config.mx_width));
+                Graphics.CopyTexture(texture, 0, textures, i);
+                Debug.Log(texture.mipmapCount);
+                Debug.Log(texture.format);
+                Debug.Log(texture.graphicsFormat);
+                Debug.Log(textures.mipmapCount);
+                Debug.Log(textures.format);
+                Debug.Log(textures.graphicsFormat);
+                
+                texture2s[i] = texture;
             }
+        }
+
+        public Vector3[] GetClosest(Vector3 position, int length)
+        {
+            return config.vectorOffsets
+                .OrderBy(x => Vector3.Distance(position, x))
+                .Take(length)
+                .ToArray();
         }
 
         static string VectorToFileName(Vector3 vector, int mx_width)
         {
-            return (vector.x + (vector.y + vector.z * mx_width) * mx_width).ToString();
+            return "first_render_landscape" + (vector.x + (vector.y + vector.z * mx_width) * mx_width).ToString().PadLeft(4, '0');
         }
     }
 }

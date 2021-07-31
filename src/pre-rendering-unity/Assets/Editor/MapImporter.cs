@@ -33,6 +33,8 @@ namespace MapManagement
 
             standaloneConfig.fclip = config.fclip;
             standaloneConfig.mx_width = config.mx_width;
+            standaloneConfig.textureWidth = config.resolution;
+            standaloneConfig.textureHeight = config.resolution / 2;
             standaloneConfig.vectorOffsets = new Vector3[config.offsets.Length / 3];
             for (int i = 0; i < config.offsets.Length / 3; i++)
             {
