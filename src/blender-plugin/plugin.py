@@ -117,10 +117,10 @@ qualitys = [
 ]
 
 resolutions = {
-    "low":      1080,
-    "medium":   2160,
-    "high":     4320,
-    "ultra":    8640
+    "low":      1024,
+    "medium":   2048,
+    "high":     4096,
+    "ultra":    8192
 }
 
 # ________________________________________________________ #
@@ -149,6 +149,7 @@ class TOPBAR_OT_prerender_create_domain(Operator):
         domain = context.object
         domain.name = 'PreRendering Domain'
         domain.display_type = 'WIRE'
+        domain.hide_render = True
 
         return {'FINISHED'}
 

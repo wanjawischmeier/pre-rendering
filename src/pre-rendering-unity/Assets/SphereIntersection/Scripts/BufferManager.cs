@@ -33,7 +33,7 @@ public class BufferManager : MonoBehaviour
                 texArray.width, 
                 texArray.height);
         
-        kernelProject = computeShader.FindKernel("GnomicProjection");
+        kernelProject = computeShader.FindKernel("gnomonicProjection");
         kernelTranslate = computeShader.FindKernel("Translation");
         computeShader.GetKernelThreadGroupSizes(kernelTranslate, out translateThreadsX, out translateThreadsY, out uint _);
         computeShader.GetKernelThreadGroupSizes(kernelProject, out projectThreadsX, out projectThreadsY, out uint _);

@@ -1,0 +1,165 @@
+float PI, PI2, FOV, FCLIP;
+float2 Rotation;
+float3 Position;
+float Off;
+bool Fill;
+bool Debug;
+
+#pragma kernel SetConvMaps;
+#pragma kernel Gnomonic;
+#pragma kernel Projection
+
+StructuredBuffer<float3> OffsetBuffer;
+StructuredBuffer<float3> DebugOffsetBuffer;
+Texture2DArray<float4> InputArray;
+RWTexture2D<float2> CONV_SCREEN_LATLON;
+RWTexture2D<float2> CONV_LATLON_SCREEN;
+RWTexture2D<float4> Result;
+
+float2 gnomonicProjection(float2 pos, float fov)
+{
+    float x = PI2 * (pos.x - 0.5);
+    float y = PI * (pos.y - 0.5);
+
+    float p = sqrt(x * x + y * y);
+    float c = atan2(p, fov);
+
+    float sinC = sin(c);
+
+    float phi = asin(y * sinC / p);
+    float lambda = atan2(x * sinC, (p * cos(c)));
+
+    return float2(lambda / (PI * 2.0) + 0.5, (phi / PI) + 0.5);
+}
+
+[numthreads(8, 8, 1)]
+void SetConvMaps(uint3 id : SV_DispatchThreadID)
+{
+    uint w1, h1, w2, h2;
+    CONV_SCREEN_LATLON.GetDimensions(w1, h1);
+    CONV_LATLON_SCREEN.GetDimensions(w2, h2);
+    float2 r1 = float2(w1, h1);
+    float2 r2 = float2(w2, h2);
+    
+    float2 tc = gnomonicProjection(id.xy / r2, FOV);
+    
+    CONV_SCREEN_LATLON[id.xy / r2 * r1] = tc;
+    CONV_LATLON_SCREEN[tc * r2] = id.xy / r2;
+}
+
+[numthreads(8, 8, 1)]
+void Projection(uint3 id : SV_DispatchThreadID)
+{
+    PI2 = PI * 2;
+    uint convW, convH, inpW, inpH, outW, outH, _;
+    CONV_LATLON_SCREEN.GetDimensions(convW, convH);
+    InputArray.GetDimensions(inpW, inpH, _);
+    Result.GetDimensions(outW, outH);
+    float2 ConvRes = float2(convW, convH);
+    float2 InpRes = float2(inpW, inpH);
+    float2 OutRes = float2(outW, outH);
+    
+    // float2 ll1 = CONV_SCREEN_LATLON[id.xy];
+    float2 ll1 = id.yx / OutRes.yx;
+    ll1.x *= PI;
+    ll1.y *= PI2;
+    ll1.y += PI;
+    
+    float CP = InputArray[float3(id.xyz)].a * FCLIP;
+    
+    float3 P = float3(
+        CP * sin(ll1.y) * sin(ll1.x),
+        CP * cos(ll1.x),
+        CP * cos(ll1.y) * sin(ll1.x)
+    );
+    
+    P -= Position;
+    P += OffsetBuffer[id.z];
+    P += DebugOffsetBuffer[id.z];
+    
+    float d = sqrt(P.x * P.x + P.y * P.y + P.z * P.z);
+    
+    float2 ll2 = float2(
+        acos(P.y / d),
+        atan2(P.x, P.z)
+    );
+    
+    float2 a = float2(
+        ll2.y / PI2,
+        ll2.x / PI
+    );
+    a.x += 0.5;
+    
+    float2 idx = round(a * OutRes);
+    // float2 idx = MAP_LATLON_SCREEN[a * Resolution].xy * Resolution;
+    // float2 idx = CONV_LATLON_SCREEN[a * ConvRes] * OutRes;
+    // float2 idx = ll2 * OutRes;
+    
+    if (all(Result[idx] == 0) || InputArray[id.xyz].a < Result[idx].a)
+    {
+        if (Debug)
+        {
+            Result[idx] = float4(
+                sin(id.z),
+                cos(id.z),
+                tan(id.z),
+                1);
+        }
+        else if (any(InputArray[id.xyz].xyz))
+        {
+            if (Fill)
+            {
+                float2 idxXP = float2(idx.x + Off, idx.y);
+                float2 idxXN = float2(idx.x - Off, idx.y);
+                float2 idxYP = float2(idx.x, idx.y + Off);
+                float2 idxYN = float2(idx.x, idx.y - Off);
+        
+                if (all(Result[idxXP] == 0))
+                    Result[idxXP] += InputArray[id.xyz];
+                if (all(Result[idxXN] == 0))
+                    Result[idxXN] += InputArray[id.xyz];
+                if (all(Result[idxYP] == 0))
+                    Result[idxYP] += InputArray[id.xyz];
+                if (all(Result[idxYN] == 0))
+                    Result[idxYN] += InputArray[id.xyz];
+            }
+            else
+                Result[idx] = InputArray[id.xyz];
+        }
+    }
+    Result[idx] = InputArray[id.xyz];
+}
+
+[numthreads(8, 8, 1)]
+void Gnomonic(uint3 id : SV_DispatchThreadID)
+{
+    uint ResultW, ResultH, convW, convH;
+    CONV_LATLON_SCREEN.GetDimensions(convW, convH);
+    Result.GetDimensions(ResultW, ResultH);
+    float2 ConvRes = float2(convW, convH);
+    float2 OutRes = float2(ResultW, ResultH);
+    
+    PI2 = PI * 2;
+
+    float x = PI2 * (id.x / (float) ResultW - 0.5);
+    float y = PI * (id.y / (float) ResultH - 0.5);
+
+    float p = sqrt(x * x + y * y);
+    float c = atan2(p, FOV);
+
+    float sinC = sin(c);
+    float cosC = cos(c);
+    float sinPhi1 = sin(Rotation.x);
+    float cosPhi1 = cos(Rotation.x);
+
+    float phi = asin(cosC * sinPhi1 + y * sinC * cosPhi1 / p);
+    float lambda = Rotation.y + atan2(x * sinC, (p * cosPhi1 * cosC - y * sinPhi1 * sinC));
+
+    float2 tc = float2(lambda / (PI * 2.0) + 0.5, phi / PI + 0.5);
+    tc = tc < 0 ? 1 - abs(tc) % 1 : tc % 1;
+    tc.x *= ResultW;
+    tc.y *= ResultH;
+    
+    Result[id.xy] = Result[tc];
+    Result[CONV_LATLON_SCREEN[id.xy / OutRes * ConvRes] * OutRes] = Result[tc];
+}

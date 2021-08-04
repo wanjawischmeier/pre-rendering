@@ -127,6 +127,7 @@
     <None Include="Assets\Other\Materials\UnlitInverseNormals.shader" />
     <None Include="Assets\#NVJOB FPS Counter and Graph\license_unity.txt" />
     <None Include="Assets\ParralelProjection\Materials\ParralelShader.shader" />
+    <None Include="Assets\MapManager\Projection.compute" />
     <None Include="Assets\#NVJOB FPS Counter and Graph\Example Scenes\Sound\Sound license.txt" />
     <None Include="Assets\Other\Materials\InverseNormals.shader" />
     <None Include="Assets\#NVJOB FPS Counter and Graph\license_nvjob.txt" />

@@ -33,7 +33,7 @@ Shader "Hidden/SphereIntersectionAndTranslation"
                 float4 vertex : SV_POSITION;
             };
 
-            float2 gnomicProjection(float2 pos, float fov, float phi1, float lambda0, float PI)
+            float2 gnomonicProjection(float2 pos, float fov, float phi1, float lambda0, float PI)
             {
                 float PI2 = 2 * PI;
 
@@ -113,8 +113,8 @@ Shader "Hidden/SphereIntersectionAndTranslation"
                 float PI = 3.14159;
                 float3 P1 = _P1W.xyz;
 
-                // 0. Gnomic projection and get depth
-                float2 tc = gnomicProjection(i.uv, _Fov, _Phi1, _Lambda0, PI);
+                // 0. gnomonic projection and get depth
+                float2 tc = gnomonicProjection(i.uv, _Fov, _Phi1, _Lambda0, PI);
                 float a = tex2D(_MainTex, tc).a;
 
                 // Center sphere

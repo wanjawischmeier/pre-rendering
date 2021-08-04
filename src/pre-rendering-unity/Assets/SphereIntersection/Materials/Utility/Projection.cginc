@@ -1,6 +1,6 @@
 ﻿#include "Types.cginc"
 
-latlon gnomicProjection(float2 position, float fieldOfView, latlon rotation, float PI)
+latlon gnomonicProjection(float2 position, float fieldOfView, latlon rotation, float PI)
 {
     
     float PI2 = 2 * PI;

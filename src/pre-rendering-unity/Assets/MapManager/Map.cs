@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using System.Linq;
 using UnityEngine;
 
@@ -11,6 +13,7 @@ namespace MapManagement
         public float[] offsets;
     }
 
+    [System.Serializable]
     public struct StandaloneMapConfig
     {
         public int fclip;
@@ -23,30 +26,23 @@ namespace MapManagement
     public class Map
     {
         public StandaloneMapConfig config;
-        AssetBundle bundle;
+        string mainPath;
 
         public Map(string path)
         {
-            bundle = AssetBundle.LoadFromFile(path);
+            mainPath = path;
 
-            TextAsset rawConfig = bundle.LoadAllAssets<TextAsset>()[0];
+            TextAsset rawConfig = Resources.LoadAll<TextAsset>(path)[0];
             config = JsonUtility.FromJson<StandaloneMapConfig>(rawConfig.text);
         }
 
-        public void SetTexturesAtPositions(Vector3[] requests, ref Texture2DArray textures, ref Texture2D[] texture2s)
+        public void SetTexturesAtPositions(Vector3[] requests, ref Texture2DArray textures)
         {
             for (int i = 0; i < requests.Length; i++)
             {
-                Texture2D texture = bundle.LoadAsset<Texture2D>(VectorToFileName(requests[i], config.mx_width));
-                Graphics.CopyTexture(texture, 0, textures, i);
-                Debug.Log(texture.mipmapCount);
-                Debug.Log(texture.format);
-                Debug.Log(texture.graphicsFormat);
-                Debug.Log(textures.mipmapCount);
-                Debug.Log(textures.format);
-                Debug.Log(textures.graphicsFormat);
-                
-                texture2s[i] = texture;
+                string texturePath = Path.Combine(mainPath, VectorToFileName(requests[i]));
+                Texture2D texture = Resources.Load<Texture2D>(texturePath);
+                if (texture != null) Graphics.CopyTexture(texture, 0, textures, i);
             }
         }
 
@@ -58,9 +54,10 @@ namespace MapManagement
                 .ToArray();
         }
 
-        static string VectorToFileName(Vector3 vector, int mx_width)
+        string VectorToFileName(Vector3 vector)
         {
-            return "first_render_landscape" + (vector.x + (vector.y + vector.z * mx_width) * mx_width).ToString().PadLeft(4, '0');
+            int index = Array.IndexOf(config.vectorOffsets, vector);
+            return index.ToString().PadLeft(4, '0');
         }
     }
 }
