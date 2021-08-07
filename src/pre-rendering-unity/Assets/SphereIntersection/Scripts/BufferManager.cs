@@ -32,8 +32,8 @@ public class BufferManager : MonoBehaviour
             .textureResolution = new Vector2(
                 texArray.width, 
                 texArray.height);
-
-        kernelProject = computeShader.FindKernel("GnomicProjection");
+        
+        kernelProject = computeShader.FindKernel("gnomonicProjection");
         kernelTranslate = computeShader.FindKernel("Translation");
         computeShader.GetKernelThreadGroupSizes(kernelTranslate, out translateThreadsX, out translateThreadsY, out uint _);
         computeShader.GetKernelThreadGroupSizes(kernelProject, out projectThreadsX, out projectThreadsY, out uint _);
@@ -55,9 +55,6 @@ public class BufferManager : MonoBehaviour
         computeShader.SetTexture(kernelTranslate, "Translated", translated);
         computeShader.SetTexture(kernelProject, "Translated", translated);
         computeShader.SetTexture(kernelProject, "Result", result);
-
-
-        offBuffer.SetData(offArray);
     }
 
     void Update()

@@ -66,7 +66,7 @@ Shader "Hidden/CombinedTesting"
                 rotation.lon = _Lambda0;
                 rotation = normalizedToLatLon(rotation, PI);
 
-                latlon tc = gnomicProjection(i.uv, _Fov, rotation, PI);
+                latlon tc = gnomonicProjection(i.uv, _Fov, rotation, PI);
 
                 // latlon tr1 = translateInsideSphere(tc, float3(_X1, _Y1, _Z1), 1, PI);
                 // latlon tr2 = translateInsideSphere(tc, float3(_X2, _Y2, _Z2), 1, PI);

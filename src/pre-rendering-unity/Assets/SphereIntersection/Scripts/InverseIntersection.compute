@@ -4,20 +4,23 @@ float3 Position;
 float Index;
 
 #pragma kernel Translation
-#pragma kernel GnomicProjection
+#pragma kernel gnomonicProjection
 
 StructuredBuffer<float3> OffsetBuffer;
+StructuredBuffer<float3> DebugOffsetBuffer;
 Texture2DArray<float4> InputArray;
 RWTexture2D<float4> Translated;
 RWTexture2D<float4> Result;
+float Off;
+bool Fill;
 bool Debug;
 
 [numthreads(8, 8, 1)]
 void Translation(uint3 id : SV_DispatchThreadID)
 {
     PI2 = PI * 2;
-    uint w, h, _ = 0;
-    InputArray.GetDimensions(_, w, h, _, _);
+    uint w, h, e, _ = 0;
+    InputArray.GetDimensions(_, w, h, e, _);
     float2 Resolution = float2(w, h);
     
     float2 ll1 = id.yx / Resolution.yx;
@@ -33,8 +36,9 @@ void Translation(uint3 id : SV_DispatchThreadID)
         CP * cos(ll1.y) * sin(ll1.x)
     );
     
-    P += Position;
+    P -= Position;
     P += OffsetBuffer[id.z];
+    P += DebugOffsetBuffer[id.z];
     
     float d = sqrt(P.x * P.x + P.y * P.y + P.z * P.z);
     
@@ -51,23 +55,43 @@ void Translation(uint3 id : SV_DispatchThreadID)
     
     float2 idx = round(a * Resolution);
     
-    if (Debug)
+    
+    if (all(Translated[idx] == 0) || InputArray[id.xyz].a < Translated[idx].a)
     {
-        Translated[idx] = float4(
-            id.z == 0 ? 1 : 0,
-            id.z == 1 || id.z == 3 ? 1 : 0,
-            id.z == 2 || id.z == 3 ? 1 : 0,
+        if (Debug)
+        {
+            Translated[idx] = float4(
+            sin(id.z),
+            cos(id.z),
+            tan(id.z),
             1);
-    }
-    else if (all(Translated[idx] == 0) || InputArray[id.xyz].a < Translated[idx].a)
-    {
-        Translated[idx] = InputArray[id.xyz];
+        }
+        else if (any(InputArray[id.xyz].xyz))
+        {
+            if (Fill)
+            {
+                float2 idxXP = float2(idx.x + Off, idx.y);
+                float2 idxXN = float2(idx.x - Off, idx.y);
+                float2 idxYP = float2(idx.x, idx.y + Off);
+                float2 idxYN = float2(idx.x, idx.y - Off);
+        
+                if (all(Translated[idxXP] == 0))
+                    Translated[idxXP] += InputArray[id.xyz];
+                if (all(Translated[idxXN] == 0))
+                    Translated[idxXN] += InputArray[id.xyz];
+                if (all(Translated[idxYP] == 0))
+                    Translated[idxYP] += InputArray[id.xyz];
+                if (all(Translated[idxYN] == 0))
+                    Translated[idxYN] += InputArray[id.xyz];
+            }
+            else Translated[idx] = InputArray[id.xyz];
+        }
     }
     
 }
 
 [numthreads(8, 8, 1)]
-void GnomicProjection(uint3 id : SV_DispatchThreadID)
+void gnomonicProjection(uint3 id : SV_DispatchThreadID)
 {
     uint TranslatedW, TranslatedH, ResultW, ResultH;
     Translated.GetDimensions(TranslatedW, TranslatedH);

@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.37311918, g: 0.3807398, b: 0.35872716, a: 1}
+  m_IndirectSpecularColor: {r: 0.3731193, g: 0.38073996, b: 0.35872698, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -144,7 +144,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 786967402357734147, guid: fc243675728653a4093f82ccb2e59921, type: 3}
       propertyPath: m_Name
-      value: FPS Counter (White)
+      value: Debug
       objectReference: {fileID: 0}
     - target: {fileID: 786967402357734149, guid: fc243675728653a4093f82ccb2e59921, type: 3}
       propertyPath: m_MatchWidthOrHeight
@@ -247,9 +247,8 @@ GameObject:
   - component: {fileID: 1464708539}
   - component: {fileID: 1464708538}
   - component: {fileID: 1464708537}
-  - component: {fileID: 1464708540}
-  - component: {fileID: 1464708542}
   - component: {fileID: 1464708543}
+  - component: {fileID: 1464708540}
   - component: {fileID: 1464708541}
   m_Layer: 0
   m_Name: Main Camera
@@ -291,7 +290,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
-  field of view: 60
+  field of view: 90
   orthographic: 0
   orthographic size: 5
   m_Depth: -1
@@ -332,13 +331,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 1464708536}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e8b587fc5aa01394b93cdb830ec0fc1e, type: 3}
+  m_Script: {fileID: 11500000, guid: 030d7c4709653094f92d809ec937295e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  computeShader: {fileID: 7200000, guid: 205f05dea134e2f4d88b3b410a5b7ea4, type: 3}
-  texArray: {fileID: 0}
-  offArray: []
-  debug: 0
+  speed: 7
+  lookSpeed: 2
+  lookXLimit: 90
+  secondaryPosition: {x: 0, y: 0, z: 0}
 --- !u!114 &1464708541
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -348,47 +347,20 @@ MonoBehaviour:
   m_GameObject: {fileID: 1464708536}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 03bb147d5477ad94eb109ec9e547e160, type: 3}
+  m_Script: {fileID: 11500000, guid: 5753aa02d5ea328459a65c7d46c95667, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  importMode: 3
-  texPath: Assets/MapBundles/maps/test1080p
-  rawTexArray:
-  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
-  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
-  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
-  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
-  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
-  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
-  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
-  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
-  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
-  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
-  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
-  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
-  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
-  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
-  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
-  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
-  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
-  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
-  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
-  - {fileID: 2800000, guid: 0c96abef36a9c5d4b81cb8188f2cf68a, type: 3}
---- !u!114 &1464708542
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1464708536}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1294e014c405bac4a86ffd9f1f87b9f2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  speed: 4
-  lookSpeed: 4
-  lookXLimit: 90
+  mapBundle: Maps/desert_new
+  shader: {fileID: 7200000, guid: ac4da70e3b7f3dc41ab2e6856fb266ed, type: 3}
+  controller: {fileID: 1464708540}
+  maxTextures: 4
+  debug: 0
+  fill: 0
+  fillOff: 0.0001
+  debugOffArray: []
+  selectedId: 0
+  CONV_SCREEN_LATLON: {fileID: 0}
+  CONV_LATLON_SCREEN: {fileID: 0}
 --- !u!143 &1464708543
 CharacterController:
   m_ObjectHideFlags: 0

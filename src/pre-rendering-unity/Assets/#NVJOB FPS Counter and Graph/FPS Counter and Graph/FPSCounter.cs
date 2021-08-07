@@ -30,6 +30,8 @@ public class FPSCounter : MonoBehaviour
     public Color graphColor = new Color(1, 1, 1, 0.5f);
     public bool logWrite = true;
     public Vector2 textureResolution;
+    public int maxTextures;
+    public int selected;
 
     [Header("Information")] // These variables are only information.
     public string HelpURL = "nvjob.github.io/unity/nvjob-fps-counter-and-graph";
@@ -111,11 +113,12 @@ public class FPSCounter : MonoBehaviour
             " | MAX " + allFps.z.ToString() +
             "\nScreen Resolution " + Screen.width.ToString() + "x" + Screen.height.ToString() +
             "\nTexture Resolution " + textureResolution.x.ToString() + "x" + textureResolution.y.ToString() +
-            "\nData Path " + dataPath;
+            "\nData Path " + dataPath +
+            "\nSelected texture " + selected.ToString() + "/" + maxTextures.ToString();
 
         //-------------- 
 
-        if (Input.GetKeyDown(KeyCode.F1)) // Hide Counter
+        if (Input.GetKeyDown(KeyCode.F2)) // Hide Counter
         {
             counter.SetActive(!counter.activeSelf);
             graph.SetActive(!graph.activeSelf);

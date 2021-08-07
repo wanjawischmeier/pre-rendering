@@ -1,0 +1,188 @@
+float PI, PI2, FOV, FCLIP;
+float2 Rotation;
+float3 Position;
+float Index;
+
+#pragma kernel GnomonicProjection
+#pragma kernel SetConvMaps;
+#pragma kernel Projection
+
+StructuredBuffer<float3> OffsetBuffer;
+StructuredBuffer<float3> DebugOffsetBuffer;
+Texture2DArray<float4> InputArray;
+RWTexture2D<float4> CONV_SCREEN_LATLON;
+RWTexture2D<float4> CONV_LATLON_SCREEN;
+RWTexture2D<float4> Result;
+RWTexture2D<float4> Final;
+float Off;
+bool Fill;
+bool Debug;
+
+float2 gnomonicProjection(float x, float y, float phi1, float lambda0, float fov)
+{
+    float p = sqrt(x * x + y * y);
+    float c = atan2(p, FOV);
+
+    float sinC = sin(c);
+    float cosC = cos(c);
+    float sinPhi1 = sin(phi1);
+    float cosPhi1 = cos(phi1);
+
+    float phi = asin(cosC * sinPhi1 + y * sinC * cosPhi1 / p);
+    float lambda = lambda0 + atan2(x * sinC, (p * cosPhi1 * cosC - y * sinPhi1 * sinC));
+
+    float2 tc = float2(lambda, phi);
+    return tc < 0 ? 1 - abs(tc) % 1 : tc % 1;
+}
+
+float2 inverseGnomonicProjection(float2 latlon, float phi1, float lambda0, float fov)
+{
+    float phi = latlon.x;
+    float lambda = latlon.y;
+
+    float cosLambdaLambda0 = cos(lambda - lambda0);
+    float cosC = sin(phi1) * sin(phi) + cos(phi1) * cos(phi) * cosLambdaLambda0;
+    
+    float x = (cos(phi1) * sin(phi) - sin(phi1) * cos(phi) * cosLambdaLambda0) / cosC;
+    float y = (cos(phi) * sin(lambda0 - lambda0)) / cosC;
+    return float2(x, y); // float2(x / PI + 0.5, y / PI2 + 0.5);
+}
+
+[numthreads(8, 8, 1)]
+void SetConvMaps(uint3 id : SV_DispatchThreadID)
+{
+    uint w1, h1, w2, h2;
+    CONV_SCREEN_LATLON.GetDimensions(w1, h1);
+    CONV_LATLON_SCREEN.GetDimensions(w2, h2);
+    float2 r2 = float2(w2, h2);
+    
+    float x = (id.x / w1 - 0.5) * PI2;
+    float y = (id.y / h1 - 0.5) * PI;
+    
+    float2 ll = gnomonicProjection(x, y, 0, 0, FOV);
+    
+    CONV_SCREEN_LATLON[id.xy] = float4(ll, 0, 1);
+    CONV_SCREEN_LATLON[ll * r2] = float4(id.xy, 0, 1);
+}
+
+[numthreads(8, 8, 1)]
+void GnomonicProjection(uint3 id : SV_DispatchThreadID)
+{
+    uint Width, Height;
+    Result.GetDimensions(Width, Height);
+    
+    PI2 = PI * 2;
+
+    float x = PI2 * (id.x / (float) Width - 0.5);
+    float y = PI * (id.y / (float) Height - 0.5);
+
+    float p = sqrt(x * x + y * y);
+    
+    float sinPhi1 = sin(Rotation.x);
+    float cosPhi1 = cos(Rotation.x);
+    
+    float phi = asin((sinPhi1 + y * cosPhi1) * (1 / sqrt(1 + pow(p, 2))));
+    float lambda = Rotation.y + atan2(x, (cosPhi1 - y * sinPhi1));
+
+    float2 tc = float2(lambda / (PI * 2.0) + 0.5, phi / PI + 0.5);
+    tc = tc < 0 ? 1 - abs(tc) % 1 : tc % 1;
+    tc.x *= Width;
+    tc.y *= Height;
+    
+    Final[id.xy] = Result[tc];
+}
+
+[numthreads(8, 8, 1)]
+void Projection(uint3 id : SV_DispatchThreadID)
+{
+    PI2 = PI * 2;
+    uint w, h, e, _ = 0;
+    Result.GetDimensions(w, h);
+    float2 Resolution = float2(w, h);
+    
+    float x = (id.x / Resolution.x - 0.5) * PI2;
+    float y = (id.y / Resolution.y - 0.5) * PI;
+    float phi1 = 0;
+    float lambda0 = 0;
+    
+    float2 latlon = gnomonicProjection(x, y, phi1, lambda0, FOV);
+    /*
+    latlon.x = latlon.x / PI2;
+    latlon.y = latlon.y / PI;
+    latlon += 0.5;
+    */
+    float2 test = inverseGnomonicProjection(latlon, phi1, lambda0, FOV);
+    test.x = test.x / PI2;
+    test.y = test.y / PI;
+    test += 0.5;
+    // Result[id.xy] = float4(latlon, 0, 1);
+    Result[id.xy] = InputArray[float3(test * Resolution, 0)];
+    /*
+    float2 ll1 = id.yx / Resolution.yx;
+    // float2 ll1 = MAP_SCREEN_LATLON[id.xy];
+    ll1.x *= PI;
+    ll1.y *= PI2;
+    ll1.y += PI;
+    
+    float CP = InputArray[id.xyz].a * FCLIP;
+    
+    float3 P = float3(
+        CP * sin(ll1.y) * sin(ll1.x),
+        CP * cos(ll1.x),
+        CP * cos(ll1.y) * sin(ll1.x)
+    );
+    
+    P -= Position;
+    P += OffsetBuffer[id.z];
+    P += DebugOffsetBuffer[id.z];
+    
+    float d = sqrt(P.x * P.x + P.y * P.y + P.z * P.z);
+    
+    float2 ll2 = float2(
+        acos(P.y / d),
+        atan2(P.x, P.z)
+    );
+    
+    float2 a = float2(
+        ll2.y / PI2,
+        ll2.x / PI
+    );
+    a.x += 0.5;
+    
+    float2 idx = round(a * Resolution);
+    // float2 idx = MAP_LATLON_SCREEN[a * Resolution].xy * Resolution;
+    
+    if (all(Result[idx] == 0) || InputArray[id.xyz].a < Result[idx].a)
+    {
+        if (Debug)
+        {
+            Result[idx] = float4(
+                sin(id.z),
+                cos(id.z),
+                tan(id.z),
+                1);
+        }
+        else if (any(InputArray[id.xyz].xyz))
+        {
+            if (Fill)
+            {
+                float2 idxXP = float2(idx.x + Off, idx.y);
+                float2 idxXN = float2(idx.x - Off, idx.y);
+                float2 idxYP = float2(idx.x, idx.y + Off);
+                float2 idxYN = float2(idx.x, idx.y - Off);
+        
+                if (all(Result[idxXP] == 0))
+                    Result[idxXP] += InputArray[id.xyz];
+                if (all(Result[idxXN] == 0))
+                    Result[idxXN] += InputArray[id.xyz];
+                if (all(Result[idxYP] == 0))
+                    Result[idxYP] += InputArray[id.xyz];
+                if (all(Result[idxYN] == 0))
+                    Result[idxYN] += InputArray[id.xyz];
+            }
+            else
+                Result[idx] = InputArray[id.xyz];
+        }
+    }
+    */
+}

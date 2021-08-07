@@ -1,4 +1,4 @@
-﻿Shader "Unlit/GnomicProjection"
+﻿Shader "Unlit/gnomonicProjection"
 {
     Properties
     {

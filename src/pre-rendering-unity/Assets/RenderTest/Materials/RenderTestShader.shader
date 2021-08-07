@@ -39,7 +39,7 @@ Shader "Hidden/RenderTestShader"
                 float4 vertex : SV_POSITION;
             };
 
-            float2 gnomicProjection(float2 pos, float fov, float phi1, float lambda0, float theta, float PI)
+            float2 gnomonicProjection(float2 pos, float fov, float phi1, float lambda0, float theta, float PI)
             {
                 float PI2 = 2 * PI;
 
@@ -126,7 +126,7 @@ Shader "Hidden/RenderTestShader"
             {
                 /*
                 // i.uv = mul(UNITY_MATRIX_VP, i.uv);
-                float2 projected = gnomicProjection(i.uv, _FieldOfView, _Phi1, _Lambda0, _Theta, 3.14159);
+                float2 projected = gnomonicProjection(i.uv, _FieldOfView, _Phi1, _Lambda0, _Theta, 3.14159);
                 float depth = tex2D(_PanTex, projected).a;
 
                 float4 pos = float4(projected.x, projected.y, depth, 1);
@@ -142,7 +142,7 @@ Shader "Hidden/RenderTestShader"
                 float4 cp = UnityObjectToClipPos(camsp);
                 float4 sp = ComputeScreenPos(rp);
 
-                float2 reprojected = gnomicProjection(camsp.xy, _FieldOfView, 0, 0, 0, 3.14159); // mul(UNITY_MATRIX_P, camsp);
+                float2 reprojected = gnomonicProjection(camsp.xy, _FieldOfView, 0, 0, 0, 3.14159); // mul(UNITY_MATRIX_P, camsp);
 
                 fixed4 col = tex2D(_PanTex, camsp);
                 fixed4 t = tex2D(_MainTex, i.uv);
@@ -152,11 +152,11 @@ Shader "Hidden/RenderTestShader"
                 */
                 float PI = 3.14159;
 
-                float2 projected = gnomicProjection(i.uv, _FieldOfView, _Phi1, _Lambda0, _Theta, PI);
+                float2 projected = gnomonicProjection(i.uv, _FieldOfView, _Phi1, _Lambda0, _Theta, PI);
                 float depth = tex2D(_PanTex, projected).a;
                 float2 pos = float2(projected.x * depth * _FieldOfView + _XOff, projected.y * depth * _FieldOfView + _YOff);
                 
-                float2 reprojected = gnomicProjection(pos, _FieldOfView, _Phi1, _Lambda0, _Theta, PI);
+                float2 reprojected = gnomonicProjection(pos, _FieldOfView, _Phi1, _Lambda0, _Theta, PI);
                 fixed4 col = tex2D(_PanTex, reprojected);
                 return col;
             }

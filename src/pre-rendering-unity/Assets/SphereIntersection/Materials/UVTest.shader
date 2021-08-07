@@ -124,7 +124,7 @@ Shader "Unlit/UVTest"
 
                     float r1 = _R1; float r2 = _R2;
 
-                    // 0. Gnomic projection and get depth
+                    // 0. gnomonic projection and get depth
                     float2 tc = i.uv;
                     float d = tex2D(_MainTex, tc).a;
                     r2 += d;
