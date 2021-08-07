@@ -22,14 +22,12 @@ public class TextureLoader : MonoBehaviour
     Vector3[] offArray;
     ComputeBuffer debugOffBuffer;
     ComputeBuffer offBuffer;
-    public RenderTexture CONV_SCREEN_LATLON;
-    public RenderTexture CONV_LATLON_SCREEN;
+    RenderTexture projected;
     RenderTexture result;
-    RenderTexture final;
 
-    int project, setConvMaps, gnomonic;
-    uint convThreadsX, convThreadsY;
+    int project, gnomonic;
     uint projectThreadsX, projectThreadsY;
+    uint gnomonicThreadsX, gnomonicThreadsY;
     int screenWidth, screenHeight;
     int projectWidth, projectHeight;
 
@@ -49,25 +47,18 @@ public class TextureLoader : MonoBehaviour
             map.config.textureWidth,
             map.config.textureHeight);
 
-        setConvMaps = shader.FindKernel("SetConvMaps");
-        gnomonic = shader.FindKernel("Gnomonic");
         project = shader.FindKernel("Projection");
-        shader.GetKernelThreadGroupSizes(setConvMaps, out convThreadsX, out convThreadsY, out uint _);
+        gnomonic = shader.FindKernel("Gnomonic");
         shader.GetKernelThreadGroupSizes(project, out projectThreadsX, out projectThreadsY, out uint _);
+        shader.GetKernelThreadGroupSizes(gnomonic, out gnomonicThreadsX, out gnomonicThreadsY, out uint _);
 
         textureArray = new Texture2DArray(map.config.textureWidth, map.config.textureHeight, maxTextures, TextureFormat.RGBA64, 1, false);
-        CONV_SCREEN_LATLON = new RenderTexture(projectWidth, projectHeight, 24, RenderTextureFormat.RG32);
-        CONV_LATLON_SCREEN = new RenderTexture(map.config.textureWidth, map.config.textureHeight, 24, RenderTextureFormat.RG32);
-        result = new RenderTexture(projectWidth, projectHeight, 24);
-        final = new RenderTexture(projectWidth, projectHeight, 24);
-        CONV_SCREEN_LATLON.enableRandomWrite = true;
-        CONV_LATLON_SCREEN.enableRandomWrite = true;
+        projected = new RenderTexture(projectWidth, projectHeight, 24);
+        result = new RenderTexture(screenWidth, screenHeight, 24);
+        projected.enableRandomWrite = true;
         result.enableRandomWrite = true;
-        final.enableRandomWrite = true;
-        CONV_SCREEN_LATLON.Create();
-        CONV_LATLON_SCREEN.Create();
+        projected.Create();
         result.Create();
-        final.Create();
 
         offArray = new Vector3[maxTextures];
         debugOffArray = new Vector3[maxTextures];
@@ -78,17 +69,12 @@ public class TextureLoader : MonoBehaviour
         shader.SetFloat("PI2", Mathf.PI * 2);
         shader.SetFloat("FCLIP", map.config.fclip);
         shader.SetFloat("FOV", (180 - Camera.main.fieldOfView) * Mathf.Deg2Rad);
-        shader.SetTexture(setConvMaps, "CONV_SCREEN_LATLON", CONV_SCREEN_LATLON);
-        shader.SetTexture(setConvMaps, "CONV_LATLON_SCREEN", CONV_LATLON_SCREEN);
-        shader.SetTexture(project, "CONV_SCREEN_LATLON", CONV_SCREEN_LATLON);
-        shader.SetTexture(project, "CONV_LATLON_SCREEN", CONV_LATLON_SCREEN);
         shader.SetBuffer(project, "OffsetBuffer", offBuffer);
         shader.SetBuffer(project, "DebugOffsetBuffer", debugOffBuffer);
         shader.SetTexture(project, "InputArray", textureArray);
-        shader.SetTexture(project, "Result", result);
+        shader.SetTexture(project, "Projected", projected);
+        shader.SetTexture(gnomonic, "Projected", projected);
         shader.SetTexture(gnomonic, "Result", result);
-
-        shader.Dispatch(setConvMaps, map.config.textureWidth / (int)convThreadsX, map.config.textureHeight / (int)convThreadsY, 1);
     }
 
     void Update()
@@ -115,7 +101,6 @@ public class TextureLoader : MonoBehaviour
 
         map.SetTexturesAtPositions(offArray, ref textureArray);
 
-        shader.Dispatch(setConvMaps, map.config.textureWidth / (int)convThreadsX, map.config.textureHeight / (int)convThreadsY, 1);
         shader.Dispatch(project, projectWidth / (int)projectThreadsX, projectHeight / (int)projectThreadsY, maxTextures);
         shader.Dispatch(gnomonic, projectWidth / (int)projectThreadsX, projectHeight / (int)projectThreadsY, 1);
     }
@@ -133,7 +118,7 @@ public class TextureLoader : MonoBehaviour
         Graphics.Blit(result, destination);
         
         RenderTexture rt = RenderTexture.active;
-        RenderTexture.active = result;
+        RenderTexture.active = projected;
         GL.Clear(false, true, Color.clear);
         RenderTexture.active = rt;
     }

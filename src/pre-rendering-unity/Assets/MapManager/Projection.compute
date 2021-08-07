@@ -5,67 +5,33 @@ float Off;
 bool Fill;
 bool Debug;
 
-#pragma kernel SetConvMaps;
 #pragma kernel Gnomonic;
 #pragma kernel Projection
 
 StructuredBuffer<float3> OffsetBuffer;
 StructuredBuffer<float3> DebugOffsetBuffer;
 Texture2DArray<float4> InputArray;
-RWTexture2D<float2> CONV_SCREEN_LATLON;
-RWTexture2D<float2> CONV_LATLON_SCREEN;
+RWTexture2D<float4> Projected;
 RWTexture2D<float4> Result;
-
-float2 gnomonicProjection(float2 pos, float fov)
-{
-    float x = PI2 * (pos.x - 0.5);
-    float y = PI * (pos.y - 0.5);
-
-    float p = sqrt(x * x + y * y);
-    float c = atan2(p, fov);
-
-    float sinC = sin(c);
-
-    float phi = asin(y * sinC / p);
-    float lambda = atan2(x * sinC, (p * cos(c)));
-
-    return float2(lambda / (PI * 2.0) + 0.5, (phi / PI) + 0.5);
-}
-
-[numthreads(8, 8, 1)]
-void SetConvMaps(uint3 id : SV_DispatchThreadID)
-{
-    uint w1, h1, w2, h2;
-    CONV_SCREEN_LATLON.GetDimensions(w1, h1);
-    CONV_LATLON_SCREEN.GetDimensions(w2, h2);
-    float2 r1 = float2(w1, h1);
-    float2 r2 = float2(w2, h2);
-    
-    float2 tc = gnomonicProjection(id.xy / r2, FOV);
-    
-    CONV_SCREEN_LATLON[id.xy / r2 * r1] = tc;
-    CONV_LATLON_SCREEN[tc * r2] = id.xy / r2;
-}
 
 [numthreads(8, 8, 1)]
 void Projection(uint3 id : SV_DispatchThreadID)
 {
     PI2 = PI * 2;
-    uint convW, convH, inpW, inpH, outW, outH, _;
-    CONV_LATLON_SCREEN.GetDimensions(convW, convH);
-    InputArray.GetDimensions(inpW, inpH, _);
-    Result.GetDimensions(outW, outH);
-    float2 ConvRes = float2(convW, convH);
-    float2 InpRes = float2(inpW, inpH);
-    float2 OutRes = float2(outW, outH);
+    uint InputWidth, InputHeight, TransWidth, TransHeight, _;
+    InputArray.GetDimensions(InputWidth, InputHeight, _);
+    Projected.GetDimensions(TransWidth, TransHeight);
+    float2 InputRes = float2(InputWidth, InputHeight);
+    float2 TransRes = float2(TransWidth, TransHeight);
     
-    // float2 ll1 = CONV_SCREEN_LATLON[id.xy];
-    float2 ll1 = id.yx / OutRes.yx;
+    float3 inpIdx = float3(id.xy / TransRes * InputRes, id.z);
+    
+    float2 ll1 = id.yx / TransRes.yx;
     ll1.x *= PI;
     ll1.y *= PI2;
     ll1.y += PI;
     
-    float CP = InputArray[float3(id.xyz)].a * FCLIP;
+    float CP = InputArray[inpIdx].a * FCLIP;
     
     float3 P = float3(
         CP * sin(ll1.y) * sin(ll1.x),
@@ -90,22 +56,19 @@ void Projection(uint3 id : SV_DispatchThreadID)
     );
     a.x += 0.5;
     
-    float2 idx = round(a * OutRes);
-    // float2 idx = MAP_LATLON_SCREEN[a * Resolution].xy * Resolution;
-    // float2 idx = CONV_LATLON_SCREEN[a * ConvRes] * OutRes;
-    // float2 idx = ll2 * OutRes;
+    float2 idx = round(a * TransRes);
     
-    if (all(Result[idx] == 0) || InputArray[id.xyz].a < Result[idx].a)
+    if (all(Projected[idx] == 0) || InputArray[inpIdx].a < Projected[idx].a)
     {
         if (Debug)
         {
-            Result[idx] = float4(
+            Projected[idx] = float4(
                 sin(id.z),
                 cos(id.z),
                 tan(id.z),
                 1);
         }
-        else if (any(InputArray[id.xyz].xyz))
+        else if (any(InputArray[inpIdx].xyz))
         {
             if (Fill)
             {
@@ -114,30 +77,28 @@ void Projection(uint3 id : SV_DispatchThreadID)
                 float2 idxYP = float2(idx.x, idx.y + Off);
                 float2 idxYN = float2(idx.x, idx.y - Off);
         
-                if (all(Result[idxXP] == 0))
-                    Result[idxXP] += InputArray[id.xyz];
-                if (all(Result[idxXN] == 0))
-                    Result[idxXN] += InputArray[id.xyz];
-                if (all(Result[idxYP] == 0))
-                    Result[idxYP] += InputArray[id.xyz];
-                if (all(Result[idxYN] == 0))
-                    Result[idxYN] += InputArray[id.xyz];
+                if (all(Projected[idxXP] == 0))
+                    Projected[idxXP] += InputArray[inpIdx];
+                if (all(Projected[idxXN] == 0))
+                    Projected[idxXN] += InputArray[inpIdx];
+                if (all(Projected[idxYP] == 0))
+                    Projected[idxYP] += InputArray[inpIdx];
+                if (all(Projected[idxYN] == 0))
+                    Projected[idxYN] += InputArray[inpIdx];
             }
             else
-                Result[idx] = InputArray[id.xyz];
+                Projected[idx] = InputArray[inpIdx];
         }
     }
-    Result[idx] = InputArray[id.xyz];
+    Projected[idx] = InputArray[inpIdx];
 }
 
 [numthreads(8, 8, 1)]
 void Gnomonic(uint3 id : SV_DispatchThreadID)
 {
-    uint ResultW, ResultH, convW, convH;
-    CONV_LATLON_SCREEN.GetDimensions(convW, convH);
+    uint ProjectedW, ProjectedH, ResultW, ResultH;
+    Projected.GetDimensions(ProjectedW, ProjectedH);
     Result.GetDimensions(ResultW, ResultH);
-    float2 ConvRes = float2(convW, convH);
-    float2 OutRes = float2(ResultW, ResultH);
     
     PI2 = PI * 2;
 
@@ -157,9 +118,8 @@ void Gnomonic(uint3 id : SV_DispatchThreadID)
 
     float2 tc = float2(lambda / (PI * 2.0) + 0.5, phi / PI + 0.5);
     tc = tc < 0 ? 1 - abs(tc) % 1 : tc % 1;
-    tc.x *= ResultW;
-    tc.y *= ResultH;
+    tc.x *= ProjectedW;
+    tc.y *= ProjectedH;
     
-    Result[id.xy] = Result[tc];
-    Result[CONV_LATLON_SCREEN[id.xy / OutRes * ConvRes] * OutRes] = Result[tc];
+    Result[id.xy] = Projected[tc];
 }
