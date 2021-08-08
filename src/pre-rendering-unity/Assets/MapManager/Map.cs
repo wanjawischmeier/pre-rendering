@@ -34,6 +34,9 @@ namespace MapManagement
 
             TextAsset rawConfig = Resources.LoadAll<TextAsset>(path)[0];
             config = JsonUtility.FromJson<StandaloneMapConfig>(rawConfig.text);
+            Texture2D texture = Resources.Load<Texture2D>(Path.Combine(mainPath, VectorToFileName(Vector3.zero)));
+            config.textureWidth = texture.width;
+            config.textureHeight = texture.height;
         }
 
         public void SetTexturesAtPositions(Vector3[] requests, ref Texture2DArray textures)
