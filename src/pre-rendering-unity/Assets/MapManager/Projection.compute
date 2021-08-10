@@ -14,7 +14,7 @@ Texture2DArray<float4> InputArray;
 RWTexture2D<float4> Projected;
 Texture2D<float4> ProjectedIn;
 RWTexture2D<float4> Result;
-SamplerState sampler_linear_repeat;
+SamplerState sampler_trilinear_repeat;
 
 [numthreads(8, 8, 1)]
 void Projection(uint3 id : SV_DispatchThreadID)
@@ -26,7 +26,7 @@ void Projection(uint3 id : SV_DispatchThreadID)
     float2 TransRes = float2(TransWidth, TransHeight);
     
     float3 nrmIdx = float3(id.xy / TransRes, id.z / (float) InputDepth);
-    float3 inpIdx = float3(nrmIdx.xy * InputRes, id.z);
+    float3 inpIdx = float3(id.xy / TransRes * InputRes, id.z);
     
     float2 ll1 = id.yx / TransRes.yx;
     ll1.x *= PI;
@@ -77,11 +77,11 @@ void Projection(uint3 id : SV_DispatchThreadID)
     float2 idx = round(a * TransRes);
     float2 idxN = round(aN * TransRes);
     
-    if (all(Projected[idx] == 0) || InputArray[inpIdx].a < Projected[idx].a)
+    if (all(Projected[idx] == 0) || d < Projected[idx].a)
     {
         if (any(InputArray[inpIdx].xyz))
         {
-            Projected[idx] = float4(nrmIdx, 1);
+            Projected[idx] = float4(inpIdx, d);
         }
     }
 }
@@ -156,12 +156,13 @@ void Gnomonic(uint3 id : SV_DispatchThreadID)
     float lambda = Rotation.y + atan2(x * sinC, (p * cosPhi1 * cosC - y * sinPhi1 * sinC));
 
     float2 tc = float2(lambda / (PI * 2.0) + 0.5, phi / PI + 0.5);
-    tc = tc < 0 ? 1 - abs(tc) % 1 : tc % 1;
+    // tc = tc < 0 ? 1 - abs(tc) % 1 : tc % 1;
     
-    float3 pos = ProjectedIn.SampleLevel(sampler_linear_repeat, tc, 0).xyz;
+    float3 idx = ProjectedIn.SampleLevel(sampler_trilinear_repeat, tc, 0).xyz;
     
-    float3 idx = float3(pos.xy * InputRes, round(pos.z * InputDepth));
+    // float3 idx = float3(pos.xy * InputRes, pos.z);
     if (Debug)
-        Result[id.xy] = float4(pos, 1);
+        // Result[id.xy] = float4(pos, 1);
+        Result[id.xy] = float4(idx.xy, 0, 1);
     else Result[id.xy] = InputArray[idx];
 }

@@ -455,8 +455,8 @@ MonoBehaviour:
   shader: {fileID: 7200000, guid: ac4da70e3b7f3dc41ab2e6856fb266ed, type: 3}
   controller: {fileID: 1464708540}
   maxTextures: 4
-  geometryResolution: {x: 2048, y: 1024}
-  debug: 0
+  geometryResolution: {x: 800, y: 400}
+  debug: 1
   fill: 0
   fillOff: 0.0001
   debugOffArray: []

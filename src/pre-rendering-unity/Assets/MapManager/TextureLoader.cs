@@ -54,7 +54,7 @@ public class TextureLoader : MonoBehaviour
         shader.GetKernelThreadGroupSizes(gnomonic, out gnomonicThreadsX, out gnomonicThreadsY, out uint _);
 
         textureArray = new Texture2DArray(map.config.textureWidth, map.config.textureHeight, maxTextures, TextureFormat.RGBA64, 1, false);
-        projected = new RenderTexture(projectWidth, projectHeight, 24);
+        projected = new RenderTexture(projectWidth, projectHeight, 24, RenderTextureFormat.ARGBFloat);
         result = new RenderTexture(screenWidth, screenHeight, 24);
         projected.enableRandomWrite = true;
         result.enableRandomWrite = true;
@@ -68,7 +68,6 @@ public class TextureLoader : MonoBehaviour
         shader.SetFloat("PI", Mathf.PI);
         shader.SetFloat("PI2", Mathf.PI * 2);
         shader.SetFloat("FCLIP", map.config.fclip);
-        shader.SetFloat("FOV", (180 - Camera.main.fieldOfView) * Mathf.Deg2Rad);
         shader.SetBuffer(project, "OffsetBuffer", offBuffer);
         shader.SetBuffer(project, "DebugOffsetBuffer", debugOffBuffer);
         shader.SetTexture(project, "InputArray", textureArray);
@@ -91,6 +90,7 @@ public class TextureLoader : MonoBehaviour
 
         shader.SetVector("Position", transform.position);
         shader.SetVector("Rotation", transform.eulerAngles * Mathf.Deg2Rad);
+        shader.SetFloat("FOV", (180 - Camera.main.fieldOfView) * Mathf.Deg2Rad);
         shader.SetFloat("Off", fillOff);
         shader.SetBool("Debug", debug);
         
