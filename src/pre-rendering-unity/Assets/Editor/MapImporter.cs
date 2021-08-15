@@ -161,3 +161,67 @@ namespace MapManagement
         }
     }   
 }
+
+public class ReimportMap : EditorWindow
+{
+    int[] resolutions;
+    string[] plattforms;
+    int selectedResolution = 4096;
+    string texturePath;
+
+    [MenuItem("Assets/Maps/Reimport")]
+    static void Init()
+    {
+        GetWindow<ReimportMap>().Show();
+    }
+
+    private void OnEnable()
+    {
+        resolutions = new int[] { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384 };
+        plattforms = new string[] { BuildTarget.StandaloneWindows.ToString(), BuildTarget.Android.ToString() };
+
+        texturePath = EditorUtility.OpenFolderPanel("Texture Directory", Application.dataPath, "");
+        if (!Directory.Exists(texturePath)) Close();
+    }
+
+    void OnGUI()
+    {
+        selectedResolution = EditorGUILayout.IntPopup(selectedResolution, Array.ConvertAll(resolutions, x => x.ToString()), resolutions);
+
+        if (GUILayout.Button("Reimport"))
+        {
+            string mapName = Path.GetFileName(texturePath);
+            string targetPath = texturePath.Replace(Application.dataPath, "Assets");
+            if (!Directory.Exists(targetPath)) Close();
+
+            DateTime start = DateTime.UtcNow;
+
+            string[] imagePaths = Directory.GetFiles(texturePath, "*.png");
+            if (imagePaths.Length == 0) Close();
+
+            foreach (string imagePath in imagePaths)
+            {
+                string targetImagePath = Path.Combine(targetPath, Path.GetFileName(imagePath));
+                TextureImporter textureImporter = (TextureImporter)AssetImporter.GetAtPath(targetImagePath);
+
+                textureImporter.mipmapEnabled = false;
+                textureImporter.filterMode = FilterMode.Point;
+
+                foreach (string plattform in plattforms)
+                {
+                    TextureImporterPlatformSettings settings = textureImporter.GetPlatformTextureSettings(plattform);
+                    settings.overridden = true;
+                    settings.maxTextureSize = selectedResolution;
+                    settings.format = TextureImporterFormat.RGBA64;
+                    textureImporter.SetPlatformTextureSettings(settings);
+                }
+
+                textureImporter.SaveAndReimport();
+            }
+
+            double elapsedTime = Math.Round((DateTime.UtcNow - start).TotalMinutes, 2);
+            Debug.Log("Map creation took " + elapsedTime.ToString() + " Minutes");
+            Close();
+        }
+    }
+}

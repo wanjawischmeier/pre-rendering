@@ -1,14 +1,6 @@
 __pycache__
-bin
 obj
 ipch
-debug
-tmp
 builds
 
 .vscode
-.suo
-.user
-.ncb
-.sbr
-.meta

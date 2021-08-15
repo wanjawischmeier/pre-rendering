@@ -9,6 +9,7 @@ public class TextureLoader : MonoBehaviour
     public MovementController controller;
     [Range(1, 100)]
     public int maxTextures = 10;
+    public Vector2Int geometryResolution;
     public bool debug;
     public bool fill;
     public float fillOff;
@@ -37,8 +38,8 @@ public class TextureLoader : MonoBehaviour
 
         screenWidth = Screen.width;
         screenHeight = Screen.height;
-        projectWidth = map.config.textureWidth;
-        projectHeight = map.config.textureHeight;
+        projectWidth = geometryResolution.x;
+        projectHeight = geometryResolution.y;
 
         debugDisplay = GameObject.Find("Debug").GetComponent<FPSCounter>();
         debugDisplay.selected = selectedId;
@@ -53,27 +54,26 @@ public class TextureLoader : MonoBehaviour
         shader.GetKernelThreadGroupSizes(gnomonic, out gnomonicThreadsX, out gnomonicThreadsY, out uint _);
 
         textureArray = new Texture2DArray(map.config.textureWidth, map.config.textureHeight, maxTextures, TextureFormat.RGBA64, 1, false);
-        projected = new RenderTexture(projectWidth, projectHeight, 24);
+        projected = new RenderTexture(projectWidth, projectHeight, 24, RenderTextureFormat.ARGBFloat);
         result = new RenderTexture(screenWidth, screenHeight, 24);
         projected.enableRandomWrite = true;
         result.enableRandomWrite = true;
         projected.Create();
         result.Create();
-
         offArray = new Vector3[maxTextures];
         debugOffArray = new Vector3[maxTextures];
         offBuffer = new ComputeBuffer(maxTextures, sizeof(float) * 3);
         debugOffBuffer = new ComputeBuffer(maxTextures, sizeof(float) * 3);
-
+        
         shader.SetFloat("PI", Mathf.PI);
         shader.SetFloat("PI2", Mathf.PI * 2);
         shader.SetFloat("FCLIP", map.config.fclip);
-        shader.SetFloat("FOV", (180 - Camera.main.fieldOfView) * Mathf.Deg2Rad);
         shader.SetBuffer(project, "OffsetBuffer", offBuffer);
         shader.SetBuffer(project, "DebugOffsetBuffer", debugOffBuffer);
         shader.SetTexture(project, "InputArray", textureArray);
+        shader.SetTexture(gnomonic, "InputArray", textureArray);
         shader.SetTexture(project, "Projected", projected);
-        shader.SetTexture(gnomonic, "Projected", projected);
+        shader.SetTexture(gnomonic, "ProjectedIn", projected);
         shader.SetTexture(gnomonic, "Result", result);
     }
 
@@ -90,9 +90,9 @@ public class TextureLoader : MonoBehaviour
 
         shader.SetVector("Position", transform.position);
         shader.SetVector("Rotation", transform.eulerAngles * Mathf.Deg2Rad);
+        shader.SetFloat("FOV", (180 - Camera.main.fieldOfView) * Mathf.Deg2Rad);
         shader.SetFloat("Off", fillOff);
         shader.SetBool("Debug", debug);
-        shader.SetBool("Fill", fill);
         
         offArray = map.GetClosest(transform.position, maxTextures);
         debugOffArray[selectedId -1] = controller.secondaryPosition;
@@ -102,7 +102,7 @@ public class TextureLoader : MonoBehaviour
         map.SetTexturesAtPositions(offArray, ref textureArray);
 
         shader.Dispatch(project, projectWidth / (int)projectThreadsX, projectHeight / (int)projectThreadsY, maxTextures);
-        shader.Dispatch(gnomonic, projectWidth / (int)projectThreadsX, projectHeight / (int)projectThreadsY, 1);
+        shader.Dispatch(gnomonic, screenWidth / (int)gnomonicThreadsX, screenHeight / (int)gnomonicThreadsY, 1);
     }
 
     void OnDestroy()

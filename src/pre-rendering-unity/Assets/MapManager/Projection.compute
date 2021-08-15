@@ -2,28 +2,30 @@ float PI, PI2, FOV, FCLIP;
 float2 Rotation;
 float3 Position;
 float Off;
-bool Fill;
 bool Debug;
 
+#pragma kernel Projection;
+#pragma kernel Fill;
 #pragma kernel Gnomonic;
-#pragma kernel Projection
 
 StructuredBuffer<float3> OffsetBuffer;
 StructuredBuffer<float3> DebugOffsetBuffer;
 Texture2DArray<float4> InputArray;
 RWTexture2D<float4> Projected;
+Texture2D<float4> ProjectedIn;
 RWTexture2D<float4> Result;
+SamplerState sampler_trilinear_repeat;
 
 [numthreads(8, 8, 1)]
 void Projection(uint3 id : SV_DispatchThreadID)
 {
-    PI2 = PI * 2;
-    uint InputWidth, InputHeight, TransWidth, TransHeight, _;
-    InputArray.GetDimensions(InputWidth, InputHeight, _);
+    uint InputWidth, InputHeight, InputDepth, TransWidth, TransHeight;
+    InputArray.GetDimensions(InputWidth, InputHeight, InputDepth);
     Projected.GetDimensions(TransWidth, TransHeight);
     float2 InputRes = float2(InputWidth, InputHeight);
     float2 TransRes = float2(TransWidth, TransHeight);
     
+    float3 nrmIdx = float3(id.xy / TransRes, id.z / (float) InputDepth);
     float3 inpIdx = float3(id.xy / TransRes * InputRes, id.z);
     
     float2 ll1 = id.yx / TransRes.yx;
@@ -37,6 +39,71 @@ void Projection(uint3 id : SV_DispatchThreadID)
         CP * sin(ll1.y) * sin(ll1.x),
         CP * cos(ll1.x),
         CP * cos(ll1.y) * sin(ll1.x)
+    );
+    float3 PN = float3(
+        FCLIP * sin(ll1.y) * sin(ll1.x),
+        FCLIP * cos(ll1.x),
+        FCLIP * cos(ll1.y) * sin(ll1.x)
+    );
+    
+    P -= Position;
+    PN -= Position;
+    P += OffsetBuffer[id.z];
+    P += DebugOffsetBuffer[id.z];
+    
+    float d = sqrt(P.x * P.x + P.y * P.y + P.z * P.z);
+    float dN = sqrt(PN.x * PN.x + PN.y * PN.y + PN.z * PN.z);
+    
+    float2 ll2 = float2(
+        acos(P.y / d),
+        atan2(P.x, P.z)
+    );
+    float2 ll2N = float2(
+        acos(PN.y / dN),
+        atan2(PN.x, PN.z)
+    );
+    
+    float2 a = float2(
+        ll2.y / PI2,
+        ll2.x / PI
+    );
+    a.x += 0.5;
+    float2 aN = float2(
+        ll2N.y / PI2,
+        ll2N.x / PI
+    );
+    aN.x += 0.5;
+    
+    float2 idx = round(a * TransRes);
+    float2 idxN = round(aN * TransRes);
+    
+    if (all(Projected[idx] == 0) || d < Projected[idx].a)
+    {
+        if (any(InputArray[inpIdx].xyz))
+        {
+            Projected[idx] = float4(inpIdx, d);
+        }
+    }
+}
+
+[numthreads(8, 8, 1)]
+void Fill(uint3 id : SV_DispatchThreadID)
+{
+    uint TransWidth, TransHeight;
+    Projected.GetDimensions(TransWidth, TransHeight);
+    float2 TransRes = float2(TransWidth, TransHeight);
+    
+    float2 nrmIdx = float2(id.xy / TransRes);
+    
+    float2 ll1 = id.yx / TransRes.yx;
+    ll1.x *= PI;
+    ll1.y *= PI2;
+    ll1.y += PI;
+    
+    float3 P = float3(
+        FCLIP * sin(ll1.y) * sin(ll1.x),
+        FCLIP * cos(ll1.x),
+        FCLIP * cos(ll1.y) * sin(ll1.x)
     );
     
     P -= Position;
@@ -58,47 +125,19 @@ void Projection(uint3 id : SV_DispatchThreadID)
     
     float2 idx = round(a * TransRes);
     
-    if (all(Projected[idx] == 0) || InputArray[inpIdx].a < Projected[idx].a)
-    {
-        if (Debug)
-        {
-            Projected[idx] = float4(
-                sin(id.z),
-                cos(id.z),
-                tan(id.z),
-                1);
-        }
-        else if (any(InputArray[inpIdx].xyz))
-        {
-            if (Fill)
-            {
-                float2 idxXP = float2(idx.x + Off, idx.y);
-                float2 idxXN = float2(idx.x - Off, idx.y);
-                float2 idxYP = float2(idx.x, idx.y + Off);
-                float2 idxYN = float2(idx.x, idx.y - Off);
-        
-                if (all(Projected[idxXP] == 0))
-                    Projected[idxXP] += InputArray[inpIdx];
-                if (all(Projected[idxXN] == 0))
-                    Projected[idxXN] += InputArray[inpIdx];
-                if (all(Projected[idxYP] == 0))
-                    Projected[idxYP] += InputArray[inpIdx];
-                if (all(Projected[idxYN] == 0))
-                    Projected[idxYN] += InputArray[inpIdx];
-            }
-            else
-                Projected[idx] = InputArray[inpIdx];
-        }
-    }
-    Projected[idx] = InputArray[inpIdx];
+    // if (Projected[idx])
+
 }
 
 [numthreads(8, 8, 1)]
 void Gnomonic(uint3 id : SV_DispatchThreadID)
 {
-    uint ProjectedW, ProjectedH, ResultW, ResultH;
-    Projected.GetDimensions(ProjectedW, ProjectedH);
+    uint InputWidth, InputHeight, InputDepth, ProjectedW, ProjectedH, ResultW, ResultH;
+    InputArray.GetDimensions(InputWidth, InputHeight, InputDepth);
+    ProjectedIn.GetDimensions(ProjectedW, ProjectedH);
     Result.GetDimensions(ResultW, ResultH);
+    float2 InputRes = float2(InputWidth, InputHeight);
+    float2 ProjectedRes = float2(ProjectedW, ProjectedH);
     
     PI2 = PI * 2;
 
@@ -117,9 +156,13 @@ void Gnomonic(uint3 id : SV_DispatchThreadID)
     float lambda = Rotation.y + atan2(x * sinC, (p * cosPhi1 * cosC - y * sinPhi1 * sinC));
 
     float2 tc = float2(lambda / (PI * 2.0) + 0.5, phi / PI + 0.5);
-    tc = tc < 0 ? 1 - abs(tc) % 1 : tc % 1;
-    tc.x *= ProjectedW;
-    tc.y *= ProjectedH;
+    // tc = tc < 0 ? 1 - abs(tc) % 1 : tc % 1;
     
-    Result[id.xy] = Projected[tc];
+    float3 idx = ProjectedIn.SampleLevel(sampler_trilinear_repeat, tc, 0).xyz;
+    
+    // float3 idx = float3(pos.xy * InputRes, pos.z);
+    if (Debug)
+        // Result[id.xy] = float4(pos, 1);
+        Result[id.xy] = float4(idx.xy, 0, 1);
+    else Result[id.xy] = InputArray[idx];
 }
