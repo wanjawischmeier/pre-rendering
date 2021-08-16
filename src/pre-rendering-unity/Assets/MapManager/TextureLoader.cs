@@ -13,7 +13,7 @@ public class TextureLoader : MonoBehaviour
     public bool debug;
     public bool fill;
     public float fillOff;
-    public Vector3[] debugOffArray;
+    Vector3[] debugOffArray;
     public int selectedId = 1;
 
     FPSCounter debugDisplay;
