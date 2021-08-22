@@ -103,17 +103,13 @@ def setRenderSettings(self, path: str, resolution: tuple, frame_end: int) -> Non
     out_node.label = 'Output'
     out_node.base_path = join(path, 'color')
 
+    format = out_node.format
+    format.color_mode = 'RGB'
+    format.color_depth = '16'
 
     out_node.file_slots.remove(out_node.inputs[0])
-
     out_node.file_slots.new('Color')
     out_node.file_slots.new('Map')
-
-    for file_slot in out_node.file_slots:
-        file_slot.use_node_format = False
-        format = file_slot.format
-        format.color_mode = 'RGB'
-        format.color_depth = '16'
 
     links = tree.links
     links.new(render_node.outputs['Image'], out_node.inputs['Color'])
