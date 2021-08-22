@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.3731193, g: 0.38073996, b: 0.35872698, a: 1}
+  m_IndirectSpecularColor: {r: 0.37311918, g: 0.3807398, b: 0.35872716, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -432,15 +432,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 1464708536}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5753aa02d5ea328459a65c7d46c95667, type: 3}
+  m_Script: {fileID: 11500000, guid: 03bb147d5477ad94eb109ec9e547e160, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   mapBundle: Maps/cubes_single_frame
-  shader: {fileID: 7200000, guid: ac4da70e3b7f3dc41ab2e6856fb266ed, type: 3}
+  shader: {fileID: 7200000, guid: 83ccade484494bc44a42d8da069d928b, type: 3}
   controller: {fileID: 1464708541}
   maxTextures: 1
   geometryResolution: {x: 1000, y: 1000}
-  debug: 0
+  debug: 1
   fill: 0
   fillOff: 0
   selectedId: 1
@@ -453,7 +453,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 1464708536}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 030d7c4709653094f92d809ec937295e, type: 3}
+  m_Script: {fileID: 11500000, guid: 1294e014c405bac4a86ffd9f1f87b9f2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   speed: 7

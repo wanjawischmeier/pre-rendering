@@ -118,7 +118,7 @@ void Gnomonic(uint3 id : SV_DispatchThreadID)
     if (ProjectedIn[pIdx].a == 0)
     {
         // n = N + 1
-        int n = 5;
+        int n = 50;
         
         // Based on https://stackoverflow.com/a/398302/13215204
         
@@ -131,10 +131,11 @@ void Gnomonic(uint3 id : SV_DispatchThreadID)
         {
             float2 nIdx = pIdx + float2(x, y);
             
-            if ((-hW < x <= hW) && (-hW < y <= hW) && (ProjectedIn[nIdx].a == 0))
+            tc = nIdx / ProjectedRes;
+            if ((-hW < x <= hW) && (-hW < y <= hW))
             {
-                tc = nIdx / ProjectedRes;
-                break;
+                // (ProjectedIn[nIdx].a != 0)
+                // break;
             }
             if (x == y || (x < 0 && x == -y) || (x > 0 && x == 1 - y)) dx, dy = -dy, dx;
             x, y = x + dx, y + dy;
@@ -145,8 +146,8 @@ void Gnomonic(uint3 id : SV_DispatchThreadID)
     float3 idx = ProjectedIn.SampleLevel(sampler_trilinear_repeat, tc, 0).xyz;
     
     if (Debug)
-        // Result[id.xy] = float4(idx.xy / ResultRes, 0, 1);
-        // Result[id.xy] = ProjectedIn[tc * ProjectedRes];
-        Result[id.xy] = ProjectedIn[pIdx].a == 0 ? float4(1, 0, 0, 1) : float4(0, 1, 0, 1);
+        Result[id.xy] = float4(idx.xy / ResultRes, 0, 1);
+        // Result[id.xy] = (ProjectedIn[tc * ProjectedRes].xy / ProjectedRes).xyxy;
+        // Result[id.xy] = ProjectedIn[pIdx].a == 0 ? float4(1, 0, 0, 1) : float4(0, 1, 0, 1);
     else Result[id.xy] = InputArray[idx];
 }
