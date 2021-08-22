@@ -84,14 +84,40 @@ Object.setUpForRendering = setUpForRendering
 
 def setRenderSettings(self, path: str, resolution: tuple, frame_end: int) -> None:
     self.render.engine = 'CYCLES'
-    self.render.filepath = path + '\\frame'
-    self.render.image_settings.file_format = 'PNG'
-    self.render.image_settings.color_depth = 16
     self.render.fps = 30
     self.render.resolution_x = resolution
     self.render.resolution_y = resolution / 2
     self.frame_start = 0
     self.frame_end = frame_end
+
+    self.use_nodes = True
+    tree = self.node_tree
+
+    for node in tree.nodes:
+        tree.nodes.remove(node)
+
+    render_node = tree.nodes.new(type='CompositorNodeRLayers')
+
+    out_node = tree.nodes.new(type='CompositorNodeOutputFile')
+    out_node.location = 500, 0
+    out_node.label = 'Output'
+    out_node.base_path = join(path, 'color')
+
+
+    out_node.file_slots.remove(out_node.inputs[0])
+
+    out_node.file_slots.new('Color')
+    out_node.file_slots.new('Map')
+
+    for file_slot in out_node.file_slots:
+        file_slot.use_node_format = False
+        format = file_slot.format
+        format.color_mode = 'RGB'
+        format.color_depth = '16'
+
+    links = tree.links
+    links.new(render_node.outputs['Image'], out_node.inputs['Color'])
+    links.new(render_node.outputs['Depth'], out_node.inputs['Map'])
 Scene.setRenderSettings = setRenderSettings
 
 def createConfigFile(path: str, resolution: int, fclip: float, mx_width: float, offsets: ndarray):
@@ -117,10 +143,10 @@ qualitys = [
 ]
 
 resolutions = {
-    "low":      1024,
-    "medium":   2048,
-    "high":     4096,
-    "ultra":    8192
+    "low":      1080,
+    "medium":   2160,
+    "high":     4320,
+    "ultra":    8640
 }
 
 # ________________________________________________________ #
@@ -149,7 +175,6 @@ class TOPBAR_OT_prerender_create_domain(Operator):
         domain = context.object
         domain.name = 'PreRendering Domain'
         domain.display_type = 'WIRE'
-        domain.hide_render = True
 
         return {'FINISHED'}
 

@@ -2,7 +2,7 @@ using UnityEngine;
 using MapManagement;
 using System;
 
-public class TextureLoader : MonoBehaviour
+public class MapLoader : MonoBehaviour
 {
     public string mapBundle;
     public ComputeShader shader;
