@@ -1,6 +1,5 @@
 __pycache__
 obj
-ipch
-builds
 
-.vscode
+builds
+renders
