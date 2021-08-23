@@ -6,6 +6,6 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/SphereIntersection/InverseIntersection.unity
+    path: Assets/Map/Demo.unity
     guid: d471fc6d90dc92c408ed0f0702abf7c8
   m_configObjects: {}
