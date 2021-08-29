@@ -1,1 +1,2 @@
-Temp
+Credit:
+https://github.com/bodhid/UnityEquiCam
