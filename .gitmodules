@@ -1,0 +1,3 @@
+[submodule "src/image-processing/perceptual-reflection-removal"]
+	path = src/image-processing/perceptual-reflection-removal
+	url = https://github.com/ceciliavision/perceptual-reflection-removal
