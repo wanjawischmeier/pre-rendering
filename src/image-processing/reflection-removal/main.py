@@ -8,19 +8,23 @@ from discriminator import build_discriminator
 import scipy.stats as st
 import argparse
 
-# py -3.7 perceptual-reflection-removal\main.py --task models\prm-pre-trained --is_training 0
+# py -3.7 perceptual-reflection-removal\main.py
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--task", default="pre-trained", help="path to folder containing the model")
+parser.add_argument("--task", default="prm-pre-trained", help="path to folder containing the model")
+parser.add_argument("--img_path", default="real", help="path to input images")
+parser.add_argument("--out_path", default="results", help="path to output images")
 parser.add_argument("--data_syn_dir", default="", help="path to synthetic dataset")
 parser.add_argument("--data_real_dir", default="", help="path to real dataset")
 parser.add_argument("--save_model_freq", default=1, type=int, help="frequency to save model")
 parser.add_argument("--is_hyper", default=1, type=int, help="use hypercolumn or not")
-parser.add_argument("--is_training", default=1, help="training or testing")
+parser.add_argument("--is_training", default=0, help="training or testing")
 parser.add_argument("--continue_training", action="store_true", help="search for checkpoint in the subfolder specified by `task` argument")
 ARGS = parser.parse_args()
 
-task=ARGS.task
+task=f"models/{ARGS.task}"
+img_path = f"./renders/prm-images/{ARGS.img_path}"
+out_path = f"./renders/prm-images/{ARGS.out_path}"
 is_training=ARGS.is_training==1
 continue_training=ARGS.continue_training
 hyper=ARGS.is_hyper==1
@@ -419,8 +423,7 @@ else:
 
     # Please replace with your own test image path
     # test_path = ["./test_images/CEILNet/"]
-    test_path = ["./perceptual-reflection-removal/test_images/real/"]
-    subtask="CEILNet" # if you want to save different testset separately
+    test_path = [img_path]
     val_names=prepare_data_test(test_path)
 
     for val_path in val_names:
@@ -434,9 +437,8 @@ else:
         print("Test time %.3f for image %s"%(time.time()-st, val_path))
         output_image_t=np.minimum(np.maximum(output_image_t,0.0),1.0)*255.0
         output_image_r=np.minimum(np.maximum(output_image_r,0.0),1.0)*255.0
-        if not os.path.isdir("./test_results/%s/%s"%(subtask,testind)):
-            os.makedirs("./test_results/%s/%s"%(subtask,testind))
-        cv2.imwrite("./test_results/%s/%s/input.png"%(subtask,testind),img)
-        cv2.imwrite("./test_results/%s/%s/t_output.png"%(subtask,testind),np.uint8(output_image_t[0,:,:,0:3])) # output transmission layer
-        cv2.imwrite("./test_results/%s/%s/r_output.png"%(subtask,testind),np.uint8(output_image_r[0,:,:,0:3])) # output reflection layer
-
+        if not os.path.isdir("%s/%s"%(out_path, testind)):
+            os.makedirs("%s/%s"%(out_path, testind))
+        cv2.imwrite("%s/%s/input.png"%(out_path, testind),img)
+        cv2.imwrite("%s/%s/t_output.png"%(out_path, testind),np.uint8(output_image_t[0,:,:,0:3])) # output transmission layer
+        cv2.imwrite("%s/%s/r_output.png"%(out_path, testind),np.uint8(output_image_r[0,:,:,0:3])) # output reflection layer
