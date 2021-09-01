@@ -46,7 +46,7 @@ Shader "PreRendering/PostProcessing"
                 float phi = asin(cosC * sinPhi1 + y * sinC * cosPhi1 / p);
                 float lambda = lambda0 + atan2(x * sinC, (p * cosPhi1 * cosC - y * sinPhi1 * sinC));
 
-                return float2(lambda / (PI * 2.0) + 0.5, (phi / PI) + 0.5);
+                return float2(lambda / PI2 + 0.5, (phi / PI) + 0.5);
             }
 
             v2f vert (appdata v)

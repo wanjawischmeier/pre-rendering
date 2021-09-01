@@ -8,7 +8,7 @@ from discriminator import build_discriminator
 import scipy.stats as st
 import argparse
 
-# py -3.7 perceptual-reflection-removal\main.py
+# py -3.7 src\image-processing\reflection-removal\main.py --img_path=cars --out_path=car_results
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--task", default="prm-pre-trained", help="path to folder containing the model")
@@ -440,5 +440,5 @@ else:
         if not os.path.isdir("%s/%s"%(out_path, testind)):
             os.makedirs("%s/%s"%(out_path, testind))
         cv2.imwrite("%s/%s/input.png"%(out_path, testind),img)
-        cv2.imwrite("%s/%s/t_output.png"%(out_path, testind),np.uint8(output_image_t[0,:,:,0:3])) # output transmission layer
+        cv2.imwrite("%s/%s/t_output.png"%(out_path, testind),np.uint8(output_image_t[0,:,:,0:3])) # output transmission layerst
         cv2.imwrite("%s/%s/r_output.png"%(out_path, testind),np.uint8(output_image_r[0,:,:,0:3])) # output reflection layer
