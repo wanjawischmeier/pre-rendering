@@ -39,30 +39,32 @@ Shader "Hidden/GetNormal"
             }
 
             sampler2D _MainTex;
-            float depthSamples[9];
-            float3 off = float3(-1, 0, 1);
+            float2 Resolution;
+            float2 size = { 2.0,0.0 };
+            float3 off = { -1.0,0.0,1.0 };
+
+            float3 filterNormal(sampler2D tex, float2 uv, float2 res)
+            {
+                float2 texelSize = 1.0 / res;
+
+                float4 h;
+                h[0] = tex2D(tex, uv + texelSize * float2(0, -1)).a;
+                h[1] = tex2D(tex, uv + texelSize * float2(-1, 0)).a;
+                h[2] = tex2D(tex, uv + texelSize * float2(1, 0)).a;
+                h[3] = tex2D(tex, uv + texelSize * float2(0, 1)).a;
+
+                float3 n;
+                n.z = h[0] - h[3];
+                n.x = h[1] - h[2];
+                n.y = 0;
+
+                return normalize(n);
+            }
 
             fixed4 frag(v2f i) : SV_Target
             {
-                depthSamples[0] = tex2D(_MainTex, i.uv + float2(-normalOff, -normalOff)).a;
-                depthSamples[1] = tex2D(_MainTex, i.uv + float2(0,          -normalOff)).a;
-                depthSamples[2] = tex2D(_MainTex, i.uv + float2(normalOff,  -normalOff)).a;
-                depthSamples[3] = tex2D(_MainTex, i.uv + float2(-normalOff, 0)).a;
-                depthSamples[5] = tex2D(_MainTex, i.uv + float2(normalOff,  0)).a;
-                depthSamples[6] = tex2D(_MainTex, i.uv + float2(-normalOff, normalOff)).a;
-                depthSamples[7] = tex2D(_MainTex, i.uv + float2(0,          normalOff)).a;
-                depthSamples[8] = tex2D(_MainTex, i.uv + float2(normalOff,  normalOff)).a;
-
-                float2 normal = float2(
-                    (depthSamples[2] + depthSamples[0] + 2 * (depthSamples[5] - depthSamples[3]) + depthSamples[8] - depthSamples[6]),
-                    (depthSamples[6] + depthSamples[0] + 2 * (depthSamples[7] - depthSamples[1]) + depthSamples[8] - depthSamples[2])
-                );
-                // normal = normalize(normal);
-                // normal = normal * 0.5 + 0.5;
-                
-                fixed4 col = fixed4(normal, 0, 1);
-
-                return col;
+                float3 normal = filterNormal(_MainTex, i.uv, Resolution);
+                return fixed4(normal, 1.0);
             }
             ENDCG
         }

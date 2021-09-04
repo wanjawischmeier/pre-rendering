@@ -1,17 +1,19 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class GetNormal : MonoBehaviour
 {
     public Shader shader;
     public Texture input;
-    public RenderTexture output;
+    Material mat;
 
     void Start()
     {
-        output = new RenderTexture(input.width, input.height, 0);
+        mat = new Material(shader);
+        mat.SetVector("Resolution", new Vector2(input.width, input.height));
+    }
 
-        Graphics.Blit(input, output, new Material(shader));
+    void OnRenderImage(RenderTexture source, RenderTexture destination)
+    {
+        Graphics.Blit(input, destination, mat);
     }
 }

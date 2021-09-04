@@ -314,4 +314,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   shader: {fileID: 4800000, guid: 6ddefd07db5337c48897787a2981d217, type: 3}
   input: {fileID: 2800000, guid: a8418ababef7ce740be9a05aac70b585, type: 3}
-  output: {fileID: 0}
+  P: 0
+  S: 2
+  A: 1
