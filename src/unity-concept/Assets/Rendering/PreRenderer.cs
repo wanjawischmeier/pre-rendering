@@ -5,11 +5,14 @@ public class PreRenderer : MonoBehaviour
 {
 	public Shader cubeToEqui;
 	public Shader shading;
+	public Shader getD;
 	Material cubeToEquiMat;
 	Material shadingMat;
+	Material getDMat;
 	public Size RenderResolution = Size.Default;
 	public RenderTexture cubemap;
 	public RenderTexture panorama;
+	public RenderTexture depth;
 	private Camera cam;
 	public GameObject child;
 
@@ -25,6 +28,7 @@ public class PreRenderer : MonoBehaviour
 	{
 		cubeToEquiMat = new Material(cubeToEqui);
 		shadingMat = new Material(shading);
+		getDMat = new Material(getD);
 
 		child = new GameObject();
 		child.hideFlags = HideFlags.HideInHierarchy;
@@ -33,14 +37,16 @@ public class PreRenderer : MonoBehaviour
 		child.transform.localEulerAngles = Vector3.zero;
 		child.SetActive(false);
 
-		cubemap = new RenderTexture((int)RenderResolution, (int)RenderResolution, 0, RenderTextureFormat.ARGB32);
+		cubemap = new RenderTexture((int)RenderResolution, (int)RenderResolution, 24, RenderTextureFormat.ARGB32);
 		panorama = new RenderTexture((int)RenderResolution, (int)RenderResolution, 0, RenderTextureFormat.ARGB32);
+		depth = new RenderTexture((int)RenderResolution, (int)RenderResolution, 24, RenderTextureFormat.ARGB32);
 		cubemap.dimension = UnityEngine.Rendering.TextureDimension.Cube;
 		panorama.wrapMode = TextureWrapMode.Repeat;
-
+		
 		cam = child.AddComponent<Camera>();
 		cam.CopyFrom(GetComponent<Camera>());
 		cam.targetTexture = cubemap;
+		cam.depthTextureMode = DepthTextureMode.Depth;
 	}
 
 	void OnDisable()
@@ -58,6 +64,7 @@ public class PreRenderer : MonoBehaviour
 		shadingMat.SetFloat("FOV", cam.fieldOfView * Mathf.Deg2Rad);
 		shadingMat.SetVector("Rotation", transform.eulerAngles * Mathf.Deg2Rad);
 
+		Graphics.Blit(src, depth, getDMat);
 		Graphics.Blit(cubemap, panorama, cubeToEquiMat);
 		Graphics.Blit(panorama, des, shadingMat);
 	}
