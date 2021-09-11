@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.44657874, g: 0.49641258, b: 0.5748172, a: 1}
+  m_IndirectSpecularColor: {r: 0.44657826, g: 0.49641263, b: 0.57481676, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -390,7 +390,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cubeToEqui: {fileID: 4800000, guid: d57bbf908930b024aaadc9c931da62bf, type: 3}
   shading: {fileID: 4800000, guid: 73c549cc703570c48a640a58a94eb33b, type: 3}
+  getD: {fileID: 4800000, guid: 3a0aa385432e7f245a0b0fe60f035eb1, type: 3}
   RenderResolution: 1024
   cubemap: {fileID: 0}
   panorama: {fileID: 0}
+  depth: {fileID: 8400000, guid: c4349e9fdc1f9fd489c9423ea075dedf, type: 2}
   child: {fileID: 0}
