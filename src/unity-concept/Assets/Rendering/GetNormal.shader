@@ -40,18 +40,16 @@ Shader "Hidden/GetNormal"
 
             sampler2D _MainTex;
             float2 Resolution;
-            float2 size = { 2.0,0.0 };
-            float3 off = { -1.0,0.0,1.0 };
 
-            float3 filterNormal(sampler2D tex, float2 uv, float2 res)
+            float3 filterNormal(sampler2D tex, float2 uv, float2 res, float size = 2)
             {
                 float2 texelSize = 1.0 / res;
 
                 float4 h;
-                h[0] = tex2D(tex, uv + texelSize * float2(0, -1)).a;
-                h[1] = tex2D(tex, uv + texelSize * float2(-1, 0)).a;
-                h[2] = tex2D(tex, uv + texelSize * float2(1, 0)).a;
-                h[3] = tex2D(tex, uv + texelSize * float2(0, 1)).a;
+                h[0] = tex2D(tex, uv + texelSize * float2(0, size)).a;
+                h[1] = tex2D(tex, uv + texelSize * float2(size, 0)).a;
+                h[2] = tex2D(tex, uv + texelSize * float2(-size, 0)).a;
+                h[3] = tex2D(tex, uv + texelSize * float2(0, -size)).a;
 
                 float3 n;
                 n.z = h[0] - h[3];
