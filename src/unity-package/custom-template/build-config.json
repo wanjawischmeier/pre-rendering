@@ -1,0 +1,15 @@
+{
+    "name": "Default Name",
+    "description": "Default Description",
+    "version": "0.1.0",
+    "unity": "2020.1"
+}
+{
+    "name": "com.unity.template.default.name",
+    "displayName": "Default Name",
+    "version": "0.1.0",
+    "type": "template",
+    "host": "hub",
+    "unity": "2020.1",
+    "description": "Default Description"
+  }
