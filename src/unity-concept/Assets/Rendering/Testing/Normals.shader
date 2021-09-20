@@ -1,4 +1,4 @@
-Shader "Hidden/GetNormal"
+Shader "Hidden/Normals"
 {
     Properties
     {
