@@ -233,7 +233,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   resolution: {x: 800, y: 400}
-  channels: 3
+  channels: 4
   texture: {fileID: 0}
 --- !u!1 &2077223039
 GameObject:
