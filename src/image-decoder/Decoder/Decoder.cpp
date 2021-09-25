@@ -1,7 +1,6 @@
 #include "pch.h"
 #include <combaseapi.h>
 #include "decoder.h"
-#include <opencv2/opencv.hpp>
 
 using namespace std;
 using namespace cv;

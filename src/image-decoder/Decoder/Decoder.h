@@ -4,6 +4,5 @@
 
 #include <iostream>
 #include <opencv2\opencv.hpp>
-using namespace std;
 
 extern "C" DECODER unsigned char* GetUnsignedBytes(char* image, int* bytes_count, bool* debug);
