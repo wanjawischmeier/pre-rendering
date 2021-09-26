@@ -435,12 +435,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 03bb147d5477ad94eb109ec9e547e160, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mapBundle: Maps/cubes_single_frame
-  shader: {fileID: 7200000, guid: 83ccade484494bc44a42d8da069d928b, type: 3}
+  renderPath: C:\Users\wanja\Documents\dev\pre-rendering\master\renders
+  mapPath: cubes_single_frame
+  projectShader: {fileID: 7200000, guid: 83ccade484494bc44a42d8da069d928b, type: 3}
+  postProcessing: {fileID: 4800000, guid: 73c549cc703570c48a640a58a94eb33b, type: 3}
   controller: {fileID: 1464708541}
   maxTextures: 1
-  geometryResolution: {x: 1000, y: 1000}
-  debug: 1
+  geometryResolution: {x: 100, y: 100}
+  debug: 0
   fill: 0
   fillOff: 0
   selectedId: 1
