@@ -6,7 +6,7 @@ public class DecoderTest : MonoBehaviour
 {
     void Start()
     {
-        Debug.Log(Application.dataPath);
+
     }
 
     void Update()

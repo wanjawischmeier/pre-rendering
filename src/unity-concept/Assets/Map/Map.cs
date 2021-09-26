@@ -13,7 +13,7 @@ namespace MapManagement
         public float[] offsets;
     }
 
-    [System.Serializable]
+    [Serializable]
     public struct StandaloneMapConfig
     {
         public int fclip;
@@ -32,9 +32,14 @@ namespace MapManagement
         {
             mainPath = path;
 
-            TextAsset rawConfig = Resources.LoadAll<TextAsset>(path)[0];
-            config = JsonUtility.FromJson<StandaloneMapConfig>(rawConfig.text);
-            Texture2D texture = Resources.Load<Texture2D>(Path.Combine(mainPath, VectorToFileName(Vector3.zero)));
+            // string rawConfig = Resources.LoadAll<TextAsset>(mainPath)[0].text;
+            string rawConfig = File.ReadAllText(Path.Combine(mainPath, ".mapconfig"));
+            config = JsonUtility.FromJson<StandaloneMapConfig>(rawConfig);
+
+            string sampleTexturePath = VectorToFileName(mainPath, Vector3.zero);
+            // Texture2D texture = Resources.Load<Texture2D>(sampleTexturePath);
+            Texture2D texture = LoadTexture(sampleTexturePath);
+
             config.textureWidth = texture.width;
             config.textureHeight = texture.height;
         }
@@ -43,8 +48,9 @@ namespace MapManagement
         {
             for (int i = 0; i < requests.Length; i++)
             {
-                string texturePath = Path.Combine(mainPath, VectorToFileName(requests[i]));
-                Texture2D texture = Resources.Load<Texture2D>(texturePath);
+                string texturePath = VectorToFileName(mainPath, requests[i]);
+                // Texture2D texture = Resources.Load<Texture2D>(texturePath);
+                Texture2D texture = LoadTexture(texturePath);
                 if (texture != null) Graphics.CopyTexture(texture, 0, textures, i);
             }
         }
@@ -57,10 +63,18 @@ namespace MapManagement
                 .ToArray();
         }
 
-        string VectorToFileName(Vector3 vector)
+        string VectorToFileName(string path, Vector3 vector)
         {
             int index = Array.IndexOf(config.vectorOffsets, vector);
-            return index.ToString().PadLeft(4, '0');
+            return Path.Combine(mainPath, index.ToString().PadLeft(4, '0') + ".png");
+        }
+
+        Texture2D LoadTexture(string path)
+        {
+            byte[] rawTexture = File.ReadAllBytes(path);
+            Texture2D texture = new Texture2D(0, 0, TextureFormat.RGBA32, false);
+            texture.LoadImage(rawTexture);
+            return texture;
         }
     }
 }

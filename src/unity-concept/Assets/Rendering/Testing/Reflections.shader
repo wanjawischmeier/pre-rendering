@@ -52,7 +52,7 @@ Shader "Hidden/Reflections"
                 float2 latlon = i.uv.yx * rad;
                 float2 inputAngle = latlon + rad / 2.0;
                 float3 normal = tex2D(_NormalTex, i.uv).rgb;
-                normalAngle = float3
+                // normalAngle = float3
 
                 return fixed4(inputAngle, 0, 1);
                 // return fixed4(i.uv.xx, 0, 1);
