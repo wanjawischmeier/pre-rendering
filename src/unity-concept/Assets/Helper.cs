@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace Helper
@@ -7,7 +5,7 @@ namespace Helper
     public static class TextureHelper
     {
         // Credit: https://github.com/ababilinski/unity-gpu-texture-resize/
-        public static void CopyToArray(this Texture2D texture, Texture2DArray array, int index)
+        public static void CopyToArray(this Texture texture, Texture2DArray array, int index)
         {
             RenderTexture rt = RenderTexture.GetTemporary(array.width, array.height);
             RenderTexture.active = rt;

@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.37311918, g: 0.3807398, b: 0.35872716, a: 1}
+  m_IndirectSpecularColor: {r: 0.3731193, g: 0.38073996, b: 0.35872698, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -435,17 +435,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 03bb147d5477ad94eb109ec9e547e160, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  renderPath: C:\Users\wanja\Documents\dev\pre-rendering\master\renders
-  mapPath: cubes_single_frame
+  renderPath: S:\users\wanja\Dokumente\pre-rendering\master\renders
+  mapPath: cubes_single_frame_low
   projectShader: {fileID: 7200000, guid: 83ccade484494bc44a42d8da069d928b, type: 3}
-  postProcessing: {fileID: 4800000, guid: 73c549cc703570c48a640a58a94eb33b, type: 3}
   controller: {fileID: 1464708541}
   maxTextures: 1
-  geometryResolution: {x: 100, y: 100}
+  geometryResolution: {x: 1080, y: 512}
   debug: 0
   fill: 0
   fillOff: 0
   selectedId: 1
+  projected: {fileID: 0}
+  result: {fileID: 0}
 --- !u!114 &1464708541
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -113,6 +113,7 @@ void Gnomonic(uint3 id : SV_DispatchThreadID)
     float lambda = Rotation.y + atan2(x * sinC, (p * cosPhi1 * cosC - y * sinPhi1 * sinC));
 
     float2 tc = float2(lambda / (PI * 2.0) + 0.5, phi / PI + 0.5);
+    /*
     float2 pIdx = tc * ProjectedRes;
     
     if (ProjectedIn[pIdx].a == 0)
@@ -142,7 +143,7 @@ void Gnomonic(uint3 id : SV_DispatchThreadID)
         }
 
     }
-    
+    */
     float3 idx = ProjectedIn.SampleLevel(sampler_trilinear_repeat, tc, 0).xyz;
     
     if (Debug)

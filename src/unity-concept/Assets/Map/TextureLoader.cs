@@ -8,7 +8,7 @@ public class TextureLoader : MonoBehaviour
     public string renderPath;
     public string mapPath;
     public ComputeShader projectShader;
-    public Shader postProcessing;
+    // public Shader postProcessing;
     public MovementController controller;
     [Range(1, 100)]
     public int maxTextures = 10;
@@ -22,7 +22,7 @@ public class TextureLoader : MonoBehaviour
     FPSCounter debugDisplay;
     Map map;
 
-    Material postProcessingMat;
+    // Material postProcessingMat;
     Texture2DArray textureArray;
     Vector3[] offArray;
     ComputeBuffer debugOffBuffer;
@@ -30,9 +30,9 @@ public class TextureLoader : MonoBehaviour
     public RenderTexture projected;
     public RenderTexture result;
 
-    int project; // , gnomonic;
+    int project, gnomonic;
     uint projectThreadsX, projectThreadsY;
-    // uint gnomonicThreadsX, gnomonicThreadsY;
+    uint gnomonicThreadsX, gnomonicThreadsY;
     int screenWidth, screenHeight;
     int projectWidth, projectHeight;
 
@@ -48,11 +48,11 @@ public class TextureLoader : MonoBehaviour
 
         AddDebugger("Debug");
 
+        // postProcessingMat = new Material(postProcessing);
         project = projectShader.FindKernel("Projection");
-        postProcessingMat = new Material(postProcessing);
-        // gnomonic = projectShader.FindKernel("Gnomonic");
+        gnomonic = projectShader.FindKernel("Gnomonic");
         projectShader.GetKernelThreadGroupSizes(project, out projectThreadsX, out projectThreadsY, out uint _);
-        // projectShader.GetKernelThreadGroupSizes(gnomonic, out gnomonicThreadsX, out gnomonicThreadsY, out uint _);
+        projectShader.GetKernelThreadGroupSizes(gnomonic, out gnomonicThreadsX, out gnomonicThreadsY, out uint _);
 
         SetUpTextures();
         SetComputeShaderConstants();
@@ -71,7 +71,7 @@ public class TextureLoader : MonoBehaviour
         map.SetTexturesAtPositions(offArray, ref textureArray);
         
         projectShader.Dispatch(project, projectWidth / (int)projectThreadsX, projectHeight / (int)projectThreadsY, maxTextures);
-        // projectShader.Dispatch(gnomonic, screenWidth / (int)gnomonicThreadsX, screenHeight / (int)gnomonicThreadsY, 1);
+        projectShader.Dispatch(gnomonic, screenWidth / (int)gnomonicThreadsX, screenHeight / (int)gnomonicThreadsY, 1);
     }
 
     void OnDestroy()
@@ -84,12 +84,13 @@ public class TextureLoader : MonoBehaviour
 
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
-        Graphics.Blit(result, destination, postProcessingMat);
-        /*
+        // Graphics.Blit(result, destination, postProcessingMat);
+        Graphics.Blit(result, destination);
+        
         RenderTexture rt = RenderTexture.active;
         RenderTexture.active = projected;
         GL.Clear(false, true, Color.clear);
-        RenderTexture.active = rt;*/
+        RenderTexture.active = rt;
     }
 
     void AddDebugger(string name)
@@ -127,15 +128,15 @@ public class TextureLoader : MonoBehaviour
         projectShader.SetTexture(project, "InputArray", textureArray);
         projectShader.SetTexture(project, "Projected", projected);
 
-        postProcessingMat.SetFloat("PI", Mathf.PI);
-        postProcessingMat.SetFloat("PI2", Mathf.PI * 2);
-        postProcessingMat.SetFloat("FCLIP", map.config.fclip);
-        // projectShader.SetTexture(gnomonic, "InputArray", textureArray);
-        postProcessingMat.SetTexture("InputArray", textureArray);
-        // projectShader.SetTexture(gnomonic, "ProjectedIn", projected);
-        postProcessingMat.SetTexture("ProjectedIn", projected);
-        // projectShader.SetTexture(gnomonic, "Result", result);
-        postProcessingMat.SetTexture("Result", result);
+        // postProcessingMat.SetFloat("PI", Mathf.PI);
+        // postProcessingMat.SetFloat("PI2", Mathf.PI * 2);
+        // postProcessingMat.SetFloat("FCLIP", map.config.fclip);
+        // postProcessingMat.SetTexture("InputArray", textureArray);
+        // postProcessingMat.SetTexture("ProjectedIn", projected);
+        // postProcessingMat.SetTexture("Result", result);
+        projectShader.SetTexture(gnomonic, "InputArray", textureArray);
+        projectShader.SetTexture(gnomonic, "ProjectedIn", projected);
+        projectShader.SetTexture(gnomonic, "Result", result);
     }
 
     void SetComputeShaderValues()
