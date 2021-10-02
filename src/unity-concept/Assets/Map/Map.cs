@@ -32,12 +32,10 @@ namespace MapManagement
         {
             mainPath = path;
 
-            // string rawConfig = Resources.LoadAll<TextAsset>(mainPath)[0].text;
             string rawConfig = File.ReadAllText(Path.Combine(mainPath, ".mapconfig"));
             config = JsonUtility.FromJson<StandaloneMapConfig>(rawConfig);
 
             string sampleTexturePath = VectorToFileName(mainPath, Vector3.zero);
-            // Texture2D texture = Resources.Load<Texture2D>(sampleTexturePath);
             Texture2D texture = LoadTexture(sampleTexturePath);
 
             config.textureWidth = texture.width;
@@ -49,7 +47,6 @@ namespace MapManagement
             for (int i = 0; i < requests.Length; i++)
             {
                 string texturePath = VectorToFileName(mainPath, requests[i]);
-                // Texture2D texture = Resources.Load<Texture2D>(texturePath);
                 Texture2D texture = LoadTexture(texturePath);
                 if (texture != null) Graphics.CopyTexture(texture, 0, textures, i);
             }

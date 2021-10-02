@@ -21,10 +21,13 @@ public class TextureLoader : MonoBehaviour
 
     Material postProcessingMat;
     Texture2DArray textureArray;
-    Vector3[] offArray;
+    public Texture2DArray projectedArray;
+
     ComputeBuffer debugOffBuffer;
     ComputeBuffer offBuffer;
-    RenderTexture projected;
+    RenderTexture scaled;
+
+    Vector3[] offArray;
 
     int project;
     uint projectThreadsX, projectThreadsY;
@@ -51,7 +54,7 @@ public class TextureLoader : MonoBehaviour
     void Update()
     {
         HandleKeyPresses();
-        SetComputeShaderValues();
+        SetShaderValues();
 
         offArray = map.GetClosest(transform.position, maxTextures);
         debugOffArray[selectedId - 1] = controller.secondaryPosition;
@@ -59,26 +62,37 @@ public class TextureLoader : MonoBehaviour
         debugOffBuffer.SetData(debugOffArray);
 
         map.SetTexturesAtPositions(offArray, ref textureArray);
-        
-        projectShader.Dispatch(project, projectWidth / (int)projectThreadsX, projectHeight / (int)projectThreadsY, maxTextures);
+
+        for (int i = 0; i < maxTextures; i++)
+        {
+            float distance = Vector3.Distance(transform.position, offArray[i]);
+            // TODO: Resolution based on distance
+
+            RenderTexture rt = RenderTexture.GetTemporary(projectWidth, projectHeight);
+            rt.enableRandomWrite = true;
+
+            projectShader.SetTexture(project, "Projected", rt);
+            projectShader.Dispatch(project, projectWidth / (int)projectThreadsX, projectHeight / (int)projectThreadsY, 1);
+
+            // Based on https://github.com/ababilinski/unity-gpu-texture-resize/
+            Graphics.Blit(rt, scaled); // Scale texture
+            Graphics.CopyTexture(scaled, 0, projectedArray, i);
+
+            RenderTexture.ReleaseTemporary(rt);
+        }
     }
 
     void OnDestroy()
     {
         if (offBuffer != null) offBuffer.Release();
         if (debugOffBuffer != null) debugOffBuffer.Release();
-        if (projected != null) projected.Release();
+        if (scaled != null) scaled.Release();
     }
 
 
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
-        Graphics.Blit(projected, destination, postProcessingMat);
-        
-        RenderTexture rt = RenderTexture.active;
-        RenderTexture.active = projected;
-        GL.Clear(false, true, Color.clear);
-        RenderTexture.active = rt;
+        Graphics.Blit(null, destination, postProcessingMat);
     }
 
     void AddDebugger(string name)
@@ -94,9 +108,11 @@ public class TextureLoader : MonoBehaviour
     void SetUpTextures()
     {
         textureArray = new Texture2DArray(map.config.textureWidth, map.config.textureHeight, maxTextures, TextureFormat.RGBA32, 1, false);
-        projected = new RenderTexture(projectWidth, projectHeight, 24, RenderTextureFormat.ARGBFloat);
-        projected.enableRandomWrite = true;
-        projected.Create();
+        // TODO: Resolution based on screen res
+        projectedArray = new Texture2DArray(map.config.textureWidth, map.config.textureHeight, maxTextures, TextureFormat.RGBA64, 1, false);
+        scaled = new RenderTexture(projectedArray.width, projectedArray.height, 24, RenderTextureFormat.ARGB64);
+        scaled.enableRandomWrite = true;
+        scaled.Create();
         offArray = new Vector3[maxTextures];
         debugOffArray = new Vector3[maxTextures];
         offBuffer = new ComputeBuffer(maxTextures, sizeof(float) * 3);
@@ -115,12 +131,11 @@ public class TextureLoader : MonoBehaviour
         projectShader.SetBuffer(project, "OffsetBuffer", offBuffer);
         projectShader.SetBuffer(project, "DebugOffsetBuffer", debugOffBuffer);
         projectShader.SetTexture(project, "InputArray", textureArray);
-        projectShader.SetTexture(project, "Projected", projected);
 
         postProcessingMat.SetTexture("InputArray", textureArray);
     }
 
-    void SetComputeShaderValues()
+    void SetShaderValues()
     {
         projectShader.SetVector("Position", transform.position);
         postProcessingMat.SetVector("Rotation", transform.eulerAngles * Mathf.Deg2Rad);

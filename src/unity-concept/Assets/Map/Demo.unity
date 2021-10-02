@@ -541,6 +541,8 @@ MonoBehaviour:
   geometryResolution: {x: 1080, y: 512}
   debug: 0
   selectedId: 1
+  projectedArray: {fileID: 0}
+  rawProjectedArray: []
 --- !u!114 &1464708541
 MonoBehaviour:
   m_ObjectHideFlags: 0

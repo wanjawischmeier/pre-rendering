@@ -6,23 +6,20 @@ StructuredBuffer<float3> OffsetBuffer;
 StructuredBuffer<float3> DebugOffsetBuffer;
 Texture2DArray<float4> InputArray;
 RWTexture2D<float4> Projected;
-Texture2D<float4> ProjectedIn;
-RWTexture2D<float4> Result;
-SamplerState sampler_trilinear_repeat;
 
 [numthreads(8, 8, 1)]
 void Projection(uint3 id : SV_DispatchThreadID)
 {
-    uint InputWidth, InputHeight, InputDepth, TransWidth, TransHeight;
+    uint InputWidth, InputHeight, InputDepth, ProjectedWidth, ProjectedHeight;
     InputArray.GetDimensions(InputWidth, InputHeight, InputDepth);
-    Projected.GetDimensions(TransWidth, TransHeight);
+    Projected.GetDimensions(ProjectedWidth, ProjectedHeight);
     float2 InputRes = float2(InputWidth, InputHeight);
-    float2 TransRes = float2(TransWidth, TransHeight);
+    float2 ProjectedRes = float2(ProjectedWidth, ProjectedHeight);
     
-    float3 nrmIdx = float3(id.xy / TransRes, id.z / (float) InputDepth);
-    float3 inpIdx = float3(id.xy / TransRes * InputRes, id.z);
+    float3 nrmIdx = float3(id.xy / ProjectedRes, id.z / (float) InputDepth);
+    float3 inpIdx = float3(id.xy / ProjectedRes * InputRes, id.z);
     
-    float2 ll1 = id.yx / TransRes.yx;
+    float2 ll1 = id.yx / ProjectedRes.yx;
     ll1.x *= PI;
     ll1.y *= PI2;
     ll1.y += PI;
@@ -68,14 +65,14 @@ void Projection(uint3 id : SV_DispatchThreadID)
     );
     aN.x += 0.5;
     
-    float2 idx = round(a * TransRes);
-    float2 idxN = round(aN * TransRes);
+    float2 idx = round(a * ProjectedRes);
+    float2 idxN = round(aN * ProjectedRes);
     
     if (all(Projected[idx] == 0) || d < Projected[idx].a)
     {
         if (any(InputArray[inpIdx].xyz))
         {
-            Projected[idx] = float4(inpIdx, d);
+            Projected[idx] = float4(id.xy / ProjectedRes, d, 1);
         }
     }
 }
