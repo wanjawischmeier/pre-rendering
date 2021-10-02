@@ -116,14 +116,6 @@ public class FPSCounter : MonoBehaviour
             "\nData Path " + dataPath +
             "\nSelected texture " + selected.ToString() + "/" + maxTextures.ToString();
 
-        //-------------- 
-
-        if (Input.GetKeyDown(KeyCode.F2)) // Hide Counter
-        {
-            counter.SetActive(!counter.activeSelf);
-            graph.SetActive(!graph.activeSelf);
-        }
-
         //--------------
     }
 
@@ -193,6 +185,20 @@ public class FPSCounter : MonoBehaviour
             imgRT.localPosition = Vector3.zero;
             img.color = graphColor;
         }
+
+        //--------------
+    }
+
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    public void Toggle()
+    {
+        //--------------
+
+        counter.SetActive(!counter.activeSelf);
+        graph.SetActive(!graph.activeSelf);
 
         //--------------
     }

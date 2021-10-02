@@ -1,12 +1,7 @@
-float PI, PI2, FOV, FCLIP;
-float2 Rotation;
+float PI, PI2, FCLIP;
 float3 Position;
-float Off;
-bool Debug;
 
 #pragma kernel Projection;
-#pragma kernel Gnomonic;
-
 StructuredBuffer<float3> OffsetBuffer;
 StructuredBuffer<float3> DebugOffsetBuffer;
 Texture2DArray<float4> InputArray;
@@ -83,72 +78,4 @@ void Projection(uint3 id : SV_DispatchThreadID)
             Projected[idx] = float4(inpIdx, d);
         }
     }
-}
-
-[numthreads(8, 8, 1)]
-void Gnomonic(uint3 id : SV_DispatchThreadID)
-{
-    uint InputWidth, InputHeight, InputDepth, ProjectedW, ProjectedH, ResultW, ResultH;
-    InputArray.GetDimensions(InputWidth, InputHeight, InputDepth);
-    ProjectedIn.GetDimensions(ProjectedW, ProjectedH);
-    Result.GetDimensions(ResultW, ResultH);
-    float2 InputRes = float2(InputWidth, InputHeight);
-    float2 ProjectedRes = float2(ProjectedW, ProjectedH);
-    float2 ResultRes = float2(ResultW, ResultH);
-    
-    PI2 = PI * 2;
-
-    float x = PI2 * (id.x / (float) ResultW - 0.5);
-    float y = PI * (id.y / (float) ResultH - 0.5);
-
-    float p = sqrt(x * x + y * y);
-    float c = atan2(p, FOV);
-
-    float sinC = sin(c);
-    float cosC = cos(c);
-    float sinPhi1 = sin(Rotation.x);
-    float cosPhi1 = cos(Rotation.x);
-
-    float phi = asin(cosC * sinPhi1 + y * sinC * cosPhi1 / p);
-    float lambda = Rotation.y + atan2(x * sinC, (p * cosPhi1 * cosC - y * sinPhi1 * sinC));
-
-    float2 tc = float2(lambda / (PI * 2.0) + 0.5, phi / PI + 0.5);
-    /*
-    float2 pIdx = tc * ProjectedRes;
-    
-    if (ProjectedIn[pIdx].a == 0)
-    {
-        // n = N + 1
-        int n = 50;
-        
-        // Based on https://stackoverflow.com/a/398302/13215204
-        
-        int x, y, dx, dy, hW;
-        x = dx = 1;
-        y = dy = 0;
-        hW = sqrt(n) / 2;
-        
-        for (int i = 0; i < n; i++)
-        {
-            float2 nIdx = pIdx + float2(x, y);
-            
-            tc = nIdx / ProjectedRes;
-            if ((-hW < x <= hW) && (-hW < y <= hW))
-            {
-                // (ProjectedIn[nIdx].a != 0)
-                // break;
-            }
-            if (x == y || (x < 0 && x == -y) || (x > 0 && x == 1 - y)) dx, dy = -dy, dx;
-            x, y = x + dx, y + dy;
-        }
-
-    }
-    */
-    float3 idx = ProjectedIn.SampleLevel(sampler_trilinear_repeat, tc, 0).xyz;
-    
-    if (Debug)
-        Result[id.xy] = float4(idx.xy / ResultRes, 0, 1);
-        // Result[id.xy] = (ProjectedIn[tc * ProjectedRes].xy / ProjectedRes).xyxy;
-        // Result[id.xy] = ProjectedIn[pIdx].a == 0 ? float4(1, 0, 0, 1) : float4(0, 1, 0, 1);
-    else Result[id.xy] = InputArray[idx];
 }

@@ -58,15 +58,23 @@ Shader "PreRendering/PostProcessing"
             }
 
             sampler2D _MainTex;
+            Texture2DArray<float4> InputArray;
             float FOV;
             float2 Rotation;
+            int Debug;
 
             fixed4 frag (v2f i) : SV_Target
             {
                 float2 tc = gnomonicProjection(i.uv, FOV, Rotation.x, Rotation.y);
+                tc = tc < 0 ? 1 - abs(tc) % 1 : tc % 1;
+
+                float3 idx = tex2D(_MainTex, tc).xyz;
+
+                fixed4 col;
+                if (Debug) col = tex2D(_MainTex, tc);
+                else col = InputArray[idx];
                 
-                fixed4 col = tex2D(_MainTex, tc);
-                return col.rrra;
+                return col;
             }
             ENDCG
         }
