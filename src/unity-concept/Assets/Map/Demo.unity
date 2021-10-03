@@ -512,8 +512,8 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1464708536}
-  m_LocalRotation: {x: -0.02953585, y: 0.908353, z: 0.0651114, w: 0.41204736}
-  m_LocalPosition: {x: -0.67305446, y: 0, z: 0.43771803}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 356332680}
@@ -537,12 +537,11 @@ MonoBehaviour:
   projectShader: {fileID: 7200000, guid: 83ccade484494bc44a42d8da069d928b, type: 3}
   postProcessing: {fileID: 4800000, guid: 73c549cc703570c48a640a58a94eb33b, type: 3}
   controller: {fileID: 1464708541}
-  maxTextures: 1
+  maxTextures: 2
   geometryResolution: {x: 1080, y: 512}
   debug: 0
   selectedId: 1
   projectedArray: {fileID: 0}
-  unscaled: {fileID: 0}
 --- !u!114 &1464708541
 MonoBehaviour:
   m_ObjectHideFlags: 0

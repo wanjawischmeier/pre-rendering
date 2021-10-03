@@ -21,16 +21,15 @@ public class TextureLoader : MonoBehaviour
 
     Material postProcessingMat;
     Texture2DArray textureArray;
-    public Texture2DArray projectedArray;
 
     ComputeBuffer debugOffBuffer;
     ComputeBuffer offBuffer;
-    RenderTexture scaled;
+    public RenderTexture scaled, combined;
 
     Vector3[] offArray;
 
-    int project;
-    uint projectThreadsX, projectThreadsY;
+    int project, combine;
+    uint projectThreadsX, projectThreadsY, combineThreadsX, combineThreadsY;
     int projectWidth, projectHeight;
 
     void Start()
@@ -45,7 +44,9 @@ public class TextureLoader : MonoBehaviour
 
         postProcessingMat = new Material(postProcessing);
         project = projectShader.FindKernel("Projection");
+        combine = projectShader.FindKernel("Combine");
         projectShader.GetKernelThreadGroupSizes(project, out projectThreadsX, out projectThreadsY, out uint _);
+        projectShader.GetKernelThreadGroupSizes(combine, out combineThreadsX, out combineThreadsY, out uint _);
 
         SetUpTextures();
         SetShaderConstants();
@@ -76,7 +77,8 @@ public class TextureLoader : MonoBehaviour
 
             // Based on https://github.com/ababilinski/unity-gpu-texture-resize/
             Graphics.Blit(rt, scaled); // Scale texture
-            Graphics.CopyTexture(scaled, 0, projectedArray, i);
+
+            projectShader.Dispatch(combine, scaled.width / (int)combineThreadsX, scaled.height / (int)combineThreadsY, 1);
 
             RenderTexture.ReleaseTemporary(rt);
         }
@@ -87,6 +89,7 @@ public class TextureLoader : MonoBehaviour
         if (offBuffer != null) offBuffer.Release();
         if (debugOffBuffer != null) debugOffBuffer.Release();
         if (scaled != null) scaled.Release();
+        if (combined != null) combined.Release();
     }
 
 
@@ -108,11 +111,15 @@ public class TextureLoader : MonoBehaviour
     void SetUpTextures()
     {
         textureArray = new Texture2DArray(map.config.textureWidth, map.config.textureHeight, maxTextures, TextureFormat.RGBA32, 1, false);
+
         Resolution res = EstimatePanoramaResolution(Screen.width, Screen.height, Camera.main.fieldOfView);
-        projectedArray = new Texture2DArray(res.width, res.height, maxTextures, TextureFormat.RGBA64, 1, false);
-        scaled = new RenderTexture(projectedArray.width, projectedArray.height, 24, RenderTextureFormat.ARGB64);
+        scaled = new RenderTexture(res.width, res.height, 24, RenderTextureFormat.ARGB64);
+        combined = new RenderTexture(res.width, res.height, 24, RenderTextureFormat.ARGB64);
         scaled.enableRandomWrite = true;
+        combined.enableRandomWrite = true;
         scaled.Create();
+        combined.Create();
+
         offArray = new Vector3[maxTextures];
         debugOffArray = new Vector3[maxTextures];
         offBuffer = new ComputeBuffer(maxTextures, sizeof(float) * 3);
@@ -132,8 +139,11 @@ public class TextureLoader : MonoBehaviour
         projectShader.SetBuffer(project, "DebugOffsetBuffer", debugOffBuffer);
         projectShader.SetTexture(project, "InputArray", textureArray);
 
+        projectShader.SetTexture(combine, "Input", scaled);
+        projectShader.SetTexture(combine, "Result", combined);
+
         postProcessingMat.SetTexture("_Input", textureArray);
-        postProcessingMat.SetTexture("_Projected", projectedArray);
+        postProcessingMat.SetTexture("_Projected", combined);
     }
 
     void SetShaderValues()

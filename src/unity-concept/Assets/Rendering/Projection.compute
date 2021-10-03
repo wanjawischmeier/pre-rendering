@@ -1,3 +1,4 @@
+int IDX;
 float PI, PI2, FCLIP;
 float3 Position;
 
@@ -16,7 +17,7 @@ void Projection(uint3 id : SV_DispatchThreadID)
     float2 InputRes = float2(InputWidth, InputHeight);
     float2 ProjectedRes = float2(ProjectedWidth, ProjectedHeight);
     
-    float3 inpIdx = float3(id.xy / ProjectedRes * InputRes, id.z);
+    float3 inpIdx = float3(id.xy / ProjectedRes * InputRes, IDX);
     
     float2 ll1 = id.yx / ProjectedRes.yx;
     ll1.x *= PI;
@@ -32,8 +33,8 @@ void Projection(uint3 id : SV_DispatchThreadID)
     );
     
     P -= Position;
-    P += OffsetBuffer[id.z];
-    P += DebugOffsetBuffer[id.z];
+    P += OffsetBuffer[IDX];
+    P += DebugOffsetBuffer[IDX];
     
     float d = sqrt(P.x * P.x + P.y * P.y + P.z * P.z);
     
@@ -50,11 +51,19 @@ void Projection(uint3 id : SV_DispatchThreadID)
     
     float2 idx = round(a * ProjectedRes);
     
-    if (all(Projected[idx] == 0) || d < Projected[idx].a)
-    {
-        if (any(InputArray[inpIdx].xyz))
-        {
-            Projected[idx] = float4(id.xy / ProjectedRes, d, 1);
-        }
-    }
+    Projected[idx] = float4(id.xy / ProjectedRes, d, 1);
+}
+
+#pragma kernel Combine
+Texture2D<float4> Input;
+RWTexture2D<float4> Result;
+
+[numthreads(8, 8, 1)]
+void Combine(uint3 id : SV_DispatchThreadID)
+{
+    uint width, height;
+    Input.GetDimensions(width, height);
+    
+    if (any(Input[id.xy]) && !any(Result[id.xy])) // TODO: Depth sorting (d < Projected[idx].a)
+        Result[id.xy] = Input[id.xy];
 }
