@@ -108,8 +108,8 @@ public class TextureLoader : MonoBehaviour
     void SetUpTextures()
     {
         textureArray = new Texture2DArray(map.config.textureWidth, map.config.textureHeight, maxTextures, TextureFormat.RGBA32, 1, false);
-        // TODO: Resolution based on screen res
-        projectedArray = new Texture2DArray(map.config.textureWidth, map.config.textureHeight, maxTextures, TextureFormat.RGBA64, 1, false);
+        Resolution res = EstimatePanoramaResolution(Screen.width, Screen.height, Camera.main.fieldOfView);
+        projectedArray = new Texture2DArray(res.width, res.height, maxTextures, TextureFormat.RGBA64, 1, false);
         scaled = new RenderTexture(projectedArray.width, projectedArray.height, 24, RenderTextureFormat.ARGB64);
         scaled.enableRandomWrite = true;
         scaled.Create();
@@ -132,7 +132,8 @@ public class TextureLoader : MonoBehaviour
         projectShader.SetBuffer(project, "DebugOffsetBuffer", debugOffBuffer);
         projectShader.SetTexture(project, "InputArray", textureArray);
 
-        postProcessingMat.SetTexture("InputArray", textureArray);
+        postProcessingMat.SetTexture("_Input", textureArray);
+        postProcessingMat.SetTexture("_Projected", projectedArray);
     }
 
     void SetShaderValues()
@@ -153,5 +154,13 @@ public class TextureLoader : MonoBehaviour
         if (selectedId > maxTextures) selectedId = 1;
         if (selectedId < 1) selectedId = maxTextures;
         debugDisplay.selected = selectedId;
+    }
+
+    public Resolution EstimatePanoramaResolution(int width, int height, float fov)
+    {
+        Resolution res = new Resolution();
+        res.width = Mathf.RoundToInt(width * (360 / fov));
+        res.height = Mathf.RoundToInt(height * (180 / fov));
+        return res;
     }
 }

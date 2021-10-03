@@ -16,7 +16,6 @@ void Projection(uint3 id : SV_DispatchThreadID)
     float2 InputRes = float2(InputWidth, InputHeight);
     float2 ProjectedRes = float2(ProjectedWidth, ProjectedHeight);
     
-    float3 nrmIdx = float3(id.xy / ProjectedRes, id.z / (float) InputDepth);
     float3 inpIdx = float3(id.xy / ProjectedRes * InputRes, id.z);
     
     float2 ll1 = id.yx / ProjectedRes.yx;
@@ -31,27 +30,16 @@ void Projection(uint3 id : SV_DispatchThreadID)
         CP * cos(ll1.x),
         CP * cos(ll1.y) * sin(ll1.x)
     );
-    float3 PN = float3(
-        FCLIP * sin(ll1.y) * sin(ll1.x),
-        FCLIP * cos(ll1.x),
-        FCLIP * cos(ll1.y) * sin(ll1.x)
-    );
     
     P -= Position;
-    PN -= Position;
     P += OffsetBuffer[id.z];
     P += DebugOffsetBuffer[id.z];
     
     float d = sqrt(P.x * P.x + P.y * P.y + P.z * P.z);
-    float dN = sqrt(PN.x * PN.x + PN.y * PN.y + PN.z * PN.z);
     
     float2 ll2 = float2(
         acos(P.y / d),
         atan2(P.x, P.z)
-    );
-    float2 ll2N = float2(
-        acos(PN.y / dN),
-        atan2(PN.x, PN.z)
     );
     
     float2 a = float2(
@@ -59,14 +47,8 @@ void Projection(uint3 id : SV_DispatchThreadID)
         ll2.x / PI
     );
     a.x += 0.5;
-    float2 aN = float2(
-        ll2N.y / PI2,
-        ll2N.x / PI
-    );
-    aN.x += 0.5;
     
     float2 idx = round(a * ProjectedRes);
-    float2 idxN = round(aN * ProjectedRes);
     
     if (all(Projected[idx] == 0) || d < Projected[idx].a)
     {
