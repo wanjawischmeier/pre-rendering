@@ -512,8 +512,8 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1464708536}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: -0.24485442, y: 0.4510585, z: 0.13019142, w: 0.8483176}
+  m_LocalPosition: {x: 0.5, y: 0, z: -1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 356332680}
@@ -539,8 +539,8 @@ MonoBehaviour:
   controller: {fileID: 1464708541}
   maxTextures: 1
   geometryResolution: {x: 1080, y: 512}
-  debug: 1
-  selectedId: 1
+  debug: 0
+  selectedId: 2
   projected: {fileID: 0}
 --- !u!114 &1464708541
 MonoBehaviour:

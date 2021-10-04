@@ -64,11 +64,10 @@ Shader "PreRendering/PostProcessing"
             fixed4 frag (v2f i) : SV_Target
             {
                 float2 tc = gnomonicProjection(i.uv, FOV, Rotation.x, Rotation.y);
-                // tc = tc < 0 ? 1 - abs(tc) % 1 : tc % 1;
-
                 float4 idx = _Projected.Sample(bilinear_repeat_sampler, tc);
 
                 if (Debug) return idx;
+                // if (idx.a != 1) idx = float4(tc, 0, 0);
                 
                 fixed4 col = UNITY_SAMPLE_TEX2DARRAY(_Input, idx.xyz);
                 

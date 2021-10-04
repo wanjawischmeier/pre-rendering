@@ -69,7 +69,11 @@ public class TextureLoader : MonoBehaviour
             float distance = Vector3.Distance(transform.position, offArray[i]);
             // TODO: Resolution based on distance
 
-            RenderTexture rt = RenderTexture.GetTemporary(projectWidth, projectHeight, 0, RenderTextureFormat.ARGB64);
+#if PROJECTION_PERCISION_LOW
+            RenderTexture rt = RenderTexture.GetTemporary(projectWidth, projectHeight, 0, RenderTextureFormat.ARGBHalf);
+#elif PROJECTION_PERCISION_HIGH
+            RenderTexture rt = RenderTexture.GetTemporary(projectWidth, projectHeight, 0, RenderTextureFormat.ARGBFloat);
+#endif
             rt.enableRandomWrite = true;
 
             projectShader.SetTexture(project, "Projected", rt);
@@ -109,7 +113,11 @@ public class TextureLoader : MonoBehaviour
         textureArray = new Texture2DArray(map.config.textureWidth, map.config.textureHeight, maxTextures, TextureFormat.RGBA32, 1, false);
 
         Resolution res = EstimatePanoramaResolution(Screen.width, Screen.height, Camera.main.fieldOfView);
-        projected = new RenderTexture(res.width, res.height, 24, RenderTextureFormat.ARGB64);
+#if PROJECTION_PERCISION_LOW
+        projected = new RenderTexture(res.width, res.height, 24, RenderTextureFormat.ARGBHalf);
+#elif PROJECTION_PERCISION_HIGH
+        projected = new RenderTexture(res.width, res.height, 24, RenderTextureFormat.ARGBFloat);
+#endif
         projected.enableRandomWrite = true;
         projected.Create();
 

@@ -52,7 +52,6 @@ void Projection(uint3 id : SV_DispatchThreadID)
     float2 idx = round(a * ProjectedRes);
     
     Projected[idx] = float4(id.xy / ProjectedRes, d, 1);
-    // Projected[id.xy] = float4(PI, PI2, FCLIP, 1);
 }
 
 #pragma kernel Combine
@@ -70,6 +69,6 @@ void Combine(uint3 id : SV_DispatchThreadID)
     half4 old = Result[id.xy];
     half4 col = Input.SampleLevel(sampler_Input, id.xy / ResultRes, 0);
     
-    if (any(col) && !any(old)) // TODO: Depth sorting (d < Projected[idx].a)
+    if (col.a != 0) // TODO: Depth sorting (d < Projected[idx].a)
         Result[id.xy] = col;
 }
