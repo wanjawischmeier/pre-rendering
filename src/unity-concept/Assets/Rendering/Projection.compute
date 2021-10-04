@@ -1,4 +1,4 @@
-int IDX;
+int IMG_IDX;
 float PI, PI2, FCLIP;
 float3 Position;
 
@@ -17,7 +17,7 @@ void Projection(uint3 id : SV_DispatchThreadID)
     float2 InputRes = float2(InputWidth, InputHeight);
     float2 ProjectedRes = float2(ProjectedWidth, ProjectedHeight);
     
-    float3 inpIdx = float3(id.xy / ProjectedRes * InputRes, IDX);
+    float3 inpIdx = float3(id.xy / ProjectedRes * InputRes, IMG_IDX);
     
     float2 ll1 = id.yx / ProjectedRes.yx;
     ll1.x *= PI;
@@ -33,8 +33,8 @@ void Projection(uint3 id : SV_DispatchThreadID)
     );
     
     P -= Position;
-    P += OffsetBuffer[IDX];
-    P += DebugOffsetBuffer[IDX];
+    P += OffsetBuffer[IMG_IDX];
+    P += DebugOffsetBuffer[IMG_IDX];
     
     float d = sqrt(P.x * P.x + P.y * P.y + P.z * P.z);
     
@@ -51,7 +51,7 @@ void Projection(uint3 id : SV_DispatchThreadID)
     
     float2 idx = round(a * ProjectedRes);
     
-    Projected[idx] = float4(id.xy / ProjectedRes, d, 1);
+    Projected[idx] = float4(id.xy / ProjectedRes, IMG_IDX, d);
 }
 
 #pragma kernel Combine
