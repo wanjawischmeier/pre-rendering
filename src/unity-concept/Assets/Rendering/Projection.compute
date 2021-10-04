@@ -52,18 +52,24 @@ void Projection(uint3 id : SV_DispatchThreadID)
     float2 idx = round(a * ProjectedRes);
     
     Projected[idx] = float4(id.xy / ProjectedRes, d, 1);
+    // Projected[id.xy] = float4(PI, PI2, FCLIP, 1);
 }
 
 #pragma kernel Combine
 Texture2D<float4> Input;
+SamplerState sampler_Input;
 RWTexture2D<float4> Result;
 
 [numthreads(8, 8, 1)]
 void Combine(uint3 id : SV_DispatchThreadID)
 {
     uint width, height;
-    Input.GetDimensions(width, height);
+    Result.GetDimensions(width, height);
+    float2 ResultRes = float2(width, height);
     
-    if (any(Input[id.xy]) && !any(Result[id.xy])) // TODO: Depth sorting (d < Projected[idx].a)
-        Result[id.xy] = Input[id.xy];
+    half4 old = Result[id.xy];
+    half4 col = Input.SampleLevel(sampler_Input, id.xy / ResultRes, 0);
+    
+    if (any(col) && !any(old)) // TODO: Depth sorting (d < Projected[idx].a)
+        Result[id.xy] = col;
 }

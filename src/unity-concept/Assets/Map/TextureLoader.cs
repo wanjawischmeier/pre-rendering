@@ -24,7 +24,7 @@ public class TextureLoader : MonoBehaviour
 
     ComputeBuffer debugOffBuffer;
     ComputeBuffer offBuffer;
-    public RenderTexture scaled, combined;
+    public RenderTexture projected;
 
     Vector3[] offArray;
 
@@ -69,33 +69,29 @@ public class TextureLoader : MonoBehaviour
             float distance = Vector3.Distance(transform.position, offArray[i]);
             // TODO: Resolution based on distance
 
-            RenderTexture rt = RenderTexture.GetTemporary(projectWidth, projectHeight);
+            RenderTexture rt = RenderTexture.GetTemporary(projectWidth, projectHeight, 0, RenderTextureFormat.ARGB64);
             rt.enableRandomWrite = true;
 
             projectShader.SetTexture(project, "Projected", rt);
             projectShader.Dispatch(project, projectWidth / (int)projectThreadsX, projectHeight / (int)projectThreadsY, 1);
-
-            // Based on https://github.com/ababilinski/unity-gpu-texture-resize/
-            Graphics.Blit(rt, scaled); // Scale texture
-
-            projectShader.Dispatch(combine, scaled.width / (int)combineThreadsX, scaled.height / (int)combineThreadsY, 1);
+            
+            projectShader.SetTexture(combine, "Input", rt);
+            projectShader.Dispatch(combine, projected.width / (int)combineThreadsX, projected.height / (int)combineThreadsY, 1);
 
             RenderTexture.ReleaseTemporary(rt);
         }
+    }
+
+    void OnRenderImage(RenderTexture source, RenderTexture destination)
+    {
+        Graphics.Blit(projected, destination, postProcessingMat);
     }
 
     void OnDestroy()
     {
         if (offBuffer != null) offBuffer.Release();
         if (debugOffBuffer != null) debugOffBuffer.Release();
-        if (scaled != null) scaled.Release();
-        if (combined != null) combined.Release();
-    }
-
-
-    void OnRenderImage(RenderTexture source, RenderTexture destination)
-    {
-        Graphics.Blit(null, destination, postProcessingMat);
+        if (projected != null) projected.Release();
     }
 
     void AddDebugger(string name)
@@ -113,12 +109,9 @@ public class TextureLoader : MonoBehaviour
         textureArray = new Texture2DArray(map.config.textureWidth, map.config.textureHeight, maxTextures, TextureFormat.RGBA32, 1, false);
 
         Resolution res = EstimatePanoramaResolution(Screen.width, Screen.height, Camera.main.fieldOfView);
-        scaled = new RenderTexture(res.width, res.height, 24, RenderTextureFormat.ARGB64);
-        combined = new RenderTexture(res.width, res.height, 24, RenderTextureFormat.ARGB64);
-        scaled.enableRandomWrite = true;
-        combined.enableRandomWrite = true;
-        scaled.Create();
-        combined.Create();
+        projected = new RenderTexture(res.width, res.height, 24, RenderTextureFormat.ARGB64);
+        projected.enableRandomWrite = true;
+        projected.Create();
 
         offArray = new Vector3[maxTextures];
         debugOffArray = new Vector3[maxTextures];
@@ -139,11 +132,10 @@ public class TextureLoader : MonoBehaviour
         projectShader.SetBuffer(project, "DebugOffsetBuffer", debugOffBuffer);
         projectShader.SetTexture(project, "InputArray", textureArray);
 
-        projectShader.SetTexture(combine, "Input", scaled);
-        projectShader.SetTexture(combine, "Result", combined);
+        projectShader.SetTexture(combine, "Result", projected);
 
         postProcessingMat.SetTexture("_Input", textureArray);
-        postProcessingMat.SetTexture("_Projected", combined);
+        postProcessingMat.SetTexture("_Projected", projected);
     }
 
     void SetShaderValues()

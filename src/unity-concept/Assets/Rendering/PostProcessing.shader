@@ -54,7 +54,8 @@ Shader "PreRendering/PostProcessing"
             }
 
             Texture2DArray<float4> _Input;
-            sampler2D _Projected;
+            Texture2D<float4> _Projected;
+            SamplerState bilinear_repeat_sampler;
             SamplerState sampler_Input;
             float FOV;
             float2 Rotation;
@@ -63,13 +64,13 @@ Shader "PreRendering/PostProcessing"
             fixed4 frag (v2f i) : SV_Target
             {
                 float2 tc = gnomonicProjection(i.uv, FOV, Rotation.x, Rotation.y);
-                tc = tc < 0 ? 1 - abs(tc) % 1 : tc % 1;
+                // tc = tc < 0 ? 1 - abs(tc) % 1 : tc % 1;
 
-                float4 idx = tex2D(_Projected, float3(tc, 0));
+                float4 idx = _Projected.Sample(bilinear_repeat_sampler, tc);
 
-                fixed4 col;
-                if (Debug) col = idx;
-                else col = UNITY_SAMPLE_TEX2DARRAY(_Input, idx.xyz);
+                if (Debug) return idx;
+                
+                fixed4 col = UNITY_SAMPLE_TEX2DARRAY(_Input, idx.xyz);
                 
                 return col;
             }

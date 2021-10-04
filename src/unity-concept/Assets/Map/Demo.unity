@@ -537,11 +537,11 @@ MonoBehaviour:
   projectShader: {fileID: 7200000, guid: 83ccade484494bc44a42d8da069d928b, type: 3}
   postProcessing: {fileID: 4800000, guid: 73c549cc703570c48a640a58a94eb33b, type: 3}
   controller: {fileID: 1464708541}
-  maxTextures: 2
+  maxTextures: 1
   geometryResolution: {x: 1080, y: 512}
-  debug: 0
+  debug: 1
   selectedId: 1
-  projectedArray: {fileID: 0}
+  projected: {fileID: 0}
 --- !u!114 &1464708541
 MonoBehaviour:
   m_ObjectHideFlags: 0
