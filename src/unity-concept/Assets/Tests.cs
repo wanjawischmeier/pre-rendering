@@ -1,3 +1,0 @@
-#if !(PROJECTION_PERCISION_LOW || PROJECTION_PERCISION_HIGH)
-#error PREPROCESSOR_DEFINE: The projection percision macro is undefined or invalid. The supported definitions are <PROJECTION_PERCISION_LOW> and <PROJECTION_PERCISION_HIGH>. Please define this macro inside the project settings, under 'Player/Script Compilation/Scripting Define Symbols', then click 'Apply' and wait for the scripts to recompile.
-#endif

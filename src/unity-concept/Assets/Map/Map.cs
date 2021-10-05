@@ -26,7 +26,7 @@ namespace MapManagement
     public class Map
     {
         public StandaloneMapConfig config;
-        string mainPath;
+        readonly string mainPath;
 
         public Map(string path)
         {
@@ -63,7 +63,7 @@ namespace MapManagement
         string VectorToFileName(string path, Vector3 vector)
         {
             int index = Array.IndexOf(config.vectorOffsets, vector);
-            return Path.Combine(mainPath, index.ToString().PadLeft(4, '0') + ".png");
+            return Path.Combine(path, index.ToString().PadLeft(4, '0') + ".png");
         }
 
         Texture2D LoadTexture(string path)

@@ -45,6 +45,13 @@ public class TextureLoader : MonoBehaviour
         postProcessingMat = new Material(postProcessing);
         project = projectShader.FindKernel("Projection");
         combine = projectShader.FindKernel("Combine");
+
+#if PROJECTION_PERCISION_LOW
+        projectShader.EnableKeyword("PERCISION_LOW");
+#elif PROJECTION_PERCISION_HIGH
+        projectShader.EnableKeyword("PERCISION_HIGH");
+#endif
+
         projectShader.GetKernelThreadGroupSizes(project, out projectThreadsX, out projectThreadsY, out uint _);
         projectShader.GetKernelThreadGroupSizes(combine, out combineThreadsX, out combineThreadsY, out uint _);
 
