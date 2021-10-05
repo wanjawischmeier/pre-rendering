@@ -1,6 +1,7 @@
 using UnityEngine;
 using MapManagement;
 using System.IO;
+using System.Collections;
 
 public class TextureLoader : MonoBehaviour
 {
@@ -20,13 +21,13 @@ public class TextureLoader : MonoBehaviour
     Map map;
 
     Material postProcessingMat;
-    Texture2DArray textureArray;
+    // Texture2DArray textureArray;
 
     ComputeBuffer debugOffBuffer;
     ComputeBuffer offBuffer;
     public RenderTexture projected;
 
-    Vector3[] offArray;
+    // Vector3[] offArray;
 
     int project, combine;
     uint projectThreadsX, projectThreadsY, combineThreadsX, combineThreadsY;
@@ -35,7 +36,7 @@ public class TextureLoader : MonoBehaviour
     void Start()
     {
         string path = Path.Combine(renderPath, mapPath);
-        map = new Map(path);
+        map = new Map(path, maxTextures);
 
         projectWidth = geometryResolution.x;
         projectHeight = geometryResolution.y;
@@ -45,12 +46,6 @@ public class TextureLoader : MonoBehaviour
         postProcessingMat = new Material(postProcessing);
         project = projectShader.FindKernel("Projection");
         combine = projectShader.FindKernel("Combine");
-
-#if PROJECTION_PERCISION_LOW
-        projectShader.EnableKeyword("PERCISION_LOW");
-#elif PROJECTION_PERCISION_HIGH
-        projectShader.EnableKeyword("PERCISION_HIGH");
-#endif
 
         projectShader.GetKernelThreadGroupSizes(project, out projectThreadsX, out projectThreadsY, out uint _);
         projectShader.GetKernelThreadGroupSizes(combine, out combineThreadsX, out combineThreadsY, out uint _);
@@ -64,23 +59,18 @@ public class TextureLoader : MonoBehaviour
         HandleKeyPresses();
         SetShaderValues();
 
-        offArray = map.GetClosest(transform.position, maxTextures);
+        map.LoadTexturesNearPosition(transform.position);
+
         debugOffArray[selectedId - 1] = controller.secondaryPosition;
-        offBuffer.SetData(offArray);
+        offBuffer.SetData(map.offArray);
         debugOffBuffer.SetData(debugOffArray);
-
-        map.SetTexturesAtPositions(offArray, ref textureArray);
-
+        
         for (int i = 0; i < maxTextures; i++)
         {
-            float distance = Vector3.Distance(transform.position, offArray[i]);
+            float distance = Vector3.Distance(transform.position, map.offArray[i]);
             // TODO: Resolution based on distance
 
-#if PROJECTION_PERCISION_LOW
             RenderTexture rt = RenderTexture.GetTemporary(projectWidth, projectHeight, 0, RenderTextureFormat.ARGB64);
-#elif PROJECTION_PERCISION_HIGH
-            RenderTexture rt = RenderTexture.GetTemporary(projectWidth, projectHeight, 0, RenderTextureFormat.ARGBFloat);
-#endif
             rt.enableRandomWrite = true;
             projectShader.SetTexture(combine, "_Input", rt);
             projectShader.SetTexture(project, "_Result", rt);
@@ -93,10 +83,8 @@ public class TextureLoader : MonoBehaviour
         }
     }
 
-    void OnRenderImage(RenderTexture source, RenderTexture destination)
-    {
+    void OnRenderImage(RenderTexture source, RenderTexture destination) =>
         Graphics.Blit(projected, destination, postProcessingMat);
-    }
 
     void OnDestroy()
     {
@@ -117,18 +105,11 @@ public class TextureLoader : MonoBehaviour
 
     void SetUpTextures()
     {
-        textureArray = new Texture2DArray(map.config.textureWidth, map.config.textureHeight, maxTextures, TextureFormat.RGBA32, 1, false);
-
         Resolution res = EstimatePanoramaResolution(Screen.width, Screen.height, Camera.main.fieldOfView);
-#if PROJECTION_PERCISION_LOW
-        projected = new RenderTexture(res.width, res.height, 24, RenderTextureFormat.ARGB64);
-#elif PROJECTION_PERCISION_HIGH
-        projected = new RenderTexture(res.width, res.height, 24, RenderTextureFormat.ARGBFloat);
-#endif
+        projected = new RenderTexture(res.width, res.height, 0, RenderTextureFormat.ARGB64);
         projected.enableRandomWrite = true;
         projected.Create();
 
-        offArray = new Vector3[maxTextures];
         debugOffArray = new Vector3[maxTextures];
         offBuffer = new ComputeBuffer(maxTextures, sizeof(float) * 3);
         debugOffBuffer = new ComputeBuffer(maxTextures, sizeof(float) * 3);
@@ -140,7 +121,7 @@ public class TextureLoader : MonoBehaviour
         Shader.SetGlobalFloat("PI2", Mathf.PI * 2);
         Shader.SetGlobalFloat("FCLIP", map.config.fclip);
         Shader.SetGlobalInt("MX_IDX", maxTextures);
-        Shader.SetGlobalTexture("_InputArray", textureArray);
+        Shader.SetGlobalTexture("_InputArray", map.textures);
         Shader.SetGlobalTexture("_Projected", projected);
 
         projectShader.SetBuffer(project, "OffsetBuffer", offBuffer);

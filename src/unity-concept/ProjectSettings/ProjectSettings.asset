@@ -581,7 +581,7 @@ PlayerSettings:
   webGLThreadsSupport: 0
   webGLDecompressionFallback: 0
   scriptingDefineSymbols:
-    1: PROJECTION_PERCISION_LOW
+    1: 
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend: {}

@@ -16,7 +16,7 @@ public class Merge : MonoBehaviour
     {
         mergeMat = new Material(merge);
         seperateMat = new Material(seperate);
-        target = new RenderTexture(maps.width, maps.height, 24);
+        target = new RenderTexture(maps.width, maps.height, 0);
         result = new RenderTexture(target);
 
         Graphics.Blit(maps, target, mergeMat);

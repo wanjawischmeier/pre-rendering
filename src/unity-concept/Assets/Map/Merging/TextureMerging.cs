@@ -11,7 +11,7 @@ public class TextureMerging : MonoBehaviour
 
     void Start()
     {
-        result = new RenderTexture(input.width, input.height, 24);
+        result = new RenderTexture(input.width, input.height, 0);
         result.enableRandomWrite = true;
 
         shader.SetTexture(0, "Input", input);

@@ -2,27 +2,11 @@ int IMG_IDX, MX_IDX;
 float PI, PI2, FCLIP;
 float3 Position;
 
-#pragma multi_compile PERCISION_LOW PERCISION_HIGH
-// #include "Assets/Tests.cs"
-#if PERCISION_LOW
-typedef half  num;
-typedef half1 num1;
-typedef half2 num2;
-typedef half3 num3;
-typedef half4 num4;
-#elif PERCISION_HIGH
-typedef float  num;
-typedef float1 num1;
-typedef float2 num2;
-typedef float3 num3;
-typedef float4 num4;
-#endif
-
 #pragma kernel Projection;
-StructuredBuffer<num3> OffsetBuffer;
-StructuredBuffer<num3> DebugOffsetBuffer;
-Texture2DArray<num4> _InputArray;
-RWTexture2D<num4> _Result;
+StructuredBuffer<half3> OffsetBuffer;
+StructuredBuffer<half3> DebugOffsetBuffer;
+Texture2DArray<half4> _InputArray;
+RWTexture2D<half4> _Result;
 
 [numthreads(8, 8, 1)]
 void Projection(uint3 id : SV_DispatchThreadID)
@@ -67,13 +51,13 @@ void Projection(uint3 id : SV_DispatchThreadID)
     
     float2 idx = round(a * ResultRes);
     
-    _Result[idx] = num4(id.xy / ResultRes, (IMG_IDX +1) / (float) MX_IDX, d / FCLIP);
+    _Result[idx] = half4(id.xy / ResultRes, (IMG_IDX +1) / (float) MX_IDX, d / FCLIP);
 }
 
 #pragma kernel Combine
-Texture2D<num4> _Input;
+Texture2D<half4> _Input;
 SamplerState sampler_Input;
-RWTexture2D<num4> _Projected;
+RWTexture2D<half4> _Projected;
 
 [numthreads(8, 8, 1)]
 void Combine(uint3 id : SV_DispatchThreadID)
@@ -82,8 +66,8 @@ void Combine(uint3 id : SV_DispatchThreadID)
     _Projected.GetDimensions(width, height);
     float2 ProjectedRes = float2(width, height);
     
-    num4 old = _Projected[id.xy];
-    num4 col = _Input.SampleLevel(sampler_Input, id.xy / ProjectedRes, 0);
+    half4 old = _Projected[id.xy];
+    half4 col = _Input.SampleLevel(sampler_Input, id.xy / ProjectedRes, 0);
     
     if (col.a != 0) // TODO: Depth sorting (d < _Projected[idx].a)
         _Projected[id.xy] = col;

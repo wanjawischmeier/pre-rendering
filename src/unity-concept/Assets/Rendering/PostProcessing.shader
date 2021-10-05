@@ -10,25 +10,9 @@ Shader "PreRendering/PostProcessing"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #pragma multi_compile PERCISION_LOW PERCISION_HIGH
 
             #include "UnityCG.cginc"
             #include "Shading.cginc"
-            // #include "Assets/Tests.cs"
-
-            #if PERCISION_LOW
-            typedef half  num;
-            typedef half1 num1;
-            typedef half2 num2;
-            typedef half3 num3;
-            typedef half4 num4;
-            #elif PERCISION_HIGH
-            typedef float  num;
-            typedef float1 num1;
-            typedef float2 num2;
-            typedef float3 num3;
-            typedef float4 num4;
-            #endif
 
             struct appdata
             {
@@ -70,7 +54,7 @@ Shader "PreRendering/PostProcessing"
             }
 
             Texture2DArray<float4> _InputArray;
-            Texture2D<num4> _Projected;
+            Texture2D<half4> _Projected;
             SamplerState bilinear_repeat_sampler;
             SamplerState sampler_InputArray;
             float FOV, FCLIP;
@@ -80,7 +64,7 @@ Shader "PreRendering/PostProcessing"
             fixed4 frag (v2f i) : SV_Target
             {
                 float2 tc = gnomonicProjection(i.uv, FOV, Rotation.x, Rotation.y);
-                num4 idx = _Projected.Sample(bilinear_repeat_sampler, tc);
+                half4 idx = _Projected.Sample(bilinear_repeat_sampler, tc);
                 idx.z *= MX_IDX;
                 idx.z += 1;
                 idx.w *= FCLIP;

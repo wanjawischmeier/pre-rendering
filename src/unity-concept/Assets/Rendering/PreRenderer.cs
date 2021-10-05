@@ -37,9 +37,9 @@ public class PreRenderer : MonoBehaviour
 		child.transform.localEulerAngles = Vector3.zero;
 		child.SetActive(false);
 
-		cubemap = new RenderTexture((int)RenderResolution, (int)RenderResolution, 24, RenderTextureFormat.ARGB32);
+		cubemap = new RenderTexture((int)RenderResolution, (int)RenderResolution, 0, RenderTextureFormat.ARGB32);
 		panorama = new RenderTexture((int)RenderResolution, (int)RenderResolution, 0, RenderTextureFormat.ARGB32);
-		depth = new RenderTexture((int)RenderResolution, (int)RenderResolution, 24, RenderTextureFormat.ARGB32);
+		depth = new RenderTexture((int)RenderResolution, (int)RenderResolution, 0, RenderTextureFormat.ARGB32);
 		cubemap.dimension = UnityEngine.Rendering.TextureDimension.Cube;
 		panorama.wrapMode = TextureWrapMode.Repeat;
 		

@@ -537,7 +537,7 @@ MonoBehaviour:
   projectShader: {fileID: 7200000, guid: 83ccade484494bc44a42d8da069d928b, type: 3}
   postProcessing: {fileID: 4800000, guid: 73c549cc703570c48a640a58a94eb33b, type: 3}
   controller: {fileID: 1464708541}
-  maxTextures: 4
+  maxTextures: 2
   geometryResolution: {x: 1080, y: 540}
   debug: 0
   selectedId: 2
