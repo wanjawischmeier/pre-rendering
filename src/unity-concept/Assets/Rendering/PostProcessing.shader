@@ -10,9 +10,25 @@ Shader "PreRendering/PostProcessing"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
+            #pragma multi_compile PERCISION_LOW PERCISION_HIGH
 
             #include "UnityCG.cginc"
             #include "Shading.cginc"
+            // #include "Assets/Tests.cs"
+
+            #if PERCISION_LOW
+            typedef half  num;
+            typedef half1 num1;
+            typedef half2 num2;
+            typedef half3 num3;
+            typedef half4 num4;
+            #elif PERCISION_HIGH
+            typedef float  num;
+            typedef float1 num1;
+            typedef float2 num2;
+            typedef float3 num3;
+            typedef float4 num4;
+            #endif
 
             struct appdata
             {
@@ -53,23 +69,27 @@ Shader "PreRendering/PostProcessing"
                 return o;
             }
 
-            Texture2DArray<float4> _Input;
-            Texture2D<float4> _Projected;
+            Texture2DArray<float4> _InputArray;
+            Texture2D<num4> _Projected;
             SamplerState bilinear_repeat_sampler;
-            SamplerState sampler_Input;
-            float FOV;
+            SamplerState sampler_InputArray;
+            float FOV, FCLIP;
             float2 Rotation;
-            int Debug;
+            int Debug, MX_IDX;
 
             fixed4 frag (v2f i) : SV_Target
             {
                 float2 tc = gnomonicProjection(i.uv, FOV, Rotation.x, Rotation.y);
-                float4 idx = _Projected.Sample(bilinear_repeat_sampler, tc);
+                num4 idx = _Projected.Sample(bilinear_repeat_sampler, tc);
+                idx.z *= MX_IDX;
+                idx.z += 1;
+                idx.w *= FCLIP;
+
+                if (idx.z < (MX_IDX +1) / (float) MX_IDX -1) idx = float4(tc, 0, FCLIP);
 
                 if (Debug) return idx;
-                // if (idx.a != 1) idx = float4(tc, 0, 0);
                 
-                fixed4 col = UNITY_SAMPLE_TEX2DARRAY(_Input, idx.xyz);
+                fixed4 col = UNITY_SAMPLE_TEX2DARRAY(_InputArray, idx.xyz);
                 
                 return col;
             }

@@ -77,16 +77,16 @@ public class TextureLoader : MonoBehaviour
             // TODO: Resolution based on distance
 
 #if PROJECTION_PERCISION_LOW
-            RenderTexture rt = RenderTexture.GetTemporary(projectWidth, projectHeight, 0, RenderTextureFormat.ARGBHalf);
+            RenderTexture rt = RenderTexture.GetTemporary(projectWidth, projectHeight, 0, RenderTextureFormat.ARGB64);
 #elif PROJECTION_PERCISION_HIGH
             RenderTexture rt = RenderTexture.GetTemporary(projectWidth, projectHeight, 0, RenderTextureFormat.ARGBFloat);
 #endif
             rt.enableRandomWrite = true;
+            projectShader.SetTexture(combine, "_Input", rt);
+            projectShader.SetTexture(project, "_Result", rt);
+            projectShader.SetInt("IMG_IDX", i);
 
-            projectShader.SetTexture(project, "Projected", rt);
             projectShader.Dispatch(project, projectWidth / (int)projectThreadsX, projectHeight / (int)projectThreadsY, 1);
-            
-            projectShader.SetTexture(combine, "Input", rt);
             projectShader.Dispatch(combine, projected.width / (int)combineThreadsX, projected.height / (int)combineThreadsY, 1);
 
             RenderTexture.ReleaseTemporary(rt);
@@ -121,7 +121,7 @@ public class TextureLoader : MonoBehaviour
 
         Resolution res = EstimatePanoramaResolution(Screen.width, Screen.height, Camera.main.fieldOfView);
 #if PROJECTION_PERCISION_LOW
-        projected = new RenderTexture(res.width, res.height, 24, RenderTextureFormat.ARGBHalf);
+        projected = new RenderTexture(res.width, res.height, 24, RenderTextureFormat.ARGB64);
 #elif PROJECTION_PERCISION_HIGH
         projected = new RenderTexture(res.width, res.height, 24, RenderTextureFormat.ARGBFloat);
 #endif
@@ -136,21 +136,15 @@ public class TextureLoader : MonoBehaviour
 
     void SetShaderConstants()
     {
-        projectShader.SetFloat("PI", Mathf.PI);
-        projectShader.SetFloat("PI2", Mathf.PI * 2);
-        projectShader.SetFloat("FCLIP", map.config.fclip);
-        postProcessingMat.SetFloat("PI", Mathf.PI);
-        postProcessingMat.SetFloat("PI2", Mathf.PI * 2);
-        postProcessingMat.SetFloat("FCLIP", map.config.fclip);
+        Shader.SetGlobalFloat("PI", Mathf.PI);
+        Shader.SetGlobalFloat("PI2", Mathf.PI * 2);
+        Shader.SetGlobalFloat("FCLIP", map.config.fclip);
+        Shader.SetGlobalInt("MX_IDX", maxTextures);
+        Shader.SetGlobalTexture("_InputArray", textureArray);
+        Shader.SetGlobalTexture("_Projected", projected);
 
         projectShader.SetBuffer(project, "OffsetBuffer", offBuffer);
         projectShader.SetBuffer(project, "DebugOffsetBuffer", debugOffBuffer);
-        projectShader.SetTexture(project, "InputArray", textureArray);
-
-        projectShader.SetTexture(combine, "Result", projected);
-
-        postProcessingMat.SetTexture("_Input", textureArray);
-        postProcessingMat.SetTexture("_Projected", projected);
     }
 
     void SetShaderValues()
