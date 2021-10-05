@@ -21,13 +21,10 @@ public class TextureLoader : MonoBehaviour
     Map map;
 
     Material postProcessingMat;
-    // Texture2DArray textureArray;
 
     ComputeBuffer debugOffBuffer;
     ComputeBuffer offBuffer;
     public RenderTexture projected;
-
-    // Vector3[] offArray;
 
     int project, combine;
     uint projectThreadsX, projectThreadsY, combineThreadsX, combineThreadsY;
