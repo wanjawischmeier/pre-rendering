@@ -108,18 +108,19 @@ public class FPSCounter : MonoBehaviour
     {
         //--------------
 
-        // StFPS.Counter(Time Update).x - min fps
-        // StFPS.Counter(Time Update).y - avg fps
-        // StFPS.Counter(Time Update).z - max fps
         allFps = StFPS.Counter(timeUpdate);
-        counterText.text = "MIN " + allFps.x.ToString() +
-            " | AVG " + allFps.y.ToString() +
-            " | MAX " + allFps.z.ToString() +
-            "\nScreen Resolution " + Screen.width.ToString() + "x" + Screen.height.ToString() +
-            "\nTexture Resolution " + loader.map.config.textureWidth.ToString() + "x" + loader.map.config.textureHeight.ToString() +
-            "\nGeometry Resolution " + loader.config.geometryResolution.x.ToString() + "x" + loader.config.geometryResolution.y.ToString() +
-            "\nData Path " + dataPath +
-            "\nSelected texture " + loader.selectedId.ToString() + "/" + loader.config.layer_depth.ToString();
+        counterText.text = string.Format(
+            "FPS: MIN {0} | AVG {1} | MAX {2}\n" +
+            "Screen Resolution:\t\t\t{3}x{4}\n" +
+            "Texture Resolution:\t\t\t{5}x{6}\n" +
+            "Geometry Resolution\t\t{7}x{8}\n" +
+            "Selected texture layer:\t{9}/{10}",
+            allFps.x, allFps.y, allFps.z,
+            Screen.width, Screen.height,
+            loader.map.config.textureWidth, loader.map.config.textureHeight,
+            loader.geometryResolution.x, loader.geometryResolution.y,
+            loader.selectedId, loader.layerDepth
+        );
 
         //--------------
     }

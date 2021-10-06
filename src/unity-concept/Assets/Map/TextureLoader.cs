@@ -1,6 +1,9 @@
 using UnityEngine;
 using MapManagement;
 using System.IO;
+using System;
+using UnityEngine.Networking;
+using System.Collections.Generic;
 
 public class TextureLoader : MonoBehaviour
 {
@@ -8,9 +11,22 @@ public class TextureLoader : MonoBehaviour
     public Shader postProcessing;
     public MovementController controller;
 
+    public string mainPath;
+    public string mapName;
+    public Vector2Int geometryResolution;
+    [Range(1, 100)]
+    public int layerDepth = 4;
+    [Range(1, 100)]
+    public int cacheSize = 10;
     public bool debug;
+
     Vector3[] debugOffArray;
     public int selectedId = 1;
+
+#if UNITY_EDITOR
+    public Vector3[] pending;
+    public Vector3[] decoded;
+#endif
 
     FPSCounter debugDisplay;
     public Map map;
@@ -25,28 +41,43 @@ public class TextureLoader : MonoBehaviour
     uint projectThreadsX, projectThreadsY, combineThreadsX, combineThreadsY;
     int projectWidth, projectHeight;
 
+#if !UNITY_EDITOR
     public struct StartupConfig
     {
         public string main_path;
         public string map_name;
-        public int[] raw_geometry_resolution;
-        public Vector2Int geometryResolution;
+        public int[] screen_resolution;
+        public float geometry_percision;
         public int layer_depth;
+        public int cache_size;
     }
     public StartupConfig config;
+#endif
 
     void Start()
     {
-        string configPath = Path.Combine(Application.dataPath, ".startConfig");
+#if !UNITY_EDITOR
+        string configPath = Path.Combine(Application.dataPath, "start.config");
         string rawConfig = File.ReadAllText(configPath);
         config = JsonUtility.FromJson<StartupConfig>(rawConfig);
-        config.geometryResolution = new Vector2Int(config.raw_geometry_resolution[0], config.raw_geometry_resolution[1]);
 
-        string path = Path.Combine(config.main_path, config.map_name);
-        map = new Map(path, config.layer_depth);
-        
-        projectWidth = config.geometryResolution.x;
-        projectHeight = config.geometryResolution.y;
+        Screen.SetResolution(config.screen_resolution[0], config.screen_resolution[1], true);
+
+        mainPath = config.main_path;
+        mapName = config.map_name;
+        geometryResolution = new Vector2Int(
+            Mathf.RoundToInt(Screen.width * config.geometry_percision),
+            Mathf.RoundToInt(Screen.height * config.geometry_percision)
+        );
+        layerDepth = config.layer_depth;
+        cacheSize = config.cache_size;
+
+#endif
+        string path = Path.Combine(mainPath, mapName);
+        map = new Map(path, layerDepth, cacheSize);
+
+        projectWidth = geometryResolution.x;
+        projectHeight = geometryResolution.y;
 
         AddDebugger("Debug");
 
@@ -65,13 +96,27 @@ public class TextureLoader : MonoBehaviour
     {
         HandleKeyPresses();
         SetShaderValues();
+
         map.LoadTexturesNearPosition(transform.position);
+
+#if UNITY_EDITOR
+        pending = new Vector3[map.pending.Count];
+        decoded = new Vector3[map.decoded.Count];
+
+        int idx = 0;
+        foreach (KeyValuePair<AsyncOperation, Tuple<Vector3, UnityWebRequest>> item in map.pending)
+            pending[idx] = map.pending[item.Key].Item1; idx++;
+
+        idx = 0;
+        foreach (KeyValuePair<Vector3, UnityWebRequest> item in map.decoded)
+            decoded[idx] = item.Key; idx++;
+#endif
 
         debugOffArray[selectedId - 1] = controller.secondaryPosition;
         offBuffer.SetData(map.offArray);
         debugOffBuffer.SetData(debugOffArray);
         
-        for (int i = 0; i < config.layer_depth; i++)
+        for (int i = 0; i < layerDepth; i++)
         {
             float distance = Vector3.Distance(transform.position, map.offArray[i]);
             // TODO: Resolution based on distance
@@ -112,9 +157,9 @@ public class TextureLoader : MonoBehaviour
         projected.enableRandomWrite = true;
         projected.Create();
 
-        debugOffArray = new Vector3[config.layer_depth];
-        offBuffer = new ComputeBuffer(config.layer_depth, sizeof(float) * 3);
-        debugOffBuffer = new ComputeBuffer(config.layer_depth, sizeof(float) * 3);
+        debugOffArray = new Vector3[layerDepth];
+        offBuffer = new ComputeBuffer(layerDepth, sizeof(float) * 3);
+        debugOffBuffer = new ComputeBuffer(layerDepth, sizeof(float) * 3);
     }
 
     void SetShaderConstants()
@@ -122,7 +167,7 @@ public class TextureLoader : MonoBehaviour
         Shader.SetGlobalFloat("PI", Mathf.PI);
         Shader.SetGlobalFloat("PI2", Mathf.PI * 2);
         Shader.SetGlobalFloat("FCLIP", map.config.fclip);
-        Shader.SetGlobalInt("MX_IDX", config.layer_depth);
+        Shader.SetGlobalInt("MX_IDX", layerDepth);
         Shader.SetGlobalTexture("_InputArray", map.textures);
         Shader.SetGlobalTexture("_Projected", projected);
 
@@ -140,13 +185,15 @@ public class TextureLoader : MonoBehaviour
 
     void HandleKeyPresses()
     {
+#if !UNITY_EDITOR
         if (Input.GetKeyDown(KeyCode.Escape)) Application.Quit();
+#endif
         if (Input.GetKeyDown(KeyCode.F2)) debugDisplay.Toggle();
         if (Input.GetKeyDown(KeyCode.F3)) debug = !debug;
         if (Input.mouseScrollDelta.y > 0) selectedId += 1;
         if (Input.mouseScrollDelta.y < 0) selectedId -= 1;
-        if (selectedId > config.layer_depth) selectedId = 1;
-        if (selectedId < 1) selectedId = config.layer_depth;
+        if (selectedId > layerDepth) selectedId = 1;
+        if (selectedId < 1) selectedId = layerDepth;
     }
 
     public Resolution EstimatePanoramaResolution(int width, int height, float fov)

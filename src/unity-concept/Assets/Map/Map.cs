@@ -31,21 +31,24 @@ namespace MapManagement
         public StandaloneMapConfig config;
         public Vector3[] offArray;
         Vector3[] oldOffArray;
-        Dictionary<AsyncOperation, Tuple<int, UnityWebRequest>> pending;
-        Dictionary<int, Vector3> pendingVectors;
+        public Dictionary<AsyncOperation, Tuple<Vector3, UnityWebRequest>> pending;
+        public Dictionary<Vector3, UnityWebRequest> decoded;
         readonly string mainPath;
+        readonly int cacheSize;
 
         public Texture2DArray textures;
         Texture2DArray oldTextures;
         Texture2D reader;
 
-        public Map(string path, int maxTextures)
+        public Map(string path, int maxTextures, int cacheSize)
         {
             mainPath = path;
+            this.cacheSize = cacheSize;
+
             reader = new Texture2D(0, 0, TextureFormat.RGBA32, false);
             offArray = new Vector3[maxTextures];
-            pending = new Dictionary<AsyncOperation, Tuple<int, UnityWebRequest>>();
-            pendingVectors = new Dictionary<int, Vector3>();
+            pending = new Dictionary<AsyncOperation, Tuple<Vector3, UnityWebRequest>>();
+            decoded = new Dictionary<Vector3, UnityWebRequest>();
 
             string rawConfig = File.ReadAllText(Path.Combine(mainPath, ".mapconfig"));
             config = JsonUtility.FromJson<StandaloneMapConfig>(rawConfig);
@@ -76,23 +79,53 @@ namespace MapManagement
             {
                 Vector3 off = offArray[i];
 
-                if (oldOffArray.Contains(off))
+
+                if (decoded.ContainsKey(off))
+                {
+                    UnityWebRequest www = decoded[off];
+
+                    Texture2D texture = DownloadHandlerTexture.GetContent(www);
+                    Graphics.CopyTexture(texture, 0, textures, i);
+                    Object.Destroy(texture);
+
+                    decoded.Remove(off);
+                }
+                else if (oldOffArray.Contains(off))
                 {
                     int j = Array.IndexOf(oldOffArray, off);
                     Graphics.CopyTexture(oldTextures, j, textures, i);
                 }
-                else if (!pendingVectors.ContainsKey(i))
+                // Most readable line of code in the world
+                else if (!pending.Values.Select((Tuple<Vector3, UnityWebRequest> value) => { return value.Item1; }).Contains(off))
                 {
                     string texturePath = VectorToFileName(off);
 
+                    // Based on: https://stackoverflow.com/a/53770838/13215204
                     UnityWebRequest www = UnityWebRequestTexture.GetTexture(texturePath);
                     var asyncOp = www.SendWebRequest();
 
-                    pending.Add(asyncOp, new Tuple<int, UnityWebRequest>(i, www));
-                    pendingVectors.Add(i, off);
+                    pending.Add(asyncOp, new Tuple<Vector3, UnityWebRequest>(off, www));
                     asyncOp.completed += OnImageDecoded;
                 }
+
+                if (decoded.Count > cacheSize)
+                {
+                    decoded.Remove(decoded.Take(1).ToArray()[0].Key);
+#if UNITY_EDITOR
+                    Debug.Log("Texture cache is getting too large, removing a texture.");
+#endif
+                }
             }
+        }
+
+        void OnImageDecoded(AsyncOperation obj)
+        {
+            Tuple<Vector3, UnityWebRequest> data = pending[obj];
+
+            if (data.Item2.result == UnityWebRequest.Result.Success)
+                decoded.Add(data.Item1, data.Item2);
+
+            pending.Remove(obj);
         }
 
         Vector3[] GetClosest(Vector3 position)
@@ -114,32 +147,6 @@ namespace MapManagement
             byte[] rawTexture = File.ReadAllBytes(path);
             reader.LoadImage(rawTexture);
             return reader;
-        }
-
-        void LoadTextureToArray(string path, int index)
-        {
-            byte[] rawTexture = File.ReadAllBytes(path);
-            reader.LoadImage(rawTexture);
-            Graphics.CopyTexture(reader, 0, textures, index);
-        }
-
-
-        // Based on: https://stackoverflow.com/a/53770838/13215204
-        void OnImageDecoded(AsyncOperation obj)
-        {
-            Tuple<int, UnityWebRequest> data = pending[obj];
-            int index = data.Item1;
-            UnityWebRequest www = data.Item2;
-
-            if (www.result == UnityWebRequest.Result.Success)
-            {
-                Texture2D texture = DownloadHandlerTexture.GetContent(www);
-                Graphics.CopyTexture(texture, 0, textures, index);
-                Object.Destroy(texture);
-            }
-
-            pending.Remove(obj);
-            pendingVectors.Remove(index);
         }
     }
 }
