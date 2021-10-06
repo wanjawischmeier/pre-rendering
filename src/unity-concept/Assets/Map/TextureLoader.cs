@@ -1,24 +1,19 @@
 using UnityEngine;
 using MapManagement;
 using System.IO;
-using System.Collections;
 
 public class TextureLoader : MonoBehaviour
 {
-    public string renderPath;
-    public string mapPath;
     public ComputeShader projectShader;
     public Shader postProcessing;
     public MovementController controller;
-    [Range(1, 100)]
-    public int maxTextures = 10;
-    public Vector2Int geometryResolution;
+
     public bool debug;
     Vector3[] debugOffArray;
     public int selectedId = 1;
 
     FPSCounter debugDisplay;
-    Map map;
+    public Map map;
 
     Material postProcessingMat;
 
@@ -30,13 +25,28 @@ public class TextureLoader : MonoBehaviour
     uint projectThreadsX, projectThreadsY, combineThreadsX, combineThreadsY;
     int projectWidth, projectHeight;
 
+    public struct StartupConfig
+    {
+        public string main_path;
+        public string map_name;
+        public int[] raw_geometry_resolution;
+        public Vector2Int geometryResolution;
+        public int layer_depth;
+    }
+    public StartupConfig config;
+
     void Start()
     {
-        string path = Path.Combine(renderPath, mapPath);
-        map = new Map(path, maxTextures);
+        string configPath = Path.Combine(Application.dataPath, ".startConfig");
+        string rawConfig = File.ReadAllText(configPath);
+        config = JsonUtility.FromJson<StartupConfig>(rawConfig);
+        config.geometryResolution = new Vector2Int(config.raw_geometry_resolution[0], config.raw_geometry_resolution[1]);
 
-        projectWidth = geometryResolution.x;
-        projectHeight = geometryResolution.y;
+        string path = Path.Combine(config.main_path, config.map_name);
+        map = new Map(path, config.layer_depth);
+        
+        projectWidth = config.geometryResolution.x;
+        projectHeight = config.geometryResolution.y;
 
         AddDebugger("Debug");
 
@@ -55,14 +65,13 @@ public class TextureLoader : MonoBehaviour
     {
         HandleKeyPresses();
         SetShaderValues();
-
         map.LoadTexturesNearPosition(transform.position);
 
         debugOffArray[selectedId - 1] = controller.secondaryPosition;
         offBuffer.SetData(map.offArray);
         debugOffBuffer.SetData(debugOffArray);
         
-        for (int i = 0; i < maxTextures; i++)
+        for (int i = 0; i < config.layer_depth; i++)
         {
             float distance = Vector3.Distance(transform.position, map.offArray[i]);
             // TODO: Resolution based on distance
@@ -93,11 +102,7 @@ public class TextureLoader : MonoBehaviour
     void AddDebugger(string name)
     {
         debugDisplay = GameObject.Find(name).GetComponent<FPSCounter>();
-        debugDisplay.selected = selectedId;
-        debugDisplay.maxTextures = maxTextures;
-        debugDisplay.textureResolution = new Vector2(
-            map.config.textureWidth,
-            map.config.textureHeight);
+        debugDisplay.loader = this;
     }
 
     void SetUpTextures()
@@ -107,9 +112,9 @@ public class TextureLoader : MonoBehaviour
         projected.enableRandomWrite = true;
         projected.Create();
 
-        debugOffArray = new Vector3[maxTextures];
-        offBuffer = new ComputeBuffer(maxTextures, sizeof(float) * 3);
-        debugOffBuffer = new ComputeBuffer(maxTextures, sizeof(float) * 3);
+        debugOffArray = new Vector3[config.layer_depth];
+        offBuffer = new ComputeBuffer(config.layer_depth, sizeof(float) * 3);
+        debugOffBuffer = new ComputeBuffer(config.layer_depth, sizeof(float) * 3);
     }
 
     void SetShaderConstants()
@@ -117,7 +122,7 @@ public class TextureLoader : MonoBehaviour
         Shader.SetGlobalFloat("PI", Mathf.PI);
         Shader.SetGlobalFloat("PI2", Mathf.PI * 2);
         Shader.SetGlobalFloat("FCLIP", map.config.fclip);
-        Shader.SetGlobalInt("MX_IDX", maxTextures);
+        Shader.SetGlobalInt("MX_IDX", config.layer_depth);
         Shader.SetGlobalTexture("_InputArray", map.textures);
         Shader.SetGlobalTexture("_Projected", projected);
 
@@ -140,9 +145,8 @@ public class TextureLoader : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.F3)) debug = !debug;
         if (Input.mouseScrollDelta.y > 0) selectedId += 1;
         if (Input.mouseScrollDelta.y < 0) selectedId -= 1;
-        if (selectedId > maxTextures) selectedId = 1;
-        if (selectedId < 1) selectedId = maxTextures;
-        debugDisplay.selected = selectedId;
+        if (selectedId > config.layer_depth) selectedId = 1;
+        if (selectedId < 1) selectedId = config.layer_depth;
     }
 
     public Resolution EstimatePanoramaResolution(int width, int height, float fov)

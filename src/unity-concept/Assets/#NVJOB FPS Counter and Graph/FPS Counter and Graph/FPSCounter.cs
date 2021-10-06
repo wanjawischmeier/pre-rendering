@@ -29,10 +29,14 @@ public class FPSCounter : MonoBehaviour
     public int highestPossibleFPS = 300;
     public Color graphColor = new Color(1, 1, 1, 0.5f);
     public bool logWrite = true;
-    public Vector2 textureResolution;
+
+    public TextureLoader loader;
+    /*
+    public Vector2Int textureResolution;
+    public Vector2Int geometryResolution;
     public int maxTextures;
     public int selected;
-
+    */
     [Header("Information")] // These variables are only information.
     public string HelpURL = "nvjob.github.io/unity/nvjob-fps-counter-and-graph";
     public string ReportAProblem = "nvjob.github.io/support";
@@ -112,9 +116,10 @@ public class FPSCounter : MonoBehaviour
             " | AVG " + allFps.y.ToString() +
             " | MAX " + allFps.z.ToString() +
             "\nScreen Resolution " + Screen.width.ToString() + "x" + Screen.height.ToString() +
-            "\nTexture Resolution " + textureResolution.x.ToString() + "x" + textureResolution.y.ToString() +
+            "\nTexture Resolution " + loader.map.config.textureWidth.ToString() + "x" + loader.map.config.textureHeight.ToString() +
+            "\nGeometry Resolution " + loader.config.geometryResolution.x.ToString() + "x" + loader.config.geometryResolution.y.ToString() +
             "\nData Path " + dataPath +
-            "\nSelected texture " + selected.ToString() + "/" + maxTextures.ToString();
+            "\nSelected texture " + loader.selectedId.ToString() + "/" + loader.config.layer_depth.ToString();
 
         //--------------
     }
