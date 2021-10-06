@@ -34,8 +34,8 @@ namespace MapManagement
         readonly string mainPath;
 
         public Texture2DArray textures;
+        Texture2DArray oldTextures;
         Texture2D reader;
-        RenderTexture rt;
 
         public Map(string path, int maxTextures)
         {
@@ -53,17 +53,19 @@ namespace MapManagement
             config.textureHeight = texture.height;
 
             textures = new Texture2DArray(config.textureWidth, config.textureHeight, maxTextures, TextureFormat.RGBA32, 1, false);
-            rt = new RenderTexture(config.textureWidth, config.textureHeight, 0);
+            oldTextures = new Texture2DArray(config.textureWidth, config.textureHeight, maxTextures, TextureFormat.RGBA32, 1, false);
         }
         ~Map()
         {
             Object.Destroy(reader);
-            if (rt != null) rt.Release();
+            Object.Destroy(textures);
+            Object.Destroy(oldTextures);
         }
 
         public void LoadTexturesNearPosition(Vector3 position)
         {
             oldOffArray = offArray;
+            Graphics.CopyTexture(textures, oldTextures);
             offArray = GetClosest(position);
 
             for (int i = 0; i < offArray.Length; i++)
@@ -73,8 +75,7 @@ namespace MapManagement
                 if (oldOffArray.Contains(off))
                 {
                     int j = Array.IndexOf(oldOffArray, off);
-                    Graphics.CopyTexture(textures, j, rt, 0);
-                    Graphics.CopyTexture(rt, 0, textures, i);
+                    Graphics.CopyTexture(oldTextures, j, textures, i);
                 }
                 else
                 {

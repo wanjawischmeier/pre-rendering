@@ -1,11 +1,11 @@
 int IMG_IDX, MX_IDX;
 float PI, PI2, FCLIP;
 float3 Position;
+Texture2DArray<half4> _InputArray;
 
 #pragma kernel Projection;
 StructuredBuffer<half3> OffsetBuffer;
 StructuredBuffer<half3> DebugOffsetBuffer;
-Texture2DArray<half4> _InputArray;
 RWTexture2D<half4> _Result;
 
 [numthreads(8, 8, 1)]
@@ -51,7 +51,7 @@ void Projection(uint3 id : SV_DispatchThreadID)
     
     float2 idx = round(a * ResultRes);
     
-    _Result[idx] = half4(id.xy / ResultRes, (IMG_IDX +1) / (float) MX_IDX, d / FCLIP);
+    _Result[idx] = half4(id.xy / ResultRes, (IMG_IDX +1) / (float) MX_IDX, 1);
 }
 
 #pragma kernel Combine
@@ -62,13 +62,23 @@ RWTexture2D<half4> _Projected;
 [numthreads(8, 8, 1)]
 void Combine(uint3 id : SV_DispatchThreadID)
 {
-    uint width, height;
+    uint width, height, InputWidth, InputHeight, InputDepth;
+    _InputArray.GetDimensions(InputWidth, InputHeight, InputDepth);
     _Projected.GetDimensions(width, height);
+    float2 InputRes = float2(InputWidth, InputHeight);
     float2 ProjectedRes = float2(width, height);
     
     half4 old = _Projected[id.xy];
     half4 col = _Input.SampleLevel(sampler_Input, id.xy / ProjectedRes, 0);
+    float3 idx;
     
-    if (col.a != 0) // TODO: Depth sorting (d < _Projected[idx].a)
+    idx = float3(old.xy * InputRes, old.z * MX_IDX - 1);
+    half dOld = _InputArray[idx].a;
+    
+    idx = float3(col.xy * InputRes, col.z * MX_IDX - 1);
+    half dNew = _InputArray[idx].a;
+    
+    // col.z = 0 < dOld > dNew;
+    if (col.a == 1) // TODO: Depth sorting (d < _Projected[idx].a) / && 0 < dOld > dNew
         _Projected[id.xy] = col;
 }

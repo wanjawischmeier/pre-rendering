@@ -65,13 +65,13 @@ Shader "PreRendering/PostProcessing"
             {
                 float2 tc = gnomonicProjection(i.uv, FOV, Rotation.x, Rotation.y);
                 half4 idx = _Projected.Sample(bilinear_repeat_sampler, tc);
-                idx.z *= MX_IDX;
-                idx.z += 1;
-                idx.w *= FCLIP;
 
-                if (idx.z < (MX_IDX +1) / (float) MX_IDX -1) idx = float4(tc, 0, FCLIP);
-
+                // if (idx.a != 1) idx = float4(tc, 0, FCLIP);
+                if (idx.a != 1) return float4(0, 0, 0, 1);
                 if (Debug) return idx;
+
+                idx.z *= MX_IDX;
+                idx.z -= 1;
                 
                 fixed4 col = UNITY_SAMPLE_TEX2DARRAY(_InputArray, idx.xyz);
                 
