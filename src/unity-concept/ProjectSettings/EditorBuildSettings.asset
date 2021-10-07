@@ -8,4 +8,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Map/Demo.unity
     guid: d471fc6d90dc92c408ed0f0702abf7c8
+  - enabled: 1
+    path: Assets/Map/Menu.unity
+    guid: b37e45ce438c76f47901d5d4b63fe051
   m_configObjects: {}

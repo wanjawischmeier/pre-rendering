@@ -45,6 +45,15 @@ public class FPSCounter : MonoBehaviour
     //--------------
 
     GameObject counter, graph;
+    public bool active
+    {
+        get { return counter.activeSelf && graph.activeSelf; }
+        set
+        {
+            counter.SetActive(value);
+            graph.SetActive(value);
+        }
+    }
     Transform graphTr;
     Vector3Int allFps;
     Text counterText;
@@ -68,8 +77,6 @@ public class FPSCounter : MonoBehaviour
 
         Application.targetFrameRate = highestPossibleFPS;
         CreateCounter();
-        counter.SetActive(!counter.activeSelf);
-        graph.SetActive(!graph.activeSelf);
         dataPath = Application.dataPath;
         //--------------
     }
@@ -191,20 +198,6 @@ public class FPSCounter : MonoBehaviour
             imgRT.localPosition = Vector3.zero;
             img.color = graphColor;
         }
-
-        //--------------
-    }
-
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-    public void Toggle()
-    {
-        //--------------
-
-        counter.SetActive(!counter.activeSelf);
-        graph.SetActive(!graph.activeSelf);
 
         //--------------
     }

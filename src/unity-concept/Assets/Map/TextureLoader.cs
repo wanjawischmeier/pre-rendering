@@ -4,11 +4,13 @@ using System.IO;
 using System;
 using UnityEngine.Networking;
 using System.Collections.Generic;
+using UnityEngine.SceneManagement;
 
 public class TextureLoader : MonoBehaviour
 {
     public ComputeShader projectShader;
     public Shader postProcessing;
+    [HideInInspector]
     public MovementController controller;
 
     public string mainPath;
@@ -28,7 +30,6 @@ public class TextureLoader : MonoBehaviour
     public Vector3[] decoded;
 #endif
 
-    FPSCounter debugDisplay;
     public Map map;
 
     Material postProcessingMat;
@@ -79,8 +80,6 @@ public class TextureLoader : MonoBehaviour
         projectWidth = geometryResolution.x;
         projectHeight = geometryResolution.y;
 
-        AddDebugger("Debug");
-
         postProcessingMat = new Material(postProcessing);
         project = projectShader.FindKernel("Projection");
         combine = projectShader.FindKernel("Combine");
@@ -94,7 +93,6 @@ public class TextureLoader : MonoBehaviour
 
     void Update()
     {
-        HandleKeyPresses();
         SetShaderValues();
 
         map.LoadTexturesNearPosition(transform.position);
@@ -144,12 +142,6 @@ public class TextureLoader : MonoBehaviour
         if (projected != null) projected.Release();
     }
 
-    void AddDebugger(string name)
-    {
-        debugDisplay = GameObject.Find(name).GetComponent<FPSCounter>();
-        debugDisplay.loader = this;
-    }
-
     void SetUpTextures()
     {
         Resolution res = EstimatePanoramaResolution(Screen.width, Screen.height, Camera.main.fieldOfView);
@@ -181,19 +173,6 @@ public class TextureLoader : MonoBehaviour
         postProcessingMat.SetVector("Rotation", transform.eulerAngles * Mathf.Deg2Rad);
         postProcessingMat.SetFloat("FOV", (180 - Camera.main.fieldOfView) * Mathf.Deg2Rad);
         postProcessingMat.SetInt("Debug", debug ? 1 : 0);
-    }
-
-    void HandleKeyPresses()
-    {
-#if !UNITY_EDITOR
-        if (Input.GetKeyDown(KeyCode.Escape)) Application.Quit();
-#endif
-        if (Input.GetKeyDown(KeyCode.F2)) debugDisplay.Toggle();
-        if (Input.GetKeyDown(KeyCode.F3)) debug = !debug;
-        if (Input.mouseScrollDelta.y > 0) selectedId += 1;
-        if (Input.mouseScrollDelta.y < 0) selectedId -= 1;
-        if (selectedId > layerDepth) selectedId = 1;
-        if (selectedId < 1) selectedId = layerDepth;
     }
 
     public Resolution EstimatePanoramaResolution(int width, int height, float fov)
