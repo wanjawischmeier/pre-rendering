@@ -4,7 +4,6 @@ using System.IO;
 using System;
 using UnityEngine.Networking;
 using System.Collections.Generic;
-using UnityEngine.SceneManagement;
 
 public class TextureLoader : MonoBehaviour
 {
@@ -28,6 +27,7 @@ public class TextureLoader : MonoBehaviour
 #if UNITY_EDITOR
     public Vector3[] pending;
     public Vector3[] decoded;
+    public Vector3[] off;
 #endif
 
     public Map map;
@@ -100,6 +100,7 @@ public class TextureLoader : MonoBehaviour
 #if UNITY_EDITOR
         pending = new Vector3[map.pending.Count];
         decoded = new Vector3[map.decoded.Count];
+        off = map.offArray;
 
         int idx = 0;
         foreach (KeyValuePair<AsyncOperation, Tuple<Vector3, UnityWebRequest>> item in map.pending)

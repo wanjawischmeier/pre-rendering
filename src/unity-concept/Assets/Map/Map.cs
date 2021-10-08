@@ -30,7 +30,6 @@ namespace MapManagement
     {
         public StandaloneMapConfig config;
         public Vector3[] offArray;
-        Vector3[] oldOffArray;
         public Dictionary<AsyncOperation, Tuple<Vector3, UnityWebRequest>> pending;
         public Dictionary<Vector3, UnityWebRequest> decoded;
         readonly string mainPath;
@@ -71,14 +70,12 @@ namespace MapManagement
 
         public void LoadTexturesNearPosition(Vector3 position)
         {
-            oldOffArray = offArray;
             Graphics.CopyTexture(textures, oldTextures);
-            offArray = GetClosest(position);
+            Vector3[] temp = GetClosest(position);
 
             for (int i = 0; i < offArray.Length; i++)
             {
-                Vector3 off = offArray[i];
-
+                Vector3 off = temp[i];
 
                 if (decoded.ContainsKey(off))
                 {
@@ -87,13 +84,16 @@ namespace MapManagement
                     Texture2D texture = DownloadHandlerTexture.GetContent(www);
                     Graphics.CopyTexture(texture, 0, textures, i);
                     Object.Destroy(texture);
-
                     decoded.Remove(off);
+
+                    offArray[i] = off;
                 }
-                else if (oldOffArray.Contains(off))
+                else if (offArray.Contains(off))
                 {
-                    int j = Array.IndexOf(oldOffArray, off);
+                    int j = Array.IndexOf(offArray, off);
                     Graphics.CopyTexture(oldTextures, j, textures, i);
+
+                    offArray[i] = off;
                 }
                 // Most readable line of code in the world
                 else if (!pending.Values.Select((Tuple<Vector3, UnityWebRequest> value) => { return value.Item1; }).Contains(off))
@@ -109,12 +109,7 @@ namespace MapManagement
                 }
 
                 if (decoded.Count > cacheSize)
-                {
                     decoded.Remove(decoded.Take(1).ToArray()[0].Key);
-#if UNITY_EDITOR
-                    Debug.Log("Texture cache is getting too large, removing a texture.");
-#endif
-                }
             }
         }
 
