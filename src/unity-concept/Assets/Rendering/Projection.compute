@@ -1,5 +1,5 @@
 int IMG_IDX, MX_IDX;
-float PI, PI2, FCLIP;
+float PI, PI2, FCLIP, L;
 float3 Position;
 Texture2DArray<half4> _InputArray;
 
@@ -51,7 +51,7 @@ void Projection(uint3 id : SV_DispatchThreadID)
     
     float2 idx = round(a * ResultRes);
     
-    _Result[idx] = half4(id.xy / ResultRes, (IMG_IDX +1) / (float) MX_IDX, 1);
+    _Result[idx] = half4(id.xy / ResultRes, (IMG_IDX + 1) / (float) MX_IDX, 1);
 }
 
 #pragma kernel Combine
@@ -79,6 +79,7 @@ void Combine(uint3 id : SV_DispatchThreadID)
     half dNew = _InputArray[idx].a;
     
     // col.z = 0 < dOld > dNew;
-    if (col.a == 1) // TODO: Depth sorting (d < _Projected[idx].a) / && 0 < dOld > dNew
+    if (col.a > L) // TODO: Depth sorting (d < _Projected[idx].a) / && 0 < dOld > dNew
+        // _Projected[id.xy] = col;
         _Projected[id.xy] = col;
 }

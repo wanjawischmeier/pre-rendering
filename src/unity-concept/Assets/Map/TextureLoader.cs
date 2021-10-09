@@ -20,6 +20,7 @@ public class TextureLoader : MonoBehaviour
     [Range(1, 100)]
     public int cacheSize = 10;
     public bool debug;
+    public float l;
 
     Vector3[] debugOffArray;
     public int selectedId = 1;
@@ -42,38 +43,8 @@ public class TextureLoader : MonoBehaviour
     uint projectThreadsX, projectThreadsY, combineThreadsX, combineThreadsY;
     int projectWidth, projectHeight;
 
-#if !UNITY_EDITOR
-    public struct StartupConfig
-    {
-        public string main_path;
-        public string map_name;
-        public int[] screen_resolution;
-        public float geometry_percision;
-        public int layer_depth;
-        public int cache_size;
-    }
-    public StartupConfig config;
-#endif
-
     void Start()
     {
-#if !UNITY_EDITOR
-        string configPath = Path.Combine(Application.dataPath, "start.config");
-        string rawConfig = File.ReadAllText(configPath);
-        config = JsonUtility.FromJson<StartupConfig>(rawConfig);
-
-        Screen.SetResolution(config.screen_resolution[0], config.screen_resolution[1], true);
-
-        mainPath = config.main_path;
-        mapName = config.map_name;
-        geometryResolution = new Vector2Int(
-            Mathf.RoundToInt(Screen.width * config.geometry_percision),
-            Mathf.RoundToInt(Screen.height * config.geometry_percision)
-        );
-        layerDepth = config.layer_depth;
-        cacheSize = config.cache_size;
-
-#endif
         string path = Path.Combine(mainPath, mapName);
         map = new Map(path, layerDepth, cacheSize);
 
@@ -171,6 +142,7 @@ public class TextureLoader : MonoBehaviour
     void SetShaderValues()
     {
         projectShader.SetVector("Position", transform.position);
+        projectShader.SetFloat("L", l);
         postProcessingMat.SetVector("Rotation", transform.eulerAngles * Mathf.Deg2Rad);
         postProcessingMat.SetFloat("FOV", (180 - Camera.main.fieldOfView) * Mathf.Deg2Rad);
         postProcessingMat.SetInt("Debug", debug ? 1 : 0);

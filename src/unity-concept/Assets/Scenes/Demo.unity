@@ -1614,7 +1614,7 @@ MonoBehaviour:
   geometryResolution: {x: 1024, y: 512}
   layerDepth: 2
   cacheSize: 10
-  debug: 0
+  debug: 1
   selectedId: 2
   pending: []
   decoded: []
@@ -1627,7 +1627,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1464708536}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1294e014c405bac4a86ffd9f1f87b9f2, type: 3}
   m_Name: 

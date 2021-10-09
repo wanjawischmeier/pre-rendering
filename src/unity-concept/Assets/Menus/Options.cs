@@ -94,7 +94,7 @@ public class Options : MonoBehaviour
         Screen.SetResolution(
             PlayerPrefs.GetInt("Screen Resolution Width"),
             PlayerPrefs.GetInt("Screen Resolution Height"),
-            true
+            false
         );
 #endif
         PlayerPrefs.Save();
