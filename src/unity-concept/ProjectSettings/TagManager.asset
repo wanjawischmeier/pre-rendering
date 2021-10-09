@@ -3,7 +3,13 @@
 --- !u!78 &1
 TagManager:
   serializedVersion: 2
-  tags: []
+  tags:
+  - ScreenResolutionWidth
+  - ScreenResolutionHeight
+  - CacheSize
+  - ScreenResolutionDropdown
+  - FPSDebugger
+  - ShaderDebugger
   layers:
   - Default
   - TransparentFX

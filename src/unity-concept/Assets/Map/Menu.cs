@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class Menu : MonoBehaviour
 {
@@ -7,13 +8,19 @@ public class Menu : MonoBehaviour
     public FPSCounter debugger;
     public GameObject menu;
 
+    const string options = "Options";
+
     bool menu_enabled
     {
-        get { return menu.activeSelf; }
+        get { return SceneManager.sceneCount == 2; }
         set
         {
-            menu.SetActive(value);
-            controller.enabled = !value;
+            if (value)
+                SceneManager.LoadSceneAsync(options, LoadSceneMode.Additive);
+            else
+                SceneManager.UnloadSceneAsync(options);
+
+            controller.enabled = !controller.enabled;
         }
     }
     
