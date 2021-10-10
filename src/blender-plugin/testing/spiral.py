@@ -1,6 +1,7 @@
 # https://stackoverflow.com/questions/398299/looping-in-a-spiral
 from numpy.lib.scimath import sqrt
-
+from numpy import ndarray, array, arange
+from matplotlib.pyplot import plot, show
 
 def spiral(X, Y):
     x = dx = 1
@@ -29,6 +30,70 @@ def spiralI(n):
             dx, dy = -dy, dx
         x, y = x+dx, y+dy
 
+def getNeeded(start: list, end: list, step_size: float) -> ndarray:
+    needed = []
+    for x in arange(start[0], end[0] + step_size, step_size):
+        for y in arange(start[1], end[1] + step_size, step_size):
+            for z in arange(start[2], end[2] + step_size, step_size):
+                needed.append([x, y, z])
+    return array(needed)
+"""
 spiral(2, 2)
 print("--")
 spiralI(4)
+
+for c in range(1, 10):
+    print(str(c) + ": " + str(len(getNeeded([-c, -c, 0], [c, c, 0], 1))))
+
+points = [i for i in range(1, 20)]
+values = [
+    len(getNeeded([-c, -c, 0], [c, c, 0], 1)) for c in points
+]
+
+plot(points, values)
+show()
+def f(x):
+    return (-1/1344)*x + (-3/224)*x + 2 + (1075/1344)
+def f2(x):
+    return round(0.043*x + 0.62)
+def f3(x):
+    return round(0.07*x + 0.405)
+def f4(x):
+    return round((-10E-3)*x + 0.05*x + 0.6)
+def f5(x):
+    return round((-1.2765522875817E-5)*x + 0.02218647875817*x + 2.654296875)
+"""
+# f(x) = ax² + bx + c
+# P1(25, 2)
+# P2(49, 3)
+# P3(81, 4)
+def f(x):
+    if   x <= 9:   return 1
+    elif x <= 25:  return 2
+    elif x <= 49:  return 3
+    elif x <= 81:  return 4
+    elif x <= 121: return 5
+    elif x <= 169: return 6
+    elif x <= 225: return 7
+    elif x <= 289: return 8
+xs = [9, 25, 49, 81, 121, 169, 225, 289]
+"""
+1: 9
+2: 25
+3: 49
+4: 81
+5: 121
+6: 169
+7: 225
+8: 289
+9: 361
+"""
+"""
+for c in range(1, 9):
+    print(str(c) + ":\t" + str(len(getNeeded([-c, -c, 0], [c, c, 0], 1))))
+
+for x in xs:
+    print(str(x) + ":\t" + str(f(x)))
+"""
+# print(str(c) + ":\t" + str(len(getNeeded([-c, -c, 0], [c, c, 0], 1))))
+# print(str(x) + ":\t" + str(f(x)))
