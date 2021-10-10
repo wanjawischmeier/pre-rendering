@@ -29,7 +29,7 @@ public class Options : MonoBehaviour
         dropdown.value = resolutionType;
         screenResolutionWidth.text = width.ToString();
         screenResolutionHeight.text = height.ToString();
-        bool interactable = resolutionType == 0 ? false : true;
+        bool interactable = resolutionType != 0;
         screenResolutionWidth.interactable = interactable;
         screenResolutionHeight.interactable = interactable;
 
@@ -41,8 +41,8 @@ public class Options : MonoBehaviour
 
         Toggle fpsDebugger = GameObject.FindGameObjectWithTag("FPSDebugger").GetComponent<Toggle>();
         Toggle shaderDebugger = GameObject.FindGameObjectWithTag("ShaderDebugger").GetComponent<Toggle>();
-        fpsDebugger.isOn = PlayerPrefs.GetInt("FPS Debugger") == 1 ? true : false;
-        shaderDebugger.isOn = PlayerPrefs.GetInt("Shader Debugger") == 1 ? true : false;
+        fpsDebugger.isOn = PlayerPrefs.GetInt("FPS Debugger") == 1;
+        shaderDebugger.isOn = PlayerPrefs.GetInt("Shader Debugger") == 1;
     }
 
     public void OnScreenResolution(int value)

@@ -10,7 +10,7 @@ public class Menu : MonoBehaviour
 
     const string options = "Options";
 
-    bool menu_enabled
+    bool MenuEnabled
     {
         get { return SceneManager.sceneCount == 2; }
         set
@@ -37,7 +37,7 @@ public class Menu : MonoBehaviour
 #endif
         if (Input.GetKeyDown(KeyCode.F2)) debugger.active = !debugger.active;
         if (Input.GetKeyDown(KeyCode.F3)) loader.debug = !loader.debug;
-        if (Input.GetKeyDown(KeyCode.Escape)) menu_enabled = !menu_enabled;
+        if (Input.GetKeyDown(KeyCode.Escape)) MenuEnabled = !MenuEnabled;
         if (Input.mouseScrollDelta.y > 0) loader.selectedId += 1;
         if (Input.mouseScrollDelta.y < 0) loader.selectedId -= 1;
         if (loader.selectedId > loader.layerDepth) loader.selectedId = 1;

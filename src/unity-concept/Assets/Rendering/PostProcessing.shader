@@ -66,8 +66,11 @@ Shader "PreRendering/PostProcessing"
                 float2 tc = gnomonicProjection(i.uv, FOV, Rotation.x, Rotation.y);
                 half4 idx = _Projected.Sample(bilinear_repeat_sampler, tc);
 
-                // if (idx.a != 1) idx = float4(tc, 0, FCLIP);
-                if (idx.a != 1) return float4(0, 0, 0, 1);
+                if (idx.a != 1)
+                {
+                    if (tc.y < 0.25 || tc.y > 0.75) idx = float4(tc, 0, FCLIP);
+                    else return float4(0, 0, 0, 1);
+                }
                 if (Debug) return idx;
 
                 idx.z *= MX_IDX;

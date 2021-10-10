@@ -38,18 +38,15 @@ public class TextureLoader : MonoBehaviour
     ComputeBuffer debugOffBuffer;
     ComputeBuffer offBuffer;
     public RenderTexture projected;
+    public RenderTexture depthBuffer;
 
     int project, combine;
     uint projectThreadsX, projectThreadsY, combineThreadsX, combineThreadsY;
-    int projectWidth, projectHeight;
 
     void Start()
     {
         string path = Path.Combine(mainPath, mapName);
         map = new Map(path, layerDepth, cacheSize);
-
-        projectWidth = geometryResolution.x;
-        projectHeight = geometryResolution.y;
 
         postProcessingMat = new Material(postProcessing);
         project = projectShader.FindKernel("Projection");
@@ -90,36 +87,58 @@ public class TextureLoader : MonoBehaviour
         {
             float distance = Vector3.Distance(transform.position, map.offArray[i]);
             // TODO: Resolution based on distance
+            int projectWidth = geometryResolution.x;
+            int projectHeight = geometryResolution.y;
 
             RenderTexture rt = RenderTexture.GetTemporary(projectWidth, projectHeight, 0, RenderTextureFormat.ARGB64);
+            RenderTexture tmpDepthBuffer = RenderTexture.GetTemporary(projectWidth, projectHeight, 0, RenderTextureFormat.R16);
             rt.enableRandomWrite = true;
-            projectShader.SetTexture(combine, "_Input", rt);
-            projectShader.SetTexture(project, "_Result", rt);
+            tmpDepthBuffer.enableRandomWrite = true;
+
             projectShader.SetInt("IMG_IDX", i);
+            projectShader.SetTexture(project, "_Result", rt);
+            projectShader.SetTexture(combine, "_Input", rt);
+            projectShader.SetTexture(project, "_TempDepthBuffer", tmpDepthBuffer);
+            projectShader.SetTexture(combine, "_Filter", tmpDepthBuffer);
 
             projectShader.Dispatch(project, projectWidth / (int)projectThreadsX, projectHeight / (int)projectThreadsY, 1);
             projectShader.Dispatch(combine, projected.width / (int)combineThreadsX, projected.height / (int)combineThreadsY, 1);
 
             RenderTexture.ReleaseTemporary(rt);
+            RenderTexture.ReleaseTemporary(tmpDepthBuffer);
         }
     }
 
-    void OnRenderImage(RenderTexture source, RenderTexture destination) =>
+    void OnRenderImage(RenderTexture source, RenderTexture destination)
+    {
         Graphics.Blit(projected, destination, postProcessingMat);
+
+        RenderTexture tmp = RenderTexture.active;
+        RenderTexture.active = projected;
+        GL.Clear(true, true, Color.clear);
+        RenderTexture.active = depthBuffer;
+        GL.Clear(true, true, Color.clear);
+        RenderTexture.active = tmp;
+    }
 
     void OnDestroy()
     {
         if (offBuffer != null) offBuffer.Release();
         if (debugOffBuffer != null) debugOffBuffer.Release();
         if (projected != null) projected.Release();
+        if (depthBuffer != null) depthBuffer.Release();
     }
 
     void SetUpTextures()
     {
         Resolution res = EstimatePanoramaResolution(Screen.width, Screen.height, Camera.main.fieldOfView);
-        projected = new RenderTexture(res.width, res.height, 0, RenderTextureFormat.ARGB64);
-        projected.enableRandomWrite = true;
+        projected = new RenderTexture(res.width, res.height, 0, RenderTextureFormat.ARGB64)
+        {
+            enableRandomWrite = true
+        };
+        depthBuffer = new RenderTexture(projected) { format = RenderTextureFormat.R16 };
         projected.Create();
+        depthBuffer.Create();
 
         debugOffArray = new Vector3[layerDepth];
         offBuffer = new ComputeBuffer(layerDepth, sizeof(float) * 3);
@@ -134,6 +153,7 @@ public class TextureLoader : MonoBehaviour
         Shader.SetGlobalInt("MX_IDX", layerDepth);
         Shader.SetGlobalTexture("_InputArray", map.textures);
         Shader.SetGlobalTexture("_Projected", projected);
+        Shader.SetGlobalTexture("_DepthBuffer", depthBuffer);
 
         projectShader.SetBuffer(project, "OffsetBuffer", offBuffer);
         projectShader.SetBuffer(project, "DebugOffsetBuffer", debugOffBuffer);
@@ -150,9 +170,11 @@ public class TextureLoader : MonoBehaviour
 
     public Resolution EstimatePanoramaResolution(int width, int height, float fov)
     {
-        Resolution res = new Resolution();
-        res.width = Mathf.RoundToInt(width * (360 / fov));
-        res.height = Mathf.RoundToInt(height * (180 / fov));
+        Resolution res = new Resolution
+        {
+            width = Mathf.RoundToInt(width * (360 / fov)),
+            height = Mathf.RoundToInt(height * (180 / fov))
+        };
         return res;
     }
 }

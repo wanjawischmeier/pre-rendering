@@ -36,8 +36,8 @@ namespace MapManagement
         readonly int cacheSize;
 
         public Texture2DArray textures;
-        Texture2DArray oldTextures;
-        Texture2D reader;
+        readonly Texture2DArray oldTextures;
+        readonly Texture2D reader;
 
         public Map(string path, int maxTextures, int cacheSize)
         {

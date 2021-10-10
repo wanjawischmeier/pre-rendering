@@ -2,22 +2,24 @@ int IMG_IDX, MX_IDX;
 float PI, PI2, FCLIP, L;
 float3 Position;
 Texture2DArray<half4> _InputArray;
+RWTexture2D<half> _DepthBuffer;
 
 #pragma kernel Projection;
 StructuredBuffer<half3> OffsetBuffer;
 StructuredBuffer<half3> DebugOffsetBuffer;
+RWTexture2D<half> _TempDepthBuffer;
 RWTexture2D<half4> _Result;
 
 [numthreads(8, 8, 1)]
 void Projection(uint3 id : SV_DispatchThreadID)
 {
-    uint InputWidth, InputHeight, InputDepth, ResultWidth, ResultHeight;
-    _InputArray.GetDimensions(InputWidth, InputHeight, InputDepth);
+    uint InputArrayWidth, InputArrayHeight, InputArrayDepth, ResultWidth, ResultHeight;
+    _InputArray.GetDimensions(InputArrayWidth, InputArrayHeight, InputArrayDepth);
     _Result.GetDimensions(ResultWidth, ResultHeight);
-    float2 InputRes = float2(InputWidth, InputHeight);
+    float2 InputArrayRes = float2(InputArrayWidth, InputArrayHeight);
     float2 ResultRes = float2(ResultWidth, ResultHeight);
     
-    float3 inpIdx = float3(id.xy / ResultRes * InputRes, IMG_IDX);
+    float3 inpIdx = float3(id.xy / ResultRes * InputArrayRes, IMG_IDX);
     
     float2 ll1 = id.yx / ResultRes.yx;
     ll1.x *= PI;
@@ -32,11 +34,21 @@ void Projection(uint3 id : SV_DispatchThreadID)
         CP * cos(ll1.y) * sin(ll1.x)
     );
     
+    float3 PMax = float3(
+        FCLIP * sin(ll1.y) * sin(ll1.x),
+        FCLIP * cos(ll1.x),
+        FCLIP * cos(ll1.y) * sin(ll1.x)
+    );
+    
     P -= Position;
+    PMax -= Position;
     P += OffsetBuffer[IMG_IDX];
+    PMax += OffsetBuffer[IMG_IDX];
     P += DebugOffsetBuffer[IMG_IDX];
+    PMax += DebugOffsetBuffer[IMG_IDX];
     
     float d = sqrt(P.x * P.x + P.y * P.y + P.z * P.z);
+    float dMax = sqrt(PMax.x * PMax.x + PMax.y * PMax.y + PMax.z * PMax.z);
     
     float2 ll2 = float2(
         acos(P.y / d),
@@ -49,37 +61,34 @@ void Projection(uint3 id : SV_DispatchThreadID)
     );
     a.x += 0.5;
     
-    float2 idx = round(a * ResultRes);
+    float2 idx = a * ResultRes;
     
     _Result[idx] = half4(id.xy / ResultRes, (IMG_IDX + 1) / (float) MX_IDX, 1);
+    _TempDepthBuffer[idx] = d / dMax;
 }
 
 #pragma kernel Combine
 Texture2D<half4> _Input;
-SamplerState sampler_Input;
+Texture2D<half> _Filter;
+SamplerState linear_clamp_sampler;
 RWTexture2D<half4> _Projected;
 
 [numthreads(8, 8, 1)]
 void Combine(uint3 id : SV_DispatchThreadID)
 {
-    uint width, height, InputWidth, InputHeight, InputDepth;
-    _InputArray.GetDimensions(InputWidth, InputHeight, InputDepth);
-    _Projected.GetDimensions(width, height);
+    uint InputWidth, InputHeight, ProjectedWidth, ProjectedHeight;
+    _Input.GetDimensions(InputWidth, InputHeight);
+    _Projected.GetDimensions(ProjectedWidth, ProjectedHeight);
     float2 InputRes = float2(InputWidth, InputHeight);
-    float2 ProjectedRes = float2(width, height);
+    float2 ProjectedRes = float2(ProjectedWidth, ProjectedHeight);
     
-    half4 old = _Projected[id.xy];
-    half4 col = _Input.SampleLevel(sampler_Input, id.xy / ProjectedRes, 0);
-    float3 idx;
+    half4 col = _Input.SampleLevel(linear_clamp_sampler, id.xy / ProjectedRes, 0);
+    half d = _DepthBuffer[id.xy];
+    half f = _Filter.SampleLevel(linear_clamp_sampler, id.xy / ProjectedRes, 0);
     
-    idx = float3(old.xy * InputRes, old.z * MX_IDX - 1);
-    half dOld = _InputArray[idx].a;
-    
-    idx = float3(col.xy * InputRes, col.z * MX_IDX - 1);
-    half dNew = _InputArray[idx].a;
-    
-    // col.z = 0 < dOld > dNew;
-    if (col.a > L) // TODO: Depth sorting (d < _Projected[idx].a) / && 0 < dOld > dNew
-        // _Projected[id.xy] = col;
+    if (col.a == 1 && (d == 0 || f < d))
+    {
         _Projected[id.xy] = col;
+        _DepthBuffer[id.xy] = f;
+    }
 }
