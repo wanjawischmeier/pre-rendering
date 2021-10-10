@@ -1,5 +1,6 @@
 using UnityEngine;
 
+[ExecuteInEditMode]
 public class Merge : MonoBehaviour
 {
     public Shader merge;
@@ -12,13 +13,16 @@ public class Merge : MonoBehaviour
 
 
 
-    void Start()
+    void OnValidate()
     {
         mergeMat = new Material(merge);
         seperateMat = new Material(seperate);
-        target = new RenderTexture(maps.width, maps.height, 0);
+        target = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGB64);
         result = new RenderTexture(target);
+    }
 
+    void Update()
+    {
         Graphics.Blit(maps, target, mergeMat);
         Graphics.Blit(target, result, seperateMat);
     }

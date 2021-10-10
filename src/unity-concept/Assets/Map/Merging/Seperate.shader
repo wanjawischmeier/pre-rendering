@@ -29,19 +29,21 @@ Shader "PreRendering/Seperate"
                 float4 vertex : SV_POSITION;
             };
 
-            // merges inputs with n bits each into one number with twice the bits
-            int merge(int a, int b, int bits)
-            {
-                return (a << bits) | b;
-            }
-
             // seperates the input into two numbers with n bits each
-            int2 seperate(int c, int bits)
+            uint2 seperate(uint c, uint bits)
             {
-                return int2(
+                return uint2(
                     c >> 4,
-                    c & ((int) pow(2, bits) - 1)
+                    c & ((uint) pow(2, 4) -1)
                 );
+            }
+            
+            void UnpackFloat(float input, out float a, out float b) {
+
+                //Unpacking
+                uint uintInput = asuint(input);
+                a = f16tof32(uintInput >> 16);
+                b = f16tof32(uintInput);
             }
 
             v2f vert (appdata v)
@@ -57,21 +59,19 @@ Shader "PreRendering/Seperate"
             fixed4 frag (v2f i) : SV_Target
             {
                 fixed4 mps_comb = tex2D(_MainTex, i.uv);
+                
+                uint trnsp_rough_comb = mps_comb.r * 0xFF;
 
-                int trnsp_rough_comb = mps_comb.r * 0xF;
-                int2 depth_sep = mps_comb.gb * 0xFF;
+                uint2 trnsp_rough = seperate(trnsp_rough_comb, 4);
 
-                int2 trnsp_rough = seperate(mps_comb.r * 0xF, 4);
-                int depth = merge(depth_sep[0], depth_sep[1], 8);
-
-                float4 out_col = float4(
+                float4 col = float4(
                     trnsp_rough[0] / 0xF,
                     trnsp_rough[1] / 0xF,
-                    depth / 0xFFFF,
+                    0,
                     1
                 );
 
-                return out_col;
+                return col;
             }
             ENDCG
         }

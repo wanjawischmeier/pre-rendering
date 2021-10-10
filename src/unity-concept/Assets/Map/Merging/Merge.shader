@@ -30,19 +30,20 @@ Shader "PreRendering/Merge"
             };
 
             // merges inputs with n bits each into one number with twice the bits
-            int merge(int a, int b, int bits)
+            uint merge(uint a, uint b, uint bits)
             {
                 return (a << bits) | b;
             }
+            
+            float PackFloats(float a, float b) {
 
-            // seperates the input into two numbers with n bits each
-            int2 seperate(int c, int bits)
-            {
-                return int2(
-                    c >> 4,
-                    c & ((int) pow(2, bits) - 1)
-                );
+                //Packing
+                uint a16 = f32tof16(a);
+                uint b16 = f32tof16(b);
+                uint abPacked = (a16 << 16) | b16;
+                return asfloat(abPacked);
             }
+
 
             v2f vert (appdata v)
             {
@@ -56,39 +57,12 @@ Shader "PreRendering/Merge"
 
             fixed4 frag (v2f i) : SV_Target
             {
-                fixed4 mps = tex2D(_MainTex, i.uv);
+                float4 mps = tex2D(_MainTex, i.uv);
+                mps *= pow(2, 3.2);
 
-                int trnsp = mps.r * 0xF;
-                int rough = mps.g * 0xF;
-                int depth = mps.b * 0xFFFF;
+                float c = PackFloats(mps.r, mps.g);
 
-                int trnsp_rough = merge(trnsp, rough, 4);
-                int2 depth_sep = seperate(depth, 8);
-
-                float4 out_col = float4(
-                    trnsp_rough,
-                    depth_sep[0],
-                    depth_sep[1],
-                    1
-                );
-
-                out_col.rgb /= (float) 0xFF;
-
-                /*
-                int a = 5;
-                int b = 13;
-                int c = merge(a, b, 4);
-                int2 r = seperate(c, 4);
-
-                float4 out_col = float4(
-                    a / (float) 0xF,
-                    r[0] / (float) 0xF,
-                    a / (float) 0xF == r[0] / (float) 0xF,
-                    1
-                );
-                */
-
-                return out_col;
+                return float4(c / pow(2, 16), 0, 0, 1);
             }
             ENDCG
         }
