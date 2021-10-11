@@ -97,3 +97,24 @@ for x in xs:
 """
 # print(str(c) + ":\t" + str(len(getNeeded([-c, -c, 0], [c, c, 0], 1))))
 # print(str(x) + ":\t" + str(f(x)))
+def size(start: list, end: list, step_size: int) -> int:
+    return (
+        (end[0] + step_size - start[0]) *
+        (end[1] + step_size - start[1]) *
+        (end[2] + step_size - start[2])
+    )
+
+c = 2
+start = [-1, -2, -3]
+end = [4, 5, 6]
+step_size = 1
+i = 0
+for x in arange(-1, 4 + 1):             # l1 = 4 + 1 - -1    |   end[0] + step_size - start[0]
+        for y in arange(-2, 5 + 1):     # l2 = 5 + 1 - -2    |   end[1] + step_size - start[1]
+            for z in arange(-3, 6 + 1): # l3 = 6 + 1 - -3    |   end[2] + step_size - start[2]
+                i += 1                  # l = l1 ** l2 ** l3
+
+s = size(start, end, step_size)
+
+print(i)
+print(s)

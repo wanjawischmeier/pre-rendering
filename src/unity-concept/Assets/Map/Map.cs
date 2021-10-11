@@ -75,7 +75,7 @@ namespace MapManagement
             Graphics.CopyTexture(textures, oldTextures);
             Vector3[] temp = GetClosest(position, cacheSize);
 
-            for (int i = 0; i < temp.Length; i++)
+            for (int i = temp.Length -1; i >= 0; i--)
             {
                 Vector3 off = temp[i];
                 
@@ -97,7 +97,6 @@ namespace MapManagement
 
                     offArray[i] = off;
                 }
-
                 else if (pending.Count < decodingThreads && !IsPending(off))
                 {
                     string texturePath = VectorToFileName(off);
