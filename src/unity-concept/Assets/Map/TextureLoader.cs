@@ -29,6 +29,7 @@ public class TextureLoader : MonoBehaviour
     public Vector3[] pending;
     public Vector3[] decoded;
     public Vector3[] off;
+    public Texture2DArray array;
 #endif
 
     public Map map;
@@ -45,7 +46,7 @@ public class TextureLoader : MonoBehaviour
     void Start()
     {
         string path = Path.Combine(mainPath, mapName);
-        map = new Map(path, cacheSize);
+        map = new Map(path, cacheSize, layerDepth);
 
         postProcessingMat = new Material(postProcessing);
         project = projectShader.FindKernel("Projection");
@@ -62,7 +63,7 @@ public class TextureLoader : MonoBehaviour
     {
         SetShaderValues();
 
-        map.LoadTexturesNearPosition(transform.position, layerDepth);
+        map.LoadTexturesNearPosition(transform.position);
 
 #if UNITY_EDITOR
         pending = new Vector3[map.pending.Count];
@@ -76,6 +77,8 @@ public class TextureLoader : MonoBehaviour
         idx = 0;
         foreach (KeyValuePair<Vector3, UnityWebRequest> item in map.decoded)
             decoded[idx] = item.Key; idx++;
+
+        array = map.textures;
 #endif
 
         debugOffArray[selectedId - 1] = controller.secondaryPosition;

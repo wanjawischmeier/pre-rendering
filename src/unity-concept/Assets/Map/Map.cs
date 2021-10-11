@@ -34,15 +34,17 @@ namespace MapManagement
         public Vector3[] offArray;
         readonly string mainPath;
         readonly int cacheSize;
+        readonly int decodingThreads;
 
         public Texture2DArray textures;
         readonly Texture2DArray oldTextures;
         readonly Texture2D reader;
 
-        public Map(string path, int cacheSize)
+        public Map(string path, int cacheSize, int decodingThreads)
         {
             mainPath = path;
             this.cacheSize = cacheSize;
+            this.decodingThreads = decodingThreads;
 
             reader = new Texture2D(0, 0, TextureFormat.RGBA32, false);
             pending = new Dictionary<AsyncOperation, Tuple<Vector3, UnityWebRequest>>();
@@ -68,10 +70,10 @@ namespace MapManagement
             Object.Destroy(oldTextures);
         }
 
-        public void LoadTexturesNearPosition(Vector3 position, int amount)
+        public void LoadTexturesNearPosition(Vector3 position)
         {
             Graphics.CopyTexture(textures, oldTextures);
-            Vector3[] temp = GetClosest(position, amount);
+            Vector3[] temp = GetClosest(position, cacheSize);
 
             for (int i = 0; i < temp.Length; i++)
             {
@@ -95,8 +97,8 @@ namespace MapManagement
 
                     offArray[i] = off;
                 }
-                // Most readable line of code in the world
-                else if (!pending.Values.Select((Tuple<Vector3, UnityWebRequest> value) => { return value.Item1; }).Contains(off))
+
+                else if (pending.Count < decodingThreads && !IsPending(off))
                 {
                     string texturePath = VectorToFileName(off);
 
@@ -108,7 +110,7 @@ namespace MapManagement
                     asyncOp.completed += OnImageDecoded;
                 }
 
-                if (decoded.Count > cacheSize)
+                if (decoded.Count > decodingThreads)
                     decoded.Remove(decoded.Take(1).ToArray()[0].Key);
             }
         }
@@ -142,6 +144,16 @@ namespace MapManagement
             byte[] rawTexture = File.ReadAllBytes(path);
             reader.LoadImage(rawTexture);
             return reader;
+        }
+
+        bool IsPending(Vector3 vector)
+        {
+            return pending.Values.Select(
+                (Tuple<Vector3, UnityWebRequest> value) =>
+                {
+                    return value.Item1;
+                })
+                .Contains(vector);
         }
     }
 }

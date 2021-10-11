@@ -1614,14 +1614,14 @@ MonoBehaviour:
   geometryResolution: {x: 1024, y: 512}
   layerDepth: 4
   cacheSize: 10
-  debug: 1
+  debug: 0
   l: 0
   selectedId: 2
   pending: []
   decoded: []
   off: []
+  array: {fileID: 0}
   projected: {fileID: 0}
-  depthBuffer: {fileID: 0}
 --- !u!114 &1464708541
 MonoBehaviour:
   m_ObjectHideFlags: 0
