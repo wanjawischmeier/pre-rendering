@@ -38,7 +38,6 @@ public class TextureLoader : MonoBehaviour
     ComputeBuffer debugOffBuffer;
     ComputeBuffer offBuffer;
     public RenderTexture projected;
-    public RenderTexture depthBuffer;
 
     int project, combine;
     uint projectThreadsX, projectThreadsY, combineThreadsX, combineThreadsY;
@@ -46,7 +45,7 @@ public class TextureLoader : MonoBehaviour
     void Start()
     {
         string path = Path.Combine(mainPath, mapName);
-        map = new Map(path, layerDepth, cacheSize);
+        map = new Map(path, cacheSize);
 
         postProcessingMat = new Material(postProcessing);
         project = projectShader.FindKernel("Projection");
@@ -63,7 +62,7 @@ public class TextureLoader : MonoBehaviour
     {
         SetShaderValues();
 
-        map.LoadTexturesNearPosition(transform.position);
+        map.LoadTexturesNearPosition(transform.position, layerDepth);
 
 #if UNITY_EDITOR
         pending = new Vector3[map.pending.Count];
@@ -83,7 +82,7 @@ public class TextureLoader : MonoBehaviour
         offBuffer.SetData(map.offArray);
         debugOffBuffer.SetData(debugOffArray);
         
-        for (int i = 0; i < layerDepth; i++)
+        for (int i = layerDepth -1; i >= 0; i--) // Furthest away first, closest last (depth sorting)
         {
             float distance = Vector3.Distance(transform.position, map.offArray[i]);
             // TODO: Resolution based on distance
@@ -91,21 +90,17 @@ public class TextureLoader : MonoBehaviour
             int projectHeight = geometryResolution.y;
 
             RenderTexture rt = RenderTexture.GetTemporary(projectWidth, projectHeight, 0, RenderTextureFormat.ARGB64);
-            RenderTexture tmpDepthBuffer = RenderTexture.GetTemporary(projectWidth, projectHeight, 0, RenderTextureFormat.R16);
             rt.enableRandomWrite = true;
-            tmpDepthBuffer.enableRandomWrite = true;
 
+            Shader.SetGlobalVector("ProjectionRes", new Vector2(projectWidth, projectHeight));
             projectShader.SetInt("IMG_IDX", i);
             projectShader.SetTexture(project, "_Result", rt);
             projectShader.SetTexture(combine, "_Input", rt);
-            projectShader.SetTexture(project, "_TempDepthBuffer", tmpDepthBuffer);
-            projectShader.SetTexture(combine, "_Filter", tmpDepthBuffer);
 
             projectShader.Dispatch(project, projectWidth / (int)projectThreadsX, projectHeight / (int)projectThreadsY, 1);
             projectShader.Dispatch(combine, projected.width / (int)combineThreadsX, projected.height / (int)combineThreadsY, 1);
 
             RenderTexture.ReleaseTemporary(rt);
-            RenderTexture.ReleaseTemporary(tmpDepthBuffer);
         }
     }
 
@@ -116,8 +111,6 @@ public class TextureLoader : MonoBehaviour
         RenderTexture tmp = RenderTexture.active;
         RenderTexture.active = projected;
         GL.Clear(true, true, Color.clear);
-        RenderTexture.active = depthBuffer;
-        GL.Clear(true, true, Color.clear);
         RenderTexture.active = tmp;
     }
 
@@ -126,7 +119,6 @@ public class TextureLoader : MonoBehaviour
         if (offBuffer != null) offBuffer.Release();
         if (debugOffBuffer != null) debugOffBuffer.Release();
         if (projected != null) projected.Release();
-        if (depthBuffer != null) depthBuffer.Release();
     }
 
     void SetUpTextures()
@@ -136,13 +128,11 @@ public class TextureLoader : MonoBehaviour
         {
             enableRandomWrite = true
         };
-        depthBuffer = new RenderTexture(projected) { format = RenderTextureFormat.R16 };
         projected.Create();
-        depthBuffer.Create();
 
-        debugOffArray = new Vector3[layerDepth];
-        offBuffer = new ComputeBuffer(layerDepth, sizeof(float) * 3);
-        debugOffBuffer = new ComputeBuffer(layerDepth, sizeof(float) * 3);
+        debugOffArray = new Vector3[cacheSize];
+        offBuffer = new ComputeBuffer(cacheSize, sizeof(float) * 3);
+        debugOffBuffer = new ComputeBuffer(cacheSize, sizeof(float) * 3);
     }
 
     void SetShaderConstants()
@@ -151,9 +141,10 @@ public class TextureLoader : MonoBehaviour
         Shader.SetGlobalFloat("PI2", Mathf.PI * 2);
         Shader.SetGlobalFloat("FCLIP", map.config.fclip);
         Shader.SetGlobalInt("MX_IDX", layerDepth);
+        Shader.SetGlobalVector("InputArrayRes", new Vector2(map.textures.width, map.textures.height));
+        Shader.SetGlobalVector("ProjectedRes", new Vector2(projected.width, projected.height));
         Shader.SetGlobalTexture("_InputArray", map.textures);
         Shader.SetGlobalTexture("_Projected", projected);
-        Shader.SetGlobalTexture("_DepthBuffer", depthBuffer);
 
         projectShader.SetBuffer(project, "OffsetBuffer", offBuffer);
         projectShader.SetBuffer(project, "DebugOffsetBuffer", debugOffBuffer);

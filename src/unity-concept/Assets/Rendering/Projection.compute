@@ -1,27 +1,20 @@
 int IMG_IDX, MX_IDX;
 float PI, PI2, FCLIP, L;
+float2 InputArrayRes, ProjectionRes, ProjectedRes;
 float3 Position;
 Texture2DArray<half4> _InputArray;
-RWTexture2D<half> _DepthBuffer;
 
 #pragma kernel Projection;
 StructuredBuffer<half3> OffsetBuffer;
 StructuredBuffer<half3> DebugOffsetBuffer;
-RWTexture2D<half> _TempDepthBuffer;
 RWTexture2D<half4> _Result;
 
 [numthreads(8, 8, 1)]
 void Projection(uint3 id : SV_DispatchThreadID)
 {
-    uint InputArrayWidth, InputArrayHeight, InputArrayDepth, ResultWidth, ResultHeight;
-    _InputArray.GetDimensions(InputArrayWidth, InputArrayHeight, InputArrayDepth);
-    _Result.GetDimensions(ResultWidth, ResultHeight);
-    float2 InputArrayRes = float2(InputArrayWidth, InputArrayHeight);
-    float2 ResultRes = float2(ResultWidth, ResultHeight);
+    float3 inpIdx = float3(id.xy / ProjectionRes * InputArrayRes, IMG_IDX);
     
-    float3 inpIdx = float3(id.xy / ResultRes * InputArrayRes, IMG_IDX);
-    
-    float2 ll1 = id.yx / ResultRes.yx;
+    float2 ll1 = id.yx / ProjectionRes.yx;
     ll1.x *= PI;
     ll1.y *= PI2;
     ll1.y += PI;
@@ -61,34 +54,21 @@ void Projection(uint3 id : SV_DispatchThreadID)
     );
     a.x += 0.5;
     
-    float2 idx = a * ResultRes;
+    float2 idx = a * ProjectionRes;
     
-    _Result[idx] = half4(id.xy / ResultRes, (IMG_IDX + 1) / (float) MX_IDX, 1);
-    _TempDepthBuffer[idx] = d / dMax;
+    _Result[idx] = half4(id.xy / ProjectionRes, (IMG_IDX + 1) / (float) MX_IDX, 1);
 }
 
 #pragma kernel Combine
 Texture2D<half4> _Input;
-Texture2D<half> _Filter;
 SamplerState linear_clamp_sampler;
 RWTexture2D<half4> _Projected;
 
 [numthreads(8, 8, 1)]
 void Combine(uint3 id : SV_DispatchThreadID)
 {
-    uint InputWidth, InputHeight, ProjectedWidth, ProjectedHeight;
-    _Input.GetDimensions(InputWidth, InputHeight);
-    _Projected.GetDimensions(ProjectedWidth, ProjectedHeight);
-    float2 InputRes = float2(InputWidth, InputHeight);
-    float2 ProjectedRes = float2(ProjectedWidth, ProjectedHeight);
-    
     half4 col = _Input.SampleLevel(linear_clamp_sampler, id.xy / ProjectedRes, 0);
-    half d = _DepthBuffer[id.xy];
-    half f = _Filter.SampleLevel(linear_clamp_sampler, id.xy / ProjectedRes, 0);
     
-    if (col.a == 1 && (d == 0 || f < d))
-    {
+    if (col.a == 1)
         _Projected[id.xy] = col;
-        _DepthBuffer[id.xy] = f;
-    }
 }

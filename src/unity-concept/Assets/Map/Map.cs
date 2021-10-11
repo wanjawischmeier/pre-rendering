@@ -29,9 +29,9 @@ namespace MapManagement
     public class Map
     {
         public StandaloneMapConfig config;
-        public Vector3[] offArray;
         public Dictionary<AsyncOperation, Tuple<Vector3, UnityWebRequest>> pending;
         public Dictionary<Vector3, UnityWebRequest> decoded;
+        public Vector3[] offArray;
         readonly string mainPath;
         readonly int cacheSize;
 
@@ -39,15 +39,15 @@ namespace MapManagement
         readonly Texture2DArray oldTextures;
         readonly Texture2D reader;
 
-        public Map(string path, int maxTextures, int cacheSize)
+        public Map(string path, int cacheSize)
         {
             mainPath = path;
             this.cacheSize = cacheSize;
 
             reader = new Texture2D(0, 0, TextureFormat.RGBA32, false);
-            offArray = new Vector3[maxTextures];
             pending = new Dictionary<AsyncOperation, Tuple<Vector3, UnityWebRequest>>();
             decoded = new Dictionary<Vector3, UnityWebRequest>();
+            offArray = new Vector3[cacheSize];
 
             string rawConfig = File.ReadAllText(Path.Combine(mainPath, ".mapconfig"));
             config = JsonUtility.FromJson<StandaloneMapConfig>(rawConfig);
@@ -58,8 +58,8 @@ namespace MapManagement
             config.textureWidth = texture.width;
             config.textureHeight = texture.height;
 
-            textures = new Texture2DArray(config.textureWidth, config.textureHeight, maxTextures, TextureFormat.RGBA32, 1, false);
-            oldTextures = new Texture2DArray(config.textureWidth, config.textureHeight, maxTextures, TextureFormat.RGBA32, 1, false);
+            textures = new Texture2DArray(config.textureWidth, config.textureHeight, cacheSize, TextureFormat.RGBA32, 1, false);
+            oldTextures = new Texture2DArray(config.textureWidth, config.textureHeight, cacheSize, TextureFormat.RGBA32, 1, false);
         }
         ~Map()
         {
@@ -68,19 +68,19 @@ namespace MapManagement
             Object.Destroy(oldTextures);
         }
 
-        public void LoadTexturesNearPosition(Vector3 position)
+        public void LoadTexturesNearPosition(Vector3 position, int amount)
         {
             Graphics.CopyTexture(textures, oldTextures);
-            Vector3[] temp = GetClosest(position);
+            Vector3[] temp = GetClosest(position, amount);
 
-            for (int i = 0; i < offArray.Length; i++)
+            for (int i = 0; i < temp.Length; i++)
             {
                 Vector3 off = temp[i];
-
+                
                 if (decoded.ContainsKey(off))
                 {
                     UnityWebRequest www = decoded[off];
-
+                    
                     Texture2D texture = DownloadHandlerTexture.GetContent(www);
                     Graphics.CopyTexture(texture, 0, textures, i);
                     Object.Destroy(texture);
@@ -123,11 +123,11 @@ namespace MapManagement
             pending.Remove(obj);
         }
 
-        Vector3[] GetClosest(Vector3 position)
+        Vector3[] GetClosest(Vector3 position, int amount)
         {
             return config.vectorOffsets
                 .OrderBy(x => Vector3.Distance(position, x))
-                .Take(textures.depth)
+                .Take(amount)
                 .ToArray();
         }
 
