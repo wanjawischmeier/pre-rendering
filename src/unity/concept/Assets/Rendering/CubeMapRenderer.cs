@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 
 [RequireComponent(typeof(Camera))]
-public class PreRenderer : MonoBehaviour
+public class CubeMapRenderer : MonoBehaviour
 {
 	public Shader cubeToEqui;
 	public Shader shading;
