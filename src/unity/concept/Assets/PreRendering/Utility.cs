@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace PreRendering
 {
-    public static class Helper
+    public static class Utility
     {
         public static Resolution EstimatePanoramaResolution(int width, int height, float fov)
         {

@@ -30,13 +30,8 @@ public class FPSCounter : MonoBehaviour
     public Color graphColor = new Color(1, 1, 1, 0.5f);
     public bool logWrite = true;
 
-    public TextureLoader loader;
-    /*
-    public Vector2Int textureResolution;
-    public Vector2Int geometryResolution;
-    public int maxTextures;
-    public int selected;
-    */
+    public PreRendering.PreRenderer preRenderer;
+
     [Header("Information")] // These variables are only information.
     public string HelpURL = "nvjob.github.io/unity/nvjob-fps-counter-and-graph";
     public string ReportAProblem = "nvjob.github.io/support";
@@ -124,9 +119,9 @@ public class FPSCounter : MonoBehaviour
             "Selected texture layer:\t{9}/{10}",
             allFps.x, allFps.y, allFps.z,
             Screen.width, Screen.height,
-            loader.map.config.textureWidth, loader.map.config.textureHeight,
-            loader.geometryResolution.x, loader.geometryResolution.y,
-            loader.selectedId, loader.layerDepth
+            preRenderer.map.config.textureWidth, preRenderer.map.config.textureHeight,
+            preRenderer.geometryResolution.x, preRenderer.geometryResolution.y,
+            preRenderer.selectedId, preRenderer.layerDepth
         );
 
         //--------------

@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.Networking;
 using Object = UnityEngine.Object;
 
-namespace MapManagement
+namespace PreRendering
 {
     public struct RawMapConfig
     {
@@ -36,9 +36,6 @@ namespace MapManagement
         readonly int cacheSize;
         readonly int decodingThreads;
 
-        public Texture2DArray textures;
-        readonly Texture2DArray oldTextures;
-        readonly Texture2D reader;
 
         public Map(string path, int cacheSize, int decodingThreads)
         {
@@ -46,7 +43,6 @@ namespace MapManagement
             this.cacheSize = cacheSize;
             this.decodingThreads = decodingThreads;
 
-            reader = new Texture2D(0, 0, TextureFormat.RGBA32, false);
             pending = new Dictionary<AsyncOperation, Tuple<Vector3, UnityWebRequest>>();
             decoded = new Dictionary<Vector3, UnityWebRequest>();
             offArray = new Vector3[cacheSize];
@@ -55,24 +51,16 @@ namespace MapManagement
             config = JsonUtility.FromJson<StandaloneMapConfig>(rawConfig);
 
             string sampleTexturePath = VectorToFileName(Vector3.zero);
-            Texture2D texture = MapHelper.LoadTexture(sampleTexturePath);
+            Texture2D texture = Utility.LoadTexture(sampleTexturePath);
 
             config.textureWidth = texture.width;
             config.textureHeight = texture.height;
 
-            textures = new Texture2DArray(config.textureWidth, config.textureHeight, cacheSize, TextureFormat.RGBA32, 1, false);
-            oldTextures = new Texture2DArray(config.textureWidth, config.textureHeight, cacheSize, TextureFormat.RGBA32, 1, false);
-        }
-        ~Map()
-        {
-            Object.Destroy(reader);
-            Object.Destroy(textures);
-            Object.Destroy(oldTextures);
         }
 
         public void LoadTexturesNearPosition(Vector3 position)
         {
-            Graphics.CopyTexture(textures, oldTextures);
+            // Graphics.CopyTexture(textures, oldTextures);
             Vector3[] temp = GetClosest(position, cacheSize);
 
             for (int i = temp.Length -1; i >= 0; i--)
@@ -84,7 +72,7 @@ namespace MapManagement
                     UnityWebRequest www = decoded[off];
                     
                     Texture2D texture = DownloadHandlerTexture.GetContent(www);
-                    Graphics.CopyTexture(texture, 0, textures, i);
+                    // Graphics.CopyTexture(texture, 0, textures, i);
                     Object.Destroy(texture);
                     decoded.Remove(off);
 
@@ -93,7 +81,7 @@ namespace MapManagement
                 else if (offArray.Contains(off))
                 {
                     int j = Array.IndexOf(offArray, off);
-                    Graphics.CopyTexture(oldTextures, j, textures, i);
+                    // Graphics.CopyTexture(oldTextures, j, textures, i);
 
                     offArray[i] = off;
                 }
