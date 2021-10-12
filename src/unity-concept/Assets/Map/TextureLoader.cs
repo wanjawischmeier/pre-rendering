@@ -82,10 +82,8 @@ public class TextureLoader : MonoBehaviour
         }
     }
 
-    void OnRenderImage(RenderTexture source, RenderTexture destination)
-    {
+    void OnRenderImage(RenderTexture source, RenderTexture destination) =>
         Graphics.Blit(projected, destination, postProcessingMat);
-    }
 
     void OnDestroy()
     {
