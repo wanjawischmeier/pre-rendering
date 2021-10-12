@@ -3,4 +3,5 @@ obj
 ipch
 builds
 
-.vscode
+*.vscode
+*.meta
