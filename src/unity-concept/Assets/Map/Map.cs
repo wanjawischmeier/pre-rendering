@@ -55,7 +55,7 @@ namespace MapManagement
             config = JsonUtility.FromJson<StandaloneMapConfig>(rawConfig);
 
             string sampleTexturePath = VectorToFileName(Vector3.zero);
-            Texture2D texture = LoadTexture(sampleTexturePath);
+            Texture2D texture = MapHelper.LoadTexture(sampleTexturePath);
 
             config.textureWidth = texture.width;
             config.textureHeight = texture.height;
@@ -136,13 +136,6 @@ namespace MapManagement
         {
             int index = Array.IndexOf(config.vectorOffsets, vector);
             return Path.Combine(mainPath, index.ToString().PadLeft(4, '0') + ".png");
-        }
-
-        Texture2D LoadTexture(string path)
-        {
-            byte[] rawTexture = File.ReadAllBytes(path);
-            reader.LoadImage(rawTexture);
-            return reader;
         }
 
         bool IsPending(Vector3 vector)

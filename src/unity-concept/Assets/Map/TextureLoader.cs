@@ -126,7 +126,7 @@ public class TextureLoader : MonoBehaviour
 
     void SetUpTextures()
     {
-        Resolution res = EstimatePanoramaResolution(Screen.width, Screen.height, Camera.main.fieldOfView);
+        Resolution res = MapHelper.EstimatePanoramaResolution(Screen.width, Screen.height, Camera.main.fieldOfView);
         projected = new RenderTexture(res.width, res.height, 0, RenderTextureFormat.ARGB64)
         {
             enableRandomWrite = true
@@ -160,15 +160,5 @@ public class TextureLoader : MonoBehaviour
         postProcessingMat.SetVector("Rotation", transform.eulerAngles * Mathf.Deg2Rad);
         postProcessingMat.SetFloat("FOV", (180 - Camera.main.fieldOfView) * Mathf.Deg2Rad);
         postProcessingMat.SetInt("Debug", debug ? 1 : 0);
-    }
-
-    public Resolution EstimatePanoramaResolution(int width, int height, float fov)
-    {
-        Resolution res = new Resolution
-        {
-            width = Mathf.RoundToInt(width * (360 / fov)),
-            height = Mathf.RoundToInt(height * (180 / fov))
-        };
-        return res;
     }
 }

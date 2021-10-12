@@ -104,6 +104,9 @@ def size(start: list, end: list, step_size: int) -> int:
         (end[2] + step_size - start[2])
     )
 
+def getN(c: int, s: int) -> int:
+    return (2 * c + s)**3
+
 c = 2
 start = [-1, -2, -3]
 end = [4, 5, 6]
@@ -116,5 +119,10 @@ for x in arange(-1, 4 + 1):             # l1 = 4 + 1 - -1    |   end[0] + step_s
 
 s = size(start, end, step_size)
 
-print(i)
-print(s)
+c = 2
+start = [-c, -c, -c]
+end = [c, c, c]
+step_size = 1
+
+print(size(start, end, step_size))
+print(sizeS(c, step_size))
