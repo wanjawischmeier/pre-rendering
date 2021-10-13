@@ -11,14 +11,15 @@ namespace PreRendering
             textures = new Texture2DArray(width, height, cacheSize, format, 1, false);
         }
 
-        ~FrameBuffer()
-        {
+        ~FrameBuffer() => Release();
+
+        public void Release() =>
             Object.Destroy(textures);
-        }
+
 
         public override void Add(int index, Texture2D value)
         {
-            Graphics.CopyTexture(textures, index, value, 0);
+            Graphics.CopyTexture(value, 0, textures, index);
         }
     }
 }

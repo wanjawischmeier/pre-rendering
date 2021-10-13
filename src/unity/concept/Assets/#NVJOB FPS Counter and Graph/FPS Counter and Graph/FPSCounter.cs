@@ -119,7 +119,7 @@ public class FPSCounter : MonoBehaviour
             "Selected texture layer:\t{9}/{10}",
             allFps.x, allFps.y, allFps.z,
             Screen.width, Screen.height,
-            preRenderer.map.config.textureWidth, preRenderer.map.config.textureHeight,
+            preRenderer.map.textureWidth, preRenderer.map.textureHeight,
             preRenderer.geometryResolution.x, preRenderer.geometryResolution.y,
             preRenderer.selectedId, preRenderer.layerDepth
         );

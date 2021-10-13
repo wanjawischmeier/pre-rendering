@@ -5,8 +5,15 @@ using UnityEngine;
 
 namespace PreRendering
 {
+    /// <summary>
+    /// Contains all static helper functions used inside the <PreRendering> namespace.
+    /// </summary>
     public static class Utility
     {
+        /// <summary>
+        /// Estimates a resolution that should result in no interpolation
+        /// (When cropping into a texture by the specified fov using gnomonic projection).
+        /// </summary>
         public static Resolution EstimatePanoramaResolution(int width, int height, float fov)
         {
             Resolution res = new Resolution
@@ -16,6 +23,12 @@ namespace PreRendering
             };
             return res;
         }
+
+        /// <summary>
+        /// Get the vectors that have the smallest distance to the specified target position.
+        /// These vectors originate from the <position> vector and are ordered in an outwards spiraling pattern.
+        /// </summary>
+        /// <param name="amount">The desired length of the returned array.</param>
         public static Vector3[] GetClosest(this Vector3[] vectors, Vector3 position, int amount)
         {
             return vectors
@@ -23,12 +36,22 @@ namespace PreRendering
                 .Take(amount)
                 .ToArray();
         }
+
+        /// <summary>
+        /// Get a file name for a vector, based on a root directory.
+        /// The vector has to be contained inside the vector array this method extends from.
+        /// </summary>
         public static string GetFileName(this Vector3[] vectors, string path, Vector3 vector)
         {
             int index = Array.IndexOf(vectors, vector);
             return Path.Combine(path, index.ToString().PadLeft(4, '0') + ".png");
         }
 
+        /// <summary>
+        /// Loads an image into a texture.
+        /// !IMPORTANT! The returned texture will always be in the RGBA32 format.
+        /// </summary>
+        /// <param name="path">The path of the image file</param>
         public static Texture2D LoadTexture(string path)
         {
             byte[] rawTexture = File.ReadAllBytes(path);

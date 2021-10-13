@@ -7,6 +7,11 @@ using System.Collections.Generic;
 
 namespace PreRendering
 {
+    /// <summary>
+    /// A class that takes care of decoding images.
+    /// This can be done asynchronously, (on multiple threads)
+    /// and directly into a <FrameBuffer>.
+    /// </summary>
     public class Decoder
     {
         public Dictionary<string, Vector3> pending;
@@ -55,28 +60,32 @@ namespace PreRendering
                 .Contains(vector);
         }
 
-        public void DecodeToBufferAsync(string path, Vector3 key)
+        public bool DecodeToBufferAsync(string path, Vector3 value)
         {
-            if (decoding.Count >= decodingThreads)
+            if (IsPending(value) || IsDecoding(value)) return false;
+            if (decoding.Count >= decodingThreads) pending.Add(path, value);
+            else
             {
-                pending.Add(path, key);
-                return;
+                // Based on: https://stackoverflow.com/a/53770838/13215204
+                UnityWebRequest www = UnityWebRequestTexture.GetTexture(path);
+                var asyncOp = www.SendWebRequest();
+
+                decoding.Add(asyncOp, new Tuple<Vector3, UnityWebRequest>(value, www));
+                asyncOp.completed += OnImageDecoded;
             }
 
-            // Based on: https://stackoverflow.com/a/53770838/13215204
-            UnityWebRequest www = UnityWebRequestTexture.GetTexture(path);
-            var asyncOp = www.SendWebRequest();
-
-            decoding.Add(asyncOp, new Tuple<Vector3, UnityWebRequest>(key, www));
-            asyncOp.completed += OnImageDecoded;
+            return true;
         }
 
         void DecodePending()
         {
-            foreach (KeyValuePair<string, Vector3> item in pending)
+            Dictionary<string, Vector3> temp = new Dictionary<string, Vector3>(pending);
+            
+            foreach (KeyValuePair<string, Vector3> item in temp)
             {
                 if (decoding.Count >= decodingThreads) break;
                 DecodeToBufferAsync(item.Key, item.Value);
+                pending.Remove(item.Key);
             }
         }
 

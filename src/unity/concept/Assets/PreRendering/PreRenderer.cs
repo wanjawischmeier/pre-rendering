@@ -7,6 +7,7 @@ using UnityEngine.Networking;
 
 namespace PreRendering
 {
+    [RequireComponent(typeof(MovementController))]
     public class PreRenderer : MonoBehaviour
     {
         public ComputeShader projectShader;
@@ -24,16 +25,16 @@ namespace PreRendering
         [Range(1, 10)]
         public int decodingThreads;
         public bool debug;
-        public float l;
 
-        Vector3[] offsetArray;
+        public Vector3[] positionArray;
         Vector3[] debugOffArray;
         public int selectedId = 1;
 
 #if UNITY_EDITOR
         public Vector3[] pending;
-        public Vector3[] decoded;
-        public Vector3[] off;
+        public Vector3[] decoding;
+        public Vector3[] reserved;
+        public int[] available;
         public Texture2DArray array;
 #endif
 
@@ -44,13 +45,15 @@ namespace PreRendering
 
         void Start()
         {
+            controller = GetComponent<MovementController>();
+            
             string path = Path.Combine(mainPath, mapName);
             map = new Map(path);
-            buffer = new FrameBuffer(0, 0, cacheSize);
+            buffer = new FrameBuffer(map.textureWidth, map.textureHeight, cacheSize);
             decoder = new Decoder(buffer, decodingThreads);
             shaderManager = new ShaderManager(
                 projectShader, postProcessing, buffer.textures,
-                Screen.currentResolution, geometryResolution, map.config,
+                Screen.currentResolution, geometryResolution, map,
                 layerDepth, cacheSize);
         }
 
@@ -63,27 +66,36 @@ namespace PreRendering
             LoadTexturesNearPosition(transform.position);
 
 #if UNITY_EDITOR
-            pending = new Vector3[map.pending.Count];
-            decoded = new Vector3[map.decoded.Count];
-            off = map.offArray;
+            pending = new Vector3[decoder.pending.Count];
+            decoding = new Vector3[decoder.decoding.Count];
+            reserved = new Vector3[buffer.reserved.Count];
+            available = new int[buffer.available.Count];
 
             int idx = 0;
-            foreach (KeyValuePair<AsyncOperation, Tuple<Vector3, UnityWebRequest>> item in map.pending)
-                pending[idx] = map.pending[item.Key].Item1; idx++;
+            foreach (KeyValuePair<string, Vector3> item in decoder.pending)
+                pending[idx] = decoder.pending[item.Key]; idx++;
 
             idx = 0;
-            foreach (KeyValuePair<Vector3, UnityWebRequest> item in map.decoded)
-                decoded[idx] = item.Key; idx++;
+            foreach (KeyValuePair<AsyncOperation, Tuple<Vector3, UnityWebRequest>> item in decoder.decoding)
+                decoding[idx] = item.Value.Item1; idx++;
+
+            idx = 0;
+            foreach (KeyValuePair<Vector3, int> item in buffer.reserved)
+                reserved[idx] = item.Key; idx++;
+
+            idx = 0;
+            foreach (int item in buffer.available)
+                available[idx] = item; idx++;
 
             array = buffer.textures;
 #endif
 
-            debugOffArray[selectedId - 1] = controller.secondaryPosition;
-            debugOffBuffer.SetData(debugOffArray);
+            // debugOffArray[selectedId - 1] = controller.secondaryPosition;
+            // shaderManager.debugPositionArray = debugOffArray;
 
             for (int i = layerDepth - 1; i >= 0; i--) // Furthest away first, closest last (depth sorting)
             {
-                float distance = Vector3.Distance(transform.position, map.offArray[i]);
+                float distance = Vector3.Distance(transform.position, positionArray[i]);
                 // TODO: Resolution based on distance
                 int projectWidth = geometryResolution.x;
                 int projectHeight = geometryResolution.y;
@@ -95,15 +107,42 @@ namespace PreRendering
         void OnRenderImage(RenderTexture source, RenderTexture destination) =>
             shaderManager.Render(ref destination);
 
+        private void OnDestroy()
+        {
+            buffer.Release();
+            shaderManager.Release();
+        }
+
+        /// <summary>
+        /// Loads the closest images into the buffer.
+        /// Reorganizes the buffer according to the new order if the positions already exist inside it.
+        /// </summary>
         void LoadTexturesNearPosition(Vector3 position)
         {
-            Vector3[] temp = map.config.vectorOffsets.GetClosest(position, cacheSize);
-            shaderManager.positionArray = temp;
+            Vector3[] newPositionArray = map.vectorOffsets.GetClosest(position, cacheSize);
 
-            for (int i = cacheSize; i >= 0; i--)
+            for (int i = cacheSize -1; i >= 0; i--)
             {
+                Vector3 positionOffset = newPositionArray[i];
 
+                if (positionArray.Contains(positionOffset))
+                {
+                    if (newPositionArray.Contains(positionOffset))
+                    {
+                        int j = Array.IndexOf(positionArray, positionOffset);
+                        // Graphics.CopyTexture(buffer.textures, j, buffer.textures, i);
+                    }
+                    else buffer.Release(positionOffset);
+                }
+                else
+                {
+                    string path = newPositionArray.GetFileName(mainPath, positionOffset);
+                    decoder.DecodeToBufferAsync(path, positionOffset);
+                }
             }
+
+            positionArray = newPositionArray;
+            shaderManager.positionArray = positionArray;
         }
     }
 }
