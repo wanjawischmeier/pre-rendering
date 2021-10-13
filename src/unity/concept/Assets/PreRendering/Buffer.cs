@@ -46,8 +46,8 @@ namespace PreRendering
         /// </summary>
         /// <returns>
         /// Wether the element could be added to the buffer.
-        /// Returns false if there is already an element stored under the specified key and
-        /// returns true otherwise.
+        /// Returns false if there is already an element stored under the specified key
+        /// and returns true otherwise.
         /// </returns>
         public bool Add(T1 key, T2 value)
         {

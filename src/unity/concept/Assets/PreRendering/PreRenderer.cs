@@ -17,6 +17,7 @@ namespace PreRendering
 
         public string mainPath;
         public string mapName;
+        string mapPath;
         public Vector2Int geometryResolution;
         [Range(1, 100)]
         public int layerDepth = 4;
@@ -31,9 +32,16 @@ namespace PreRendering
         public int selectedId = 1;
 
 #if UNITY_EDITOR
+        [Serializable]
+        public struct VectorIndex
+        {
+            public Vector3 vector;
+            public int index;
+        }
+
         public Vector3[] pending;
         public Vector3[] decoding;
-        public Vector3[] reserved;
+        public VectorIndex[] reserved;
         public int[] available;
         public Texture2DArray array;
 #endif
@@ -47,8 +55,8 @@ namespace PreRendering
         {
             controller = GetComponent<MovementController>();
             
-            string path = Path.Combine(mainPath, mapName);
-            map = new Map(path);
+            mapPath = Path.Combine(mainPath, mapName);
+            map = new Map(mapPath);
             buffer = new FrameBuffer(map.textureWidth, map.textureHeight, cacheSize);
             decoder = new Decoder(buffer, decodingThreads);
             shaderManager = new ShaderManager(
@@ -68,24 +76,24 @@ namespace PreRendering
 #if UNITY_EDITOR
             pending = new Vector3[decoder.pending.Count];
             decoding = new Vector3[decoder.decoding.Count];
-            reserved = new Vector3[buffer.reserved.Count];
+            reserved = new VectorIndex[buffer.reserved.Count];
             available = new int[buffer.available.Count];
 
             int idx = 0;
             foreach (KeyValuePair<string, Vector3> item in decoder.pending)
-                pending[idx] = decoder.pending[item.Key]; idx++;
+                pending[idx++] = decoder.pending[item.Key];
 
             idx = 0;
             foreach (KeyValuePair<AsyncOperation, Tuple<Vector3, UnityWebRequest>> item in decoder.decoding)
-                decoding[idx] = item.Value.Item1; idx++;
+                decoding[idx++] = item.Value.Item1;
 
             idx = 0;
             foreach (KeyValuePair<Vector3, int> item in buffer.reserved)
-                reserved[idx] = item.Key; idx++;
+                reserved[idx++] = new VectorIndex { vector = item.Key, index = item.Value };
 
             idx = 0;
             foreach (int item in buffer.available)
-                available[idx] = item; idx++;
+                available[idx++] = item;
 
             array = buffer.textures;
 #endif
@@ -100,7 +108,7 @@ namespace PreRendering
                 int projectWidth = geometryResolution.x;
                 int projectHeight = geometryResolution.y;
 
-                shaderManager.Project(projectWidth, projectHeight, i);
+                // shaderManager.Project(projectWidth, projectHeight, i);
             }
         }
 
@@ -136,7 +144,7 @@ namespace PreRendering
                 }
                 else
                 {
-                    string path = newPositionArray.GetFileName(mainPath, positionOffset);
+                    string path = newPositionArray.GetFileName(mapPath, positionOffset);
                     decoder.DecodeToBufferAsync(path, positionOffset);
                 }
             }

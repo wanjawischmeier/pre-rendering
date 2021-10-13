@@ -60,16 +60,21 @@ namespace PreRendering
                 .Contains(vector);
         }
 
+        public bool IsProcessing(Vector3 value)
+        {
+            return IsPending(value) || IsDecoding(value);
+        }
+
         public bool DecodeToBufferAsync(string path, Vector3 value)
         {
-            if (IsPending(value) || IsDecoding(value)) return false;
+            if (IsProcessing(value)) return false;
             if (decoding.Count >= decodingThreads) pending.Add(path, value);
             else
             {
                 // Based on: https://stackoverflow.com/a/53770838/13215204
                 UnityWebRequest www = UnityWebRequestTexture.GetTexture(path);
                 var asyncOp = www.SendWebRequest();
-
+                Debug.Log("Decoding at " + path);
                 decoding.Add(asyncOp, new Tuple<Vector3, UnityWebRequest>(value, www));
                 asyncOp.completed += OnImageDecoded;
             }
@@ -95,7 +100,7 @@ namespace PreRendering
 
             if (data.Item2.result == UnityWebRequest.Result.Success)
                 buffer.Add(data.Item1, DownloadHandlerTexture.GetContent(data.Item2));
-
+            Debug.Log(string.Format("Decoded texture at ({0}, {1}, {2}) with result {3}", data.Item1.x, data.Item1.y, data.Item1.z, data.Item2.result.ToString()));
             decoding.Remove(obj);
             DecodePending();
         }

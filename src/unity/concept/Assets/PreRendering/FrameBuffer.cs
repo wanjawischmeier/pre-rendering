@@ -19,6 +19,7 @@ namespace PreRendering
 
         public override void Add(int index, Texture2D value)
         {
+            Debug.Log(string.Format("Adding texture at index {0}", index));
             Graphics.CopyTexture(value, 0, textures, index);
         }
     }
