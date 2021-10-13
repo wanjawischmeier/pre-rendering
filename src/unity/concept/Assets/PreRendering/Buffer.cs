@@ -1,70 +1,55 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 
 namespace PreRendering
 {
     public abstract class Buffer<T1, T2> : IEnumerable<T1>
     {
-        Dictionary<T1, int> lookup;
-        Queue<int> queue;
+        Dictionary<T1, int> reserved;
+        Queue<int> available;
 
         public Buffer(int cacheSize)
         {
-            lookup = new Dictionary<T1, int>(cacheSize);
-            queue = new Queue<int>();
+            reserved = new Dictionary<T1, int>(cacheSize);
+            available = new Queue<int>();
+
+            for (int i = 0; i < cacheSize; i++) available.Enqueue(i);
         }
 
         public int this[T1 index]
         {
-            get
-            {
-                return lookup[index];
-            }
+            get { return reserved[index]; }
         }
 
         public IEnumerator GetEnumerator() { return GetEnumerator(); }
 
-        IEnumerator<T1> IEnumerable<T1>.GetEnumerator()
-        {
-            return new List<T1>().GetEnumerator();
-        }
+        IEnumerator<T1> IEnumerable<T1>.GetEnumerator() { return reserved.Keys.GetEnumerator(); }
 
         public bool Add(T1 key, T2 value)
         {
-            if (lookup.ContainsKey(key)) return false;
+            if (reserved.ContainsKey(key) || available.Count < 1) return false;
 
-            int index = queue.Dequeue();
-            AddAtIndex(index, value);
-            queue.Enqueue(index);
+            int index = available.Dequeue();
+            Add(index, value);
+            reserved.Add(key, index);
+
             return true;
         }
-        
-        public bool Remove(T1 key)
+
+        public abstract void Add(int index, T2 value);
+
+        public bool Release(T1 key)
         {
-            return false;
+            if (!reserved.ContainsKey(key)) return false;
+
+            int index = reserved[key];
+            available.Enqueue(index);
+            reserved.Remove(key);
+            Release(index);
+
+            return true;
         }
 
-        public abstract void AddAtIndex(int index, T2 value);
-    }
-
-    public class FrameBuffer : Buffer<Vector3, Texture2D>
-    {
-        public Texture2DArray textures;
-
-        public FrameBuffer(int width, int height, int cacheSize, TextureFormat format = TextureFormat.RGBA32) : base(cacheSize)
-        {
-            textures = new Texture2DArray(width, height, cacheSize, format, 1, false);
-        }
-
-        ~FrameBuffer()
-        {
-            Object.Destroy(textures);
-        }
-
-        public override void AddAtIndex(int index, Texture2D value)
-        {
-            Graphics.CopyTexture(textures, index, value, 0);
-        }
+        public virtual void Release(int index) { }
     }
 }

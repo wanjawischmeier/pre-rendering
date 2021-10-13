@@ -1,4 +1,6 @@
+using System;
 using System.IO;
+using System.Linq;
 using UnityEngine;
 
 namespace PreRendering
@@ -13,6 +15,18 @@ namespace PreRendering
                 height = Mathf.RoundToInt(height * (180 / fov))
             };
             return res;
+        }
+        public static Vector3[] GetClosest(this Vector3[] vectors, Vector3 position, int amount)
+        {
+            return vectors
+                .OrderBy(x => Vector3.Distance(position, x))
+                .Take(amount)
+                .ToArray();
+        }
+        public static string GetFileName(this Vector3[] vectors, string path, Vector3 vector)
+        {
+            int index = Array.IndexOf(vectors, vector);
+            return Path.Combine(path, index.ToString().PadLeft(4, '0') + ".png");
         }
 
         public static Texture2D LoadTexture(string path)
@@ -39,7 +53,7 @@ namespace PreRendering
 
         public static int GetSpiralRange(int length, int step_size = 1)
         {
-            float range = (Mathf.Pow(length, 1 / 3f) - step_size) / 2f;
+            float range = (Mathf.Pow(length, 1/3f) - step_size) /2f;
             return Mathf.CeilToInt(range);
         }
     }

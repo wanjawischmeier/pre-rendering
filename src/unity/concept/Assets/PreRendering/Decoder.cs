@@ -40,9 +40,24 @@ namespace PreRendering
             buffer.Add(key, texture);
         }
 
+        public bool IsPending(Vector3 vector)
+        {
+            return pending.Values.Contains(vector);
+        }
+
+        public bool IsDecoding(Vector3 vector)
+        {
+            return decoding.Values.Select(
+                (Tuple<Vector3, UnityWebRequest> value) =>
+                {
+                    return value.Item1;
+                })
+                .Contains(vector);
+        }
+
         public void DecodeToBufferAsync(string path, Vector3 key)
         {
-            if (decoding.Count > decodingThreads)
+            if (decoding.Count >= decodingThreads)
             {
                 pending.Add(path, key);
                 return;
@@ -56,6 +71,15 @@ namespace PreRendering
             asyncOp.completed += OnImageDecoded;
         }
 
+        void DecodePending()
+        {
+            foreach (KeyValuePair<string, Vector3> item in pending)
+            {
+                if (decoding.Count >= decodingThreads) break;
+                DecodeToBufferAsync(item.Key, item.Value);
+            }
+        }
+
         void OnImageDecoded(AsyncOperation obj)
         {
             Tuple<Vector3, UnityWebRequest> data = decoding[obj];
@@ -64,6 +88,7 @@ namespace PreRendering
                 buffer.Add(data.Item1, DownloadHandlerTexture.GetContent(data.Item2));
 
             decoding.Remove(obj);
+            DecodePending();
         }
     }
 }

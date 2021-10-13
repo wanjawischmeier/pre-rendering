@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
@@ -17,7 +16,7 @@ namespace PreRendering
     }
 
     [Serializable]
-    public struct StandaloneMapConfig
+    public struct MapConfig
     {
         public int fclip;
         public int mx_width;
@@ -28,27 +27,15 @@ namespace PreRendering
 
     public class Map
     {
-        public StandaloneMapConfig config;
-        public Dictionary<AsyncOperation, Tuple<Vector3, UnityWebRequest>> pending;
-        public Dictionary<Vector3, UnityWebRequest> decoded;
-        public Vector3[] offArray;
+        public MapConfig config;
         readonly string mainPath;
-        readonly int cacheSize;
-        readonly int decodingThreads;
 
-
-        public Map(string path, int cacheSize, int decodingThreads)
+        public Map(string path)
         {
             mainPath = path;
-            this.cacheSize = cacheSize;
-            this.decodingThreads = decodingThreads;
-
-            pending = new Dictionary<AsyncOperation, Tuple<Vector3, UnityWebRequest>>();
-            decoded = new Dictionary<Vector3, UnityWebRequest>();
-            offArray = new Vector3[cacheSize];
 
             string rawConfig = File.ReadAllText(Path.Combine(mainPath, ".mapconfig"));
-            config = JsonUtility.FromJson<StandaloneMapConfig>(rawConfig);
+            config = JsonUtility.FromJson<MapConfig>(rawConfig);
 
             string sampleTexturePath = VectorToFileName(Vector3.zero);
             Texture2D texture = Utility.LoadTexture(sampleTexturePath);
@@ -100,40 +87,6 @@ namespace PreRendering
                 if (decoded.Count > decodingThreads)
                     decoded.Remove(decoded.Take(1).ToArray()[0].Key);
             }
-        }
-
-        void OnImageDecoded(AsyncOperation obj)
-        {
-            Tuple<Vector3, UnityWebRequest> data = pending[obj];
-
-            if (data.Item2.result == UnityWebRequest.Result.Success)
-                decoded.Add(data.Item1, data.Item2);
-
-            pending.Remove(obj);
-        }
-
-        Vector3[] GetClosest(Vector3 position, int amount)
-        {
-            return config.vectorOffsets
-                .OrderBy(x => Vector3.Distance(position, x))
-                .Take(amount)
-                .ToArray();
-        }
-
-        string VectorToFileName(Vector3 vector)
-        {
-            int index = Array.IndexOf(config.vectorOffsets, vector);
-            return Path.Combine(mainPath, index.ToString().PadLeft(4, '0') + ".png");
-        }
-
-        bool IsPending(Vector3 vector)
-        {
-            return pending.Values.Select(
-                (Tuple<Vector3, UnityWebRequest> value) =>
-                {
-                    return value.Item1;
-                })
-                .Contains(vector);
         }
     }
 }

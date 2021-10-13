@@ -1,16 +1,16 @@
 int IMG_IDX, MX_IDX;
-float PI, PI2, FCLIP, L;
+float PI, PI2, FCLIP;
 float2 InputArrayRes, ProjectionRes, ProjectedRes;
 float3 Position;
 Texture2DArray<half4> _InputArray;
 
-#pragma kernel Projection;
-StructuredBuffer<half3> OffsetBuffer;
-StructuredBuffer<half3> DebugOffsetBuffer;
+#pragma kernel Project
+StructuredBuffer<half3> PositionBuffer;
+StructuredBuffer<half3> DebugPositionBuffer;
 RWTexture2D<half4> _Result;
 
 [numthreads(8, 8, 1)]
-void Projection(uint3 id : SV_DispatchThreadID)
+void Project(uint3 id : SV_DispatchThreadID)
 {
     float3 inpIdx = float3(id.xy / ProjectionRes * InputArrayRes, IMG_IDX);
     
@@ -35,10 +35,10 @@ void Projection(uint3 id : SV_DispatchThreadID)
     
     P -= Position;
     PMax -= Position;
-    P += OffsetBuffer[IMG_IDX];
-    PMax += OffsetBuffer[IMG_IDX];
-    P += DebugOffsetBuffer[IMG_IDX];
-    PMax += DebugOffsetBuffer[IMG_IDX];
+    P += PositionBuffer[IMG_IDX];
+    PMax += PositionBuffer[IMG_IDX];
+    P += DebugPositionBuffer[IMG_IDX];
+    PMax += DebugPositionBuffer[IMG_IDX];
     
     float d = sqrt(P.x * P.x + P.y * P.y + P.z * P.z);
     float dMax = sqrt(PMax.x * PMax.x + PMax.y * PMax.y + PMax.z * PMax.z);
