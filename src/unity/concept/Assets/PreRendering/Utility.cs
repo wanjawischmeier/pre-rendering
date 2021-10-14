@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
@@ -44,8 +45,21 @@ namespace PreRendering
         public static string GetFileName(this Vector3[] vectors, string path, Vector3 vector)
         {
             int index = Array.IndexOf(vectors, vector);
+            return GetFileName(path, index);
+        }
+
+        public static string GetFileName(this List<Vector3> vectors, string path, Vector3 vector)
+        {
+            int index = vectors.IndexOf(vector);
+            Debug.Log(string.Format("Vector ({0}, {1}, {2}) to index {3}", vector.x, vector.y, vector.z, index));
+            return GetFileName(path, index);
+        }
+
+        public static string GetFileName(string path, int index)
+        {
             return Path.Combine(path, index.ToString().PadLeft(4, '0') + ".png");
         }
+            
 
         /// <summary>
         /// Loads an image into a texture.

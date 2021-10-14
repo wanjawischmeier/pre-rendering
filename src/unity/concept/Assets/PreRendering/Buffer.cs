@@ -37,7 +37,7 @@ namespace PreRendering
             }
         }
 
-        public IEnumerator GetEnumerator() { return GetEnumerator(); }
+        public IEnumerator GetEnumerator() { return reserved.Keys.GetEnumerator(); }
 
         IEnumerator<T1> IEnumerable<T1>.GetEnumerator() { return reserved.Keys.GetEnumerator(); }
 
@@ -51,7 +51,7 @@ namespace PreRendering
         /// </returns>
         public bool Add(T1 key, T2 value)
         {
-            if (reserved.ContainsKey(key)) return false;
+            if (reserved.ContainsKey(key) || value == null) return false;
 
             if (available.Count == 0)
             {

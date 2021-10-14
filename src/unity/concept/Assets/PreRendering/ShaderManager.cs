@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace PreRendering
@@ -36,7 +37,7 @@ namespace PreRendering
         public float fov
         {
             get { return postProcessingMaterial.GetFloat("FOV"); }
-            set { postProcessingMaterial.SetFloat("FOV", value); }
+            set { postProcessingMaterial.SetFloat("FOV", value * Mathf.Deg2Rad); }
         }
 
         /// <summary>
@@ -51,7 +52,7 @@ namespace PreRendering
         /// <summary>
         /// Sets the position compute buffer.
         /// </summary>
-        public Vector3[] positionArray
+        public List<Vector3> positions
         {
             set { positionBuffer.SetData(value); }
         }
