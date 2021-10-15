@@ -17,7 +17,7 @@ namespace PreRendering
         public Buffer(int cacheSize)
         {
             reserved = new Dictionary<T1, int>(cacheSize);
-            available = new Queue<int>();
+            available = new Queue<int>(cacheSize);
 
             for (int i = 0; i < cacheSize; i++) available.Enqueue(i);
         }
@@ -47,11 +47,12 @@ namespace PreRendering
         /// <returns>
         /// Wether the element could be added to the buffer.
         /// Returns false if there is already an element stored under the specified key
+        /// or if an error occured,
         /// and returns true otherwise.
         /// </returns>
         public bool Add(T1 key, T2 value)
         {
-            if (reserved.ContainsKey(key) || value == null) return false;
+            if (reserved.ContainsKey(key)) return false;
 
             if (available.Count == 0)
             {
@@ -60,7 +61,15 @@ namespace PreRendering
             }
 
             int index = available.Dequeue();
-            Add(index, value);
+            try
+            {
+                Add(index, value);
+            }
+            catch (UnityEngine.UnityException)
+            {
+                available.Enqueue(index);
+                return false;
+            }
             reserved.Add(key, index);
 
             return true;

@@ -5,7 +5,7 @@ float3 Position;
 Texture2DArray<half4> _InputArray;
 
 #pragma kernel Project
-StructuredBuffer<half3> PositionBuffer;
+float3 PositionOffset;
 StructuredBuffer<half3> DebugPositionBuffer;
 RWTexture2D<half4> _Result;
 
@@ -35,8 +35,8 @@ void Project(uint3 id : SV_DispatchThreadID)
     
     P -= Position;
     PMax -= Position;
-    P += PositionBuffer[IMG_IDX];
-    PMax += PositionBuffer[IMG_IDX];
+    P += PositionOffset;
+    PMax += PositionOffset;
     P += DebugPositionBuffer[IMG_IDX];
     PMax += DebugPositionBuffer[IMG_IDX];
     
@@ -57,6 +57,7 @@ void Project(uint3 id : SV_DispatchThreadID)
     float2 idx = a * ProjectionRes;
     
     _Result[idx] = half4(id.xy / ProjectionRes, (IMG_IDX + 1) / (float) MX_IDX, 1);
+    // _Result[idx] = half4(IMG_IDX == 0 ? 1 : 0, 0, 0, 1);
 }
 
 #pragma kernel Combine

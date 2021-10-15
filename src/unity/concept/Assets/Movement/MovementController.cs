@@ -30,14 +30,14 @@ public class MovementController : MonoBehaviour
 
     void Update()
     {
-        Vector3 back = transform.TransformDirection(Vector3.back);
-        Vector3 left = transform.TransformDirection(Vector3.left);
+        Vector3 forward = transform.TransformDirection(Vector3.back);
+        Vector3 right = transform.TransformDirection(Vector3.left);
 
         float curSpeedX = speed * -Input.GetAxis("Vertical");
         float curSpeedY = speed * -Input.GetAxis("Horizontal");
-        moveDirection = (back * curSpeedX) + (left * curSpeedY);
+        moveDirection = (forward * curSpeedX) + (right * curSpeedY);
 
-        moveDirection.y = Input.GetKey(KeyCode.Q) ? speed * Time.deltaTime * 25 : Input.GetKey(KeyCode.E) ? -speed * Time.deltaTime * 25 : 0;
+        moveDirection.y = Input.GetKey(KeyCode.Q) ? -speed * Time.deltaTime * 25 : Input.GetKey(KeyCode.E) ? speed * Time.deltaTime * 25 : 0;
         Vector3 oldPos = transform.position;
         characterController.Move(moveDirection * Time.deltaTime);
 

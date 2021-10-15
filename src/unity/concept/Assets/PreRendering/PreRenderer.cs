@@ -1,10 +1,11 @@
-using System;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
+#if UNITY_EDITOR && HEAVY_DEBUG
+using System;
 using UnityEngine.Networking;
+#endif
 
 namespace PreRendering
 {
@@ -86,15 +87,25 @@ namespace PreRendering
             Vector3[] newPositions = map.vectorOffsets.GetClosest(transform.position, cacheSize);
             positions.Clear();
 
-            // Load the closest images into the buffer and
-            // reorganize the buffer according to the new order if the positions already exist inside it.
-            for (int i = 0; i < cacheSize; i++)
+            // Load the closest images into the buffer
+            for (int i = cacheSize -1, j = 0; i >= 0; i--)
             {
                 Vector3 positionOffset = newPositions[i];
-                string path = newPositions.GetFileName(mapPath, positionOffset);
+                string path = map.vectorOffsets.GetFileName(mapPath, positionOffset);
 
                 if (buffer.Contains(positionOffset))
-                    positions.Add(positionOffset);
+                {
+                    if (j++ < layerDepth)
+                    {
+                        float distance = Vector3.Distance(transform.position, positionOffset);
+                        // TODO: Resolution based on distance
+                        int projectWidth = geometryResolution.x;
+                        int projectHeight = geometryResolution.y;
+
+                        shaderManager.positionOffset = positionOffset;
+                        shaderManager.Project(projectWidth, projectHeight, buffer[positionOffset]);
+                    }
+                }
                 else
                     decoder.DecodeToBuffer(path, positionOffset);
             }
@@ -103,8 +114,6 @@ namespace PreRendering
             Vector3[] reserved = buffer.reserved.Keys.ToArray();
             foreach (Vector3 vector in reserved)
                 if (!newPositions.Contains(vector)) buffer.Release(vector);
-
-            shaderManager.positions = buffer.reserved.Keys.ToList();
 
 #if UNITY_EDITOR && HEAVY_DEBUG
             pendingDebug = new Vector3[decoder.pending.Count];
@@ -133,25 +142,12 @@ namespace PreRendering
 
             // debugOffArray[selectedId - 1] = controller.secondaryPosition;
             // shaderManager.debugPositionArray = debugOffArray;
-
-            for (int i = layerDepth - 1; i >= 0; i--) // Furthest away first, closest last (depth sorting)
-            {
-                if (positions.Count <= i) continue;
-
-                Vector3 vector = positions[i];
-                float distance = Vector3.Distance(transform.position, vector);
-                // TODO: Resolution based on distance
-                int projectWidth = geometryResolution.x;
-                int projectHeight = geometryResolution.y;
-
-                shaderManager.Project(projectWidth, projectHeight, buffer[vector]);
-            }
         }
 
         void OnRenderImage(RenderTexture source, RenderTexture destination) =>
             shaderManager.Render(ref destination);
 
-        private void OnDestroy()
+        void OnDestroy()
         {
             buffer.Release();
             shaderManager.Release();

@@ -19,10 +19,10 @@ namespace PreRendering
         static EmptyCall initialize, release;
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        delegate IntPtr ReadImage(string path, int width, int height, out ushort channels, out int bytes_count);
+        delegate IntPtr ReadImage(string path, int width, int height, out uint channels, out int bytes_count);
         static ReadImage imread;
 
-        public delegate void ImageDecodedEvent(string path, ushort[] data);
+        public delegate void ImageDecodedEvent(string path, uint[] data);
         public static event ImageDecodedEvent ImageDecoded;
 
         const string dllPath = "C:\\Users\\wanja\\Documents\\dev\\pre-rendering\\master\\src\\image-decoder\\x64\\Debug\\image-decoder.dll";
@@ -42,14 +42,14 @@ namespace PreRendering
 
         }
 
-        public static ushort[] Decode(string path, int width = 0, int height = 0, int t = -1)
+        public static uint[] Decode(string path, int width = 0, int height = 0, int t = -1)
         {
             Console.WriteLine(string.Format("Decoding\t\t({0})", t.ToString()));
-            IntPtr ptr = imread(path, width, height, out ushort channels, out int bytes_count);
+            IntPtr ptr = imread(path, width, height, out uint channels, out int bytes_count);
             
             short[] temp = new short[bytes_count];
             Marshal.Copy(ptr, temp, 0, bytes_count);
-            ushort[] data = Array.ConvertAll(temp, val => ((ushort)val));
+            uint[] data = Array.ConvertAll(temp, val => ((uint)val));
             
             Console.WriteLine(string.Format("Finished decoding\t({0})", t.ToString()));
             ImageDecoded.Invoke(path, data);

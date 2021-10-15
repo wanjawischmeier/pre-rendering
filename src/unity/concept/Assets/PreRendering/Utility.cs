@@ -51,7 +51,6 @@ namespace PreRendering
         public static string GetFileName(this List<Vector3> vectors, string path, Vector3 vector)
         {
             int index = vectors.IndexOf(vector);
-            Debug.Log(string.Format("Vector ({0}, {1}, {2}) to index {3}", vector.x, vector.y, vector.z, index));
             return GetFileName(path, index);
         }
 

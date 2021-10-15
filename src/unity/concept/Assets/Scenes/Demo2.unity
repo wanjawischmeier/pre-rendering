@@ -226,12 +226,13 @@ MonoBehaviour:
   controller: {fileID: 0}
   mainPath: C:\Users\wanja\Documents\dev\pre-rendering\master\renders
   mapName: desert_new_low
-  geometryResolution: {x: 1000, y: 500}
-  layerDepth: 2
+  geometryResolution: {x: 200, y: 100}
+  layerDepth: 4
   cacheSize: 10
   decodingThreads: 1
-  debug: 0
+  debug: 1
   selectedId: 1
+  proj: {fileID: 0}
 --- !u!114 &45530124
 MonoBehaviour:
   m_ObjectHideFlags: 0

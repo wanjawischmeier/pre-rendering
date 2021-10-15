@@ -23,7 +23,7 @@ namespace PreRendering
         delegate IntPtr ReadImage(string path, int width, int height, out ushort channels, out int bytes_count);
         static ReadImage imread;
 
-        public delegate void ImageDecodedEvent(string path, ushort[] data, int t);
+        public delegate void ImageDecodedEvent(string path, int[] data, int t);
         public static event ImageDecodedEvent ImageDecoded;
 
         const string dllPath = "C:\\Users\\wanja\\Documents\\dev\\pre-rendering\\master\\src\\image-decoder\\x64\\Debug\\image-decoder.dll";
@@ -41,20 +41,18 @@ namespace PreRendering
             dllAddr = GetProcAddress(dllPtr, "imread");
             imread = (ReadImage)Marshal.GetDelegateForFunctionPointer(dllAddr, typeof(ReadImage));
 
+            initialize();
         }
 
-        public static ushort[] Decode(string path, int width = 0, int height = 0, int t = -1)
+        public static void Decode(ref int[] data, string path, int width = 0, int height = 0, int t = -1)
         {
             Debug.Log(string.Format("Decoding\t\t({0})", t));
             IntPtr ptr = imread(path, width, height, out ushort channels, out int bytes_count);
 
-            short[] temp = new short[bytes_count];
-            Marshal.Copy(ptr, temp, 0, bytes_count);
-            ushort[] data = Array.ConvertAll(temp, val => ((ushort)val));
+            Marshal.Copy(ptr, data, 0, bytes_count);
 
             Debug.Log(string.Format("Finished decoding\t({0})", t));
             ImageDecoded.Invoke(path, data, t);
-            return data;
         }
 
         public static void Deinitialize()

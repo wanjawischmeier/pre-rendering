@@ -71,7 +71,7 @@ Shader "PreRendering/PostProcessing"
                     if (tc.y < 0.25 || tc.y > 0.75) idx = float4(tc, 0, FCLIP);
                     else return float4(0, 0, 0, 1);
                 }
-                if (Debug) return idx;
+                if (Debug) return idx.zzzz;
 
                 idx.z *= MX_IDX;
                 idx.z -= 1;

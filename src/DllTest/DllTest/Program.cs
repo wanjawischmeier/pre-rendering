@@ -17,12 +17,13 @@ namespace DllTest
             int w = 8; int h = 4;
 
             Decoder.Initialize();
-            List<Task<ushort[]>> tasks = new List<Task<ushort[]>>();
+            List<Task<uint[]>> tasks = new List<Task<uint[]>>();
             for (int i = 0; i < 10; i++)
             {
+                int j = i;
                 tasks.Add(Task.Run(() =>
                 {
-                    return Decoder.Decode(image_path, w, i, i);
+                    return Decoder.Decode(image_path, w, h, j);
                 }));
             }
             Decoder.ImageDecoded += Decoder_ImageDecoded;
@@ -30,11 +31,11 @@ namespace DllTest
             Decoder.Deinitialize();
         }
 
-        private static void Decoder_ImageDecoded(string path, ushort[] data)
+        private static void Decoder_ImageDecoded(string path, uint[] data)
         {
             string bytestr = "";
 
-            foreach (ushort _byte in data)
+            foreach (uint _byte in data)
             {
                 bytestr += _byte.ToString() + "-";
             }

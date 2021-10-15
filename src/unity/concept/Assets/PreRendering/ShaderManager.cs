@@ -8,7 +8,7 @@ namespace PreRendering
         ComputeShader computeShader;
         Shader postProcessingShader;
         Material postProcessingMaterial;
-        ComputeBuffer positionBuffer;
+        // ComputeBuffer positionBuffer;
         ComputeBuffer debugPositionBuffer;
         RenderTexture projected;
         Map map;
@@ -52,9 +52,9 @@ namespace PreRendering
         /// <summary>
         /// Sets the position compute buffer.
         /// </summary>
-        public List<Vector3> positions
+        public Vector3 positionOffset
         {
-            set { positionBuffer.SetData(value); }
+            set { computeShader.SetVector("PositionOffset", value); }
         }
 
         public Vector3[] debugPositionArray
@@ -89,26 +89,23 @@ namespace PreRendering
             Resolution panoramaResolution = Utility.EstimatePanoramaResolution(
                 resolution.width, resolution.height, Camera.main.fieldOfView);
             projected = new RenderTexture(
-                panoramaResolution.width, panoramaResolution.height, 0, RenderTextureFormat.ARGB64)
-            {
-                enableRandomWrite = true
-            };
+                panoramaResolution.width, panoramaResolution.height, 1, RenderTextureFormat.ARGB64)
+            { enableRandomWrite = true };
             projected.Create();
 
             // debugPositionArray = new Vector3[cacheSize];
-            positionBuffer = new ComputeBuffer(cacheSize, sizeof(float) * 3);
+            // positionBuffer = new ComputeBuffer(cacheSize, sizeof(float) * 3);
             debugPositionBuffer = new ComputeBuffer(cacheSize, sizeof(float) * 3);
 
             Shader.SetGlobalFloat("PI", Mathf.PI);
             Shader.SetGlobalFloat("PI2", Mathf.PI * 2);
             Shader.SetGlobalFloat("FCLIP", map.fclip);
-            Shader.SetGlobalInt("MX_IDX", layerDepth);
+            Shader.SetGlobalInt("MX_IDX", cacheSize);
             Shader.SetGlobalVector("InputArrayRes", new Vector2(map.textureWidth, map.textureHeight));
             Shader.SetGlobalVector("ProjectedRes", new Vector2(projected.width, projected.height));
             Shader.SetGlobalTexture("_InputArray", textures);
             Shader.SetGlobalTexture("_Projected", projected);
 
-            computeShader.SetBuffer(projectKernel, "PositionBuffer", positionBuffer);
             computeShader.SetBuffer(projectKernel, "DebugPositionBuffer", debugPositionBuffer);
         }
 
@@ -119,7 +116,7 @@ namespace PreRendering
         /// </summary>
         public void Release()
         {
-            if (positionBuffer != null) positionBuffer.Release();
+            // if (positionBuffer != null) positionBuffer.Release();
             if (debugPositionBuffer != null) debugPositionBuffer.Release();
             if (projected != null) projected.Release();
         }
@@ -135,12 +132,12 @@ namespace PreRendering
             rt.enableRandomWrite = true;
 
             Shader.SetGlobalVector("ProjectionRes", new Vector2(width, height));
-           computeShader.SetInt("IMG_IDX", index);
-           computeShader.SetTexture(projectKernel, "_Result", rt);
-           computeShader.SetTexture(combineKernel, "_Input", rt);
-           
-           computeShader.Dispatch(projectKernel, width / (int)projectThreadsX, height / (int)projectThreadsY, 1);
-           computeShader.Dispatch(combineKernel, projected.width / (int)combineThreadsX, projected.height / (int)combineThreadsY, 1);
+            computeShader.SetInt("IMG_IDX", index);
+            computeShader.SetTexture(projectKernel, "_Result", rt);
+            computeShader.SetTexture(combineKernel, "_Input", rt);
+            
+            computeShader.Dispatch(projectKernel, width / (int)projectThreadsX, height / (int)projectThreadsY, 1);
+            computeShader.Dispatch(combineKernel, projected.width / (int)combineThreadsX, projected.height / (int)combineThreadsY, 1);
 
             RenderTexture.ReleaseTemporary(rt);
         }

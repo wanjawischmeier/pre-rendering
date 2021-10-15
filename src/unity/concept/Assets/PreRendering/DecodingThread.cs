@@ -59,7 +59,6 @@ namespace PreRendering
                 // Based on: https://stackoverflow.com/a/53770838/13215204
                 UnityWebRequest www = UnityWebRequestTexture.GetTexture(path);
                 var asyncOp = www.SendWebRequest();
-                Debug.Log("Decoding at " + path);
                 decoding.Add(asyncOp, new Tuple<Vector3, UnityWebRequest>(value, www));
                 asyncOp.completed += OnImageDecoded;
             }
@@ -87,7 +86,11 @@ namespace PreRendering
             {
                 Texture2D texture = DownloadHandlerTexture.GetContent(data.Item2);
                 buffer.Add(data.Item1, texture);
+#if UNITY_EDITOR
+                Object.DestroyImmediate(texture);
+#else
                 Object.Destroy(texture);
+#endif
             }
 
             decoding.Remove(obj);
