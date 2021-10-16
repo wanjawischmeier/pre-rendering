@@ -1,0 +1,74 @@
+int IMG_IDX, MX_IDX;
+float PI, PI2, FCLIP;
+float2 InputArrayRes, ProjectionRes, ProjectedRes;
+float3 Position;
+Texture2DArray<half4> _InputArray;
+
+#pragma kernel Project
+float3 PositionOffset;
+StructuredBuffer<half3> DebugPositionBuffer;
+RWTexture2D<half4> _Result;
+
+[numthreads(8, 8, 1)]
+void Project(uint3 id : SV_DispatchThreadID)
+{
+    float3 inpIdx = float3(id.xy / ProjectionRes * InputArrayRes, IMG_IDX);
+    
+    float2 ll1 = id.yx / ProjectionRes.yx;
+    ll1.x *= PI;
+    ll1.y *= PI2;
+    ll1.y += PI;
+    
+    float CP = _InputArray[inpIdx].a * FCLIP;
+    
+    float3 P = float3(
+        CP * sin(ll1.y) * sin(ll1.x),
+        CP * cos(ll1.x),
+        CP * cos(ll1.y) * sin(ll1.x)
+    );
+    
+    float3 PMax = float3(
+        FCLIP * sin(ll1.y) * sin(ll1.x),
+        FCLIP * cos(ll1.x),
+        FCLIP * cos(ll1.y) * sin(ll1.x)
+    );
+    
+    P -= Position;
+    PMax -= Position;
+    P += PositionOffset;
+    PMax += PositionOffset;
+    P += DebugPositionBuffer[IMG_IDX];
+    PMax += DebugPositionBuffer[IMG_IDX];
+    
+    float d = sqrt(P.x * P.x + P.y * P.y + P.z * P.z);
+    float dMax = sqrt(PMax.x * PMax.x + PMax.y * PMax.y + PMax.z * PMax.z);
+    
+    float2 ll2 = float2(
+        acos(P.y / d),
+        atan2(P.x, P.z)
+    );
+    
+    float2 a = float2(
+        ll2.y / PI2,
+        ll2.x / PI
+    );
+    a.x += 0.5;
+    
+    float2 idx = a * ProjectionRes;
+    
+    _Result[idx] = half4(id.xy / ProjectionRes, (IMG_IDX + 1) / (float) MX_IDX, 1);
+}
+
+#pragma kernel Combine
+Texture2D<half4> _Input;
+SamplerState linear_clamp_sampler;
+RWTexture2D<half4> _Projected;
+
+[numthreads(8, 8, 1)]
+void Combine(uint3 id : SV_DispatchThreadID)
+{
+    half4 col = _Input.SampleLevel(linear_clamp_sampler, id.xy / ProjectedRes, 0);
+    
+    if (col.a == 1)
+        _Projected[id.xy] = col;
+}
