@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 using UnityEngine.UI;
+using PreRendering;
 
 [HelpURL("https://nvjob.github.io/unity/nvjob-fps-counter-and-graph")]
 [AddComponentMenu("#NVJOB/Tools/FPS Counter and Graph")]
@@ -30,7 +31,7 @@ public class FPSCounter : MonoBehaviour
     public Color graphColor = new Color(1, 1, 1, 0.5f);
     public bool logWrite = true;
 
-    public PreRendering.PreRenderer preRenderer;
+    public PreRenderer preRenderer;
 
     [Header("Information")] // These variables are only information.
     public string HelpURL = "nvjob.github.io/unity/nvjob-fps-counter-and-graph";
@@ -115,13 +116,12 @@ public class FPSCounter : MonoBehaviour
             "FPS: MIN {0} | AVG {1} | MAX {2}\n" +
             "Screen Resolution:\t\t\t{3}x{4}\n" +
             "Texture Resolution:\t\t\t{5}x{6}\n" +
-            "Geometry Resolution\t\t{7}x{8}\n" +
-            "Selected texture layer:\t{9}/{10}",
+            "Geometry Percision\t\t{7}\n" +
+            "Layer depth:\t{8}",
             allFps.x, allFps.y, allFps.z,
             Screen.width, Screen.height,
             preRenderer.map.textureWidth, preRenderer.map.textureHeight,
-            preRenderer.projectionResolution.width, preRenderer.projectionResolution.height,
-            preRenderer.selectedId, preRenderer.layerDepth
+            preRenderer.geometryPercision, preRenderer.layerDepth
         );
 
         //--------------

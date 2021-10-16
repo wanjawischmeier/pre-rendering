@@ -4,14 +4,6 @@ using UnityEngine;
 
 namespace PreRendering
 {
-    public struct RawMapConfig
-    {
-        public int resolution;
-        public int fclip;
-        public int mx_width;
-        public float[] offsets;
-    }
-
     [Serializable]
     public struct MapConfig
     {

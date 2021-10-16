@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.44657826, g: 0.49641263, b: 0.57481676, a: 1}
+  m_IndirectSpecularColor: {r: 0.44657874, g: 0.49641258, b: 0.5748172, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -135,8 +135,8 @@ GameObject:
   - component: {fileID: 45530121}
   - component: {fileID: 45530120}
   - component: {fileID: 45530123}
-  - component: {fileID: 45530125}
   - component: {fileID: 45530124}
+  - component: {fileID: 45530125}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -221,18 +221,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e795f4c857e66124ca7c8e539ea7e60f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  projectShader: {fileID: 7200000, guid: 83ccade484494bc44a42d8da069d928b, type: 3}
-  postProcessing: {fileID: 4800000, guid: 73c549cc703570c48a640a58a94eb33b, type: 3}
-  controller: {fileID: 0}
-  mainPath: C:\Users\wanja\Documents\dev\pre-rendering\master\renders
   mapName: desert_new_low
-  geometryPercision: 0.75
-  falloff: 2
-  layerDepth: 4
   cacheSize: 10
   decodingThreads: 1
+  projectShader: {fileID: 7200000, guid: 83ccade484494bc44a42d8da069d928b, type: 3}
+  geometryPercision: 0.5
+  falloff: 1.5
+  layerDepth: 4
+  postProcessing: {fileID: 4800000, guid: 73c549cc703570c48a640a58a94eb33b, type: 3}
   debug: 0
-  selectedId: 1
+  cutoff: 0.5
+  controller: {fileID: 0}
 --- !u!114 &45530124
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -248,7 +247,6 @@ MonoBehaviour:
   speed: 7
   lookSpeed: 2
   lookXLimit: 45
-  secondaryPosition: {x: 0, y: 0, z: 0}
 --- !u!143 &45530125
 CharacterController:
   m_ObjectHideFlags: 0

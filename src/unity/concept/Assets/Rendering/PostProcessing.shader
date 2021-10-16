@@ -57,7 +57,7 @@ Shader "PreRendering/PostProcessing"
             Texture2DArray<float4> _InputArray;
             SamplerState linear_repeat_sampler;
             SamplerState sampler_InputArray;
-            float FOV, FCLIP;
+            float FOV, FCLIP, CUTOFF;
             float2 Rotation;
             int Debug, MX_IDX;
 
@@ -68,10 +68,10 @@ Shader "PreRendering/PostProcessing"
 
                 if (idx.a != 1)
                 {
-                    if (tc.y < 0.25 || tc.y > 0.75) idx = float4(tc, 0, FCLIP);
+                    if (tc.y < CUTOFF || tc.y > 1 - CUTOFF) idx = float4(tc, 0, FCLIP);
                     else return float4(0, 0, 0, 1);
                 }
-                if (Debug) return idx.zzzz;
+                if (Debug) return idx;
 
                 idx.z *= MX_IDX;
                 idx.z -= 1;

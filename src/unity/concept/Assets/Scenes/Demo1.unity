@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.37311918, g: 0.3807398, b: 0.35872716, a: 1}
+  m_IndirectSpecularColor: {r: 0.3731193, g: 0.38073996, b: 0.35872698, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -1637,7 +1637,6 @@ MonoBehaviour:
   speed: 7
   lookSpeed: 2
   lookXLimit: 90
-  secondaryPosition: {x: 0, y: 0, z: 0}
 --- !u!143 &1464708543
 CharacterController:
   m_ObjectHideFlags: 0
@@ -2131,7 +2130,7 @@ MonoBehaviour:
   highestPossibleFPS: 300
   graphColor: {r: 1, g: 1, b: 1, a: 0.14901961}
   logWrite: 1
-  loader: {fileID: 0}
+  preRenderer: {fileID: 0}
   HelpURL: nvjob.github.io/unity/nvjob-fps-counter-and-graph
   ReportAProblem: nvjob.github.io/support
   Patrons: nvjob.github.io/patrons

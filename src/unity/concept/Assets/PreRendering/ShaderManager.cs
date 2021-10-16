@@ -8,8 +8,6 @@ namespace PreRendering
         ComputeShader computeShader;
         Shader postProcessingShader;
         Material postProcessingMaterial;
-        // ComputeBuffer positionBuffer;
-        ComputeBuffer debugPositionBuffer;
         RenderTexture projected;
         Map map;
 
@@ -19,6 +17,14 @@ namespace PreRendering
         public Vector3 position
         {
             set { computeShader.SetVector("Position", value); }
+        }
+
+        /// <summary>
+        /// Sets the position compute buffer.
+        /// </summary>
+        public Vector3 positionOffset
+        {
+            set { computeShader.SetVector("PositionOffset", value); }
         }
 
         /// <summary>
@@ -50,16 +56,12 @@ namespace PreRendering
         }
 
         /// <summary>
-        /// Sets the position compute buffer.
+        /// At which point the shader should start overlaying the non-projected image to fill gaps.
         /// </summary>
-        public Vector3 positionOffset
+        public float cutoff
         {
-            set { computeShader.SetVector("PositionOffset", value); }
-        }
-
-        public Vector3[] debugPositionArray
-        {
-            set { debugPositionBuffer.SetData(value); }
+            get { return postProcessingMaterial.GetFloat("CUTOFF"); }
+            set { postProcessingMaterial.SetFloat("CUTOFF", value); }
         }
 
         readonly int projectKernel, combineKernel;
@@ -86,9 +88,6 @@ namespace PreRendering
             { enableRandomWrite = true };
             projected.Create();
 
-            // debugPositionArray = new Vector3[cacheSize];
-            // positionBuffer = new ComputeBuffer(cacheSize, sizeof(float) * 3);
-            debugPositionBuffer = new ComputeBuffer(cacheSize, sizeof(float) * 3);
 
             Shader.SetGlobalFloat("PI", Mathf.PI);
             Shader.SetGlobalFloat("PI2", Mathf.PI * 2);
@@ -98,8 +97,6 @@ namespace PreRendering
             Shader.SetGlobalVector("ProjectedRes", new Vector2(projected.width, projected.height));
             Shader.SetGlobalTexture("_InputArray", textures);
             Shader.SetGlobalTexture("_Projected", projected);
-
-            computeShader.SetBuffer(projectKernel, "DebugPositionBuffer", debugPositionBuffer);
         }
 
         ~ShaderManager() => Release();
@@ -109,8 +106,6 @@ namespace PreRendering
         /// </summary>
         public void Release()
         {
-            // if (positionBuffer != null) positionBuffer.Release();
-            if (debugPositionBuffer != null) debugPositionBuffer.Release();
             if (projected != null) projected.Release();
         }
 

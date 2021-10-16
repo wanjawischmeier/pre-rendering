@@ -7,7 +7,6 @@ public class MovementController : MonoBehaviour
     public float speed = 7.0f;
     public float lookSpeed = 2.0f;
     public float lookXLimit = 45.0f;
-    public Vector3 secondaryPosition;
 
     CharacterController characterController;
     Vector3 moveDirection = Vector3.zero;
@@ -45,14 +44,5 @@ public class MovementController : MonoBehaviour
         rotationY += Input.GetAxis("Mouse X") * lookSpeed;
         rotationX = Mathf.Clamp(rotationX, -lookXLimit, lookXLimit);
         transform.localRotation = Quaternion.Euler(rotationX, rotationY, 0);
-
-        if (Input.GetMouseButton(0))
-        {
-            secondaryPosition += transform.position - oldPos;
-        }
-        if (Input.GetMouseButton(1))
-        {
-            secondaryPosition = Vector3.zero;
-        }
     }
 }

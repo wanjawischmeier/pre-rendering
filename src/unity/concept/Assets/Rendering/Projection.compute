@@ -6,7 +6,6 @@ Texture2DArray<half4> _InputArray;
 
 #pragma kernel Project
 float3 PositionOffset;
-StructuredBuffer<half3> DebugPositionBuffer;
 RWTexture2D<half4> _Result;
 
 [numthreads(8, 8, 1)]
@@ -37,8 +36,6 @@ void Project(uint3 id : SV_DispatchThreadID)
     PMax -= Position;
     P += PositionOffset;
     PMax += PositionOffset;
-    P += DebugPositionBuffer[IMG_IDX];
-    PMax += DebugPositionBuffer[IMG_IDX];
     
     float d = sqrt(P.x * P.x + P.y * P.y + P.z * P.z);
     float dMax = sqrt(PMax.x * PMax.x + PMax.y * PMax.y + PMax.z * PMax.z);
