@@ -120,7 +120,7 @@ public class FPSCounter : MonoBehaviour
             allFps.x, allFps.y, allFps.z,
             Screen.width, Screen.height,
             preRenderer.map.textureWidth, preRenderer.map.textureHeight,
-            preRenderer.geometryResolution.x, preRenderer.geometryResolution.y,
+            preRenderer.projectionResolution.width, preRenderer.projectionResolution.height,
             preRenderer.selectedId, preRenderer.layerDepth
         );
 

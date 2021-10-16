@@ -16,11 +16,17 @@ namespace PreRendering
         public Shader postProcessing;
         [HideInInspector]
         public MovementController controller;
+        [HideInInspector]
+        public Resolution projectionResolution;
 
         public string mainPath;
         public string mapName;
         string mapPath;
-        public Vector2Int geometryResolution;
+        const float minimumPercision = 0.1f;
+        const float maximumPercision = 1;
+        [Range(minimumPercision, maximumPercision)]
+        public float geometryPercision;
+        public float falloff;
         [Range(1, 100)]
         public int layerDepth = 4;
         [Range(1, 100)]
@@ -60,15 +66,19 @@ namespace PreRendering
         void Start()
         {
             controller = GetComponent<MovementController>();
-            
+
+            projectionResolution = Utility.EstimatePanoramaResolution(
+                Mathf.RoundToInt(Screen.width * geometryPercision),
+                Mathf.RoundToInt(Screen.height * geometryPercision),
+                Camera.main.fieldOfView);
+
             mapPath = Path.Combine(mainPath, mapName);
             map = new Map(mapPath);
             buffer = new TextureBuffer(map.textureWidth, map.textureHeight, cacheSize);
             decoder = new DecodingThread(buffer, decodingThreads);
             shaderManager = new ShaderManager(
                 projectShader, postProcessing, buffer.textures,
-                Screen.currentResolution, geometryResolution, map,
-                layerDepth, cacheSize);
+                projectionResolution, map, cacheSize);
 
 #if UNITY_EDITOR && HEAVY_DEBUG
             arrayDebug = new Texture2DArray(map.textureWidth, map.textureHeight, cacheSize, TextureFormat.RGBA32, 1, false);
@@ -99,11 +109,21 @@ namespace PreRendering
                     {
                         float distance = Vector3.Distance(transform.position, positionOffset);
                         // TODO: Resolution based on distance
-                        int projectWidth = geometryResolution.x;
-                        int projectHeight = geometryResolution.y;
+                        /*
+                        Vector3 maxVector = new Vector3(
+                            buffer.Select(vector => { return vector.x; }).Max(),
+                            buffer.Select(vector => { return vector.y; }).Max(),
+                            buffer.Select(vector => { return vector.z; }).Max());
+                        */
+                        // float maxDistance = maxVector.magnitude;
+                        float scalar = Mathf.Clamp(Mathf.Pow(distance / falloff, 2),
+                            minimumPercision, maximumPercision);
 
                         shaderManager.positionOffset = positionOffset;
-                        shaderManager.Project(projectWidth, projectHeight, buffer[positionOffset]);
+                        shaderManager.Project(
+                            Mathf.RoundToInt(projectionResolution.width * scalar),
+                            Mathf.RoundToInt(projectionResolution.height * scalar),
+                            buffer[positionOffset]);
                     }
                 }
                 else

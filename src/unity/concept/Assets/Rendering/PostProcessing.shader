@@ -53,9 +53,9 @@ Shader "PreRendering/PostProcessing"
                 return o;
             }
 
-            Texture2DArray<float4> _InputArray;
             Texture2D<half4> _Projected;
-            SamplerState bilinear_repeat_sampler;
+            Texture2DArray<float4> _InputArray;
+            SamplerState linear_repeat_sampler;
             SamplerState sampler_InputArray;
             float FOV, FCLIP;
             float2 Rotation;
@@ -64,7 +64,7 @@ Shader "PreRendering/PostProcessing"
             fixed4 frag (v2f i) : SV_Target
             {
                 float2 tc = gnomonicProjection(i.uv, FOV, Rotation.x, Rotation.y);
-                half4 idx = _Projected.Sample(bilinear_repeat_sampler, tc);
+                half4 idx = _Projected.Sample(linear_repeat_sampler, tc);
 
                 if (idx.a != 1)
                 {

@@ -62,22 +62,17 @@ namespace PreRendering
             set { debugPositionBuffer.SetData(value); }
         }
 
-        readonly Vector2Int geometryResolution;
-        readonly int layerDepth, cacheSize, projectKernel, combineKernel;
+        readonly int projectKernel, combineKernel;
         readonly uint projectThreadsX, projectThreadsY, combineThreadsX, combineThreadsY;
 
         public ShaderManager(
             ComputeShader computeShader, Shader postProcessingShader,
-            Texture2DArray textures, Resolution resolution,
-            Vector2Int geometryResolution, Map map,
-            int layerDepth, int cacheSize)
+            Texture2DArray textures, Resolution projectionResolution,
+            Map map, int cacheSize)
         {
             this.computeShader = computeShader;
             this.postProcessingShader = postProcessingShader;
-            this.geometryResolution = geometryResolution;
             this.map = map;
-            this.layerDepth = layerDepth;
-            this.cacheSize = cacheSize;
 
             postProcessingMaterial = new Material(postProcessingShader);
             projectKernel = computeShader.FindKernel("Project");
@@ -85,11 +80,9 @@ namespace PreRendering
 
             computeShader.GetKernelThreadGroupSizes(projectKernel, out projectThreadsX, out projectThreadsY, out uint _);
             computeShader.GetKernelThreadGroupSizes(combineKernel, out combineThreadsX, out combineThreadsY, out uint _);
-            
-            Resolution panoramaResolution = Utility.EstimatePanoramaResolution(
-                resolution.width, resolution.height, Camera.main.fieldOfView);
+
             projected = new RenderTexture(
-                panoramaResolution.width, panoramaResolution.height, 1, RenderTextureFormat.ARGB64)
+                projectionResolution.width, projectionResolution.height, 1, RenderTextureFormat.ARGB64)
             { enableRandomWrite = true };
             projected.Create();
 
@@ -149,7 +142,7 @@ namespace PreRendering
         /// <param name="destination"></param>
         public void Render(ref RenderTexture destination)
         {
-            Graphics.Blit(projected, destination, postProcessingMaterial);
+            Graphics.Blit(null, destination, postProcessingMaterial);
 
             RenderTexture tmp = RenderTexture.active;
             RenderTexture.active = projected;
