@@ -9,40 +9,80 @@ using UnityEngine.Networking;
 
 namespace PreRendering
 {
+    [DisallowMultipleComponent]
     [RequireComponent(typeof(MovementController))]
+    [HelpURL("https://github.com/wanjawischmeier/pre-rendering/")]
     public class PreRenderer : MonoBehaviour
     {
         [Header("Map")]
-        public string mapName;
+
+        [SerializeField]
+        [Tooltip("The folder the map should be contained in (Will be overwritten on start, changing it won't do anything).")]
+        string rendersPath;
+
+        [SerializeField]
+        [Tooltip("The name of the folder the <.mapconfig> file is contained in. This folder has to be inside the <renders> parent folder.")]
+        string mapName;
+
         string mapPath;
 
+
         [Header("Decoder")]
+
+        [SerializeField]
+        [Tooltip("The size of the texture cache.")]
         [Range(1, 100)]
-        public int cacheSize = 10;
+        int cacheSize = 10;
+
+        [SerializeField]
+        [Tooltip("Maximum amount of textures to be decoded at once.")]
         [Range(1, 10)]
-        public int decodingThreads = 4;
+        int decodingThreads = 4;
 
         [Header("Projection")]
-        public ComputeShader projectShader;
-        const float minimumPercision = 0.1f;
-        const float maximumPercision = 1;
+
+        [SerializeField]
+        [Tooltip("The compute shader that countains the kernels needed for projection (<Project> and <Combine>).")]
+        ComputeShader projectShader;
+
+        [SerializeField]
+        [Tooltip("The base value the screen resolution should be divided by for projection.")]
         [Range(minimumPercision, maximumPercision)]
-        public float geometryPercision = 0.75f;
-        [Range(1, 5)]
-        public float falloff = 2;
-        [Range(1, 100)]
-        public int layerDepth = 4;
+        float geometryPercision = 0.75f;
+
+        [SerializeField]
+        [Tooltip("How fast the resolution decreases in the distance. Smaller values for slower falloff.")]
+        [Range(0.1f, 5)]
+        float falloff = 2;
+
+        [SerializeField]
+        [Tooltip("The amount of textures to be projected.")]
+        [Range(1, 20)]
+        int layerDepth = 4;
+
 
         [Header("Post Processing")]
-        public Shader postProcessing;
-        public bool debug = false;
+
+        [SerializeField]
+        [Tooltip("The shader that applies post processing to the projected image (gnomonic projection etc.).")]
+        Shader postProcessing;
+
+        [SerializeField]
+        [Tooltip("If enabled, the post processing shader will just pass through the projected texture coordinates.")]
+        bool shaderDebug = false;
+
+        [SerializeField]
+        [Tooltip("At which point the shader should start overlaying the non-projected image to fill gaps.")]
         [Range(0, 0.5f)]
-        public float cutoff = 0.5f;
+        float cutoff = 0.5f;
 
         [HideInInspector]
         public MovementController controller;
         [HideInInspector]
         public Resolution projectionResolution;
+
+        const float minimumPercision = 0.1f;
+        const float maximumPercision = 1;
 
 #if UNITY_EDITOR && HEAVY_DEBUG
         [Serializable]
@@ -66,44 +106,51 @@ namespace PreRendering
 
         void Start()
         {
-            string mainPath = Application.dataPath.Split(new string[] { "pre-rendering" }, System.StringSplitOptions.None)[0];
-            mainPath = Path.Combine(mainPath, "pre-rendering/master/renders");
+            rendersPath = Application.dataPath.Split(new string[] { "pre-rendering" }, System.StringSplitOptions.None)[0];
+            rendersPath = Path.Combine(rendersPath, "pre-rendering/master/renders");
 
             controller = GetComponent<MovementController>();
-            projectionResolution = Utility.EstimatePanoramaResolution(
-                Mathf.RoundToInt(Screen.width * geometryPercision),
-                Mathf.RoundToInt(Screen.height * geometryPercision),
-                Camera.main.fieldOfView);
 
-            mapPath = Path.Combine(mainPath, mapName);
+            mapPath = Path.Combine(rendersPath, mapName);
             map = new Map(mapPath);
-            buffer = new TextureBuffer(map.textureWidth, map.textureHeight, cacheSize);
+            buffer = new TextureBuffer(map.resolution.width, map.resolution.height, cacheSize);
             decoder = new DecodingThread(buffer, decodingThreads);
             shaderManager = new ShaderManager(
                 projectShader, postProcessing, buffer.textures,
-                projectionResolution, map, cacheSize);
+                map.resolution, map, cacheSize);
+
+            projectionResolution = map.resolution.Multiply(geometryPercision);
+            Screen.SetResolution(map.resolution.width, map.resolution.height, true);
 
 #if UNITY_EDITOR && HEAVY_DEBUG
             arrayDebug = new Texture2DArray(map.textureWidth, map.textureHeight, cacheSize, TextureFormat.RGBA32, 1, false);
 #endif
         }
 
+#if UNITY_EDITOR
+        void OnValidate()
+        {
+            rendersPath = Application.dataPath.Split(new string[] { "pre-rendering" }, System.StringSplitOptions.None)[0];
+            rendersPath = Path.Combine(rendersPath, "pre-rendering/master/renders");
+        }
+#endif
+
         void Update()
         {
             shaderManager.position = transform.position;
             shaderManager.rotation = transform.eulerAngles;
             shaderManager.fov = Camera.main.fieldOfView;
-            shaderManager.debug = debug;
+            shaderManager.shaderDebug = shaderDebug;
             shaderManager.cutoff = cutoff;
 
-            Vector3[] positions = map.vectorOffsets.GetClosest(transform.position, cacheSize);
+            Vector3[] positions = map.offsets.GetClosest(transform.position, cacheSize);
             List<Vector3> availablePositions = new List<Vector3>();
 
             // Load the closest images into the buffer
             for (int i = 0; i < cacheSize; i++)
             {
                 Vector3 positionOffset = positions[i];
-                string path = map.vectorOffsets.GetFileName(mapPath, positionOffset);
+                string path = map.offsets.GetFileName(mapPath, positionOffset);
 
                 if (buffer.Contains(positionOffset))
                     availablePositions.Add(positionOffset);
@@ -126,10 +173,10 @@ namespace PreRendering
                     Mathf.RoundToInt(projectionResolution.height * scalar),
                     buffer[positionOffset]);
             }
-
+            
             // Release all free positions
             Vector3[] reserved = buffer.reserved.Keys.ToArray();
-            foreach (Vector3 vector in reserved)
+            foreach (var vector in reserved)
                 if (!positions.Contains(vector)) buffer.Release(vector);
 
 #if UNITY_EDITOR && HEAVY_DEBUG
@@ -139,19 +186,19 @@ namespace PreRendering
             availableDebug = new int[buffer.available.Count];
 
             int idx = 0;
-            foreach (KeyValuePair<string, Vector3> item in decoder.pending)
+            foreach (var item in decoder.pending)
                 pendingDebug[idx++] = decoder.pending[item.Key];
 
             idx = 0;
-            foreach (KeyValuePair<AsyncOperation, Tuple<Vector3, UnityWebRequest>> item in decoder.decoding)
+            foreach (var item in decoder.decoding)
                 decodingDebug[idx++] = item.Value.Item1;
 
             idx = 0;
-            foreach (KeyValuePair<Vector3, int> item in buffer.reserved)
+            foreach (var item in buffer.reserved)
                 reservedDebug[idx++] = new VectorIndex { vector = item.Key, index = item.Value };
 
             idx = 0;
-            foreach (int item in buffer.available)
+            foreach (var item in buffer.available)
                 availableDebug[idx++] = item;
 
             Graphics.CopyTexture(buffer.textures, arrayDebug);
@@ -164,6 +211,7 @@ namespace PreRendering
         void OnDestroy()
         {
             buffer.Release();
+            decoder.Release();
             shaderManager.Release();
         }
     }

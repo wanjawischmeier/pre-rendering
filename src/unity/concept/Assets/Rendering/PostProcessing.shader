@@ -68,8 +68,8 @@ Shader "PreRendering/PostProcessing"
 
                 if (idx.a != 1)
                 {
-                    if (tc.y < CUTOFF || tc.y > 1 - CUTOFF) idx = float4(tc, 0, FCLIP);
-                    else return float4(0, 0, 0, 1);
+                    if (tc.y < CUTOFF || tc.y > 1 - CUTOFF) idx = half4(tc, 0, FCLIP);
+                    else return half4(0, 0, 0, 1);
                 }
                 if (Debug) return idx;
 

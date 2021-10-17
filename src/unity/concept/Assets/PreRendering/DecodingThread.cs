@@ -29,6 +29,14 @@ namespace PreRendering
             decoding = new Dictionary<AsyncOperation, Tuple<Vector3, UnityWebRequest>>();
         }
 
+        ~DecodingThread() => Release();
+
+        public void Release()
+        {
+            foreach (var item in decoding)
+                item.Value.Item2.Abort();
+        }
+
         public bool IsPending(string path)
         {
             return pending.Keys.Contains(path);
@@ -70,7 +78,7 @@ namespace PreRendering
         {
             Dictionary<string, Vector3> temp = new Dictionary<string, Vector3>(pending);
 
-            foreach (KeyValuePair<string, Vector3> item in temp)
+            foreach (var item in temp)
             {
                 if (decoding.Count >= decodingThreads) break;
                 DecodeToBuffer(item.Key, item.Value);

@@ -115,13 +115,10 @@ public class FPSCounter : MonoBehaviour
         counterText.text = string.Format(
             "FPS: MIN {0} | AVG {1} | MAX {2}\n" +
             "Screen Resolution:\t\t\t{3}x{4}\n" +
-            "Texture Resolution:\t\t\t{5}x{6}\n" +
-            "Geometry Percision\t\t{7}\n" +
-            "Layer depth:\t{8}",
+            "Texture Resolution:\t\t\t{5}x{6}",
             allFps.x, allFps.y, allFps.z,
             Screen.width, Screen.height,
-            preRenderer.map.textureWidth, preRenderer.map.textureHeight,
-            preRenderer.geometryPercision, preRenderer.layerDepth
+            preRenderer.map.resolution.width, preRenderer.map.resolution.height
         );
 
         //--------------

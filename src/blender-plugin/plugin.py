@@ -6,7 +6,7 @@
 bl_info = {
     "name":         "PreRendering Blender Plugin",
     "author":       "Wanja Wischmeier",
-    "version":      (1, 0),
+    "version":      (1, 1),
     "blender":      (2, 80, 0),
     "location":     "Render > PreRender",
     "description":  "Allows you to set your scene up for PreRendering. This plugin also creates the according .mapconfig file required for loading the render into unity.",
@@ -21,7 +21,7 @@ bl_info = {
 # ________________________________________________________ #
 
 # Blender modules
-from os import name
+from os import name, makedirs
 import bpy
 from bpy.types import (
     Operator,
@@ -116,14 +116,23 @@ def setRenderSettings(self, path: str, resolution: tuple, frame_end: int) -> Non
     links.new(render_node.outputs['Depth'], out_node.inputs['Map'])
 Scene.setRenderSettings = setRenderSettings
 
-def createConfigFile(path: str, resolution: int, fclip: float, mx_width: float, offsets: ndarray):
+def createConfigFile(path: str, fclip: float, mx_width: float, offsets: ndarray):
+    off_vectors = [
+        {
+            "x":offsets[i][0],
+            "y":offsets[i][2],
+            "z":offsets[i][1]
+        }
+        for i in range(round(len(offsets)))
+    ]
+
+    makedirs(path, exist_ok=True)
     with open(join(path, ".mapconfig"), 'w') as file:
         config = dumps({
-            "resolution": resolution,
-            "fclip": fclip,
-            "mx_width": mx_width,
-            "offsets": offsets.ravel().tolist()
-        })
+            "fClip": fclip,
+            "mxWidth": mx_width,
+            "offsets": off_vectors
+        }, indent = 2, separators=(',', ': '))
         file.write(config)
 
 # ________________________________________________________ #
@@ -171,6 +180,7 @@ class TOPBAR_OT_prerender_create_domain(Operator):
         domain = context.object
         domain.name = 'PreRendering Domain'
         domain.display_type = 'WIRE'
+        domain.hide_render = True
 
         return {'FINISHED'}
 
@@ -249,7 +259,7 @@ class TOPBAR_OT_prerender_setup(Operator):
         cam.setUpForRendering(self.far_clip)
         cam.setKeyframes(context, frames)
 
-        createConfigFile(self.path, resolution, self.far_clip, mx_width, frames)
+        createConfigFile(self.path, self.far_clip, mx_width, frames)
 
         if self.delete_domain:
             cam.select_set(False)

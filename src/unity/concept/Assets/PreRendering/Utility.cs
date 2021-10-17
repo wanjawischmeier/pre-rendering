@@ -19,8 +19,22 @@ namespace PreRendering
         {
             Resolution res = new Resolution
             {
-                width = Mathf.RoundToInt(width * (360 / fov)),
-                height = Mathf.RoundToInt(height * (180 / fov))
+                width = Mathf.RoundToInt(width * 360 / fov),
+                height = Mathf.RoundToInt(height * 180 / fov)
+            };
+            return res;
+        }
+
+        /// <summary>
+        /// Estimates a resolution that should result in no interpolation
+        /// (When cropping into a texture by the specified fov using gnomonic projection).
+        /// </summary>
+        public static Resolution EstimateScreenResolution(int width, int height, float fov)
+        {
+            Resolution res = new Resolution
+            {
+                width = Mathf.RoundToInt(width * fov / 360),
+                height = Mathf.RoundToInt(height * fov / 180)
             };
             return res;
         }
@@ -58,7 +72,7 @@ namespace PreRendering
         {
             return Path.Combine(path, index.ToString().PadLeft(4, '0') + ".png");
         }
-            
+
 
         /// <summary>
         /// Loads an image into a texture.
@@ -89,8 +103,17 @@ namespace PreRendering
 
         public static int GetSpiralRange(int length, int step_size = 1)
         {
-            float range = (Mathf.Pow(length, 1/3f) - step_size) /2f;
+            float range = (Mathf.Pow(length, 1 / 3f) - step_size) / 2f;
             return Mathf.CeilToInt(range);
+        }
+
+        public static Resolution Multiply(this Resolution resolution, float value)
+        {
+            return new Resolution()
+            {
+                width = Mathf.RoundToInt(resolution.width * value),
+                height = Mathf.RoundToInt(resolution.height * value)
+            };
         }
     }
 }

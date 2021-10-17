@@ -47,9 +47,9 @@ namespace PreRendering
         }
 
         /// <summary>
-        /// Wether the shader debugger should be enabled.
+        /// If enabled, the post processing shader will just pass through the projected texture coordinates.
         /// </summary>
-        public bool debug
+        public bool shaderDebug
         {
             get { return postProcessingMaterial.GetInt("Debug") == 1 ? true : false; }
             set { postProcessingMaterial.SetInt("Debug", value ? 1 : 0); }
@@ -91,9 +91,9 @@ namespace PreRendering
 
             Shader.SetGlobalFloat("PI", Mathf.PI);
             Shader.SetGlobalFloat("PI2", Mathf.PI * 2);
-            Shader.SetGlobalFloat("FCLIP", map.fclip);
+            Shader.SetGlobalFloat("FCLIP", map.fClip);
             Shader.SetGlobalInt("MX_IDX", cacheSize);
-            Shader.SetGlobalVector("InputArrayRes", new Vector2(map.textureWidth, map.textureHeight));
+            Shader.SetGlobalVector("InputArrayRes", new Vector2(map.resolution.width, map.resolution.height));
             Shader.SetGlobalVector("ProjectedRes", new Vector2(projected.width, projected.height));
             Shader.SetGlobalTexture("_InputArray", textures);
             Shader.SetGlobalTexture("_Projected", projected);

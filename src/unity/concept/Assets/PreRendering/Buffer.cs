@@ -1,6 +1,8 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 
 namespace PreRendering
 {
@@ -47,7 +49,6 @@ namespace PreRendering
         /// <returns>
         /// Wether the element could be added to the buffer.
         /// Returns false if there is already an element stored under the specified key
-        /// or if an error occured,
         /// and returns true otherwise.
         /// </returns>
         public bool Add(T1 key, T2 value)
@@ -61,15 +62,7 @@ namespace PreRendering
             }
 
             int index = available.Dequeue();
-            try
-            {
-                Add(index, value);
-            }
-            catch (UnityEngine.UnityException)
-            {
-                available.Enqueue(index);
-                return false;
-            }
+            Add(index, value);
             reserved.Add(key, index);
 
             return true;

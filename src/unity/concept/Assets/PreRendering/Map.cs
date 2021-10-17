@@ -7,18 +7,17 @@ namespace PreRendering
     [Serializable]
     public struct MapConfig
     {
-        public int fclip;
-        public int mx_width;
-        public Vector3[] vectorOffsets;
+        public int fClip;
+        public int mxWidth;
+        public Vector3[] offsets;
     }
 
     public class Map
     {
-        public readonly int fclip;
+        public readonly int fClip;
         public readonly int mxWidth;
-        public readonly int textureWidth;
-        public readonly int textureHeight;
-        public readonly Vector3[] vectorOffsets;
+        public readonly Resolution resolution;
+        public readonly Vector3[] offsets;
         readonly string mainPath;
 
         public Map(string path)
@@ -28,14 +27,13 @@ namespace PreRendering
             string rawConfig = File.ReadAllText(Path.Combine(mainPath, ".mapconfig"));
             MapConfig config = JsonUtility.FromJson<MapConfig>(rawConfig);
 
-            string sampleTexturePath = config.vectorOffsets.GetFileName(mainPath, Vector3.zero);
+            string sampleTexturePath = config.offsets.GetFileName(mainPath, config.offsets[0]);
             Texture2D texture = Utility.LoadTexture(sampleTexturePath);
 
-            fclip = config.fclip;
-            mxWidth = config.mx_width;
-            textureWidth = texture.width;
-            textureHeight = texture.height;
-            vectorOffsets = config.vectorOffsets;
+            fClip = config.fClip;
+            mxWidth = config.mxWidth;
+            resolution = new Resolution() { width = texture.width, height = texture.height };
+            offsets = config.offsets;
         }
     }
 }
