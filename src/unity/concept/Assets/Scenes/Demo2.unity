@@ -223,7 +223,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   rendersPath: S:/users/wanja/Dokumente/pre-rendering/master/renders
   mapName: room_simple_low
-  cacheSize: 10
+  cacheSize: 100
   decodingThreads: 1
   projectShader: {fileID: 7200000, guid: 83ccade484494bc44a42d8da069d928b, type: 3}
   geometryPercision: 0.9

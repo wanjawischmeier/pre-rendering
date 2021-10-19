@@ -1,4 +1,3 @@
 .vs
-/Debug
-/image-decoder/Debug
-/image-decoder/x64
+Debug
+image-decoder/x64

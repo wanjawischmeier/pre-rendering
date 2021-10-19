@@ -15,6 +15,11 @@ namespace PreRendering
         /// Estimates a resolution that should result in no interpolation
         /// (When cropping into a texture by the specified fov using gnomonic projection).
         /// </summary>
+        public static Resolution EstimatePanoramaResolution(this Resolution resolution, float fov)
+        {
+            return EstimatePanoramaResolution(resolution.width, resolution.height, fov);
+        }
+
         public static Resolution EstimatePanoramaResolution(int width, int height, float fov)
         {
             Resolution res = new Resolution
@@ -29,6 +34,11 @@ namespace PreRendering
         /// Estimates a resolution that should result in no interpolation
         /// (When cropping into a texture by the specified fov using gnomonic projection).
         /// </summary>
+        public static Resolution EstimateScreenResolution(this Resolution resolution, float fov)
+        {
+            return EstimateScreenResolution(resolution.width, resolution.height, fov);
+        }
+
         public static Resolution EstimateScreenResolution(int width, int height, float fov)
         {
             Resolution res = new Resolution

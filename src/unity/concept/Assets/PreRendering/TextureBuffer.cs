@@ -19,6 +19,7 @@ namespace PreRendering
 
         public override void Add(int index, Texture2D value)
         {
+            if (textures == null) return;
             Graphics.CopyTexture(value, 0, textures, index);
         }
     }

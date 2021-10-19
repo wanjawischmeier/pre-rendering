@@ -80,6 +80,13 @@ namespace PreRendering
         public MovementController controller;
         [HideInInspector]
         public Resolution projectionResolution;
+        public Resolution screenResolution;
+
+        public Map map;
+        TextureBuffer buffer;
+        DecodingThread decoder;
+        ShaderManager shaderManager;
+        Camera mainCamera;
 
         const float minimumPercision = 0.1f;
         const float maximumPercision = 1;
@@ -99,13 +106,10 @@ namespace PreRendering
         public Texture2DArray arrayDebug;
 #endif
 
-        public Map map;
-        TextureBuffer buffer;
-        DecodingThread decoder;
-        ShaderManager shaderManager;
-
         void Start()
         {
+            mainCamera = Camera.main;
+
             rendersPath = Application.dataPath.Split(new string[] { "pre-rendering" }, System.StringSplitOptions.None)[0];
             rendersPath = Path.Combine(rendersPath, "pre-rendering/master/renders");
 
@@ -113,17 +117,22 @@ namespace PreRendering
 
             mapPath = Path.Combine(rendersPath, mapName);
             map = new Map(mapPath);
+
+            projectionResolution = map.resolution.Multiply(geometryPercision);
+            screenResolution = map.resolution.EstimateScreenResolution(mainCamera.fieldOfView);
+
             buffer = new TextureBuffer(map.resolution.width, map.resolution.height, cacheSize);
             decoder = new DecodingThread(buffer, decodingThreads);
             shaderManager = new ShaderManager(
                 projectShader, postProcessing, buffer.textures,
-                map.resolution, map, cacheSize);
+                projectionResolution, map, cacheSize);
 
-            projectionResolution = map.resolution.Multiply(geometryPercision);
-            Screen.SetResolution(map.resolution.width, map.resolution.height, true);
-
-#if UNITY_EDITOR && HEAVY_DEBUG
+#if UNITY_EDITOR
+#if HEAVY_DEBUG
             arrayDebug = new Texture2DArray(map.textureWidth, map.textureHeight, cacheSize, TextureFormat.RGBA32, 1, false);
+#endif
+#else
+            Screen.SetResolution(screenResolution.width, screenResolution.height, true);
 #endif
         }
 
@@ -139,7 +148,7 @@ namespace PreRendering
         {
             shaderManager.position = transform.position;
             shaderManager.rotation = transform.eulerAngles;
-            shaderManager.fov = Camera.main.fieldOfView;
+            shaderManager.fov = mainCamera.fieldOfView;
             shaderManager.shaderDebug = shaderDebug;
             shaderManager.cutoff = cutoff;
 
