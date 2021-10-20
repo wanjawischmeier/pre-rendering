@@ -21,6 +21,7 @@ public class DecoderTest : MonoBehaviour
         material.SetBuffer("Tex", buffer);
 
         Decoder.Initialize();
+        /*
         Decoder.ImageDecoded += Decoder_ImageDecoded;
         for (int i = 0; i < threads; i++)
         {
@@ -31,6 +32,7 @@ public class DecoderTest : MonoBehaviour
                 Decoder.Decode(ref data, image_path, res.x, res.y, j);
             });
         }
+        */
     }
 
     void Update()

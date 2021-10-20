@@ -26,11 +26,11 @@ namespace PreRendering
         public delegate void ImageDecodedEvent(string path, int[] data, int t);
         public static event ImageDecodedEvent ImageDecoded;
 
-        const string dllPath = "C:\\Users\\wanja\\Documents\\dev\\pre-rendering\\master\\src\\image-decoder\\x64\\Debug\\image-decoder.dll";
         static IntPtr dllPtr;
 
         public static void Initialize()
         {
+            string dllPath = "image-decoder.dll";
             dllPtr = LoadLibrary(dllPath);
 
             IntPtr dllAddr;

@@ -1,33 +1,29 @@
 ﻿using System;
-using System.Text;
-using System.Runtime.InteropServices;
-using PreRendering;
 using Decoder = PreRendering.Decoder;
 using System.Threading.Tasks;
-using System.Collections.Generic;
+using System.IO;
 
 namespace DllTest
 {
     class Program
     {
-        static string image_path = "C:\\Users\\wanja\\Documents\\dev\\pre-rendering\\master\\src\\unity\\concept\\Assets\\Rendering\\Testing\\Sample1\\Main.png";
-
-        static async Task Main(string[] args)
+        static void Main(string[] args)
         {
+            string directory = Directory.GetCurrentDirectory();
+            string imagePath = Path.Combine(directory, "tstimg.png");
             int w = 8; int h = 4;
 
-            Decoder.Initialize();
-            List<Task<uint[]>> tasks = new List<Task<uint[]>>();
-            for (int i = 0; i < 10; i++)
+            Decoder.Initialize(imagePath, w, h);
+            Decoder.ImageDecoded += Decoder_ImageDecoded;
+            for (int i = 0; i < 2; i++)
             {
                 int j = i;
-                tasks.Add(Task.Run(() =>
+                _ = Task.Run(() =>
                 {
-                    return Decoder.Decode(image_path, w, h, j);
-                }));
+                    Decoder.Decode(imagePath, j);
+                });
             }
-            Decoder.ImageDecoded += Decoder_ImageDecoded;
-            await Task.WhenAll(tasks);
+            Console.ReadKey(true);
             Decoder.Deinitialize();
         }
 
@@ -35,7 +31,7 @@ namespace DllTest
         {
             string bytestr = "";
 
-            foreach (uint _byte in data)
+            foreach (byte _byte in data)
             {
                 bytestr += _byte.ToString() + "-";
             }

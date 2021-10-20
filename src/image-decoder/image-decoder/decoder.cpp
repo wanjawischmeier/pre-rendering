@@ -1,36 +1,41 @@
 #include "pch.h"
-#include <combaseapi.h>
 #include "decoder.h"
 
 using namespace std;
-using namespace cv;
 
-uint16_t* raw_bytes;
-
-void initialize()
+ushort* InitializeBuffer(char* samplePath, int* width, int* height, int* size)
 {
+    Mat img = imread(samplePath, IMREAD_UNCHANGED);
+    if (*width > 0 || *height > 0)
+    {
+        image_size = Size(*width, *height);
+        resize(img, img, image_size);
+        buffer_resize = true;
+    }
+    else
+    {
+        *width = img.cols;
+        *height = img.rows;
+        buffer_resize = false;
+    }
 
+    buffer_size = img.total() * img.channels();
+    *size = buffer_size;
+
+    pBuffer = new ushort[buffer_size];
+    return pBuffer;
 }
 
-void release()
-{
-    delete raw_bytes;
-}
-
-ushort* imread(char* path, int width, int height, int* channels, int* bytes_count)
+void ReadToBuffer(char* path)
 {
     Mat img = imread(path, IMREAD_UNCHANGED);
-    if (width > 0 || height > 0)
-        resize(img, img, Size(width, height));
-    // flip(img, img, 0);
+    if (buffer_resize)
+        resize(img, img, image_size);
     
-    *channels = img.channels();
-    int size = img.total() * *channels;
-    *bytes_count = size;
-    size *= sizeof(ushort);
-    raw_bytes = new ushort[size];
+    memcpy(pBuffer, img.data, buffer_size);
+}
 
-    memcpy(raw_bytes, img.data, size);
-
-    return raw_bytes;
+void ReleaseBuffer()
+{
+    delete pBuffer;
 }

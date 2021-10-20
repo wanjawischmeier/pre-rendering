@@ -1,0 +1,13 @@
+S:\users\wanja\Dokumente\pre-rendering\master\src\DllTest\DllTest\bin\x86\Debug\netcoreapp3.1\DllTest.exe
+S:\users\wanja\Dokumente\pre-rendering\master\src\DllTest\DllTest\bin\x86\Debug\netcoreapp3.1\DllTest.deps.json
+S:\users\wanja\Dokumente\pre-rendering\master\src\DllTest\DllTest\bin\x86\Debug\netcoreapp3.1\DllTest.runtimeconfig.json
+S:\users\wanja\Dokumente\pre-rendering\master\src\DllTest\DllTest\bin\x86\Debug\netcoreapp3.1\DllTest.runtimeconfig.dev.json
+S:\users\wanja\Dokumente\pre-rendering\master\src\DllTest\DllTest\bin\x86\Debug\netcoreapp3.1\DllTest.dll
+S:\users\wanja\Dokumente\pre-rendering\master\src\DllTest\DllTest\bin\x86\Debug\netcoreapp3.1\DllTest.pdb
+S:\users\wanja\Dokumente\pre-rendering\master\src\DllTest\DllTest\obj\x86\Debug\netcoreapp3.1\DllTest.csprojAssemblyReference.cache
+S:\users\wanja\Dokumente\pre-rendering\master\src\DllTest\DllTest\obj\x86\Debug\netcoreapp3.1\DllTest.AssemblyInfoInputs.cache
+S:\users\wanja\Dokumente\pre-rendering\master\src\DllTest\DllTest\obj\x86\Debug\netcoreapp3.1\DllTest.AssemblyInfo.cs
+S:\users\wanja\Dokumente\pre-rendering\master\src\DllTest\DllTest\obj\x86\Debug\netcoreapp3.1\DllTest.csproj.CoreCompileInputs.cache
+S:\users\wanja\Dokumente\pre-rendering\master\src\DllTest\DllTest\obj\x86\Debug\netcoreapp3.1\DllTest.dll
+S:\users\wanja\Dokumente\pre-rendering\master\src\DllTest\DllTest\obj\x86\Debug\netcoreapp3.1\DllTest.pdb
+S:\users\wanja\Dokumente\pre-rendering\master\src\DllTest\DllTest\obj\x86\Debug\netcoreapp3.1\DllTest.genruntimeconfig.cache
