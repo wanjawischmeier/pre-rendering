@@ -21,7 +21,7 @@ namespace PreRendering
         string rendersPath;
 
         [SerializeField]
-        [Tooltip("The name of the folder the <.mapconfig> file is contained in. This folder has to be inside the <renders> parent folder.")]
+        [Tooltip("The name of the folder the '.mapconfig' file is contained in. This folder has to be inside the 'renders' parent folder.")]
         string mapName;
 
         string mapPath;
@@ -42,7 +42,7 @@ namespace PreRendering
         [Header("Projection")]
 
         [SerializeField]
-        [Tooltip("The compute shader that countains the kernels needed for projection (<Project> and <Combine>).")]
+        [Tooltip("The compute shader that countains the kernels needed for projection ('Project' and 'Combine').")]
         ComputeShader projectShader;
 
         [SerializeField]
@@ -120,6 +120,10 @@ namespace PreRendering
 
             projectionResolution = map.resolution.Multiply(geometryPercision);
             screenResolution = map.resolution.EstimateScreenResolution(mainCamera.fieldOfView);
+
+            Debug.Log(string.Format("Panorama resolution: {0}x{1}", map.resolution.width, map.resolution.height));
+            Debug.Log(string.Format("Projection resolution: {0}x{1}", projectionResolution.width, projectionResolution.height));
+            Debug.Log(string.Format("Screen resolution: {0}x{1}", screenResolution.width, screenResolution.height));
 
             buffer = new TextureBuffer(map.resolution.width, map.resolution.height, cacheSize);
             decoder = new DecodingThread(buffer, decodingThreads);

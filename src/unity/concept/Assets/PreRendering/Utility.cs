@@ -7,12 +7,12 @@ using UnityEngine;
 namespace PreRendering
 {
     /// <summary>
-    /// Contains all static helper functions used inside the <PreRendering> namespace.
+    /// Contains all static helper functions used inside the 'PreRendering' namespace.
     /// </summary>
     public static class Utility
     {
         /// <summary>
-        /// Estimates a resolution that should result in no interpolation
+        /// Estimates a panorama resolution that should result in no interpolation
         /// (When cropping into a texture by the specified fov using gnomonic projection).
         /// </summary>
         public static Resolution EstimatePanoramaResolution(this Resolution resolution, float fov)
@@ -31,8 +31,7 @@ namespace PreRendering
         }
 
         /// <summary>
-        /// Estimates a resolution that should result in no interpolation
-        /// (When cropping into a texture by the specified fov using gnomonic projection).
+        /// Estimates the resolution a panorama projected using gnomonic projection will have.
         /// </summary>
         public static Resolution EstimateScreenResolution(this Resolution resolution, float fov)
         {
@@ -51,7 +50,7 @@ namespace PreRendering
 
         /// <summary>
         /// Get the vectors that have the smallest distance to the specified target position.
-        /// These vectors originate from the <position> vector and are ordered in an outwards spiraling pattern.
+        /// These vectors originate from the 'position' vector and are ordered in an outwards spiraling pattern.
         /// </summary>
         /// <param name="amount">The desired length of the returned array.</param>
         public static Vector3[] GetClosest(this Vector3[] vectors, Vector3 position, int amount)
