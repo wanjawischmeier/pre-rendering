@@ -222,16 +222,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rendersPath: C:/Users/wanja/Documents/dev/pre-rendering/master/renders
-  mapName: room_simple_low
-  cacheSize: 4
+  mapName: room_simple_single_high
+  cacheSize: 1
   decodingThreads: 1
   projectShader: {fileID: 7200000, guid: 83ccade484494bc44a42d8da069d928b, type: 3}
   geometryPercision: 0.9
   falloff: 0.1
-  layerDepth: 4
+  layerDepth: 1
   postProcessing: {fileID: 4800000, guid: 73c549cc703570c48a640a58a94eb33b, type: 3}
   shaderDebug: 0
-  cutoff: 0.5
+  cutoff: 0
   controller: {fileID: 0}
 --- !u!114 &45530124
 MonoBehaviour:

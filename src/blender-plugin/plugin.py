@@ -63,6 +63,12 @@ def getNeeded(start: list, end: list, step_size: float) -> ndarray:
                 needed.append([x, y, z])
     return array(needed)
 
+def estimatePanoramaResolution(width: int, height: int, fov: int = 90) -> tuple:
+    return (
+        round(width * 360 / fov),
+        round(height * 180 / fov)
+    )
+
 def setKeyframe(self, context: Context, frame: int, location: list, keyframe_type = 'Location') -> None:
     context.scene.frame_set(frame)
     self.location = location
@@ -86,8 +92,8 @@ Object.setUpForRendering = setUpForRendering
 def setRenderSettings(self, path: str, resolution: tuple, frame_end: int) -> None:
     self.render.engine = 'CYCLES'
     self.render.fps = 30
-    self.render.resolution_x = resolution
-    self.render.resolution_y = resolution / 2
+    self.render.resolution_x = resolution[0]
+    self.render.resolution_y = resolution[1]
     self.frame_start = 0
     self.frame_end = frame_end
 
@@ -143,17 +149,17 @@ def createConfigFile(path: str, nclip: float, fclip: float, mx_width: float, off
 # ________________________________________________________ #
 
 qualitys = [
-    ("low",     "Low quality (1k)",  "Low filesize and fast reading, but may look bad"),
-    ("medium",  "Medium quality (2k)",   "Propably the best option for large maps"),
-    ("high",    "High quality (4k)",        "Will result in a large map file, but capture more detail"),
-    ("ultra",   "Very high quality (8k)",   "Very large filesize, only for very good PC's")
+    ("low",     "Low quality (720p)",  "Low filesize and fast reading, but may look bad"),
+    ("medium",  "Medium quality (1080p)",   "Propably the best option for large maps"),
+    ("high",    "High quality (1440p)",        "Will result in a large map file, but capture more detail"),
+    ("ultra",   "Very high quality (2160p)",   "Very large filesize, only for very good PC's")
 ]
 
 resolutions = {
-    "low":      1080,
-    "medium":   2160,
-    "high":     4320,
-    "ultra":    8640
+    "low":      (1280, 720),
+    "medium":   (1920, 1080),
+    "high":     (2560, 1440),
+    "ultra":    (3840, 2160)
 }
 
 # ________________________________________________________ #
@@ -251,7 +257,11 @@ class TOPBAR_OT_prerender_setup(Operator):
 
         frames = getNeeded(start, end, self.step_size)
 
-        resolution = resolutions.get(self.quality)
+        screen_resolution = resolutions.get(self.quality)
+        resolution = estimatePanoramaResolution(
+            screen_resolution[0],
+            screen_resolution[1]
+        )
         
         mx_width = max(
             end[0] - start[0],

@@ -78,10 +78,10 @@ void Project(uint3 id : SV_DispatchThreadID)
     _UnitProjection[id.xy] += half4(ll2 / (float) MX_IDX, (IMG_IDX + 1) / (float) MX_IDX, 1);
     
     float CP = _InputArray[inpIdx].a * (FCLIP - NCLIP) + NCLIP;
-    float2 ll3 = translateLatLon(ll1, -Position + PositionOffset, CP);
+    float2 ll3 = translateLatLon(ll1, Position - PositionOffset, CP);
     ll3 = latLonToNormalized(ll3);
     
-    _Result[ll3 * ProjectionRes] = half4(id.xy / ProjectionRes, (IMG_IDX + 1) / (float) MX_IDX, 1);
+    _Result[id.xy] = half4(ll3, (IMG_IDX + 1) / (float) MX_IDX, 1);
 }
 
 #pragma kernel Combine
