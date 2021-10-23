@@ -7,15 +7,13 @@ namespace PreRendering
     [Serializable]
     public struct MapConfig
     {
-        public int fClip;
-        public int mxWidth;
+        public int nClip, fClip, mxWidth;
         public Vector3[] offsets;
     }
 
     public class Map
     {
-        public readonly int fClip;
-        public readonly int mxWidth;
+        public readonly int nClip, fClip, mxWidth;
         public readonly Resolution resolution;
         public readonly Vector3[] offsets;
         readonly string mainPath;
@@ -30,6 +28,7 @@ namespace PreRendering
             string sampleTexturePath = config.offsets.GetFileName(mainPath, config.offsets[0]);
             Texture2D texture = Utility.LoadTexture(sampleTexturePath);
 
+            nClip = config.nClip;
             fClip = config.fClip;
             mxWidth = config.mxWidth;
             resolution = new Resolution() { width = texture.width, height = texture.height };

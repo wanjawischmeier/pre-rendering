@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace PreRendering
@@ -8,7 +7,8 @@ namespace PreRendering
         ComputeShader computeShader;
         Shader postProcessingShader;
         Material postProcessingMaterial;
-        RenderTexture projected;
+        RenderTexture projection;
+        RenderTexture unitProjection;
         Map map;
 
         /// <summary>
@@ -70,7 +70,7 @@ namespace PreRendering
         public ShaderManager(
             ComputeShader computeShader, Shader postProcessingShader,
             Texture2DArray textures, Resolution projectionResolution,
-            Map map, int cacheSize)
+            Map map, int layerDepth)
         {
             this.computeShader = computeShader;
             this.postProcessingShader = postProcessingShader;
@@ -83,20 +83,23 @@ namespace PreRendering
             computeShader.GetKernelThreadGroupSizes(projectKernel, out projectThreadsX, out projectThreadsY, out uint _);
             computeShader.GetKernelThreadGroupSizes(combineKernel, out combineThreadsX, out combineThreadsY, out uint _);
 
-            projected = new RenderTexture(
+            projection = new RenderTexture(
                 projectionResolution.width, projectionResolution.height, 1, RenderTextureFormat.ARGB64)
             { enableRandomWrite = true };
-            projected.Create();
-
+            unitProjection = new RenderTexture(projection);
+            projection.Create();
+            unitProjection.Create();
 
             Shader.SetGlobalFloat("PI", Mathf.PI);
             Shader.SetGlobalFloat("PI2", Mathf.PI * 2);
+            Shader.SetGlobalFloat("NCLIP", map.nClip);
             Shader.SetGlobalFloat("FCLIP", map.fClip);
-            Shader.SetGlobalInt("MX_IDX", cacheSize);
+            Shader.SetGlobalInt("MX_IDX", layerDepth);
             Shader.SetGlobalVector("InputArrayRes", new Vector2(map.resolution.width, map.resolution.height));
-            Shader.SetGlobalVector("ProjectedRes", new Vector2(projected.width, projected.height));
+            Shader.SetGlobalVector("ProjectedRes", new Vector2(projection.width, projection.height));
             Shader.SetGlobalTexture("_InputArray", textures);
-            Shader.SetGlobalTexture("_Projected", projected);
+            Shader.SetGlobalTexture("_Projection", projection);
+            Shader.SetGlobalTexture("_UnitProjection", unitProjection);
         }
 
         ~ShaderManager() => Release();
@@ -106,7 +109,7 @@ namespace PreRendering
         /// </summary>
         public void Release()
         {
-            if (projected != null) projected.Release();
+            if (projection != null) projection.Release();
         }
 
         /// <summary>
@@ -125,7 +128,7 @@ namespace PreRendering
             computeShader.SetTexture(combineKernel, "_Input", rt);
             
             computeShader.Dispatch(projectKernel, width / (int)projectThreadsX, height / (int)projectThreadsY, 1);
-            computeShader.Dispatch(combineKernel, projected.width / (int)combineThreadsX, projected.height / (int)combineThreadsY, 1);
+            computeShader.Dispatch(combineKernel, projection.width / (int)combineThreadsX, projection.height / (int)combineThreadsY, 1);
 
             RenderTexture.ReleaseTemporary(rt);
         }
@@ -140,7 +143,9 @@ namespace PreRendering
             Graphics.Blit(null, destination, postProcessingMaterial);
 
             RenderTexture tmp = RenderTexture.active;
-            RenderTexture.active = projected;
+            RenderTexture.active = projection;
+            GL.Clear(true, true, Color.clear);
+            RenderTexture.active = unitProjection;
             GL.Clear(true, true, Color.clear);
             RenderTexture.active = tmp;
         }

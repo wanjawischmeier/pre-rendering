@@ -1,5 +1,5 @@
 int IMG_IDX, MX_IDX;
-float PI, PI2, FCLIP;
+float PI, PI2, NCLIP, FCLIP;
 float2 InputArrayRes, ProjectionRes, ProjectedRes;
 float3 Position;
 Texture2DArray<half4> _InputArray;
@@ -11,6 +11,22 @@ float magnitude(float3 vec)
         vec.x * vec.x +
         vec.y * vec.y +
         vec.z * vec.z
+    );
+}
+
+float2 normalizedToLatLon(float2 normalized)
+{
+    return float2(
+        normalized.x * PI,
+        normalized.y * PI2 + PI
+    );
+}
+
+float2 latLonToNormalized(float2 latLon)
+{
+    return float2(
+        latLon.y / PI2 + 0.5,
+        latLon.x / PI
     );
 }
 
@@ -40,8 +56,10 @@ float2 translateLatLon(float2 latLon, float3 translation, float dist = 1)
     return vectorToLatLon(P, d);
 }
 
+
 #pragma kernel Project
 float3 PositionOffset;
+RWTexture2D<half4> _UnitProjection;
 RWTexture2D<half4> _Result;
 
 [numthreads(8, 8, 1)]
@@ -49,34 +67,27 @@ void Project(uint3 id : SV_DispatchThreadID)
 {
     float3 inpIdx = float3(id.xy / ProjectionRes * InputArrayRes, IMG_IDX);
     
-    float2 ll1 = id.yx / ProjectionRes.yx;
-    ll1.x *= PI;
-    ll1.y *= PI2;
-    ll1.y += PI;
-    
-    float CP = _InputArray[inpIdx].a * FCLIP;
-    float2 ll2 = translateLatLon(ll1, -Position + PositionOffset, CP);
+    float2 ll1 = normalizedToLatLon(id.yx / ProjectionRes.yx);
     
     float3 PMax = latLonToVector(ll1, FCLIP);
-    PMax -= Position;
-    PMax += PositionOffset;
+    PMax += -Position + PositionOffset;
     float dMax = magnitude(PMax);
+    float2 ll2 = vectorToLatLon(PMax, dMax);
+    ll2 = latLonToNormalized(ll2);
     
-    float2 a = float2(
-        ll2.y / PI2,
-        ll2.x / PI
-    );
-    a.x += 0.5;
+    _UnitProjection[id.xy] += half4(ll2 / (float) MX_IDX, (IMG_IDX + 1) / (float) MX_IDX, 1);
     
-    float2 idx = a * ProjectionRes;
+    float CP = _InputArray[inpIdx].a * (FCLIP - NCLIP) + NCLIP;
+    float2 ll3 = translateLatLon(ll1, -Position + PositionOffset, CP);
+    ll3 = latLonToNormalized(ll3);
     
-    _Result[idx] = half4(id.xy / ProjectionRes, (IMG_IDX + 1) / (float) MX_IDX, 1);
+    _Result[ll3 * ProjectionRes] = half4(id.xy / ProjectionRes, (IMG_IDX + 1) / (float) MX_IDX, 1);
 }
 
 #pragma kernel Combine
 Texture2D<half4> _Input;
 SamplerState linear_clamp_sampler;
-RWTexture2D<half4> _Projected;
+RWTexture2D<half4> _Projection;
 
 [numthreads(8, 8, 1)]
 void Combine(uint3 id : SV_DispatchThreadID)
@@ -84,5 +95,5 @@ void Combine(uint3 id : SV_DispatchThreadID)
     half4 col = _Input.SampleLevel(linear_clamp_sampler, id.xy / ProjectedRes, 0);
     
     if (col.a == 1)
-        _Projected[id.xy] = col;
+        _Projection[id.xy] = col;
 }

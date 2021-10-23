@@ -74,9 +74,10 @@ def setKeyframes(self, context: Context, locations: list) -> None:
         self.setKeyframe(context, i, locations[i])
 Object.setKeyframes = setKeyframes
 
-def setUpForRendering(self, far_clip: int) -> None:
+def setUpForRendering(self, near_clip: float, far_clip: float) -> None:
     self.rotation_euler = toRadians([90, 0, 0])
     self.data.type = 'PANO'
+    self.data.clip_start = near_clip
     self.data.clip_end = far_clip
     self.data.cycles.panorama_type = 'EQUIRECTANGULAR'
     bpy.ops.anim.keyframe_clear_v3d()
@@ -116,7 +117,7 @@ def setRenderSettings(self, path: str, resolution: tuple, frame_end: int) -> Non
     links.new(render_node.outputs['Depth'], out_node.inputs['Map'])
 Scene.setRenderSettings = setRenderSettings
 
-def createConfigFile(path: str, fclip: float, mx_width: float, offsets: ndarray):
+def createConfigFile(path: str, nclip: float, fclip: float, mx_width: float, offsets: ndarray):
     off_vectors = [
         {
             "x":offsets[i][0],
@@ -129,6 +130,7 @@ def createConfigFile(path: str, fclip: float, mx_width: float, offsets: ndarray)
     makedirs(path, exist_ok=True)
     with open(join(path, ".mapconfig"), 'w') as file:
         config = dumps({
+            "nCLip": nclip,
             "fClip": fclip,
             "mxWidth": mx_width,
             "offsets": off_vectors
@@ -203,10 +205,15 @@ class TOPBAR_OT_prerender_setup(Operator):
         default=1,
         description="The size of the gap between renders"
     )
+    near_clip: FloatProperty(
+        name="Near Clip",
+        default=0.1,
+        description="The distance of the near clipping plane from the camera. High values may lead to clipping."
+    )
     far_clip: FloatProperty(
         name="Far Clip",
         default=10,
-        description="The distance of the far clipping plane from the camera. High values may lead to imprecisions."
+        description="The distance of the far clipping plane from the camera. High values may lead to inprecisions."
     )
     quality: EnumProperty(
         name = "Quality",
@@ -256,10 +263,14 @@ class TOPBAR_OT_prerender_setup(Operator):
         scene.setRenderSettings(self.path, resolution, len(frames) -1)
 
         cam = context.object
-        cam.setUpForRendering(self.far_clip)
+        cam.setUpForRendering(self.near_clip, self.far_clip)
         cam.setKeyframes(context, frames)
 
-        createConfigFile(self.path, self.far_clip, mx_width, frames)
+        createConfigFile(
+            self.path,
+            self.near_clip, self.far_clip,
+            mx_width, frames
+        )
 
         if self.delete_domain:
             cam.select_set(False)

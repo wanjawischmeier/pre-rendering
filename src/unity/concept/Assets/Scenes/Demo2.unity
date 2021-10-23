@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.44657874, g: 0.49641258, b: 0.5748172, a: 1}
+  m_IndirectSpecularColor: {r: 0.44657826, g: 0.49641263, b: 0.57481676, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -221,9 +221,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e795f4c857e66124ca7c8e539ea7e60f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rendersPath: S:/users/wanja/Dokumente/pre-rendering/master/renders
+  rendersPath: C:/Users/wanja/Documents/dev/pre-rendering/master/renders
   mapName: room_simple_low
-  cacheSize: 100
+  cacheSize: 4
   decodingThreads: 1
   projectShader: {fileID: 7200000, guid: 83ccade484494bc44a42d8da069d928b, type: 3}
   geometryPercision: 0.9
