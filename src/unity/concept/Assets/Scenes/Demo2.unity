@@ -230,8 +230,7 @@ MonoBehaviour:
   falloff: 0.1
   layerDepth: 1
   postProcessing: {fileID: 4800000, guid: 73c549cc703570c48a640a58a94eb33b, type: 3}
-  shaderDebug: 2
-  cutoff: 0
+  shaderDebug: 0
   controller: {fileID: 0}
 --- !u!114 &45530124
 MonoBehaviour:
