@@ -35,6 +35,7 @@ namespace PreRendering
         {
             foreach (var item in decoding)
                 item.Value.Item2.Abort();
+            decoding.Clear();
         }
 
         public bool IsPending(string path)
@@ -88,6 +89,10 @@ namespace PreRendering
 
         void OnImageDecoded(AsyncOperation obj)
         {
+            // Prevents crash due to memory acess violation
+            // (if some stuff has already been deallocated)
+            if (decoding.Count == 0) return;
+
             Tuple<Vector3, UnityWebRequest> data = decoding[obj];
 
             if (data.Item2.result == UnityWebRequest.Result.Success)

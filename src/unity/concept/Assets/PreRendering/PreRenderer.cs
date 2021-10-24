@@ -28,7 +28,7 @@ namespace PreRendering
 
 
         [Header("Decoder")]
-
+        
         [SerializeField]
         [Tooltip("The size of the texture cache.")]
         [Range(1, 100)]
@@ -69,12 +69,7 @@ namespace PreRendering
 
         [SerializeField]
         [Tooltip("If enabled, the post processing shader will just pass through the projected texture coordinates.")]
-        bool shaderDebug = false;
-
-        [SerializeField]
-        [Tooltip("At which point the shader should start overlaying the non-projected image to fill gaps.")]
-        [Range(0, 0.5f)]
-        float cutoff = 0.5f;
+        ShaderManager.ShaderDebugMode shaderDebug = ShaderManager.ShaderDebugMode.Disabled;
 
         [HideInInspector]
         public MovementController controller;
@@ -121,10 +116,6 @@ namespace PreRendering
             projectionResolution = map.resolution.Multiply(geometryPercision);
             screenResolution = map.resolution.EstimateScreenResolution(mainCamera.fieldOfView);
 
-            Debug.Log(string.Format("Panorama resolution: {0}x{1}", map.resolution.width, map.resolution.height));
-            Debug.Log(string.Format("Projection resolution: {0}x{1}", projectionResolution.width, projectionResolution.height));
-            Debug.Log(string.Format("Screen resolution: {0}x{1}", screenResolution.width, screenResolution.height));
-
             buffer = new TextureBuffer(map.resolution.width, map.resolution.height, cacheSize);
             decoder = new DecodingThread(buffer, decodingThreads);
             shaderManager = new ShaderManager(
@@ -154,7 +145,6 @@ namespace PreRendering
             shaderManager.rotation = transform.eulerAngles;
             shaderManager.fov = mainCamera.fieldOfView;
             shaderManager.shaderDebug = shaderDebug;
-            shaderManager.cutoff = cutoff;
 
             Vector3[] positions = map.offsets.GetClosest(transform.position, cacheSize);
             List<Vector3> availablePositions = new List<Vector3>();

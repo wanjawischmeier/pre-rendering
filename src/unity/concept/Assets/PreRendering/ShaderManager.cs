@@ -8,8 +8,14 @@ namespace PreRendering
         Shader postProcessingShader;
         Material postProcessingMaterial;
         RenderTexture projection;
-        RenderTexture unitProjection;
         Map map;
+
+        public enum ShaderDebugMode
+        {
+            Disabled,
+            TextureCoordinates,
+            Normals
+        }
 
         /// <summary>
         /// The position inside the compute shader.
@@ -49,19 +55,10 @@ namespace PreRendering
         /// <summary>
         /// If enabled, the post processing shader will just pass through the projected texture coordinates.
         /// </summary>
-        public bool shaderDebug
+        public ShaderDebugMode shaderDebug
         {
-            get { return postProcessingMaterial.GetInt("Debug") == 1 ? true : false; }
-            set { postProcessingMaterial.SetInt("Debug", value ? 1 : 0); }
-        }
-
-        /// <summary>
-        /// At which point the shader should start overlaying the non-projected image to fill gaps.
-        /// </summary>
-        public float cutoff
-        {
-            get { return postProcessingMaterial.GetFloat("CUTOFF"); }
-            set { postProcessingMaterial.SetFloat("CUTOFF", value); }
+            get { return (ShaderDebugMode)postProcessingMaterial.GetInt("Debug"); }
+            set { postProcessingMaterial.SetInt("Debug", (int)value); }
         }
 
         readonly int projectKernel, combineKernel;
@@ -86,9 +83,7 @@ namespace PreRendering
             projection = new RenderTexture(
                 projectionResolution.width, projectionResolution.height, 1, RenderTextureFormat.ARGB64)
             { enableRandomWrite = true };
-            unitProjection = new RenderTexture(projection);
             projection.Create();
-            unitProjection.Create();
 
             Shader.SetGlobalFloat("PI", Mathf.PI);
             Shader.SetGlobalFloat("PI2", Mathf.PI * 2);
@@ -99,7 +94,6 @@ namespace PreRendering
             Shader.SetGlobalVector("ProjectedRes", new Vector2(projection.width, projection.height));
             Shader.SetGlobalTexture("_InputArray", textures);
             Shader.SetGlobalTexture("_Projection", projection);
-            Shader.SetGlobalTexture("_UnitProjection", unitProjection);
         }
 
         ~ShaderManager() => Release();
@@ -144,8 +138,6 @@ namespace PreRendering
 
             RenderTexture tmp = RenderTexture.active;
             RenderTexture.active = projection;
-            GL.Clear(true, true, Color.clear);
-            RenderTexture.active = unitProjection;
             GL.Clear(true, true, Color.clear);
             RenderTexture.active = tmp;
         }
