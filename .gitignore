@@ -4,4 +4,5 @@ ipch
 builds
 renders
 
-.vscode
+*.vscode
+*.meta
