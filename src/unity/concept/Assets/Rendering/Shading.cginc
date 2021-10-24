@@ -1,4 +1,0 @@
-float3 reflection()
-{
-    
-}

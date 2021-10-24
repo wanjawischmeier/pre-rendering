@@ -53,7 +53,7 @@ namespace PreRendering
         [SerializeField]
         [Tooltip("How fast the resolution decreases in the distance. Smaller values for slower falloff.")]
         [Range(0.1f, 5)]
-        float falloff = 2;
+        float percisionFalloff = 2;
 
         [SerializeField]
         [Tooltip("The amount of textures to be projected.")]
@@ -70,6 +70,25 @@ namespace PreRendering
         [SerializeField]
         [Tooltip("If enabled, the post processing shader will just pass through the projected texture coordinates.")]
         ShaderManager.ShaderDebugMode shaderDebug = ShaderManager.ShaderDebugMode.Disabled;
+
+        [SerializeField]
+        [Tooltip("")]
+        [Range(0, 1)]
+        float depthOfField = 1;
+
+        [SerializeField]
+        [Tooltip("")]
+        Color mist = Color.white;
+
+        [SerializeField]
+        [Tooltip("")]
+        [Range(0.01f, 1)]
+        float mistFalloff = 0.1f;
+
+        [SerializeField]
+        [Tooltip("")]
+        [Range(-1, 1)]
+        float mistOffset = 0;
 
         [HideInInspector]
         public MovementController controller;
@@ -109,7 +128,7 @@ namespace PreRendering
             rendersPath = Path.Combine(rendersPath, "pre-rendering/master/renders");
 
             controller = GetComponent<MovementController>();
-
+            
             mapPath = Path.Combine(rendersPath, mapName);
             map = new Map(mapPath);
 
@@ -141,10 +160,14 @@ namespace PreRendering
 
         void Update()
         {
-            shaderManager.position = transform.position;
-            shaderManager.rotation = transform.eulerAngles;
-            shaderManager.fov = mainCamera.fieldOfView;
-            shaderManager.shaderDebug = shaderDebug;
+            shaderManager.Position = transform.position;
+            shaderManager.Rotation = transform.eulerAngles;
+            shaderManager.Fov = mainCamera.fieldOfView;
+            shaderManager.DOFIntensity = depthOfField;
+            shaderManager.ShaderDebug = shaderDebug;
+            shaderManager.Mist = mist;
+            shaderManager.MistFalloff = mistFalloff;
+            shaderManager.MistOffset = mistOffset;
 
             Vector3[] positions = map.offsets.GetClosest(transform.position, cacheSize);
             List<Vector3> availablePositions = new List<Vector3>();
@@ -167,10 +190,10 @@ namespace PreRendering
                 Vector3 positionOffset = availablePositions[i];
 
                 float distance = Vector3.Distance(transform.position, positionOffset);
-                float scalar = Mathf.Clamp(distance / falloff,
+                float scalar = Mathf.Clamp(distance / percisionFalloff,
                     minimumPercision, maximumPercision);
 
-                shaderManager.positionOffset = positionOffset;
+                shaderManager.PositionOffset = positionOffset;
                 shaderManager.Project(
                     Mathf.RoundToInt(projectionResolution.width * scalar),
                     Mathf.RoundToInt(projectionResolution.height * scalar),

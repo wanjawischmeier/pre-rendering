@@ -14,13 +14,15 @@ namespace PreRendering
         {
             Disabled,
             TextureCoordinates,
-            Normals
+            ProjectedCoordinates,
+            Normals,
+            DepthOfField
         }
 
         /// <summary>
         /// The position inside the compute shader.
         /// </summary>
-        public Vector3 position
+        public Vector3 Position
         {
             set { computeShader.SetVector("Position", value); }
         }
@@ -28,7 +30,7 @@ namespace PreRendering
         /// <summary>
         /// Sets the position compute buffer.
         /// </summary>
-        public Vector3 positionOffset
+        public Vector3 PositionOffset
         {
             set { computeShader.SetVector("PositionOffset", value); }
         }
@@ -37,7 +39,7 @@ namespace PreRendering
         /// The rotation inside the post processing shader.
         /// The value will be converted to radians before passed to the gpu.
         /// </summary>
-        public Vector3 rotation
+        public Vector3 Rotation
         {
             get { return postProcessingMaterial.GetVector("Rotation"); }
             set { postProcessingMaterial.SetVector("Rotation", value * Mathf.Deg2Rad); }
@@ -46,19 +48,43 @@ namespace PreRendering
         /// <summary>
         /// The field of view used for the gnomonic projection inside the post processing shader.
         /// </summary>
-        public float fov
+        public float Fov
         {
             get { return postProcessingMaterial.GetFloat("FOV"); }
             set { postProcessingMaterial.SetFloat("FOV", value * Mathf.Deg2Rad); }
         }
 
+        public float DOFIntensity
+        {
+            get { return postProcessingMaterial.GetFloat("DOF_INTENSITY"); }
+            set { postProcessingMaterial.SetFloat("DOF_INTENSITY", value); }
+        }
+
         /// <summary>
         /// If enabled, the post processing shader will just pass through the projected texture coordinates.
         /// </summary>
-        public ShaderDebugMode shaderDebug
+        public ShaderDebugMode ShaderDebug
         {
             get { return (ShaderDebugMode)postProcessingMaterial.GetInt("Debug"); }
             set { postProcessingMaterial.SetInt("Debug", (int)value); }
+        }
+
+        public Color Mist
+        {
+            get { return postProcessingMaterial.GetColor("MIST_COL"); }
+            set { postProcessingMaterial.SetColor("MIST_COL", value); }
+        }
+
+        public float MistFalloff
+        {
+            get { return postProcessingMaterial.GetFloat("MIST_FALLOFF"); }
+            set { postProcessingMaterial.SetFloat("MIST_FALLOFF", value); }
+        }
+
+        public float MistOffset
+        {
+            get { return postProcessingMaterial.GetFloat("MIST_OFFSET"); }
+            set { postProcessingMaterial.SetFloat("MIST_OFFSET", value); }
         }
 
         readonly int projectKernel, combineKernel;
@@ -72,7 +98,7 @@ namespace PreRendering
             this.computeShader = computeShader;
             this.postProcessingShader = postProcessingShader;
             this.map = map;
-
+            
             postProcessingMaterial = new Material(postProcessingShader);
             projectKernel = computeShader.FindKernel("Project");
             combineKernel = computeShader.FindKernel("Combine");
