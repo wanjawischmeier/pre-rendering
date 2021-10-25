@@ -14,81 +14,28 @@ namespace PreRendering
     [HelpURL("https://github.com/wanjawischmeier/pre-rendering/")]
     public class PreRenderer : MonoBehaviour
     {
-        [Header("Map")]
-
-        [SerializeField]
-        [Tooltip("The folder the map should be contained in (Will be overwritten on start, changing it won't do anything).")]
-        string rendersPath;
-
-        [SerializeField]
-        [Tooltip("The name of the folder the '.mapconfig' file is contained in. This folder has to be inside the 'renders' parent folder.")]
-        string mapName;
-
+        // Map
+        public string renderPath;
+        public string mapName;
         string mapPath;
 
+        // Decoder
+        public int cacheSize = 10;
+        public int decodingThreads = 4;
 
-        [Header("Decoder")]
-        
-        [SerializeField]
-        [Tooltip("The size of the texture cache.")]
-        [Range(1, 100)]
-        int cacheSize = 10;
+        // Projection
+        public ComputeShader projectShader;
+        public float geometryPercision = 0.75f;
+        public float percisionFalloff = 2;
+        public int layerDepth = 4;
 
-        [SerializeField]
-        [Tooltip("Maximum amount of textures to be decoded at once.")]
-        [Range(1, 10)]
-        int decodingThreads = 4;
-
-        [Header("Projection")]
-
-        [SerializeField]
-        [Tooltip("The compute shader that countains the kernels needed for projection ('Project' and 'Combine').")]
-        ComputeShader projectShader;
-
-        [SerializeField]
-        [Tooltip("The base value the screen resolution should be divided by for projection.")]
-        [Range(minimumPercision, maximumPercision)]
-        float geometryPercision = 0.75f;
-
-        [SerializeField]
-        [Tooltip("How fast the resolution decreases in the distance. Smaller values for slower falloff.")]
-        [Range(0.1f, 5)]
-        float percisionFalloff = 2;
-
-        [SerializeField]
-        [Tooltip("The amount of textures to be projected.")]
-        [Range(1, 20)]
-        int layerDepth = 4;
-
-
-        [Header("Post Processing")]
-
-        [SerializeField]
-        [Tooltip("The shader that applies post processing to the projected image (gnomonic projection etc.).")]
-        Shader postProcessing;
-
-        [SerializeField]
-        [Tooltip("If enabled, the post processing shader will just pass through the projected texture coordinates.")]
-        ShaderManager.ShaderDebugMode shaderDebug = ShaderManager.ShaderDebugMode.Disabled;
-
-        [SerializeField]
-        [Tooltip("")]
-        [Range(0, 1)]
-        float depthOfField = 1;
-
-        [SerializeField]
-        [Tooltip("")]
-        Color mist = Color.white;
-
-        [SerializeField]
-        [Tooltip("")]
-        [Range(0.01f, 1)]
-        float mistFalloff = 0.1f;
-
-        [SerializeField]
-        [Tooltip("")]
-        [Range(-1, 1)]
-        float mistOffset = 0;
+        // Post Processing
+        public Shader postProcessing;
+        public ShaderManager.ShaderDebugMode shaderDebug = ShaderManager.ShaderDebugMode.Disabled;
+        public float depthOfField = 0;
+        public float mistOffset = 1;
+        public float mistFalloff = 0.1f;
+        public Color mist = Color.white;
 
         [HideInInspector]
         public MovementController controller;
@@ -124,12 +71,9 @@ namespace PreRendering
         {
             mainCamera = Camera.main;
 
-            rendersPath = Application.dataPath.Split(new string[] { "pre-rendering" }, System.StringSplitOptions.None)[0];
-            rendersPath = Path.Combine(rendersPath, "pre-rendering/master/renders");
-
             controller = GetComponent<MovementController>();
             
-            mapPath = Path.Combine(rendersPath, mapName);
+            mapPath = Path.Combine(renderPath, mapName);
             map = new Map(mapPath);
 
             projectionResolution = map.resolution.Multiply(geometryPercision);
@@ -149,14 +93,6 @@ namespace PreRendering
             Screen.SetResolution(screenResolution.width, screenResolution.height, true);
 #endif
         }
-
-#if UNITY_EDITOR
-        void OnValidate()
-        {
-            rendersPath = Application.dataPath.Split(new string[] { "pre-rendering" }, System.StringSplitOptions.None)[0];
-            rendersPath = Path.Combine(rendersPath, "pre-rendering/master/renders");
-        }
-#endif
 
         void Update()
         {

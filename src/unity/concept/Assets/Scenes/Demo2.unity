@@ -221,20 +221,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e795f4c857e66124ca7c8e539ea7e60f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rendersPath: S:/users/wanja/Dokumente/pre-rendering/master/renders
+  renderPath: S:/users/wanja/Dokumente/pre-rendering/master/renders
   mapName: room_simple_v2_270p
-  cacheSize: 4
-  decodingThreads: 1
+  cacheSize: 10
+  decodingThreads: 4
   projectShader: {fileID: 7200000, guid: 83ccade484494bc44a42d8da069d928b, type: 3}
-  geometryPercision: 0.9
+  geometryPercision: 0.75
   percisionFalloff: 2
-  layerDepth: 1
+  layerDepth: 4
   postProcessing: {fileID: 4800000, guid: 73c549cc703570c48a640a58a94eb33b, type: 3}
   shaderDebug: 0
-  depthOfField: 1
-  mist: {r: 1, g: 1, b: 1, a: 1}
+  depthOfField: 0
+  mistOffset: 1
   mistFalloff: 0.1
-  mistOffset: 0
+  mist: {r: 1, g: 1, b: 1, a: 1}
   controller: {fileID: 0}
 --- !u!114 &45530124
 MonoBehaviour:
