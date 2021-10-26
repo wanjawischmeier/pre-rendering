@@ -138,7 +138,7 @@ GameObject:
   - component: {fileID: 45530124}
   - component: {fileID: 45530125}
   m_Layer: 0
-  m_Name: Main Camera
+  m_Name: Main Camera_
   m_TagString: MainCamera
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -221,15 +221,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e795f4c857e66124ca7c8e539ea7e60f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  editorAreas: 010101
   renderPath: S:/users/wanja/Dokumente/pre-rendering/master/renders
   mapName: room_simple_v2_270p
   cacheSize: 10
-  decodingThreads: 4
+  decodingThreads: 1
   projectShader: {fileID: 7200000, guid: 83ccade484494bc44a42d8da069d928b, type: 3}
   geometryPercision: 0.75
   percisionFalloff: 2
   layerDepth: 4
-  postProcessing: {fileID: 4800000, guid: 73c549cc703570c48a640a58a94eb33b, type: 3}
   shaderDebug: 0
   depthOfField: 0
   mistOffset: 1

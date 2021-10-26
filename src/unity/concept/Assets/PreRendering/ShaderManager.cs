@@ -91,14 +91,14 @@ namespace PreRendering
         readonly uint projectThreadsX, projectThreadsY, combineThreadsX, combineThreadsY;
 
         public ShaderManager(
-            ComputeShader computeShader, Shader postProcessingShader,
+            ComputeShader computeShader,
             Texture2DArray textures, Resolution projectionResolution,
             Map map, int layerDepth)
         {
             this.computeShader = computeShader;
-            this.postProcessingShader = postProcessingShader;
             this.map = map;
             
+            postProcessingShader = Shader.Find("PreRendering/PostProcessing");
             postProcessingMaterial = new Material(postProcessingShader);
             projectKernel = computeShader.FindKernel("Project");
             combineKernel = computeShader.FindKernel("Combine");

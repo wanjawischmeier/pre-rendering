@@ -8,9 +8,6 @@ public class PreRenderingEditor : Editor
 {
     const float spacer_medium = 20;
 
-    bool mapEnabled, decoderEnabled, postProcessingEnabled;
-
-
     void OnValidate()
     {
         PreRenderer renderer = (PreRenderer)target;
@@ -23,9 +20,9 @@ public class PreRenderingEditor : Editor
     {
         PreRenderer renderer = (PreRenderer)target;
 
-        mapEnabled = EditorGUILayout.BeginFoldoutHeaderGroup(mapEnabled, "Map");
+        renderer.editorAreas[0] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.editorAreas[0], "Map");
 
-        if (mapEnabled)
+        if (renderer.editorAreas[0])
         {
             EditorHelper.TextField(
                 "Render Path", ref renderer.renderPath,
@@ -44,9 +41,9 @@ public class PreRenderingEditor : Editor
 
 
 
-        decoderEnabled = EditorGUILayout.BeginFoldoutHeaderGroup(decoderEnabled, "Decoder");
+        renderer.editorAreas[1] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.editorAreas[1], "Decoder");
 
-        if (decoderEnabled)
+        if (renderer.editorAreas[1])
         {
             EditorHelper.IntSlider(
                 "Cache Size", ref renderer.cacheSize,
@@ -85,14 +82,10 @@ public class PreRenderingEditor : Editor
 
 
 
-        postProcessingEnabled = EditorGUILayout.BeginFoldoutHeaderGroup(postProcessingEnabled, "Post Processing");
+        renderer.editorAreas[2] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.editorAreas[2], "Post Processing");
 
-        if (postProcessingEnabled)
+        if (renderer.editorAreas[2])
         {
-            EditorHelper.ShaderField(
-                "Shader", ref renderer.postProcessing,
-                "The shader that applies post processing to the projected image (gnomonic projection etc.).");
-
             EditorHelper.ShaderDebugField(
                 "Shader Debug", ref renderer.shaderDebug,
                 "If enabled, the post processing shader will pass the desired texture to the screen.");

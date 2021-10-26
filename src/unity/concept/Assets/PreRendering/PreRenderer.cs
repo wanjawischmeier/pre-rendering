@@ -14,6 +14,10 @@ namespace PreRendering
     [HelpURL("https://github.com/wanjawischmeier/pre-rendering/")]
     public class PreRenderer : MonoBehaviour
     {
+#if UNITY_EDITOR
+        public bool[] editorAreas = new bool[3];
+#endif
+
         // Map
         public string renderPath;
         public string mapName;
@@ -30,7 +34,6 @@ namespace PreRendering
         public int layerDepth = 4;
 
         // Post Processing
-        public Shader postProcessing;
         public ShaderManager.ShaderDebugMode shaderDebug = ShaderManager.ShaderDebugMode.Disabled;
         public float depthOfField = 0;
         public float mistOffset = 1;
@@ -82,7 +85,7 @@ namespace PreRendering
             buffer = new TextureBuffer(map.resolution.width, map.resolution.height, cacheSize);
             decoder = new DecodingThread(buffer, decodingThreads);
             shaderManager = new ShaderManager(
-                projectShader, postProcessing, buffer.textures,
+                projectShader, buffer.textures,
                 projectionResolution, map, cacheSize);
 
 #if UNITY_EDITOR

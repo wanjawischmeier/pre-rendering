@@ -103,20 +103,25 @@ Shader "PreRendering/PostProcessing"
 
 			fixed4 frag (v2f i) : SV_Target
 			{
+				// Projection
 				float2 tc = gnomonicProjection(i.uv, FOV, Rotation.x, Rotation.y);
 				half4 idx = _Projection.Sample(linear_repeat_sampler, tc);
-
 				idx.z *= MX_IDX;
 				idx.z -= 1;
 
+				// Sampling
 				float2 texelSize = 1 / InputArrayRes;
 				circularSamples s = sampleCircle(_InputArray, sampler_InputArray, idx.xy, texelSize, idx.z);
+
+				// Normals
 				float2 n = calculateNormals(s);
 				
+				// Depth of field
 				float2 cIdx = float2(0.5, 0.5) + Rotation.yx / float2(PI2, PI);
 				float cDist = UNITY_SAMPLE_TEX2DARRAY(_InputArray, float3(cIdx, idx.z)).a;
 				float dof = abs(cDist - s.s4.a) * DOF_INTENSITY;
 
+				// Debug
 				switch(Debug)
 				{
 				case 1:
