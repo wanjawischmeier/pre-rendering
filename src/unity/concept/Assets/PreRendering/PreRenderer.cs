@@ -42,6 +42,7 @@ namespace PreRendering
         public MovementController controller;
         public Resolution projectionResolution;
         public Resolution screenResolution;
+        Vector3 positionOffset;
 
         public Map map;
         TextureBuffer buffer;
@@ -52,46 +53,28 @@ namespace PreRendering
         const float minimumPercision = 0.1f;
         const float maximumPercision = 1;
 
-#if UNITY_EDITOR && HEAVY_DEBUG
-        [Serializable]
-        public struct VectorIndex
-        {
-            public Vector3 vector;
-            public int index;
-        }
-
-        public Vector3[] pendingDebug;
-        public Vector3[] decodingDebug;
-        public VectorIndex[] reservedDebug;
-        public int[] availableDebug;
-        public Texture2DArray arrayDebug;
-#endif
 
         void Start()
         {
+            Vector3 positionOffset = Vector3.zero;
             mainCamera = Camera.main;
-
             controller = GetComponent<MovementController>();
-            
+
             mapPath = Path.Combine(renderPath, mapName);
             map = new Map(mapPath);
 
             projectionResolution = map.resolution.Multiply(geometryPercision);
             screenResolution = map.resolution.EstimateScreenResolution(mainCamera.fieldOfView);
 
+#if !UNITY_EDITOR
+            Screen.SetResolution(screenResolution.width, screenResolution.height, true);
+#endif
+
             buffer = new TextureBuffer(map.resolution.width, map.resolution.height, cacheSize);
             decoder = new DecodingThread(buffer, decodingThreads);
             shaderManager = new ShaderManager(
                 projectShader, buffer.textures,
                 projectionResolution, map, cacheSize);
-
-#if UNITY_EDITOR
-#if HEAVY_DEBUG
-            arrayDebug = new Texture2DArray(map.textureWidth, map.textureHeight, cacheSize, TextureFormat.RGBA32, 1, false);
-#endif
-#else
-            Screen.SetResolution(screenResolution.width, screenResolution.height, true);
-#endif
         }
 
         void Update()
@@ -106,60 +89,29 @@ namespace PreRendering
             shaderManager.MistOffset = mistOffset;
 
             Vector3[] positions = map.offsets.GetClosest(transform.position, cacheSize);
-            List<Vector3> availablePositions = new List<Vector3>();
 
             // Load the closest images into the buffer
-            for (int i = 0; i < cacheSize; i++)
+            for (int i = cacheSize -1; i >= 0; i--)
             {
-                Vector3 positionOffset = positions[i];
-                string path = map.offsets.GetFileName(mapPath, positionOffset);
+                Vector3 temp = positions[i];
+                string path = map.offsets.GetFileName(mapPath, temp);
 
-                if (buffer.Contains(positionOffset))
-                    availablePositions.Add(positionOffset);
+                if (buffer.Contains(temp))
+                    positionOffset = temp;
                 else
-                    decoder.DecodeToBuffer(path, positionOffset);
+                    decoder.DecodeToBuffer(path, temp);
             }
 
-            if (availablePositions.Count > 0)
-            {
-                Vector3 positionOffset = availablePositions[0];
+            shaderManager.PositionOffset = positionOffset;
+            shaderManager.Project(
+                Mathf.RoundToInt(projectionResolution.width),
+                Mathf.RoundToInt(projectionResolution.height),
+                buffer[positionOffset]);
 
-                shaderManager.PositionOffset = positionOffset;
-                shaderManager.Project(
-                    Mathf.RoundToInt(projectionResolution.width),
-                    Mathf.RoundToInt(projectionResolution.height),
-                    buffer[positionOffset]);
-
-                // Release all free positions
-                Vector3[] reserved = buffer.reserved.Keys.ToArray();
-                foreach (var vector in reserved)
-                    if (!positions.Contains(vector)) buffer.Release(vector);
-            }
-
-#if UNITY_EDITOR && HEAVY_DEBUG
-            pendingDebug = new Vector3[decoder.pending.Count];
-            decodingDebug = new Vector3[decoder.decoding.Count];
-            reservedDebug = new VectorIndex[buffer.reserved.Count];
-            availableDebug = new int[buffer.available.Count];
-
-            int idx = 0;
-            foreach (var item in decoder.pending)
-                pendingDebug[idx++] = decoder.pending[item.Key];
-
-            idx = 0;
-            foreach (var item in decoder.decoding)
-                decodingDebug[idx++] = item.Value.Item1;
-
-            idx = 0;
-            foreach (var item in buffer.reserved)
-                reservedDebug[idx++] = new VectorIndex { vector = item.Key, index = item.Value };
-
-            idx = 0;
-            foreach (var item in buffer.available)
-                availableDebug[idx++] = item;
-
-            Graphics.CopyTexture(buffer.textures, arrayDebug);
-#endif
+            // Release all free positions
+            Vector3[] reserved = buffer.reserved.Keys.ToArray();
+            foreach (var vector in reserved)
+                if (!positions.Contains(vector)) buffer.Release(vector);
         }
 
         void OnRenderImage(RenderTexture source, RenderTexture destination) =>
