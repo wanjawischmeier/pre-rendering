@@ -55,6 +55,18 @@ public class PreRenderingEditor : Editor
                 "Maximum amount of textures to be decoded at once.",
                 1, 10);
 
+            GUILayout.Space(spacer_medium);
+        }
+
+        EditorGUILayout.EndFoldoutHeaderGroup();
+
+
+
+
+        renderer.editorAreas[2] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.editorAreas[2], "Projection");
+
+        if (renderer.editorAreas[2])
+        {
             EditorHelper.ComputeShaderField(
                 "Projection Shader", ref renderer.projectShader,
                 "The compute shader that countains the kernels needed for projection ('Project' and 'Combine').");
@@ -64,16 +76,6 @@ public class PreRenderingEditor : Editor
                 "The base value the screen resolution should be divided by for projection.",
                 0.1f, 1);
 
-            EditorHelper.FloatSlider(
-                "Percision Falloff", ref renderer.percisionFalloff,
-                "How fast the resolution decreases in the distance. Smaller values for slower falloff.",
-                0.1f, 5);
-
-            EditorHelper.IntSlider(
-                "Layer Depth", ref renderer.layerDepth,
-                "The amount of textures to be projected.",
-                1, 20);
-
             GUILayout.Space(spacer_medium);
         }
 
@@ -82,9 +84,9 @@ public class PreRenderingEditor : Editor
 
 
 
-        renderer.editorAreas[2] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.editorAreas[2], "Post Processing");
+        renderer.editorAreas[3] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.editorAreas[3], "Post Processing");
 
-        if (renderer.editorAreas[2])
+        if (renderer.editorAreas[3])
         {
             EditorHelper.ShaderDebugField(
                 "Shader Debug", ref renderer.shaderDebug,

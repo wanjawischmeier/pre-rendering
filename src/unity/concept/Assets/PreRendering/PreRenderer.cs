@@ -15,7 +15,7 @@ namespace PreRendering
     public class PreRenderer : MonoBehaviour
     {
 #if UNITY_EDITOR
-        public bool[] editorAreas = new bool[3];
+        public bool[] editorAreas = new bool[4];
 #endif
 
         // Map
@@ -30,8 +30,6 @@ namespace PreRendering
         // Projection
         public ComputeShader projectShader;
         public float geometryPercision = 0.75f;
-        public float percisionFalloff = 2;
-        public int layerDepth = 4;
 
         // Post Processing
         public ShaderManager.ShaderDebugMode shaderDebug = ShaderManager.ShaderDebugMode.Disabled;
@@ -40,9 +38,8 @@ namespace PreRendering
         public float mistFalloff = 0.1f;
         public Color mist = Color.white;
 
-        [HideInInspector]
+
         public MovementController controller;
-        [HideInInspector]
         public Resolution projectionResolution;
         public Resolution screenResolution;
 
@@ -123,26 +120,21 @@ namespace PreRendering
                     decoder.DecodeToBuffer(path, positionOffset);
             }
 
-            for (int i = layerDepth -1; i >= 0; i--)
+            if (availablePositions.Count > 0)
             {
-                if (availablePositions.Count <= i) continue;
-                Vector3 positionOffset = availablePositions[i];
-
-                float distance = Vector3.Distance(transform.position, positionOffset);
-                float scalar = Mathf.Clamp(distance / percisionFalloff,
-                    minimumPercision, maximumPercision);
+                Vector3 positionOffset = availablePositions[0];
 
                 shaderManager.PositionOffset = positionOffset;
                 shaderManager.Project(
-                    Mathf.RoundToInt(projectionResolution.width * scalar),
-                    Mathf.RoundToInt(projectionResolution.height * scalar),
+                    Mathf.RoundToInt(projectionResolution.width),
+                    Mathf.RoundToInt(projectionResolution.height),
                     buffer[positionOffset]);
+
+                // Release all free positions
+                Vector3[] reserved = buffer.reserved.Keys.ToArray();
+                foreach (var vector in reserved)
+                    if (!positions.Contains(vector)) buffer.Release(vector);
             }
-            
-            // Release all free positions
-            Vector3[] reserved = buffer.reserved.Keys.ToArray();
-            foreach (var vector in reserved)
-                if (!positions.Contains(vector)) buffer.Release(vector);
 
 #if UNITY_EDITOR && HEAVY_DEBUG
             pendingDebug = new Vector3[decoder.pending.Count];
