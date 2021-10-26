@@ -4,27 +4,13 @@ namespace PreRendering
 {
     public class ShaderManager
     {
-        ComputeShader computeShader;
-        Shader postProcessingShader;
-        Material postProcessingMaterial;
-        RenderTexture projection;
-        Map map;
-
-        public enum ShaderDebugMode
-        {
-            Disabled,
-            TextureCoordinates,
-            ProjectedCoordinates,
-            Normals,
-            DepthOfField
-        }
-
         /// <summary>
         /// The position inside the compute shader.
         /// </summary>
         public Vector3 Position
         {
-            set { computeShader.SetVector("Position", value); }
+            get { return projectionMaterial.GetVector("Position"); }
+            set { projectionMaterial.SetVector("Position", value); }
         }
 
         /// <summary>
@@ -32,7 +18,8 @@ namespace PreRendering
         /// </summary>
         public Vector3 PositionOffset
         {
-            set { computeShader.SetVector("PositionOffset", value); }
+            get { return projectionMaterial.GetVector("PositionOffset"); }
+            set { projectionMaterial.SetVector("PositionOffset", value); }
         }
 
         /// <summary>
@@ -87,24 +74,33 @@ namespace PreRendering
             set { postProcessingMaterial.SetFloat("MIST_OFFSET", value); }
         }
 
-        readonly int projectKernel, combineKernel;
-        readonly uint projectThreadsX, projectThreadsY, combineThreadsX, combineThreadsY;
+        Shader projectionShader;
+        Shader postProcessingShader;
+        Material projectionMaterial;
+        Material postProcessingMaterial;
+        RenderTexture projection;
+        Map map;
+
+        public enum ShaderDebugMode
+        {
+            Disabled,
+            TextureCoordinates,
+            ProjectedCoordinates,
+            Normals,
+            DepthOfField
+        }
 
         public ShaderManager(
-            ComputeShader computeShader,
             Texture2DArray textures, Resolution projectionResolution,
             Map map, int layerDepth)
         {
-            this.computeShader = computeShader;
             this.map = map;
-            
-            postProcessingShader = Shader.Find("PreRendering/PostProcessing");
-            postProcessingMaterial = new Material(postProcessingShader);
-            projectKernel = computeShader.FindKernel("Project");
-            combineKernel = computeShader.FindKernel("Combine");
 
-            computeShader.GetKernelThreadGroupSizes(projectKernel, out projectThreadsX, out projectThreadsY, out uint _);
-            computeShader.GetKernelThreadGroupSizes(combineKernel, out combineThreadsX, out combineThreadsY, out uint _);
+            projectionShader = Shader.Find("PreRendering/Projection");
+            postProcessingShader = Shader.Find("PreRendering/PostProcessing");
+
+            projectionMaterial = new Material(projectionShader);
+            postProcessingMaterial = new Material(postProcessingShader);
 
             projection = new RenderTexture(
                 projectionResolution.width, projectionResolution.height, 1, RenderTextureFormat.ARGB64)
@@ -139,18 +135,10 @@ namespace PreRendering
         /// <param name="index">The index at which the buffer should be acessed.</param>
         public void Project(int width, int height, int index)
         {
-            RenderTexture rt = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB64);
-            rt.enableRandomWrite = true;
-
             Shader.SetGlobalVector("ProjectionRes", new Vector2(width, height));
-            computeShader.SetInt("IMG_IDX", index);
-            computeShader.SetTexture(projectKernel, "_Result", rt);
-            computeShader.SetTexture(combineKernel, "_Input", rt);
-            
-            computeShader.Dispatch(projectKernel, width / (int)projectThreadsX, height / (int)projectThreadsY, 1);
-            computeShader.Dispatch(combineKernel, projection.width / (int)combineThreadsX, projection.height / (int)combineThreadsY, 1);
+            projectionMaterial.SetInt("IMG_IDX", index);
 
-            RenderTexture.ReleaseTemporary(rt);
+            Graphics.Blit(null, projection, projectionMaterial);
         }
 
         /// <summary>

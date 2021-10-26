@@ -50,24 +50,6 @@ public static class EditorHelper
         EndField(enabled);
     }
 
-    public static void ShaderField(string name, ref Shader value, string tooltip, bool enabled = true)
-    {
-        BeginField(name, tooltip, ref value, enabled);
-
-        value = (Shader)EditorGUILayout.ObjectField(value, typeof(Shader), false);
-
-        EndField(enabled);
-    }
-
-    public static void ComputeShaderField(string name, ref ComputeShader value, string tooltip, bool enabled = true)
-    {
-        BeginField(name, tooltip, ref value, enabled);
-
-        value = (ComputeShader)EditorGUILayout.ObjectField(value, typeof(ComputeShader), false);
-
-        EndField(enabled);
-    }
-
     public static void ShaderDebugField(string name, ref ShaderManager.ShaderDebugMode value, string tooltip, bool enabled = true)
     {
         BeginField(name, tooltip, ref value, enabled);

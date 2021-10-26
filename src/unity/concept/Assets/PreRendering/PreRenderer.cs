@@ -15,7 +15,7 @@ namespace PreRendering
     public class PreRenderer : MonoBehaviour
     {
 #if UNITY_EDITOR
-        public bool[] editorAreas = new bool[4];
+        public bool[] editorAreas = new bool[3];
 #endif
 
         // Map
@@ -27,11 +27,8 @@ namespace PreRendering
         public int cacheSize = 10;
         public int decodingThreads = 4;
 
-        // Projection
-        public ComputeShader projectShader;
+        // Projection & Post Processing
         public float geometryPercision = 0.75f;
-
-        // Post Processing
         public ShaderManager.ShaderDebugMode shaderDebug = ShaderManager.ShaderDebugMode.Disabled;
         public float depthOfField = 0;
         public float mistOffset = 1;
@@ -72,9 +69,7 @@ namespace PreRendering
 
             buffer = new TextureBuffer(map.resolution.width, map.resolution.height, cacheSize);
             decoder = new DecodingThread(buffer, decodingThreads);
-            shaderManager = new ShaderManager(
-                projectShader, buffer.textures,
-                projectionResolution, map, cacheSize);
+            shaderManager = new ShaderManager(buffer.textures, projectionResolution, map, cacheSize);
         }
 
         void Update()

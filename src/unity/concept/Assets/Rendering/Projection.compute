@@ -1,7 +1,7 @@
 int IMG_IDX, MX_IDX;
 float PI, PI2, NCLIP, FCLIP;
 float2 InputArrayRes, ProjectionRes, ProjectedRes;
-float3 Position;
+float3 Position, PositionOffset;
 Texture2DArray<half4> _InputArray;
 
 
@@ -58,7 +58,6 @@ float2 translateLatLon(float2 latLon, float3 translation, float dist = 1)
 
 
 #pragma kernel Project
-float3 PositionOffset;
 RWTexture2D<half4> _Result;
 float2 size = float2(2.0, 0.0);
 float3 off = float3(-1, 0, 1);
