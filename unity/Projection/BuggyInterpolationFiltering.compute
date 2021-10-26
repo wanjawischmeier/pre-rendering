@@ -1,0 +1,14 @@
+[numthreads(8, 8, 1)]
+void Combine(uint3 id : SV_DispatchThreadID)
+{
+    half4 oldCoords = _Projection[id.xy];
+    float2 oldScaled = oldCoords.xy * ProjectedRes;
+    float2 oldInterpolation = abs(round(oldScaled) - oldScaled);
+    
+    half4 newCoords = _Input.SampleLevel(linear_clamp_sampler, id.xy / ProjectedRes, 0);
+    float2 newScaled = newCoords.xy * ProjectedRes;
+    float2 newInterpolation = abs(round(newScaled) - newScaled);
+    
+    if (!any(oldCoords) || newInterpolation.x <= oldInterpolation.x || newInterpolation.y <= oldInterpolation.y)
+        _Projection[id.xy] = newCoords;
+}
