@@ -3,7 +3,7 @@
 
 using namespace std;
 
-ushort* InitializeBuffer(char* samplePath, int* width, int* height, int* size)
+ushort* InitializeBuffer(char* samplePath, int* width, int* height, int* size, int* channels)
 {
     Mat img = imread(samplePath, IMREAD_UNCHANGED);
     if (*width > 0 || *height > 0)
@@ -19,8 +19,9 @@ ushort* InitializeBuffer(char* samplePath, int* width, int* height, int* size)
         buffer_resize = false;
     }
 
-    buffer_size = img.total() * img.channels();
-    *size = buffer_size;
+    *size = img.total();
+    *channels = img.channels();
+    buffer_size = (*size) * (*channels);
 
     pBuffer = new ushort[buffer_size];
     return pBuffer;
@@ -31,7 +32,7 @@ void ReadToBuffer(char* path)
     Mat img = imread(path, IMREAD_UNCHANGED);
     if (buffer_resize)
         resize(img, img, image_size);
-    
+
     memcpy(pBuffer, img.data, buffer_size);
 }
 

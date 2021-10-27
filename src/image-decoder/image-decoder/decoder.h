@@ -8,7 +8,7 @@
 using namespace std;
 using namespace cv;
 
-uint16_t* pBuffer;  // Pointer to the image buffer
+ushort* pBuffer;  // Pointer to the image buffer
 bool buffer_resize; // Wether the decoded images should be resized
 Size image_size;    // If so, to which resolution (is null if 'buffer_resize' is false).
 int buffer_size;    // The total size of the buffer in bytes.
@@ -25,7 +25,7 @@ int buffer_size;    // The total size of the buffer in bytes.
 /// <param name="height">Same as with the width parameter.</param>
 /// <param name="size">Will be set to the total size of the buffer in bytes.</param>
 /// <returns>Returns a pointer to the buffer that images decoded using the 'ReadToBuffer' function will be written to.</returns>
-extern "C" DECODER ushort* InitializeBuffer(char* samplePath, int* width, int* height, int* size);
+extern "C" DECODER ushort* InitializeBuffer(char* samplePath, int* width, int* height, int* size, int* channels);
 
 /// <summary>
 /// Decodes an image and writes it into the currently active buffer.

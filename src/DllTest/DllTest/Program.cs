@@ -2,6 +2,7 @@
 using Decoder = PreRendering.Decoder;
 using System.Threading.Tasks;
 using System.IO;
+using System.Text;
 
 namespace DllTest
 {
@@ -9,9 +10,8 @@ namespace DllTest
     {
         static void Main(string[] args)
         {
-            string directory = Directory.GetCurrentDirectory();
-            string imagePath = Path.Combine(directory, "tstimg.png");
-            int w = 8; int h = 4;
+            string imagePath = "S:\\users\\wanja\\Dokumente\\pre-rendering\\master\\renders\\room_simple_v2_270p\\0000.png";
+            int w = 16; int h = 9;
 
             Decoder.Initialize(imagePath, w, h);
             Decoder.ImageDecoded += Decoder_ImageDecoded;
@@ -27,15 +27,20 @@ namespace DllTest
             Decoder.Deinitialize();
         }
 
-        private static void Decoder_ImageDecoded(string path, uint[] data)
+        private static void Decoder_ImageDecoded(string path, ulong[] data)
         {
             string bytestr = "";
+            int i = 0;
 
-            foreach (byte _byte in data)
+            foreach (ulong pixel in data)
             {
-                bytestr += _byte.ToString() + "-";
+                string sPixel = pixel.ToString();
+                sPixel = sPixel.PadLeft(20, '0');
+
+                Decoder.Unpack(pixel, out ushort r, out ushort g, out ushort b, out ushort a);
+                bytestr += string.Format("{0}\t- (P: {1},\t\tC: [{2},{3},{4},{5}])\n", i++, sPixel, r, g, b, a);
             }
-            bytestr += data.Length.ToString();
+            bytestr += string.Format("{0} pixels total\n", data.Length);
 
             Console.WriteLine(bytestr);
         }
