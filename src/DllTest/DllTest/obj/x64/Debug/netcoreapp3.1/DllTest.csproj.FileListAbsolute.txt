@@ -11,3 +11,17 @@ S:\users\wanja\Dokumente\pre-rendering\master\src\DllTest\DllTest\obj\x64\Debug\
 S:\users\wanja\Dokumente\pre-rendering\master\src\DllTest\DllTest\obj\x64\Debug\netcoreapp3.1\DllTest.dll
 S:\users\wanja\Dokumente\pre-rendering\master\src\DllTest\DllTest\obj\x64\Debug\netcoreapp3.1\DllTest.pdb
 S:\users\wanja\Dokumente\pre-rendering\master\src\DllTest\DllTest\obj\x64\Debug\netcoreapp3.1\DllTest.genruntimeconfig.cache
+C:\Users\wanja\Documents\dev\pre-rendering\master\src\DllTest\DllTest\bin\x64\Debug\netcoreapp3.1\DllTest.exe
+C:\Users\wanja\Documents\dev\pre-rendering\master\src\DllTest\DllTest\bin\x64\Debug\netcoreapp3.1\DllTest.deps.json
+C:\Users\wanja\Documents\dev\pre-rendering\master\src\DllTest\DllTest\bin\x64\Debug\netcoreapp3.1\DllTest.runtimeconfig.json
+C:\Users\wanja\Documents\dev\pre-rendering\master\src\DllTest\DllTest\bin\x64\Debug\netcoreapp3.1\DllTest.runtimeconfig.dev.json
+C:\Users\wanja\Documents\dev\pre-rendering\master\src\DllTest\DllTest\bin\x64\Debug\netcoreapp3.1\DllTest.dll
+C:\Users\wanja\Documents\dev\pre-rendering\master\src\DllTest\DllTest\bin\x64\Debug\netcoreapp3.1\DllTest.pdb
+C:\Users\wanja\Documents\dev\pre-rendering\master\src\DllTest\DllTest\obj\x64\Debug\netcoreapp3.1\DllTest.csproj.AssemblyReference.cache
+C:\Users\wanja\Documents\dev\pre-rendering\master\src\DllTest\DllTest\obj\x64\Debug\netcoreapp3.1\DllTest.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\wanja\Documents\dev\pre-rendering\master\src\DllTest\DllTest\obj\x64\Debug\netcoreapp3.1\DllTest.AssemblyInfoInputs.cache
+C:\Users\wanja\Documents\dev\pre-rendering\master\src\DllTest\DllTest\obj\x64\Debug\netcoreapp3.1\DllTest.AssemblyInfo.cs
+C:\Users\wanja\Documents\dev\pre-rendering\master\src\DllTest\DllTest\obj\x64\Debug\netcoreapp3.1\DllTest.csproj.CoreCompileInputs.cache
+C:\Users\wanja\Documents\dev\pre-rendering\master\src\DllTest\DllTest\obj\x64\Debug\netcoreapp3.1\DllTest.dll
+C:\Users\wanja\Documents\dev\pre-rendering\master\src\DllTest\DllTest\obj\x64\Debug\netcoreapp3.1\DllTest.pdb
+C:\Users\wanja\Documents\dev\pre-rendering\master\src\DllTest\DllTest\obj\x64\Debug\netcoreapp3.1\DllTest.genruntimeconfig.cache

@@ -1,0 +1,1 @@
+C:\Users\wanja\Documents\dev\pre-rendering\master\src\image-decoder\x64\Debug to C:\Users\wanja\Documents\dev\pre-rendering\master\src\DllTest\DllTest\bin\x64\Debug\netcoreapp3.1 
