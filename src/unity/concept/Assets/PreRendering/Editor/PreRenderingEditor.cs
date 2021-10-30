@@ -8,9 +8,13 @@ public class PreRenderingEditor : Editor
 {
     const float spacer_medium = 20;
 
+    private void OnEnable() => OnValidate(); // Manually refresh render path
+
     void OnValidate()
     {
         PreRenderer renderer = (PreRenderer)target;
+
+        if (renderer.editorAreas == null) renderer.editorAreas = new bool[3];
 
         renderer.renderPath = Application.dataPath.Split(new string[] { "pre-rendering" }, System.StringSplitOptions.None)[0];
         renderer.renderPath = Path.Combine(renderer.renderPath, "pre-rendering/master/renders");
@@ -19,6 +23,7 @@ public class PreRenderingEditor : Editor
     public override void OnInspectorGUI()
     {
         PreRenderer renderer = (PreRenderer)target;
+        bool playing = Application.isPlaying;
 
         renderer.editorAreas[0] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.editorAreas[0], "Map");
 
@@ -31,7 +36,7 @@ public class PreRenderingEditor : Editor
             EditorHelper.TextField(
                 "Map Name", ref renderer.mapName,
                 "The name of the folder the '.mapconfig' file is contained in. " +
-                "This folder has to be inside the 'renders' parent folder.");
+                "This folder has to be inside the 'renders' parent folder.", !playing);
 
             GUILayout.Space(spacer_medium);
         }
@@ -48,12 +53,33 @@ public class PreRenderingEditor : Editor
             EditorHelper.IntSlider(
                 "Cache Size", ref renderer.cacheSize,
                 "The size of the texture cache.",
-                1, 100);
+                1, 100, !playing);
+
+            EditorHelper.FloatSlider(
+                "Prediction Blend", ref renderer.predictionBlend,
+                "",
+                0, 1);
+
+            EditorHelper.FloatSlider(
+                "Prediction Distance", ref renderer.predictionDistance,
+                "",
+                1, 4);
 
             EditorHelper.IntSlider(
                 "Decoding Threads", ref renderer.decodingThreads,
                 "Maximum amount of textures to be decoded at once.",
-                1, 10);
+                1, 10, !playing);
+
+            if (playing)
+            {
+                EditorHelper.IntSlider(
+                    "Pending", ref renderer.pending,
+                    "", 0, renderer.cacheSize, false);
+
+                EditorHelper.IntSlider(
+                    "Decoding", ref renderer.decoding,
+                    "", 0, renderer.decodingThreads, false);
+            }
 
             GUILayout.Space(spacer_medium);
         }
@@ -61,7 +87,7 @@ public class PreRenderingEditor : Editor
         EditorGUILayout.EndFoldoutHeaderGroup();
 
 
-
+        
 
         renderer.editorAreas[2] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.editorAreas[2], "Projection & Post Processing");
 
@@ -70,7 +96,7 @@ public class PreRenderingEditor : Editor
             EditorHelper.FloatSlider(
                 "Geometry Percision", ref renderer.geometryPercision,
                 "The base value the screen resolution should be divided by for projection.",
-                0.1f, 1);
+                0.1f, 1, !playing);
 
             EditorHelper.ShaderDebugField(
                 "Shader Debug", ref renderer.shaderDebug,

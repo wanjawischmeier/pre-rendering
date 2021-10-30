@@ -4,6 +4,8 @@ using UnityEngine.Networking;
 using System;
 using System.Collections.Generic;
 using Object = UnityEngine.Object;
+using System.Threading;
+using System.IO;
 
 namespace PreRendering
 {
@@ -14,19 +16,23 @@ namespace PreRendering
     /// </summary>
     public class DecodingThread
     {
-        public Dictionary<string, Vector3> pending;
-        public Dictionary<AsyncOperation, Tuple<Vector3, UnityWebRequest>> decoding;
+        public int Pending { get { return pending.Count; } }
+        public int Decoding { get { return decoding.Count; } }
+
+        Dictionary<string, Vector3> pending;
+        Dictionary<UnityWebRequestAsyncOperation, Vector3> decoding;
 
         readonly TextureBuffer buffer;
-        readonly int decodingThreads;
+        readonly int decodingThreads, maxPending;
 
-        public DecodingThread(TextureBuffer buffer, int decodingThreads)
+        public DecodingThread(TextureBuffer buffer, int decodingThreads, int maxPending)
         {
             this.buffer = buffer;
             this.decodingThreads = decodingThreads;
+            this.maxPending = maxPending;
 
             pending = new Dictionary<string, Vector3>();
-            decoding = new Dictionary<AsyncOperation, Tuple<Vector3, UnityWebRequest>>();
+            decoding = new Dictionary<UnityWebRequestAsyncOperation, Vector3>();
         }
 
         ~DecodingThread() => Release();
@@ -34,7 +40,7 @@ namespace PreRendering
         public void Release()
         {
             foreach (var item in decoding)
-                item.Value.Item2.Abort();
+                item.Key.webRequest.Abort();
             decoding.Clear();
         }
 
@@ -45,12 +51,7 @@ namespace PreRendering
 
         public bool IsDecoding(Vector3 vector)
         {
-            return decoding.Values.Select(
-                (Tuple<Vector3, UnityWebRequest> value) =>
-                {
-                    return value.Item1;
-                })
-                .Contains(vector);
+            return decoding.Values.Contains(vector);
         }
 
         public bool IsProcessing(string path, Vector3 value)
@@ -58,47 +59,74 @@ namespace PreRendering
             return IsPending(path) || IsDecoding(value);
         }
 
+        public void ClearPending() => pending.Clear();
+
         public bool DecodeToBuffer(string path, Vector3 value)
         {
+            if (!File.Exists(path)) return false;
+
+            byte[] bytes = File.ReadAllBytes(path);
+            Texture2D texture = new Texture2D(0, 0, TextureFormat.ARGB32, false);
+            texture.LoadImage(bytes);
+
+            buffer.Add(value, texture);
+
+#if UNITY_EDITOR
+            Object.DestroyImmediate(texture);
+#else
+            Object.Destroy(texture);
+#endif
+            return true;
+        }
+        
+        public bool DecodeToBufferAsync(string path, Vector3 value, bool allowPending = true)
+        {
             if (IsDecoding(value)) return false;
-            if (decoding.Count >= decodingThreads && !IsPending(path))
-                pending.Add(path, value);
-            else
+            if (decoding.Count < decodingThreads)
             {
                 // Based on: https://stackoverflow.com/a/53770838/13215204
                 UnityWebRequest www = UnityWebRequestTexture.GetTexture(path);
                 var asyncOp = www.SendWebRequest();
-                decoding.Add(asyncOp, new Tuple<Vector3, UnityWebRequest>(value, www));
+                decoding.Add(asyncOp, value);
                 asyncOp.completed += OnImageDecoded;
+            }
+            else
+            {
+                if (allowPending && !IsPending(path) && pending.Count < maxPending)
+                {
+                    pending.Add(path, value);
+                }
             }
 
             return true;
         }
 
-        void DecodePending()
+        public void DecodePending()
         {
             Dictionary<string, Vector3> temp = new Dictionary<string, Vector3>(pending);
 
             foreach (var item in temp)
             {
                 if (decoding.Count >= decodingThreads) break;
-                DecodeToBuffer(item.Key, item.Value);
+                DecodeToBufferAsync(item.Key, item.Value, false);
                 pending.Remove(item.Key);
             }
         }
 
         void OnImageDecoded(AsyncOperation obj)
         {
+            UnityWebRequestAsyncOperation asyncOp = (UnityWebRequestAsyncOperation)obj;
+
             // Prevents crash due to memory acess violation
             // (if some stuff has already been deallocated)
             if (decoding.Count == 0) return;
 
-            Tuple<Vector3, UnityWebRequest> data = decoding[obj];
+            Vector3 vector = decoding[asyncOp];
 
-            if (data.Item2.result == UnityWebRequest.Result.Success)
+            if (asyncOp.webRequest.result == UnityWebRequest.Result.Success)
             {
-                Texture2D texture = DownloadHandlerTexture.GetContent(data.Item2);
-                buffer.Add(data.Item1, texture);
+                Texture2D texture = DownloadHandlerTexture.GetContent(asyncOp.webRequest);
+                buffer.Add(vector, texture);
 #if UNITY_EDITOR
                 Object.DestroyImmediate(texture);
 #else
@@ -106,7 +134,7 @@ namespace PreRendering
 #endif
             }
 
-            decoding.Remove(obj);
+            decoding.Remove(asyncOp);
             DecodePending();
         }
     }

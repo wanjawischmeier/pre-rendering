@@ -56,7 +56,7 @@ Shader "PreRendering/Projection"
                 float CP = _InputArray[inpIdx].a * (FCLIP - NCLIP) + NCLIP;
                 float2 ll2 = translateLatLon(ll1, Position - PositionOffset, CP);
                 ll2 = latLonToNormalized(ll2);
-    
+                
                 return half4(ll2, (IMG_IDX + 1) / (float) MX_IDX, 1);
             }
             ENDCG

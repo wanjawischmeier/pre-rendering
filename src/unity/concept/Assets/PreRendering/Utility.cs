@@ -53,10 +53,14 @@ namespace PreRendering
         /// These vectors originate from the 'position' vector and are ordered in an outwards spiraling pattern.
         /// </summary>
         /// <param name="amount">The desired length of the returned array.</param>
-        public static Vector3[] GetClosest(this Vector3[] vectors, Vector3 position, int amount)
+        public static Vector3[] GetClosest(this Vector3[] vectors, Vector3 oldPosition, Vector3 newPosition, int amount, float blend = 0.5f, float predictionDistance = 2)
         {
             return vectors
-                .OrderBy(x => Vector3.Distance(position, x))
+                .OrderBy(x =>
+                {
+                    Vector3 P = oldPosition + predictionDistance * (newPosition - oldPosition);
+                    return (1 - blend) * Vector3.Distance(newPosition, x) + blend * Vector3.Distance(P, x);
+                })
                 .Take(amount)
                 .ToArray();
         }

@@ -1,11 +1,6 @@
 using System.IO;
 using System.Linq;
-using System.Collections.Generic;
 using UnityEngine;
-#if UNITY_EDITOR && HEAVY_DEBUG
-using System;
-using UnityEngine.Networking;
-#endif
 
 namespace PreRendering
 {
@@ -15,7 +10,7 @@ namespace PreRendering
     public class PreRenderer : MonoBehaviour
     {
 #if UNITY_EDITOR
-        public bool[] editorAreas = new bool[3];
+        public bool[] editorAreas;
 #endif
 
         // Map
@@ -25,6 +20,8 @@ namespace PreRendering
 
         // Decoder
         public int cacheSize = 10;
+        public float predictionBlend = 0.75f;
+        public float predictionDistance = 2;
         public int decodingThreads = 4;
 
         // Projection & Post Processing
@@ -39,7 +36,8 @@ namespace PreRendering
         public MovementController controller;
         public Resolution projectionResolution;
         public Resolution screenResolution;
-        Vector3 positionOffset;
+        Vector3 positionOffset = default;
+        Vector3 lastPosition = default;
 
         public Map map;
         TextureBuffer buffer;
@@ -47,13 +45,17 @@ namespace PreRendering
         ShaderManager shaderManager;
         Camera mainCamera;
 
+        public int pending, decoding;
+
         const float minimumPercision = 0.1f;
         const float maximumPercision = 1;
 
 
         void Start()
         {
-            Vector3 positionOffset = Vector3.zero;
+            renderPath = Application.dataPath.Split(new string[] { "pre-rendering" }, System.StringSplitOptions.None)[0];
+            renderPath = Path.Combine(renderPath, "pre-rendering/master/renders");
+
             mainCamera = Camera.main;
             controller = GetComponent<MovementController>();
 
@@ -68,12 +70,13 @@ namespace PreRendering
 #endif
 
             buffer = new TextureBuffer(map.resolution.width, map.resolution.height, cacheSize);
-            decoder = new DecodingThread(buffer, decodingThreads);
+            decoder = new DecodingThread(buffer, decodingThreads, cacheSize);
             shaderManager = new ShaderManager(buffer.textures, projectionResolution, map, cacheSize);
         }
 
         void Update()
         {
+            // Set shader values
             shaderManager.Position = transform.position;
             shaderManager.Rotation = transform.eulerAngles;
             shaderManager.Fov = mainCamera.fieldOfView;
@@ -83,18 +86,32 @@ namespace PreRendering
             shaderManager.MistFalloff = mistFalloff;
             shaderManager.MistOffset = mistOffset;
 
-            Vector3[] positions = map.offsets.GetClosest(transform.position, cacheSize);
+            Vector3[] positions = map.offsets.GetClosest(lastPosition, transform.position, cacheSize, predictionBlend, predictionDistance);
+            Vector3 temp;
 
-            // Load the closest images into the buffer
-            for (int i = cacheSize -1; i >= 0; i--)
+            // Clear old pending positions if the player has moved
+            if (transform.position != lastPosition) decoder.ClearPending();
+            lastPosition = transform.position;
+
+            // Load the closest image synchronously if it isn't available yet
+            temp = positions[0];
+            if (!buffer.Contains(temp))
             {
-                Vector3 temp = positions[i];
+                string path = map.offsets.GetFileName(mapPath, temp);
+                decoder.DecodeToBuffer(path, temp);
+                positionOffset = temp;
+            }
+
+            // Load the closest images into the buffer asynchronously
+            for (int i = cacheSize - 1; i >= 0; i--)
+            {
+                temp = positions[i];
                 string path = map.offsets.GetFileName(mapPath, temp);
 
                 if (buffer.Contains(temp))
                     positionOffset = temp;
                 else
-                    decoder.DecodeToBuffer(path, temp);
+                    decoder.DecodeToBufferAsync(path, temp);
             }
 
             shaderManager.PositionOffset = positionOffset;
@@ -107,6 +124,10 @@ namespace PreRendering
             Vector3[] reserved = buffer.reserved.Keys.ToArray();
             foreach (var vector in reserved)
                 if (!positions.Contains(vector)) buffer.Release(vector);
+
+            // Debugging
+            pending = decoder.Pending;
+            decoding = decoder.Decoding;
         }
 
         void OnRenderImage(RenderTexture source, RenderTexture destination) =>
