@@ -32,12 +32,6 @@ namespace PreRendering
             set { postProcessingMaterial.SetVector("Rotation", value * Mathf.Deg2Rad); }
         }
 
-        public Matrix4x4 TR
-        {
-            get { return projectionMaterial.GetMatrix("TR"); }
-            set { projectionMaterial.SetMatrix("TR", value); }
-        }
-
         /// <summary>
         /// The field of view used for the gnomonic projection inside the post processing shader.
         /// </summary>
@@ -53,9 +47,6 @@ namespace PreRendering
             set { postProcessingMaterial.SetFloat("DOF_INTENSITY", value); }
         }
 
-        /// <summary>
-        /// If enabled, the post processing shader will just pass through the projected texture coordinates.
-        /// </summary>
         public ShaderDebugMode ShaderDebug
         {
             get { return (ShaderDebugMode)postProcessingMaterial.GetInt("Debug"); }

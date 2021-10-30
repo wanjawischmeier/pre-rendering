@@ -25,7 +25,7 @@ int buffer_size;    // The total size of the buffer in bytes.
 /// <param name="height">Same as with the width parameter.</param>
 /// <param name="size">Will be set to the total size of the buffer in bytes.</param>
 /// <returns>Returns a pointer to the buffer that images decoded using the 'ReadToBuffer' function will be written to.</returns>
-extern "C" DECODER ushort* InitializeBuffer(char* samplePath, int* width, int* height, int* size, int* channels);
+extern "C" DECODER ushort* InitializeBuffer(char* samplePath, int* width, int* height, int* size);
 
 /// <summary>
 /// Decodes an image and writes it into the currently active buffer.

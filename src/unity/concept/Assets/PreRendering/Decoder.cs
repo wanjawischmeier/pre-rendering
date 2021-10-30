@@ -1,6 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
-using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 namespace PreRendering
 {
@@ -16,49 +16,87 @@ namespace PreRendering
         static extern bool FreeLibrary(IntPtr hModule);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        delegate void EmptyCall();
-        static EmptyCall initialize, release;
+        delegate IntPtr InitializeBuffer(string samplePath, ref int width, ref int height, out int size);
+        static InitializeBuffer initializeBuffer;
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        delegate IntPtr ReadImage(string path, int width, int height, out ushort channels, out int bytes_count);
-        static ReadImage imread;
+        delegate void ReadImageToBuffer(string path);
+        static ReadImageToBuffer readImageToBuffer;
 
-        public delegate void ImageDecodedEvent(string path, int[] data, int t);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        delegate void ReleaseBuffer();
+        static ReleaseBuffer releaseBuffer;
+
+        public delegate void ImageDecodedEvent(string path);
         public static event ImageDecodedEvent ImageDecoded;
 
-        static IntPtr dllPtr;
+        const string dllPath = "image-decoder.dll";
+        static IntPtr dllPtr, bufferPtr;
+        static int imageWidth, imageHeight, bufferSize, totalSize, channels;
 
-        public static void Initialize()
+        public static void Initialize(
+            string samplePath, int width = -1, int height = -1)
         {
-            string dllPath = "image-decoder.dll";
             dllPtr = LoadLibrary(dllPath);
 
             IntPtr dllAddr;
-            dllAddr = GetProcAddress(dllPtr, "initialize");
-            initialize = (EmptyCall)Marshal.GetDelegateForFunctionPointer(dllAddr, typeof(EmptyCall));
-            dllAddr = GetProcAddress(dllPtr, "release");
-            release = (EmptyCall)Marshal.GetDelegateForFunctionPointer(dllAddr, typeof(EmptyCall));
-            dllAddr = GetProcAddress(dllPtr, "imread");
-            imread = (ReadImage)Marshal.GetDelegateForFunctionPointer(dllAddr, typeof(ReadImage));
+            dllAddr = GetProcAddress(dllPtr, "InitializeBuffer");
+            initializeBuffer = (InitializeBuffer)Marshal.GetDelegateForFunctionPointer(dllAddr, typeof(InitializeBuffer));
+            dllAddr = GetProcAddress(dllPtr, "ReadToBuffer");
+            readImageToBuffer = (ReadImageToBuffer)Marshal.GetDelegateForFunctionPointer(dllAddr, typeof(ReadImageToBuffer));
+            dllAddr = GetProcAddress(dllPtr, "ReleaseBuffer");
+            releaseBuffer = (ReleaseBuffer)Marshal.GetDelegateForFunctionPointer(dllAddr, typeof(ReleaseBuffer));
 
-            initialize();
+            bufferPtr = initializeBuffer(samplePath, ref width, ref height, out bufferSize);
+
+            imageWidth = width;
+            imageHeight = height;
+            totalSize = bufferSize * 4;
         }
 
-        public static void Decode(ref int[] data, string path, int width = 0, int height = 0, int t = -1)
+        public static void Decode(string path, ref uint[] data, int t = -1)
         {
             Debug.Log(string.Format("Decoding\t\t({0})", t));
-            IntPtr ptr = imread(path, width, height, out ushort channels, out int bytes_count);
+            try
+            {
+                readImageToBuffer(path);
 
-            Marshal.Copy(ptr, data, 0, bytes_count);
+                short[] temp = new short[totalSize];
+                Marshal.Copy(bufferPtr, temp, 0, totalSize);
+
+                for (int i = 0; i < data.Length; i++)
+                {
+                    ushort a = (ushort)temp[i * 2];
+                    ushort b = (ushort)temp[i * 2 + 1];
+
+                    data[i] = Pack(a, b);
+                }
+
+                ImageDecoded.Invoke(path);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+            }
 
             Debug.Log(string.Format("Finished decoding\t({0})", t));
-            ImageDecoded.Invoke(path, data, t);
         }
 
         public static void Deinitialize()
         {
-            release();
+            releaseBuffer();
             FreeLibrary(dllPtr);
+        }
+
+        public static uint Pack(ushort v0, ushort v1)
+        {
+            return (uint)v0 << 16 | v1;
+        }
+
+        public static void Unpack(uint v, out ushort v0, out ushort v1)
+        {
+            v0 = (ushort)(v >> 16);
+            v1 = (ushort)(v & 0xFFFF);
         }
     }
 }

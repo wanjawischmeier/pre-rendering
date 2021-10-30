@@ -62,16 +62,16 @@ namespace PreRendering
             readImageToBuffer(path);
             stopwatch.Stop();
 
-            char[] temp = new char[totalSize];
+            short[] temp = new short[totalSize];
             ulong[] data = new ulong[bufferSize];
             Marshal.Copy(bufferPtr, temp, 0, totalSize);
 
-            for (int i = 0; i < data.Length; i++)
+            for (int i = 0; i < bufferSize; i++)
             {
-                ushort r = temp[i * channels];
-                ushort g = temp[i * channels + 1];
-                ushort b = temp[i * channels + 2];
-                ushort a = temp[i * channels + 3];
+                ushort r = (ushort)temp[i * channels];
+                ushort g = (ushort)temp[i * channels + 1];
+                ushort b = (ushort)temp[i * channels + 2];
+                ushort a = (ushort)temp[i * channels + 3];
 
                 data[i] = Pack(r, g, b, a);
             }
@@ -86,9 +86,14 @@ namespace PreRendering
             FreeLibrary(dllPtr);
         }
 
-        static uint Pack(ushort v0, ushort v1)
+        public static uint Pack(ushort v0, ushort v1)
         {
             return (uint)v0 << 16 | v1;
+        }
+
+        public static uint Pack2(uint v0, uint v1)
+        {
+            return v0 << 16 | v1;
         }
 
         static ulong Pack(uint v0, uint v1)
@@ -101,10 +106,16 @@ namespace PreRendering
             return Pack(Pack(v0, v1), Pack(v2, v3));
         }
 
-        static void Unpack(uint v, out ushort v0, out ushort v1)
+        public static void Unpack(uint v, out ushort v0, out ushort v1)
         {
             v0 = (ushort)(v >> 16);
             v1 = (ushort)(v & 0xFFFF);
+        }
+
+        public static void Unpack2(uint v, out uint v0, out uint v1)
+        {
+            v0 = v >> 16;
+            v1 = v & 0xFFFF;
         }
 
         static void Unpack(ulong v, out uint v0, out uint v1)

@@ -1,10 +1,13 @@
 import cv2
+from os import getcwd
+from os.path import join
 
-path = "S:\\users\\wanja\\Dokumente\\pre-rendering\\master\\renders\\room_simple_v2_270p\\0000.png"
+path = getcwd().split("pre-rendering")[0]
+path = join(path, "pre-rendering/master/renders/room_simple_v2_270p/0000.png")
 
 img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
 img = cv2.resize(img, (8, 4))
-pass
+flat = img.flatten()
 """
 array([[[    1,     1,     1, 65535],
         [    1,     1,     1, 65535],

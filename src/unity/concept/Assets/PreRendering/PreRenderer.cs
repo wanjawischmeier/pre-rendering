@@ -53,14 +53,22 @@ namespace PreRendering
 
         void Start()
         {
-            renderPath = Application.dataPath.Split(new string[] { "pre-rendering" }, System.StringSplitOptions.None)[0];
-            renderPath = Path.Combine(renderPath, "pre-rendering/master/renders");
+#if UNITY_EDITOR
+            string rootPath = Application.dataPath.Split(new string[] { "pre-rendering" }, System.StringSplitOptions.None)[0];
+            renderPath = Path.Combine(rootPath, "pre-rendering/master/renders");
+
+            mapPath = Path.Combine(renderPath, mapName);
+#else
+            renderPath = Application.dataPath;
+
+            string mapFile = Directory.GetFiles(renderPath, ".mapconfig", SearchOption.AllDirectories)[0];
+            mapPath = Path.GetDirectoryName(mapFile);
+#endif
+            map = new Map(mapPath);
 
             mainCamera = Camera.main;
             controller = GetComponent<MovementController>();
 
-            mapPath = Path.Combine(renderPath, mapName);
-            map = new Map(mapPath);
 
             projectionResolution = map.resolution.Multiply(geometryPercision);
             screenResolution = map.resolution.EstimateScreenResolution(mainCamera.fieldOfView);
@@ -76,6 +84,10 @@ namespace PreRendering
 
         void Update()
         {
+#if !UNITY_EDITOR
+            if (Input.GetKeyDown(KeyCode.Escape)) Application.Quit();
+#endif
+
             // Set shader values
             shaderManager.Position = transform.position;
             shaderManager.Rotation = transform.eulerAngles;
@@ -86,22 +98,23 @@ namespace PreRendering
             shaderManager.MistFalloff = mistFalloff;
             shaderManager.MistOffset = mistOffset;
 
-            Vector3[] positions = map.offsets.GetClosest(lastPosition, transform.position, cacheSize, predictionBlend, predictionDistance);
+            Vector3[] positions = map.offsets.GetClosest(transform.position, cacheSize);
+            // Vector3[] positions = map.offsets.PredictClosest(lastPosition, transform.position, cacheSize, predictionBlend, predictionDistance);
             Vector3 temp;
 
             // Clear old pending positions if the player has moved
             if (transform.position != lastPosition) decoder.ClearPending();
             lastPosition = transform.position;
-
+            
             // Load the closest image synchronously if it isn't available yet
-            temp = positions[0];
-            if (!buffer.Contains(temp))
+            if (!buffer.ContainsAny(positions))
             {
+                temp = positions[0];
                 string path = map.offsets.GetFileName(mapPath, temp);
                 decoder.DecodeToBuffer(path, temp);
                 positionOffset = temp;
             }
-
+            
             // Load the closest images into the buffer asynchronously
             for (int i = cacheSize - 1; i >= 0; i--)
             {
@@ -114,6 +127,7 @@ namespace PreRendering
                     decoder.DecodeToBufferAsync(path, temp);
             }
 
+            // Project
             shaderManager.PositionOffset = positionOffset;
             shaderManager.Project(
                 Mathf.RoundToInt(projectionResolution.width),

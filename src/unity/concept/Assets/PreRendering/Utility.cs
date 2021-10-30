@@ -53,7 +53,20 @@ namespace PreRendering
         /// These vectors originate from the 'position' vector and are ordered in an outwards spiraling pattern.
         /// </summary>
         /// <param name="amount">The desired length of the returned array.</param>
-        public static Vector3[] GetClosest(this Vector3[] vectors, Vector3 oldPosition, Vector3 newPosition, int amount, float blend = 0.5f, float predictionDistance = 2)
+        public static Vector3[] GetClosest(this Vector3[] vectors, Vector3 position, int amount)
+        {
+            return vectors
+                .OrderBy(x => Vector3.Distance(position, x))
+                .Take(amount)
+                .ToArray();
+        }
+
+        /// <summary>
+        /// Get the vectors that have the smallest distance to the specified target position.
+        /// These vectors originate from the 'position' vector and are ordered in an outwards spiraling pattern.
+        /// </summary>
+        /// <param name="amount">The desired length of the returned array.</param>
+        public static Vector3[] PredictClosest(this Vector3[] vectors, Vector3 oldPosition, Vector3 newPosition, int amount, float blend = 0.5f, float predictionDistance = 2)
         {
             return vectors
                 .OrderBy(x =>
@@ -127,6 +140,16 @@ namespace PreRendering
                 width = Mathf.RoundToInt(resolution.width * value),
                 height = Mathf.RoundToInt(resolution.height * value)
             };
+        }
+
+        public static bool ContainsAny<T>(this IEnumerable<T> enumerable1, IEnumerable<T> enumerable2)
+        {
+            foreach (var item in enumerable1)
+            {
+                if (enumerable2.Contains(item)) return true;
+            }
+
+            return false;
         }
     }
 }

@@ -313,6 +313,5 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   shader: {fileID: 4800000, guid: b1e49b08f9eba9b4b88210868e18f3d5, type: 3}
-  image_path: C:\Users\wanja\Documents\dev\pre-rendering\master\src\unity\concept\Assets\Rendering\Testing\Sample1\Main.png
-  res: {x: 8, y: 4}
-  threads: 4
+  res: {x: 160, y: 90}
+  threads: 1

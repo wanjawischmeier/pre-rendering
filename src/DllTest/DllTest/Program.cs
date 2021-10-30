@@ -1,6 +1,7 @@
 ﻿using System;
 using Decoder = PreRendering.Decoder;
 using System.Threading.Tasks;
+using System.IO;
 
 namespace DllTest
 {
@@ -8,12 +9,19 @@ namespace DllTest
     {
         static void Main(string[] args)
         {
-            string imagePath = "S:\\users\\wanja\\Dokumente\\pre-rendering\\master\\renders\\room_simple_v2_270p\\0000.png";
-            int w = 16; int h = 9;
+            ushort a = 3254;
+            ushort b = 53454;
+            uint c = Decoder.Pack2(a, b);
+            Decoder.Unpack2(c, out uint v0, out uint v1);
+            Console.WriteLine();
+            /*
+            string rootPath = Directory.GetCurrentDirectory().Split(new string[] { "pre-rendering" }, System.StringSplitOptions.None)[0];
+            string imagePath = Path.Combine(rootPath, "pre-rendering/master/renders/room_simple_v2_270p/0000.png");
+            int w = 8; int h = 4;
 
             Decoder.Initialize(imagePath, w, h);
             Decoder.ImageDecoded += Decoder_ImageDecoded;
-            for (int i = 0; i < 2; i++)
+            for (int i = 0; i < 1; i++)
             {
                 int j = i;
                 _ = Task.Run(() =>
@@ -23,6 +31,7 @@ namespace DllTest
             }
             Console.ReadKey(true);
             Decoder.Deinitialize();
+            */
         }
 
         private static void Decoder_ImageDecoded(string path, ulong[] data)

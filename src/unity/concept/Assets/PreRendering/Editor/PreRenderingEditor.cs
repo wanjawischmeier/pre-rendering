@@ -57,13 +57,13 @@ public class PreRenderingEditor : Editor
 
             EditorHelper.FloatSlider(
                 "Prediction Blend", ref renderer.predictionBlend,
-                "",
+                "How much the predicted future position should affect distance calculations.",
                 0, 1);
 
             EditorHelper.FloatSlider(
                 "Prediction Distance", ref renderer.predictionDistance,
-                "",
-                1, 4);
+                "How far away the predicted position should be from the current position.",
+                1, 4, renderer.predictionBlend != 0);
 
             EditorHelper.IntSlider(
                 "Decoding Threads", ref renderer.decodingThreads,

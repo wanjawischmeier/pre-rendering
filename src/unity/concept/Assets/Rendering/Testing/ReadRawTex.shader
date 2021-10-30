@@ -29,6 +29,11 @@ Shader "Hidden/ReadRawTex"
                 float4 vertex : SV_POSITION;
             };
 
+            uint2 unpack(uint v)
+            {
+                return uint2(v >> 16, v & 0xFFFF);
+            }
+
             v2f vert (appdata v)
             {
                 v2f o;
@@ -39,29 +44,23 @@ Shader "Hidden/ReadRawTex"
 
             sampler2D _MainTex;
             int2 res;
-            StructuredBuffer<half4> Tex;
+            StructuredBuffer<uint> Tex;
 
             fixed4 frag(v2f i) : SV_Target
             {
-                int2 tc = i.uv * res;
                 /*
-                half4 c = half4(
-                    Tex[tc.x + tc.y * res.y],
-                    Tex[tc.x + tc.y * res.y +1],
-                    Tex[tc.x + tc.y * res.y +2],
-                    1
-                );
-                c.rgb /= (float)0xFFFF;
+                int2 tc = i.uv * res;
+                uint c0 = Tex[tc.x + tc.y * res.y * 2];
+                uint c1 = Tex[tc.x + tc.y * res.y * 2 +1];
+
+                uint2 v0 = unpack(c0);
+                uint2 v1 = unpack(c1);
+
+                float4 col = float4(v0, v1) / 0xFFFF;
+
+                return col;
                 */
-                fixed4 c = fixed4(0, 0, 0, 1);
-                half4 a = Tex[0];
-                c.g = a.r == 0 ? 1 : 0;
-                // fixed4 col = tex2D(_MainTex, i.uv);
-                // col = c.r > 1 ? c : col;
-                // col = c;
-                // just invert the colors
-                // col.rgb = 1 - c.rgb;
-                return c;
+                return fixed4(0, 0, 0, 1);
             }
             ENDCG
         }
