@@ -1,6 +1,9 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Diagnostics;
 using Debug = UnityEngine.Debug;
+using System.Threading.Tasks;
 
 namespace PreRendering
 {
@@ -27,12 +30,30 @@ namespace PreRendering
         delegate void ReleaseBuffer();
         static ReleaseBuffer releaseBuffer;
 
-        public delegate void ImageDecodedEvent(string path);
+        public delegate void ImageDecodedEvent(string path, DecodingStats stats);
         public static event ImageDecodedEvent ImageDecoded;
 
         const string dllPath = "image-decoder.dll";
         static IntPtr dllPtr, bufferPtr;
         static int imageWidth, imageHeight, bufferSize, totalSize, channels;
+
+        public struct DecodingStats
+        {
+            public int ThreadId;
+            public long Decoding, Copying, Packing;
+
+            public override string ToString()
+            {
+                return string.Format(
+                    "ThreadID:\t{0}\n" +
+                    "Decoding:\t{1}ms\n" +
+                    "Copying:\t{2}ms\n" +
+                    "Packing:\t{3}ms\n" +
+                    "Total:\t{4}ms",
+                    ThreadId, Decoding, Copying, Packing,
+                    Decoding + Copying + Packing);
+            }
+        }
 
         public static void Initialize(
             string samplePath, int width = -1, int height = -1)
@@ -54,25 +75,48 @@ namespace PreRendering
             totalSize = bufferSize * 4;
         }
 
-        public static void Decode(string path, ref uint[] data, int t = -1)
+        public static void Decode(string path, ref uint[] data, CancellationToken token, int t = -1)
         {
             Debug.Log(string.Format("Decoding\t\t({0})", t));
             try
             {
+                Stopwatch timeDecoding = new Stopwatch();
+                timeDecoding.Start();
                 readImageToBuffer(path);
+                timeDecoding.Stop();
 
+                Stopwatch timeCopying = new Stopwatch();
+                timeCopying.Start();
                 short[] temp = new short[totalSize];
                 Marshal.Copy(bufferPtr, temp, 0, totalSize);
+                timeCopying.Stop();
 
-                for (int i = 0; i < data.Length; i++)
+                Stopwatch timePacking = new Stopwatch();
+                timePacking.Start();
+                for (int i = 0; i < bufferSize * 2; i++)
                 {
                     ushort a = (ushort)temp[i * 2];
                     ushort b = (ushort)temp[i * 2 + 1];
 
                     data[i] = Pack(a, b);
-                }
 
-                ImageDecoded.Invoke(path);
+                    if (token.IsCancellationRequested)
+                    {
+                        Debug.Log("Cancellation requested");
+                        token.ThrowIfCancellationRequested();
+                        return;
+                    }
+                }
+                timePacking.Stop();
+
+                DecodingStats stats = new DecodingStats()
+                {
+                    ThreadId = t,
+                    Decoding = timeDecoding.ElapsedMilliseconds,
+                    Copying = timeCopying.ElapsedMilliseconds,
+                    Packing = timePacking.ElapsedMilliseconds
+                };
+                ImageDecoded.Invoke(path, stats);
             }
             catch (Exception e)
             {
