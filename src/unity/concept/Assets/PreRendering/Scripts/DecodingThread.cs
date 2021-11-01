@@ -1,10 +1,8 @@
 using UnityEngine;
 using System.Linq;
 using UnityEngine.Networking;
-using System;
 using System.Collections.Generic;
 using Object = UnityEngine.Object;
-using System.Threading;
 using System.IO;
 
 namespace PreRendering
@@ -113,7 +111,7 @@ namespace PreRendering
             }
         }
 
-        void OnImageDecoded(AsyncOperation obj)
+        private void OnImageDecoded(AsyncOperation obj)
         {
             UnityWebRequestAsyncOperation asyncOp = (UnityWebRequestAsyncOperation)obj;
 

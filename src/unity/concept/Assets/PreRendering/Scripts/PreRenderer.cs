@@ -51,7 +51,7 @@ namespace PreRendering
         const float maximumPercision = 1;
 
 
-        void Start()
+        private void Start()
         {
 #if UNITY_EDITOR
             string rootPath = Application.dataPath.Split(new string[] { "pre-rendering" }, System.StringSplitOptions.None)[0];
@@ -82,7 +82,7 @@ namespace PreRendering
             shaderManager = new ShaderManager(buffer.textures, projectionResolution, map, cacheSize);
         }
 
-        void Update()
+        private void Update()
         {
 #if !UNITY_EDITOR
             if (Input.GetKeyDown(KeyCode.Escape)) Application.Quit();
@@ -144,10 +144,10 @@ namespace PreRendering
             decoding = decoder.Decoding;
         }
 
-        void OnRenderImage(RenderTexture source, RenderTexture destination) =>
+        private void OnRenderImage(RenderTexture source, RenderTexture destination) =>
             shaderManager.Render(ref destination);
 
-        void OnDestroy()
+        private void OnDestroy()
         {
             buffer.Release();
             decoder.Release();

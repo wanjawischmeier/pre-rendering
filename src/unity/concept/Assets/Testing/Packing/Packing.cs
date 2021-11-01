@@ -1,5 +1,4 @@
 using UnityEngine;
-using PreRendering;
 
 [ExecuteInEditMode]
 public class Packing : MonoBehaviour
@@ -11,30 +10,30 @@ public class Packing : MonoBehaviour
     Material material;
     ComputeBuffer buffer;
 
-    void OnValidate()
+    private void OnValidate()
     {
         material = new Material(shader);
         buffer = new ComputeBuffer(3, sizeof(ushort) * 4);
         material.SetBuffer("Buff", buffer);
     }
 
-    void Update()
+    private void Update()
     {
         buffer.SetData(values);
         material.SetInt("Idx", index);
     }
 
-    void OnRenderImage(RenderTexture source, RenderTexture destination)
+    private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         Graphics.Blit(null, destination, material);
     }
 
-    Vector2 Unpack(uint v)
+    private Vector2 Unpack(uint v)
     {
         return new Vector2(v >> 16, v & 0xFFFF) / 0xFFFF;
     }
 
-    Vector4 Unpack(Vector2Int v)
+    private Vector4 Unpack(Vector2Int v)
     {
         Vector2 v1 = Unpack((uint)v.x);
         Vector2 v2 = Unpack((uint)v.y);

@@ -10,7 +10,7 @@ public class PreRenderingEditor : Editor
 
     private void OnEnable() => OnValidate(); // Manually refresh render path
 
-    void OnValidate()
+    private void OnValidate()
     {
         PreRenderer renderer = (PreRenderer)target;
 

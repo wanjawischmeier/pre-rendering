@@ -9,10 +9,10 @@ public class FPSCounter : MonoBehaviour
     int framesPassed = 0;
     float fpsTotal = 0;
 
-    void Start() =>
+    private void Start() =>
         text = GetComponent<Text>();
 
-    void Update()
+    private void Update()
     {
         float fps = 1 / Time.unscaledDeltaTime;
         fpsTotal += fps;

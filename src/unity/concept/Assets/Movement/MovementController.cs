@@ -12,22 +12,22 @@ public class MovementController : MonoBehaviour
     Vector3 moveDirection = Vector3.zero;
     float rotationX = 0, rotationY = 0;
 
-    void Start() =>
+    private void Start() =>
         characterController = GetComponent<CharacterController>();
 
-    void OnEnable()
+    private void OnEnable()
     {
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }
 
-    void OnDisable()
+    private void OnDisable()
     {
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
 
-    void Update()
+    private void Update()
     {
         Vector3 forward = transform.TransformDirection(Vector3.back);
         Vector3 right = transform.TransformDirection(Vector3.left);

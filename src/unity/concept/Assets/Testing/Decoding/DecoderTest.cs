@@ -21,7 +21,7 @@ public class DecoderTest : MonoBehaviour
     string imagePath;
     uint[] data;
 
-    void Start()
+    private void Start()
     {
         string rootPath = Application.dataPath.Split(new string[] { "pre-rendering" }, System.StringSplitOptions.None)[0];
         imagePath = Path.Combine(rootPath, "pre-rendering/master/renders/", relativeImagePath);
@@ -53,15 +53,15 @@ public class DecoderTest : MonoBehaviour
         
     }
 
-    void Update()
+    private void Update()
     {
         if (data != null) buffer.SetData(data);
     }
 
-    void OnRenderImage(RenderTexture source, RenderTexture destination) =>
+    private void OnRenderImage(RenderTexture source, RenderTexture destination) =>
         Graphics.Blit(source, destination, material);
 
-    void OnDestroy()
+    private void OnDestroy()
     {
         tokenSource.Cancel();
         

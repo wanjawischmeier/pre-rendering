@@ -9,7 +9,7 @@ public class Options : MonoBehaviour
 
     Resolution nativeResolution;
 
-    void Start()
+    private void Start()
     {
         screenResolutionWidth = GameObject.FindGameObjectWithTag("ScreenResolutionWidth").GetComponent<InputField>();
         screenResolutionHeight = GameObject.FindGameObjectWithTag("ScreenResolutionHeight").GetComponent<InputField>();
