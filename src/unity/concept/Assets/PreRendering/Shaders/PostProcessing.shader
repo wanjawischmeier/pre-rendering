@@ -131,7 +131,7 @@ Shader "PreRendering/PostProcessing"
 				case 3:
 					return fixed4(n, 0, 1);
 				case 4:
-					return fixed4(1 - dof.xxx, 1);
+					return fixed4(dof.xxx, 1);
 				case 5:
 					return fixed4(s.s4.aaa, 1);
 				}

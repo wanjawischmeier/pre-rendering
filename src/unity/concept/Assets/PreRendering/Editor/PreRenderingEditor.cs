@@ -2,22 +2,34 @@ using UnityEditor;
 using PreRendering;
 using UnityEngine;
 using System.IO;
+using System;
 
 [CustomEditor(typeof(PreRenderer))]
 public class PreRenderingEditor : Editor
 {
     const float spacer_medium = 20;
-
-    private void OnEnable() => OnValidate(); // Manually refresh render path
+    readonly string[] shaderDebugModes = Enum.GetNames(typeof(ShaderManager.ShaderDebugMode));
 
     private void OnValidate()
     {
         PreRenderer renderer = (PreRenderer)target;
 
-        if (renderer.editorAreas == null) renderer.editorAreas = new bool[3];
+        if (renderer.editorAreas == null || renderer.editorAreas.Length == 0)
+            renderer.editorAreas = new bool[3];
 
-        renderer.renderPath = Application.dataPath.Split(new string[] { "pre-rendering" }, System.StringSplitOptions.None)[0];
+        renderer.renderPath = Application.dataPath.Split(new string[] { "pre-rendering" }, StringSplitOptions.None)[0];
         renderer.renderPath = Path.Combine(renderer.renderPath, "pre-rendering/master/renders");
+
+        string[] mapConfigs = Directory.GetFiles(renderer.renderPath, ".mapconfig", SearchOption.AllDirectories);
+
+        renderer.mapPaths = new string[mapConfigs.Length];
+        renderer.mapFiles = new string[mapConfigs.Length];
+
+        for (int i = 0; i < mapConfigs.Length; i++)
+        {
+            renderer.mapPaths[i] = Path.GetDirectoryName(mapConfigs[i]);
+            renderer.mapFiles[i] = Path.GetFileName(renderer.mapPaths[i]);
+        }
     }
 
     public override void OnInspectorGUI()
@@ -33,8 +45,8 @@ public class PreRenderingEditor : Editor
                 "Render Path", ref renderer.renderPath,
                 "The folder the map should be contained in.", false);
 
-            EditorHelper.TextField(
-                "Map Name", ref renderer.mapName,
+            EditorHelper.OptionField(
+                "Map Name", ref renderer.mapSelection, renderer.mapFiles,
                 "The name of the folder the '.mapconfig' file is contained in. " +
                 "This folder has to be inside the 'renders' parent folder.", !playing);
 
@@ -98,9 +110,10 @@ public class PreRenderingEditor : Editor
                 "The base value the screen resolution should be divided by for projection.",
                 0.1f, 1, !playing);
 
-            EditorHelper.ShaderDebugField(
-                "Shader Debug", ref renderer.shaderDebug,
-                "If enabled, the post processing shader will pass the desired texture to the screen.");
+            EditorHelper.OptionField(
+                "Shader Debug", ref renderer.shaderDebugSelection, shaderDebugModes,
+                "If enabled, the post processing shader will pass the desired texture to the screen.",
+                playing);
 
             EditorHelper.FloatSlider(
                 "Depth of Field", ref renderer.depthOfField,

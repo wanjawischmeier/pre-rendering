@@ -15,7 +15,10 @@ namespace PreRendering
 
         // Map
         public string renderPath;
-        public string mapName;
+        public string[] mapPaths;
+        public string[] mapFiles;
+        public int mapSelection;
+        string mapName;
         string mapPath;
 
         // Decoder
@@ -27,6 +30,7 @@ namespace PreRendering
         // Projection & Post Processing
         public float geometryPercision = 0.75f;
         public ShaderManager.ShaderDebugMode shaderDebug = ShaderManager.ShaderDebugMode.Disabled;
+        public int shaderDebugSelection;
         public float depthOfField = 0;
         public float mistOffset = 1;
         public float mistFalloff = 0.1f;
@@ -57,7 +61,7 @@ namespace PreRendering
             string rootPath = Application.dataPath.Split(new string[] { "pre-rendering" }, System.StringSplitOptions.None)[0];
             renderPath = Path.Combine(rootPath, "pre-rendering/master/renders");
 
-            mapPath = Path.Combine(renderPath, mapName);
+            mapPath = Path.Combine(renderPath, mapPaths[mapSelection]);
 #else
             renderPath = Application.dataPath;
 
@@ -93,7 +97,7 @@ namespace PreRendering
             shaderManager.Rotation = transform.eulerAngles;
             shaderManager.Fov = mainCamera.fieldOfView;
             shaderManager.DOFIntensity = depthOfField;
-            shaderManager.ShaderDebug = shaderDebug;
+            shaderManager.ShaderDebug = (ShaderManager.ShaderDebugMode)shaderDebugSelection;
             shaderManager.Mist = mist;
             shaderManager.MistFalloff = mistFalloff;
             shaderManager.MistOffset = mistOffset;

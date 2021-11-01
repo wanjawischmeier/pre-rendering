@@ -223,13 +223,36 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   editorAreas: 010101
   renderPath: S:/users/wanja/Dokumente/pre-rendering/master/renders
-  mapName: room_simple_v2_270p
+  mapPaths:
+  - S:\users\wanja\Dokumente\pre-rendering\master\renders\desert_new_540p
+  - S:\users\wanja\Dokumente\pre-rendering\master\renders\room_simple_240x270
+  - S:\users\wanja\Dokumente\pre-rendering\master\renders\room_simple_480x540
+  - S:\users\wanja\Dokumente\pre-rendering\master\renders\room_simple_v2_270p
+  - S:\users\wanja\Dokumente\pre-rendering\master\renders\room_simple_v2_540p
+  - S:\users\wanja\Dokumente\pre-rendering\master\renders\room_simple_v2_720p
+  - S:\users\wanja\Dokumente\pre-rendering\master\renders\Rubbish\2021-10-16
+  - S:\users\wanja\Dokumente\pre-rendering\master\renders\Rubbish\2021-10-24
+  - S:\users\wanja\Dokumente\pre-rendering\master\renders\Rubbish\2021-10-24 16.45.33.00
+  - S:\users\wanja\Dokumente\pre-rendering\master\renders\Rubbish\2021-10-24 16.45.33.01
+  mapFiles:
+  - desert_new_540p
+  - room_simple_240x270
+  - room_simple_480x540
+  - room_simple_v2_270p
+  - room_simple_v2_540p
+  - room_simple_v2_720p
+  - 2021-10-16
+  - 2021-10-24
+  - 2021-10-24 16.45.33.00
+  - 2021-10-24 16.45.33.01
+  mapSelection: 2
   cacheSize: 10
-  predictionBlend: 0
+  predictionBlend: 0.75
   predictionDistance: 2
-  decodingThreads: 1
+  decodingThreads: 4
   geometryPercision: 0.75
   shaderDebug: 0
+  shaderDebugSelection: 0
   depthOfField: 0
   mistOffset: 1
   mistFalloff: 0.1
@@ -249,7 +272,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1294e014c405bac4a86ffd9f1f87b9f2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  speed: 7
+  speed: 5
   lookSpeed: 2
   lookXLimit: 75
 --- !u!143 &45530125

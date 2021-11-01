@@ -313,5 +313,5 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   shader: {fileID: 4800000, guid: dc9da0d4b7d16534ca6f5eff6393f697, type: 3}
-  values: 4f49d4021b013e25da1d8b5c77374007bc793c3dfe95b502
-  index: 2
+  values: 4833d4021b013e25
+  index: 0

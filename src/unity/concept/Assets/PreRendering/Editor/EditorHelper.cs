@@ -21,17 +21,6 @@ public static class EditorHelper
         GUILayout.EndHorizontal();
     }
 
-    public static void IntField(string name, ref int value, string tooltip, bool enabled = true)
-    {
-        BeginField(name, tooltip, ref value, enabled);
-
-        value = GUILayout.TextField(
-            value.ToString(), EditorStyles.numberField)
-            .ParseToInt();
-
-        EndField(enabled);
-    }
-
     public static void TextField(string name, ref string value, string tooltip, bool enabled = true)
     {
         BeginField(name, tooltip, ref value, enabled);
@@ -50,11 +39,11 @@ public static class EditorHelper
         EndField(enabled);
     }
 
-    public static void ShaderDebugField(string name, ref ShaderManager.ShaderDebugMode value, string tooltip, bool enabled = true)
+    public static void OptionField(string name, ref int value, string[] options, string tooltip, bool enabled = true)
     {
         BeginField(name, tooltip, ref value, enabled);
 
-        value = (ShaderManager.ShaderDebugMode)EditorGUILayout.EnumFlagsField(value);
+        value = EditorGUILayout.Popup(value, options);
 
         EndField(enabled);
     }
@@ -93,7 +82,7 @@ public static class EditorHelper
         EndField(enabled);
     }
 
-    public static int ParseToInt(this string str, int old = 0, int min = 0)
+    static int ParseToInt(this string str, int old = 0, int min = 0)
     {
         try
         {
@@ -105,7 +94,7 @@ public static class EditorHelper
         }
     }
 
-    public static float ParseToFloat(this string str, float old = 0, float min = 0)
+    static float ParseToFloat(this string str, float old = 0, float min = 0)
     {
         try
         {
