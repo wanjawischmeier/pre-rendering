@@ -2,8 +2,9 @@ using System;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Diagnostics;
+using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Debug = UnityEngine.Debug;
-using System.Threading.Tasks;
 
 namespace PreRendering
 {
@@ -29,6 +30,8 @@ namespace PreRendering
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         delegate void ReleaseBuffer();
         static ReleaseBuffer releaseBuffer;
+
+        public static NativeArray<uint> buffer;
 
         public delegate void ImageDecodedEvent(string path, DecodingStats stats);
         public static event ImageDecodedEvent ImageDecoded;
@@ -70,6 +73,21 @@ namespace PreRendering
 
             bufferPtr = initializeBuffer(samplePath, ref width, ref height, out bufferSize);
 
+            unsafe
+            {
+                buffer = NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<uint>(
+                    bufferPtr.ToPointer(),
+                    bufferSize * 2,
+                    Allocator.None);
+            }
+
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            NativeArrayUnsafeUtility.SetAtomicSafetyHandle(ref buffer, AtomicSafetyHandle.Create());
+#else
+#error The 'ENABLE_UNITY_COLLECTIONS_CHECKS' symbol needs to be set. Enable it under 'Project Settings/Player/Other Settings/Scripting Define Symbols'.
+#endif
+            readImageToBuffer("S:\\users\\wanja\\Dokumente\\pre-rendering/master/renders/room_simple_v2_270p/0000.png");
+
             imageWidth = width;
             imageHeight = height;
             totalSize = bufferSize * 4;
@@ -84,7 +102,7 @@ namespace PreRendering
                 timeDecoding.Start();
                 readImageToBuffer(path);
                 timeDecoding.Stop();
-
+                Debug.Log(buffer[0]);
                 Stopwatch timeCopying = new Stopwatch();
                 timeCopying.Start();
                 short[] temp = new short[totalSize];

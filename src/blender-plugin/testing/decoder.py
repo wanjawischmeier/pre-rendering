@@ -12,13 +12,14 @@ img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
 img = cv2.resize(img, (w, h))
 # up = cv2.resize(img, (1000, 500), interpolation=cv2.INTER_NEAREST)
 flat = img.flatten()
-rec = np.copy(img)
 
-for y in range(0, h):
-        for x in range(0, w):
-                rec[y][x] = flat[x + y * h  * 4]
+x = 5
+y = 2
+m = 8
+i = x + y * m
+v0 = flat[i * 4]
+v1 = img[y][x][0]
 
-cv2.imshow("Scaled", rec)
 cv2.waitKey()
 
 """

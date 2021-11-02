@@ -31,7 +31,7 @@ Shader "Hidden/ReadRawTex"
 
             uint2 unpack(uint v)
             {
-                return uint2(v >> 16, v & 0xFFFF);
+                return uint2(v & 0xFFFF, v >> 16);
             }
 
             v2f vert (appdata v)
@@ -45,24 +45,29 @@ Shader "Hidden/ReadRawTex"
             sampler2D _MainTex;
             uint2 res;
             StructuredBuffer<uint> Tex;
+            uint Idx;
+            half4 Pred;
 
             fixed4 frag(v2f i) : SV_Target
             {
-                float a = res.y / (float)res.x;
-                // (1 - a / (float)res.x) - i.uv.x,
-                // i.uv.y + (1 - a / (float)res.y)
                 int2 tc = round(
-                    float2(i.uv.xy) * res
+                    i.uv.xy * res
                 );
-
+                /*
                 uint c0 = Tex[(tc.x + tc.y * res.y) * 2];
                 uint c1 = Tex[(tc.x + tc.y * res.y) * 2 +1];
+                */
+
+                uint idx = tc.x + tc.y * res.x * 2;
+                uint c0 = Tex[idx];
+                uint c1 = Tex[idx +1];
 
                 uint2 v0 = unpack(c0);
                 uint2 v1 = unpack(c1);
 
-                float4 col = float4(v0, v1).bgra / 0xFFFF;
+                half4 col = half4(v0, v1) / 0xFFFF;
 
+                // return col == Pred ? fixed4(0, 1, 0, 1) : fixed4(1, 0, 0, 1);
                 return col;
             }
 
