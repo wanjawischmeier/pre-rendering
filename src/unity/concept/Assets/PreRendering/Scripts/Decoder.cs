@@ -10,33 +10,22 @@ namespace PreRendering
 {
     public static class Decoder
     {
-        [DllImport("kernel32.dll")]
-        static extern IntPtr LoadLibrary(string dllToLoad);
+        const string dllPath = "image-decoder.dll";
 
-        [DllImport("kernel32.dll")]
-        static extern IntPtr GetProcAddress(IntPtr hModule, string procedureName);
+        [DllImport(dllPath)]
+        static extern IntPtr InitializeBuffer(string samplePath, ref int width, ref int height, out int size);
 
-        [DllImport("kernel32.dll")]
-        static extern bool FreeLibrary(IntPtr hModule);
+        [DllImport(dllPath)]
+        static extern bool ReadImageToBuffer(string path);
 
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        delegate IntPtr InitializeBuffer(string samplePath, ref int width, ref int height, out int size);
-        static InitializeBuffer initializeBuffer;
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        delegate bool ReadImageToBuffer(string path);
-        static ReadImageToBuffer readImageToBuffer;
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        delegate void ReleaseBuffer();
-        static ReleaseBuffer releaseBuffer;
+        [DllImport(dllPath)]
+        static extern void ReleaseBuffer();
 
         public static NativeArray<uint> buffer;
 
         public delegate void ImageDecodedEvent(string path, DecodingStats stats);
         public static event ImageDecodedEvent ImageDecoded;
 
-        const string dllPath = "image-decoder.dll";
         static IntPtr dllPtr, bufferPtr;
         static int imageWidth, imageHeight, bufferSize, totalSize, channels;
 
@@ -61,17 +50,7 @@ namespace PreRendering
         public static void Initialize(
             string samplePath, int width = -1, int height = -1)
         {
-            dllPtr = LoadLibrary(dllPath);
-
-            IntPtr dllAddr;
-            dllAddr = GetProcAddress(dllPtr, "InitializeBuffer");
-            initializeBuffer = (InitializeBuffer)Marshal.GetDelegateForFunctionPointer(dllAddr, typeof(InitializeBuffer));
-            dllAddr = GetProcAddress(dllPtr, "ReadToBuffer");
-            readImageToBuffer = (ReadImageToBuffer)Marshal.GetDelegateForFunctionPointer(dllAddr, typeof(ReadImageToBuffer));
-            dllAddr = GetProcAddress(dllPtr, "ReleaseBuffer");
-            releaseBuffer = (ReleaseBuffer)Marshal.GetDelegateForFunctionPointer(dllAddr, typeof(ReleaseBuffer));
-
-            bufferPtr = initializeBuffer(samplePath, ref width, ref height, out bufferSize);
+            bufferPtr = InitializeBuffer(samplePath, ref width, ref height, out bufferSize);
 
             unsafe
             {
@@ -86,7 +65,7 @@ namespace PreRendering
 #else
 #error The 'ENABLE_UNITY_COLLECTIONS_CHECKS' symbol needs to be set. Enable it under 'Project Settings/Player/Other Settings/Scripting Define Symbols'.
 #endif
-            readImageToBuffer(samplePath);
+            ReadImageToBuffer(samplePath);
 
             imageWidth = width;
             imageHeight = height;
@@ -100,7 +79,7 @@ namespace PreRendering
             {
                 Stopwatch timeDecoding = new Stopwatch();
                 timeDecoding.Start();
-                readImageToBuffer(path);
+                ReadImageToBuffer(path);
                 timeDecoding.Stop();
                 Debug.Log(buffer[0]);
                 Stopwatch timeCopying = new Stopwatch();
@@ -144,11 +123,7 @@ namespace PreRendering
             Debug.Log(string.Format("Finished decoding\t({0})", t));
         }
 
-        public static void Deinitialize()
-        {
-            releaseBuffer();
-            FreeLibrary(dllPtr);
-        }
+        public static void Deinitialize() => ReleaseBuffer();
 
         public static uint Pack(ushort v0, ushort v1)
         {
