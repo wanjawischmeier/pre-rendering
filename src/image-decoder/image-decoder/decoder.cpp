@@ -6,6 +6,8 @@ using namespace std;
 ushort* InitializeBuffer(char* samplePath, int* width, int* height, int* size)
 {
     Mat img = imread(samplePath, IMREAD_UNCHANGED);
+    if (img.empty()) return nullptr;
+
     if (*width > 0 || *height > 0)
     {
         image_size = Size(*width, *height);
@@ -26,13 +28,17 @@ ushort* InitializeBuffer(char* samplePath, int* width, int* height, int* size)
     return pBuffer;
 }
 
-void ReadToBuffer(char* path)
+bool ReadToBuffer(char* path)
 {
     Mat img = imread(path, IMREAD_UNCHANGED);
+    if (img.empty()) return false;
+    
     if (buffer_resize)
         resize(img, img, image_size);
 
     memcpy(pBuffer, img.data, buffer_size);
+
+    return true;
 }
 
 void ReleaseBuffer()

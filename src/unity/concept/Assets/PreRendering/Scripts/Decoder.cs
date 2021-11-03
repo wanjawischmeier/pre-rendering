@@ -24,7 +24,7 @@ namespace PreRendering
         static InitializeBuffer initializeBuffer;
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        delegate void ReadImageToBuffer(string path);
+        delegate bool ReadImageToBuffer(string path);
         static ReadImageToBuffer readImageToBuffer;
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -86,7 +86,7 @@ namespace PreRendering
 #else
 #error The 'ENABLE_UNITY_COLLECTIONS_CHECKS' symbol needs to be set. Enable it under 'Project Settings/Player/Other Settings/Scripting Define Symbols'.
 #endif
-            readImageToBuffer("S:\\users\\wanja\\Dokumente\\pre-rendering/master/renders/room_simple_v2_270p/0000.png");
+            readImageToBuffer(samplePath);
 
             imageWidth = width;
             imageHeight = height;

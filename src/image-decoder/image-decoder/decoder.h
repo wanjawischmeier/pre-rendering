@@ -31,7 +31,7 @@ extern "C" DECODER ushort* InitializeBuffer(char* samplePath, int* width, int* h
 /// Decodes an image and writes it into the currently active buffer.
 /// </summary>
 /// <param name="path">The path to the image</param>
-extern "C" DECODER void ReadToBuffer(char* path);
+extern "C" DECODER bool ReadToBuffer(char* path);
 
 /// <summary>
 /// Releases the currently active buffer.

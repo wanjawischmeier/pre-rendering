@@ -313,11 +313,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   shader: {fileID: 4800000, guid: b1e49b08f9eba9b4b88210868e18f3d5, type: 3}
-  relativeImagePath: room_simple_v2_270p/0000.png
+  relativeImagePath: testing/indexing/raw_lookup.png
   res: {x: 8, y: 4}
-  pred: {x: 0, y: 0, z: 0, w: 0}
+  pred: {x: 1, y: 1, z: 1, w: 65535}
   threads: 1
-  idx: 2
+  idx: 0
   data: 
   reversed: 
   unpacked: 

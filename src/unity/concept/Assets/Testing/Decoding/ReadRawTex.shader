@@ -34,6 +34,11 @@ Shader "Hidden/ReadRawTex"
                 return uint2(v & 0xFFFF, v >> 16);
             }
 
+            float2 map(float2 value, float2 max1, float2 max2)
+            {
+                return value / max1 * max2;
+            }
+
             v2f vert (appdata v)
             {
                 v2f o;
@@ -47,12 +52,21 @@ Shader "Hidden/ReadRawTex"
             StructuredBuffer<uint> Tex;
             uint Idx;
             half4 Pred;
+            float2 TexelOffset;
 
             fixed4 frag(v2f i) : SV_Target
             {
-                int2 tc = round(
-                    i.uv.xy * res
-                );
+                int2 tc = (i.uv.xy * (res - 1)) / TexelOffset;
+                /*
+                1 - ((1 / (float2)res) + 1 / (float2)res / 2) / 2
+                1 - ((1 / x) + 1 / x / 2) / 2
+                x = 5
+                1 - ((1 / 5) + (1 / 5) / 2) / 2
+                1 / 5 = 0.2
+                1 - (0.2 + 0.2 / 2) / 2
+                0.2 + 0.2 / 2 = 0.2
+                1 - 0.2 / 2
+                */
                 /*
                 uint c0 = Tex[(tc.x + tc.y * res.y) * 2];
                 uint c1 = Tex[(tc.x + tc.y * res.y) * 2 +1];
@@ -65,10 +79,13 @@ Shader "Hidden/ReadRawTex"
                 uint2 v0 = unpack(c0);
                 uint2 v1 = unpack(c1);
 
-                half4 col = half4(v0, v1) / 0xFFFF;
-
-                // return col == Pred ? fixed4(0, 1, 0, 1) : fixed4(1, 0, 0, 1);
-                return col;
+                half4 col = half4(v1, v0) / 0xFFFF;
+                /*
+                fixed4 res = fixed4(0, 0, 0, 1);
+                if (col.a != Pred.a) res.r = 1;
+                */
+                // return col;
+                return fixed4(tc / ((float2)res - 1), 0, 1);
             }
 
             /*
