@@ -54,19 +54,16 @@ Shader "Hidden/ReadRawTex"
             }
 
             sampler2D _MainTex;
-            uint2 Res;
-            StructuredBuffer<uint> Tex;
-            uint Idx;
-            half4 Pred;
-            float2 TexelOffset;
+            StructuredBuffer<uint> RawTexture;
+            uint2 Resolution;
 
             fixed4 frag(v2f i) : SV_Target
             {
-                int2 tc = i.uv.xy * Res;
-                int idx = (tc.x + (Res.y - tc.y - 1) * Res.x) * 2;
+                int2 tc = i.uv.xy * Resolution;
+                int idx = (tc.x + (Resolution.y - tc.y - 1) * Resolution.x) * 2;
 
-                uint bgPacked = Tex[idx];
-                uint raPacked = Tex[idx + 1];
+                uint bgPacked = RawTexture[idx];
+                uint raPacked = RawTexture[idx + 1];
 
                 uint r, g, b, a;
 

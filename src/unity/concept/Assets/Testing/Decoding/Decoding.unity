@@ -227,7 +227,7 @@ GameObject:
   - component: {fileID: 1763965306}
   - component: {fileID: 1763965305}
   - component: {fileID: 1763965304}
-  - component: {fileID: 1763965307}
+  - component: {fileID: 1763965308}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -300,7 +300,7 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1763965307
+--- !u!114 &1763965308
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -309,14 +309,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 1763965303}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0cce38de8a421924190d8b1f84651f47, type: 3}
+  m_Script: {fileID: 11500000, guid: 186a65f5e768f04429ae27791eeee525, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   shader: {fileID: 4800000, guid: b1e49b08f9eba9b4b88210868e18f3d5, type: 3}
   relativeImagePath: testing/indexing/test.png
-  res: {x: 1920, y: 1080}
-  pred: {x: 1, y: 1, z: 1, w: 65535}
-  threads: 1
-  idx: 0
-  data: 
-  packedPixels: []
+  resolution: {x: 1920, y: 1080}
