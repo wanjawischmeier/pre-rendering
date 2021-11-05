@@ -17,7 +17,8 @@ public class FPSCounter : MonoBehaviour
         float fps = 1 / Time.unscaledDeltaTime;
         fpsTotal += fps;
         framesPassed++;
-        text.text = string.Format("FPS: {0}", Mathf.Round((fpsTotal / framesPassed * 100) / 100));
+
+        text.text = $"FPS: {Mathf.Round((fpsTotal / framesPassed * 100) / 100)}";
 
         if (framesPassed > smoothing)
         {

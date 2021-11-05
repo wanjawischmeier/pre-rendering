@@ -27,7 +27,7 @@ namespace PreRendering
         {
             mainPath = path;
             string rawConfigPath = Path.Combine(mainPath, ".mapconfig");
-            if (!File.Exists(rawConfigPath)) throw new Exception(string.Format("There is no '.mapconfig' file under {0}", rawConfigPath));
+            if (!File.Exists(rawConfigPath)) throw new Exception($"There is no '.mapconfig' file under {rawConfigPath}");
 
             string rawConfig = File.ReadAllText(rawConfigPath);
 

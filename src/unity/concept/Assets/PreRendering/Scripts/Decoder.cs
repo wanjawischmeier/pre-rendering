@@ -16,7 +16,7 @@ namespace PreRendering
         static extern IntPtr InitializeBuffer(string samplePath, ref int width, ref int height, out int size);
 
         [DllImport(dllPath)]
-        static extern bool ReadImageToBuffer(string path);
+        static extern bool ReadToBuffer(string path);
 
         [DllImport(dllPath)]
         static extern void ReleaseBuffer();
@@ -36,14 +36,12 @@ namespace PreRendering
 
             public override string ToString()
             {
-                return string.Format(
-                    "ThreadID:\t{0}\n" +
-                    "Decoding:\t{1}ms\n" +
-                    "Copying:\t{2}ms\n" +
-                    "Packing:\t{3}ms\n" +
-                    "Total:\t{4}ms",
-                    ThreadId, Decoding, Copying, Packing,
-                    Decoding + Copying + Packing);
+                return (
+                    $"ThreadID:\t{ThreadId}\n" +
+                    $"Decoding:\t{Decoding}ms\n" +
+                    $"Copying:\t{Copying}ms\n" +
+                    $"Packing:\t{Packing}ms\n" +
+                    $"Total:\t{Decoding + Copying + Packing}ms");
             }
         }
 
@@ -63,9 +61,10 @@ namespace PreRendering
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
             NativeArrayUnsafeUtility.SetAtomicSafetyHandle(ref buffer, AtomicSafetyHandle.Create());
 #else
-#error The 'ENABLE_UNITY_COLLECTIONS_CHECKS' symbol needs to be set. Enable it under 'Project Settings/Player/Other Settings/Scripting Define Symbols'.
+#error The 'ENABLE_UNITY_COLLECTIONS_CHECKS' macro is not defined
 #endif
-            ReadImageToBuffer(samplePath);
+
+            ReadToBuffer(samplePath);
 
             imageWidth = width;
             imageHeight = height;
@@ -74,12 +73,12 @@ namespace PreRendering
 
         public static void Decode(string path, ref uint[] data, CancellationToken token, int t = -1)
         {
-            Debug.Log(string.Format("Decoding\t\t({0})", t));
+            Debug.Log($"Decoding\t\t({t})");
             try
             {
                 Stopwatch timeDecoding = new Stopwatch();
                 timeDecoding.Start();
-                ReadImageToBuffer(path);
+                ReadToBuffer(path);
                 timeDecoding.Stop();
                 Debug.Log(buffer[0]);
                 Stopwatch timeCopying = new Stopwatch();
@@ -120,7 +119,7 @@ namespace PreRendering
                 Debug.LogError(e);
             }
 
-            Debug.Log(string.Format("Finished decoding\t({0})", t));
+            Debug.Log($"Finished decoding\t({t})");
         }
 
         public static void Deinitialize() => ReleaseBuffer();
@@ -132,8 +131,8 @@ namespace PreRendering
 
         public static void Unpack(uint v, out ushort v0, out ushort v1)
         {
-            v0 = (ushort)(v >> 16);
-            v1 = (ushort)(v & 0xFFFF);
+            v0 = (ushort)(v & 0xFFFF);
+            v1 = (ushort)(v >> 16);
         }
     }
 }

@@ -151,5 +151,10 @@ namespace PreRendering
 
             return false;
         }
+
+        public static float Normalize(this ushort value)
+        {
+            return value / (float)0xFFFF;
+        }
     }
 }

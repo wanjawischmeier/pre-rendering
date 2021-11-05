@@ -4,6 +4,14 @@ using System.Threading;
 using UnityEngine;
 using DecodingStats = PreRendering.Decoder.DecodingStats;
 
+[System.Serializable]
+public struct PackedPixel
+{
+    public uint Index, BG, RA;
+    public ushort R, G, B, A;
+    public Color color;
+}
+
 public class DecoderTest : MonoBehaviour
 {
     public Shader shader;
@@ -18,8 +26,8 @@ public class DecoderTest : MonoBehaviour
     CancellationTokenSource tokenSource;
     CancellationToken token;
     string imagePath;
-    public uint[] data, reversed;
-    public ushort[] unpacked;
+    public uint[] data;
+    public PackedPixel[] packedPixels;
 
     private void Start()
     {
@@ -33,27 +41,41 @@ public class DecoderTest : MonoBehaviour
         buffer = new ComputeBuffer(size, sizeof(uint));
         
         material = new Material(shader);
-
+        
         Vector2 texel = Vector2.one / (res - Vector2.one);
         Vector2 texelOffset = Vector2.one - texel + texel / 4;
-        material.SetVector("res", new Vector2(res.x, res.y));
+        material.SetVector("Res", new Vector2(res.x, res.y));
         material.SetVector("TexelOffset", texelOffset);
         material.SetBuffer("Tex", buffer);
-
+        
         Decoder.Initialize(imagePath, res.x, res.y);
         data = Decoder.buffer.ToArray();
 
-        reversed = new uint[data.Length];
-        unpacked = new ushort[data.Length * 2];
-        for (int i = 0; i < data.Length; i++)
+        packedPixels = new PackedPixel[data.Length / 2];
+        for (int i = 0; i < data.Length / 2; i++)
         {
-            Decoder.Unpack(data[i], out ushort v0, out ushort v1);
-            unpacked[i * 2]     = (ushort)(v1 / (float)0xFFFF * 0xFF);
-            unpacked[i * 2 + 1] = (ushort)(v0 / (float)0xFFFF * 0xFF);
-            reversed[i] = Decoder.Pack(v1, v0);
+            uint bg = data[i * 2];
+            uint ra = data[i * 2 + 1];
+
+            Decoder.Unpack(bg, out ushort b, out ushort g);
+            Decoder.Unpack(ra, out ushort r, out ushort a);
+            packedPixels[i] = new PackedPixel()
+            {
+                Index = (uint)i * 2,
+                BG = bg,
+                RA = ra,
+                R = r,
+                G = g,
+                B = b,
+                A = a,
+                color = new Color(
+                    r.Normalize(),
+                    g.Normalize(),
+                    b.Normalize(),
+                    a.Normalize())
+            };
         }
-
-
+        
         texture = new Texture2D(res.x, res.y);
         texture.filterMode = FilterMode.Point;
 
@@ -61,34 +83,31 @@ public class DecoderTest : MonoBehaviour
         {
             for (int y = 0; y < res.y; y++)
             {
-                int idx = x + y * res.x * 2;
+                int idx = (x + (res.y - 1 - y) * res.x) * 2;
 
-                uint raw0 = data[idx];
-                uint raw1 = data[idx + 1];
+                uint bg = data[idx];
+                uint ra = data[idx + 1];
 
-                Decoder.Unpack(raw0, out ushort v0, out ushort v1);
-                Decoder.Unpack(raw1, out ushort v2, out ushort v3);
+                Decoder.Unpack(bg, out ushort b, out ushort g);
+                Decoder.Unpack(ra, out ushort r, out ushort a);
 
-
-                Color col;
-
-                Vector3 uv = new Vector3(
-                    x / (float)res.x,
-                    y / (float)res.y);
-
-                col = new Color(uv.x, uv.y, 0);
-                // col = new Color(v0, v1, v2, v3);
+                Color col = new Color(
+                    r.Normalize(),
+                    g.Normalize(),
+                    b.Normalize(),
+                    a.Normalize());
 
                 texture.SetPixel(x, y, col);
             }
         }
         texture.Apply();
+        
         // buffer.SetData();
         /*
         Decoder.ImageDecoded += Decoder_ImageDecoded;
         for (int i = 0; i < threads; i++)
         {
-            Debug.Log(string.Format("Starting thread {0}", i));
+            Debug.Log($"Starting thread {i}");
             int j = i;
 
             Task.Run(() => Decoder.Decode(imagePath, ref data, token, j), token);
@@ -102,13 +121,13 @@ public class DecoderTest : MonoBehaviour
         material.SetVector("Pred", pred);
         if (Decoder.buffer.IsCreated) buffer.SetData(Decoder.buffer);
     }
-    /*
+    
     private void OnRenderImage(RenderTexture source, RenderTexture destination) =>
         Graphics.Blit(source, destination, material);
-    */
+    /*
     private void OnRenderImage(RenderTexture source, RenderTexture destination) =>
         Graphics.Blit(texture, destination);
-
+    */
     private void OnDestroy()
     {
         tokenSource.Cancel();
@@ -119,8 +138,8 @@ public class DecoderTest : MonoBehaviour
 
     private void Decoder_ImageDecoded(string path, DecodingStats stats)
     {
-        Debug.Log(string.Format(
-            "Decoded at {0}\n\nStats:\n{1}",
-            path, stats));
+        Debug.Log(
+            $"Decoded at {path}\n\n" +
+            $"Stats:\n{stats}");
     }
 }
