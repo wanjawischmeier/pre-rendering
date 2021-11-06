@@ -15,7 +15,7 @@ public class BasicDecoding : MonoBehaviour
     private void Start()
     {
         string rootPath = Application.dataPath.Split(new string[] { "pre-rendering" }, System.StringSplitOptions.None)[0];
-        imagePath = Path.Combine(rootPath, "pre-rendering/master/renders/", relativeImagePath);
+        imagePath = Path.Combine(rootPath, "pre-rendering/renders/", relativeImagePath);
 
         int size = resolution.x * resolution.y * 2;
         buffer = new ComputeBuffer(size, sizeof(uint));

@@ -33,17 +33,6 @@ namespace PreRendering
         {
             bufferPtr = InitializeBuffer(samplePath, ref width, ref height, out bufferSize);
             
-            unsafe
-            {
-                buffer = NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<uint>(
-                    bufferPtr.ToPointer(),
-                    bufferSize * 2,
-                    Allocator.None);
-            }
-
-#if ENABLE_UNITY_COLLECTIONS_CHECKS
-            NativeArrayUnsafeUtility.SetAtomicSafetyHandle(ref buffer, AtomicSafetyHandle.Create());
-#endif
 
             imageWidth = width;
             imageHeight = height;
