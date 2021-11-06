@@ -43,8 +43,6 @@ namespace PreRendering
 
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
             NativeArrayUnsafeUtility.SetAtomicSafetyHandle(ref buffer, AtomicSafetyHandle.Create());
-#else
-#error The 'ENABLE_UNITY_COLLECTIONS_CHECKS' macro is not defined
 #endif
 
             imageWidth = width;

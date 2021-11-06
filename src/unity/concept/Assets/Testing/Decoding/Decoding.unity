@@ -314,4 +314,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   shader: {fileID: 4800000, guid: b1e49b08f9eba9b4b88210868e18f3d5, type: 3}
   relativeImagePath: testing/indexing/test.png
-  resolution: {x: 1920, y: 1080}
+  resolution: {x: 8, y: 4}
