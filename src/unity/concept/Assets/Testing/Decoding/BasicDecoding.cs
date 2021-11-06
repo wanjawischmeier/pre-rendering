@@ -5,32 +5,47 @@ using System.IO;
 public class BasicDecoding : MonoBehaviour
 {
     public Shader shader;
-    public string relativeImagePath;
+    public string[] relativeImagePaths;
+    public int selected;
     public Vector2Int resolution;
 
     Material material;
     ComputeBuffer buffer;
-    string imagePath;
+    int depth, size;
+
+    const string repoName = "pre-rendering";
 
     private void Start()
     {
-        string rootPath = Application.dataPath.Split(new string[] { "pre-rendering" }, System.StringSplitOptions.None)[0];
-        imagePath = Path.Combine(rootPath, "pre-rendering/renders/", relativeImagePath);
+        depth = relativeImagePaths.Length;
+        string rootPath = Application.dataPath.Split(new string[] { repoName }, System.StringSplitOptions.None)[0];
+        string sampleImagePath = Path.Combine(rootPath, repoName, "renders", relativeImagePaths[0]);
 
-        int size = resolution.x * resolution.y * 2;
+        size = resolution.x * resolution.y * depth * 2;
         buffer = new ComputeBuffer(size, sizeof(uint));
-
+        
         material = new Material(shader);
 
         material.SetBuffer("RawTexture", buffer);
         material.SetVector("Resolution", new Vector2(resolution.x, resolution.y));
 
-        Decoder.Initialize(imagePath, resolution.x, resolution.y);
+        Decoder.Initialize(sampleImagePath, depth, resolution.x, resolution.y);
         Decoder.ImageDecoded += OnImageDecoded;
 
-        Decoder.Decode(imagePath);
+        for (int i = 0; i < depth; i++)
+        {
+            string imagePath = Path.Combine(rootPath, repoName, "renders", relativeImagePaths[i]);
+            Decoder.Decode(imagePath, i);
+        }
 
         buffer.SetData(Decoder.buffer);
+    }
+
+    private void Update()
+    {
+        if (selected < 0) selected = 0;
+        if (selected >= depth) selected = depth -1;
+        material.SetInt("Offset", resolution.x * resolution.y * selected);
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination) =>

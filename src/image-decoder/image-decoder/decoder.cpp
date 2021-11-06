@@ -3,15 +3,17 @@
 
 using namespace std;
 
-ushort* InitializeBuffer(char* samplePath, int* width, int* height, int* size)
+ushort* InitializeBuffer(char* samplePath, int* width, int* height, int depth)
 {
     Mat img = imread(samplePath, IMREAD_UNCHANGED);
-    if (img.empty()) return nullptr;
+
+    if (img.empty() || img.channels() != 4)
+        return nullptr;
 
     if (*width > 0 || *height > 0)
     {
-        image_size = Size(*width, *height);
-        resize(img, img, image_size);
+        image_resolution = Size(*width, *height);
+        resize(img, img, image_resolution);
         buffer_resize = true;
     }
     else
@@ -21,22 +23,23 @@ ushort* InitializeBuffer(char* samplePath, int* width, int* height, int* size)
         buffer_resize = false;
     }
 
-    *size = img.total();
-    buffer_size = img.total() * img.channels() * sizeof(ushort);
+    image_size = img.total() * 4;
+    buffer_depth = depth;
 
-    pBuffer = new ushort[buffer_size];
+    pBuffer = new ushort[image_size * buffer_depth];
     return pBuffer;
 }
 
-bool ReadToBuffer(char* path)
+bool ReadToBuffer(char* path, int index)
 {
     Mat img = imread(path, IMREAD_UNCHANGED);
     if (img.empty()) return false;
-    
-    if (buffer_resize)
-        resize(img, img, image_size);
 
-    memcpy(pBuffer, img.data, buffer_size);
+    if (buffer_resize)
+        resize(img, img, image_resolution);
+
+    size_t startIndex = (size_t)index * image_size;
+    memcpy(&pBuffer[startIndex], img.data, image_size * sizeof(ushort));
 
     return true;
 }
