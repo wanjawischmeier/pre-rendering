@@ -4,60 +4,41 @@ using UnityEngine.Networking;
 using System.Collections.Generic;
 using Object = UnityEngine.Object;
 using System.IO;
+using System.Threading;
 
 namespace PreRendering
 {
     /// <summary>
     /// A class that takes care of decoding images.
     /// This can be done asynchronously, (on multiple threads)
-    /// and directly into a <FrameBuffer>.
+    /// and directly into a buffer.
     /// </summary>
     public class DecodingThread
     {
         public int Pending { get { return pending.Count; } }
         public int Decoding { get { return decoding.Count; } }
 
-        Dictionary<string, Vector3> pending;
-        Dictionary<UnityWebRequestAsyncOperation, Vector3> decoding;
+        public bool isCanceled = false;
 
-        readonly TextureBuffer buffer;
+        Dictionary<string, Vector3> pending;
+        List<Vector3> decoding;
+
+        readonly RawTexture.Buffer buffer;
+        readonly CancellationToken cancellationToken;
         readonly int decodingThreads, maxPending;
 
-        public DecodingThread(TextureBuffer buffer, int decodingThreads, int maxPending)
+        public DecodingThread(RawTexture.Buffer buffer, CancellationToken cancellationToken, int decodingThreads, int maxPending)
         {
             this.buffer = buffer;
             this.decodingThreads = decodingThreads;
             this.maxPending = maxPending;
+            this.cancellationToken = cancellationToken;
 
             pending = new Dictionary<string, Vector3>();
-            decoding = new Dictionary<UnityWebRequestAsyncOperation, Vector3>();
+            decoding = new List<Vector3>();
+
+            Decoder.ImageDecoded += OnImageDecoded;
         }
-
-        ~DecodingThread() => Release();
-
-        public void Release()
-        {
-            foreach (var item in decoding)
-                item.Key.webRequest.Abort();
-            decoding.Clear();
-        }
-
-        public bool IsPending(string path)
-        {
-            return pending.Keys.Contains(path);
-        }
-
-        public bool IsDecoding(Vector3 vector)
-        {
-            return decoding.Values.Contains(vector);
-        }
-
-        public bool IsProcessing(string path, Vector3 value)
-        {
-            return IsPending(path) || IsDecoding(value);
-        }
-
-        public void ClearPending() => pending.Clear();
 
         public bool DecodeToBuffer(string path, Vector3 value)
         {
@@ -67,7 +48,7 @@ namespace PreRendering
             Texture2D texture = new Texture2D(0, 0, TextureFormat.ARGB32, false);
             texture.LoadImage(bytes);
 
-            buffer.Add(value, texture);
+            buffer.Add(value);
 
 #if UNITY_EDITOR
             Object.DestroyImmediate(texture);
@@ -82,11 +63,8 @@ namespace PreRendering
             if (IsDecoding(value)) return false;
             if (decoding.Count < decodingThreads)
             {
-                // Based on: https://stackoverflow.com/a/53770838/13215204
-                UnityWebRequest www = UnityWebRequestTexture.GetTexture(path);
-                var asyncOp = www.SendWebRequest();
-                decoding.Add(asyncOp, value);
-                asyncOp.completed += OnImageDecoded;
+                Decoder.Decode(path, 0);
+                decoding.Add(value);
             }
             else
             {
@@ -111,29 +89,41 @@ namespace PreRendering
             }
         }
 
-        private void OnImageDecoded(AsyncOperation obj)
+        private void OnImageDecoded(string path, int index, int threadId, long decodingTime)
         {
-            UnityWebRequestAsyncOperation asyncOp = (UnityWebRequestAsyncOperation)obj;
-
             // Prevents crash due to memory acess violation
             // (if some stuff has already been deallocated)
             if (decoding.Count == 0) return;
 
-            Vector3 vector = decoding[asyncOp];
+            Vector3 vector = Vector3.zero;
+            buffer.Add(index);
 
-            if (asyncOp.webRequest.result == UnityWebRequest.Result.Success)
+            decoding.Remove(vector);
+
+            if (cancellationToken.IsCancellationRequested)
             {
-                Texture2D texture = DownloadHandlerTexture.GetContent(asyncOp.webRequest);
-                buffer.Add(vector, texture);
-#if UNITY_EDITOR
-                Object.DestroyImmediate(texture);
-#else
-                Object.Destroy(texture);
-#endif
+                isCanceled = true;
+                return;
             }
 
-            decoding.Remove(asyncOp);
             DecodePending();
         }
+
+        public bool IsPending(string path)
+        {
+            return pending.Keys.Contains(path);
+        }
+
+        public bool IsDecoding(Vector3 vector)
+        {
+            return decoding.Contains(vector);
+        }
+
+        public bool IsProcessing(string path, Vector3 value)
+        {
+            return IsPending(path) || IsDecoding(value);
+        }
+
+        public void ClearPending() => pending.Clear();
     }
 }

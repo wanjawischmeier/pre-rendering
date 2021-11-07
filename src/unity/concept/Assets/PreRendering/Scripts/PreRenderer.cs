@@ -1,5 +1,8 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using UnityEngine;
 
 namespace PreRendering
@@ -44,8 +47,9 @@ namespace PreRendering
         Vector3 lastPosition = default;
 
         public Map map;
-        TextureBuffer buffer;
+        RawTexture.Buffer buffer;
         DecodingThread decoder;
+        CancellationTokenSource tokenSource;
         ShaderManager shaderManager;
         Camera mainCamera;
 
@@ -53,13 +57,14 @@ namespace PreRendering
 
         const float minimumPercision = 0.1f;
         const float maximumPercision = 1;
+        public const string repoName = "pre-rendering";
 
 
         private void Start()
         {
 #if UNITY_EDITOR
             string rootPath = Application.dataPath.Split(new string[] { "pre-rendering" }, System.StringSplitOptions.None)[0];
-            renderPath = Path.Combine(rootPath, "pre-rendering/master/renders");
+            renderPath = Path.Combine(rootPath, repoName, "renders");
 
             mapPath = Path.Combine(renderPath, mapPaths[mapSelection]);
 #else
@@ -81,9 +86,11 @@ namespace PreRendering
             Screen.SetResolution(screenResolution.width, screenResolution.height, true);
 #endif
 
-            buffer = new TextureBuffer(map.resolution.width, map.resolution.height, cacheSize);
-            decoder = new DecodingThread(buffer, decodingThreads, cacheSize);
-            shaderManager = new ShaderManager(buffer.textures, projectionResolution, map, cacheSize);
+            tokenSource = new CancellationTokenSource();
+            Decoder.Initialize(map.GetFileName(Vector3.zero), cacheSize);
+            buffer = new RawTexture.Buffer(Decoder.bufferPointer, map.resolution.width, map.resolution.height, cacheSize);
+            decoder = new DecodingThread(buffer, tokenSource.Token, decodingThreads, cacheSize);
+            shaderManager = new ShaderManager(buffer.computeBuffer, projectionResolution, map, cacheSize);
         }
 
         private void Update()
@@ -114,7 +121,7 @@ namespace PreRendering
             if (!buffer.ContainsAny(positions))
             {
                 temp = positions[0];
-                string path = map.offsets.GetFileName(mapPath, temp);
+                string path = map.GetFileName(temp);
                 decoder.DecodeToBuffer(path, temp);
                 positionOffset = temp;
             }
@@ -123,7 +130,7 @@ namespace PreRendering
             for (int i = cacheSize - 1; i >= 0; i--)
             {
                 temp = positions[i];
-                string path = map.offsets.GetFileName(mapPath, temp);
+                string path = map.GetFileName(temp);
 
                 if (buffer.Contains(temp))
                     positionOffset = temp;
@@ -153,9 +160,79 @@ namespace PreRendering
 
         private void OnDestroy()
         {
+            tokenSource.Cancel();
             buffer.Release();
-            decoder.Release();
             shaderManager.Release();
+        }
+    }
+
+    public static partial class Utility
+    {
+        /// <summary>
+        /// Estimates the resolution a panorama projected using gnomonic projection will have.
+        /// </summary>
+        public static Resolution EstimateScreenResolution(this Resolution resolution, float fov)
+        {
+            return EstimateScreenResolution(resolution.width, resolution.height, fov);
+        }
+
+        public static Resolution EstimateScreenResolution(int width, int height, float fov)
+        {
+            Resolution res = new Resolution
+            {
+                width = Mathf.RoundToInt(width * fov / 360),
+                height = Mathf.RoundToInt(height * fov / 180)
+            };
+            return res;
+        }
+
+        /// <summary>
+        /// Get the vectors that have the smallest distance to the specified target position.
+        /// These vectors originate from the 'position' vector and are ordered in an outwards spiraling pattern.
+        /// </summary>
+        /// <param name="amount">The desired length of the returned array.</param>
+        public static Vector3[] GetClosest(this Vector3[] vectors, Vector3 position, int amount)
+        {
+            return vectors
+                .OrderBy(x => Vector3.Distance(position, x))
+                .Take(amount)
+                .ToArray();
+        }
+
+        /// <summary>
+        /// Get the vectors that have the smallest distance to the specified target position.
+        /// These vectors originate from the 'position' vector and are ordered in an outwards spiraling pattern.
+        /// </summary>
+        /// <param name="amount">The desired length of the returned array.</param>
+        public static Vector3[] PredictClosest(this Vector3[] vectors, Vector3 oldPosition, Vector3 newPosition, int amount, float blend = 0.5f, float predictionDistance = 2)
+        {
+            return vectors
+                .OrderBy(x =>
+                {
+                    Vector3 P = oldPosition + predictionDistance * (newPosition - oldPosition);
+                    return (1 - blend) * Vector3.Distance(newPosition, x) + blend * Vector3.Distance(P, x);
+                })
+                .Take(amount)
+                .ToArray();
+        }
+
+        public static Resolution Multiply(this Resolution resolution, float value)
+        {
+            return new Resolution()
+            {
+                width = Mathf.RoundToInt(resolution.width * value),
+                height = Mathf.RoundToInt(resolution.height * value)
+            };
+        }
+
+        public static bool ContainsAny<T>(this IEnumerable<T> enumerable1, IEnumerable<T> enumerable2)
+        {
+            foreach (var item in enumerable1)
+            {
+                if (enumerable2.Contains(item)) return true;
+            }
+
+            return false;
         }
     }
 }

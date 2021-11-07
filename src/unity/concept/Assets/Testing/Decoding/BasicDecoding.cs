@@ -1,6 +1,8 @@
 using UnityEngine;
 using PreRendering;
 using System.IO;
+using System.Threading.Tasks;
+using System.Threading;
 
 public class BasicDecoding : MonoBehaviour
 {
@@ -10,8 +12,11 @@ public class BasicDecoding : MonoBehaviour
     public Vector2Int resolution;
 
     Material material;
-    ComputeBuffer buffer;
-    int depth, size;
+    RawTexture.Buffer buffer;
+    CancellationTokenSource tokenSource;
+    CancellationToken token;
+    int depth;
+    bool canceled = false;
 
     const string repoName = "pre-rendering";
 
@@ -21,28 +26,29 @@ public class BasicDecoding : MonoBehaviour
         string rootPath = Application.dataPath.Split(new string[] { repoName }, System.StringSplitOptions.None)[0];
         string sampleImagePath = Path.Combine(rootPath, repoName, "renders", relativeImagePaths[0]);
 
-        size = resolution.x * resolution.y * depth * 2;
-        buffer = new ComputeBuffer(size, sizeof(uint));
-        
-        material = new Material(shader);
-
-        material.SetBuffer("RawTexture", buffer);
-        material.SetVector("Resolution", new Vector2(resolution.x, resolution.y));
-
         Decoder.Initialize(sampleImagePath, depth, resolution.x, resolution.y);
         Decoder.ImageDecoded += OnImageDecoded;
 
-        for (int i = 0; i < depth; i++)
-        {
-            string imagePath = Path.Combine(rootPath, repoName, "renders", relativeImagePaths[i]);
-            Decoder.Decode(imagePath, i);
-        }
+        buffer = new RawTexture.Buffer(Decoder.bufferPointer, resolution.x, resolution.y, depth);
 
-        buffer.SetData(Decoder.buffer);
+        material = new Material(shader);
+        material.SetBuffer("RawTexture", buffer.computeBuffer);
+        material.SetVector("Resolution", new Vector2(resolution.x, resolution.y));
+
+        string imagePath = Path.Combine(rootPath, repoName, "renders", relativeImagePaths[0]);
+        tokenSource = new CancellationTokenSource();
+        token = tokenSource.Token;
+        Task.Run(() =>
+        {
+            Thread.CurrentThread.Priority = System.Threading.ThreadPriority.Lowest;
+            Decoder.Decode(imagePath, 0);
+        });
     }
 
     private void Update()
     {
+        buffer.Refresh();
+
         if (selected < 0) selected = 0;
         if (selected >= depth) selected = depth -1;
         material.SetInt("Offset", resolution.x * resolution.y * selected);
@@ -51,14 +57,28 @@ public class BasicDecoding : MonoBehaviour
     private void OnRenderImage(RenderTexture source, RenderTexture destination) =>
         Graphics.Blit(null, destination, material);
 
-    private void OnImageDecoded(string path, long decodingTime, int threadId)
+    private void OnImageDecoded(string path, int index, int threadId, long decodingTime)
     {
+        buffer.Add(index);
+
         string threadInfo = threadId == -1 ? "" : $"\t\t(ThreadID:{threadId})";
         Debug.Log($"Decoded {Path.GetFileName(path)} in {decodingTime}ms" + threadInfo);
+
+        if (token.IsCancellationRequested)
+        {
+            canceled = true;
+            return;
+        }
+
+        Thread.Sleep((int)decodingTime * 2);
+        Decoder.Decode(path, 0);
     }
 
     private void OnDestroy()
     {
+        tokenSource.Cancel();
+        while (!canceled) Thread.Sleep(10);
+
         Decoder.Deinitialize();
         buffer.Release();
     }

@@ -89,7 +89,7 @@ namespace PreRendering
         }
 
         public ShaderManager(
-            Texture2DArray textures, Resolution projectionResolution,
+            ComputeBuffer buffer, Resolution projectionResolution,
             Map map, int layerDepth)
         {
             this.map = map;
@@ -112,7 +112,7 @@ namespace PreRendering
             Shader.SetGlobalInt("MX_IDX", layerDepth);
             Shader.SetGlobalVector("InputArrayRes", new Vector2(map.resolution.width, map.resolution.height));
             Shader.SetGlobalVector("ProjectedRes", new Vector2(projection.width, projection.height));
-            Shader.SetGlobalTexture("_InputArray", textures);
+            Shader.SetGlobalBuffer("_InputBuffer", buffer);
             Shader.SetGlobalTexture("_Projection", projection);
         }
 

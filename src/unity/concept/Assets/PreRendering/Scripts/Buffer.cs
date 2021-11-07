@@ -7,16 +7,15 @@ namespace PreRendering
     /// <summary>
     /// An abstract class intended to buffer data.
     /// </summary>
-    /// <typeparam name="T1">The key under which objects can be stored inside the buffer.</typeparam>
-    /// <typeparam name="T2">The object type to be stored inside the buffer.</typeparam>
-    public abstract class Buffer<T1, T2> : IEnumerable<T1>
+    /// <typeparam name="T">The key under which objects can be stored inside the buffer.</typeparam>
+    public abstract class Buffer<T> : IEnumerable<T>
     {
-        public Dictionary<T1, int> reserved;
+        public Dictionary<T, int> reserved;
         public Queue<int> available;
 
         public Buffer(int cacheSize)
         {
-            reserved = new Dictionary<T1, int>(cacheSize);
+            reserved = new Dictionary<T, int>(cacheSize);
             available = new Queue<int>(cacheSize);
 
             for (int i = 0; i < cacheSize; i++) available.Enqueue(i);
@@ -27,7 +26,7 @@ namespace PreRendering
         /// </summary>
         /// <param name="index">The key under which the value is stored inside the buffer.</param>
         /// <returns>The index under which the element can be accessed</returns>
-        public int this[T1 index]
+        public int this[T index]
         {
             get
             {
@@ -39,7 +38,7 @@ namespace PreRendering
 
         public IEnumerator GetEnumerator() { return reserved.Keys.GetEnumerator(); }
 
-        IEnumerator<T1> IEnumerable<T1>.GetEnumerator() { return reserved.Keys.GetEnumerator(); }
+        IEnumerator<T> IEnumerable<T>.GetEnumerator() { return reserved.Keys.GetEnumerator(); }
 
         /// <summary>
         /// Add an element to the buffer
@@ -49,24 +48,24 @@ namespace PreRendering
         /// Returns false if there is already an element stored under the specified key
         /// and returns true otherwise.
         /// </returns>
-        public bool Add(T1 key, T2 value)
+        public bool Add(T key)
         {
             if (reserved.ContainsKey(key)) return false;
 
             if (available.Count == 0)
             {
-                T1 anyKey = Enumerable.ToArray(reserved.Keys)[0];
+                T anyKey = Enumerable.ToArray(reserved.Keys)[0];
                 Release(anyKey);
             }
 
             int index = available.Dequeue();
-            Add(index, value);
+            Add(index);
             reserved.Add(key, index);
 
             return true;
         }
 
-        public abstract void Add(int index, T2 value);
+        public abstract void Add(int index);
 
         /// <summary>
         /// Release an element from the buffer. This won't immediately remove it though,
@@ -78,7 +77,7 @@ namespace PreRendering
         /// Returns false if the buffer doesn't countain the specified key,
         /// returns true otherwise.
         /// </returns>
-        public bool Release(T1 key)
+        public bool Release(T key)
         {
             if (!reserved.ContainsKey(key)) return false;
             

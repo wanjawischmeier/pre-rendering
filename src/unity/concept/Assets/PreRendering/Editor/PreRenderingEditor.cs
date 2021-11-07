@@ -17,8 +17,8 @@ public class PreRenderingEditor : Editor
         if (renderer.editorAreas == null || renderer.editorAreas.Length == 0)
             renderer.editorAreas = new bool[3];
 
-        renderer.renderPath = Application.dataPath.Split(new string[] { "pre-rendering" }, StringSplitOptions.None)[0];
-        renderer.renderPath = Path.Combine(renderer.renderPath, "pre-rendering/master/renders");
+        renderer.renderPath = Application.dataPath.Split(new string[] { PreRenderer.repoName }, StringSplitOptions.None)[0];
+        renderer.renderPath = Path.Combine(renderer.renderPath, PreRenderer.repoName, "renders");
 
         string[] mapConfigs = Directory.GetFiles(renderer.renderPath, ".mapconfig", SearchOption.AllDirectories);
 

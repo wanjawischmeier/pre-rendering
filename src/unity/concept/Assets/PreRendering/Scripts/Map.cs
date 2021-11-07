@@ -48,7 +48,7 @@ namespace PreRendering
             offsets = config.offsets;
             Verify();
 
-            string sampleTexturePath = config.offsets.GetFileName(mainPath, config.offsets[0]);
+            string sampleTexturePath = GetFileName(config.offsets[0]);
             Texture2D texture = Utility.LoadTexture(sampleTexturePath);
 
             resolution = new Resolution() { width = texture.width, height = texture.height };
@@ -65,7 +65,7 @@ namespace PreRendering
 
             for (int i = 0; i < offsets.Length; i++)
             {
-                string offsetPath = offsets.GetFileName(mainPath, offsets[i]);
+                string offsetPath = GetFileName(offsets[i]);
                 if (!File.Exists(offsetPath))
                     missingFiles.Add(Path.GetFileName(offsetPath));
             }
@@ -96,6 +96,40 @@ namespace PreRendering
 
             if (errorLog != "")
                 throw new Exception(errorLog, new Exception(mapError + "Certain values are missing."));
+        }
+
+        /// <summary>
+        /// Get a file name for a vector, based on a root directory.
+        /// The vector has to be contained inside the vector array this method extends from.
+        /// </summary>
+        public string GetFileName(Vector3 vector)
+        {
+            int index = Array.IndexOf(offsets, vector);
+            return Utility.GetFileName(mainPath, index);
+        }
+    }
+
+    /// <summary>
+    /// Contains all static helper functions used inside the 'PreRendering' namespace.
+    /// </summary>
+    public static partial class Utility
+    {
+        public static string GetFileName(string path, int index)
+        {
+            return Path.Combine(path, index.ToString().PadLeft(4, '0') + ".png");
+        }
+
+        /// <summary>
+        /// Loads an image into a texture.
+        /// !IMPORTANT! The returned texture will always be in the RGBA32 format.
+        /// </summary>
+        /// <param name="path">The path of the image file</param>
+        public static Texture2D LoadTexture(string path)
+        {
+            byte[] rawTexture = File.ReadAllBytes(path);
+            Texture2D reader = new Texture2D(0, 0);
+            reader.LoadImage(rawTexture);
+            return reader;
         }
     }
 }
