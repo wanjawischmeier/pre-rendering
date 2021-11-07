@@ -50,7 +50,7 @@ namespace PreRendering
         /// <param name="path">The path to the image</param>
         /// <param name="index">The buffer position it should be written to.</param>
         /// <param name="threadId">The id will be passed to the ImageDecoded event.</param>
-        public static bool Decode(string path, int index, int threadId = -1)
+        public static bool Decode(string path, int index, int threadId = 0)
         {
             Stopwatch decodingTime = new Stopwatch();
             bool result;

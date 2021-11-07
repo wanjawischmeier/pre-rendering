@@ -1,8 +1,7 @@
-using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace PreRendering
@@ -49,7 +48,6 @@ namespace PreRendering
         public Map map;
         RawTexture.Buffer buffer;
         DecodingThread decoder;
-        CancellationTokenSource tokenSource;
         ShaderManager shaderManager;
         Camera mainCamera;
 
@@ -86,10 +84,9 @@ namespace PreRendering
             Screen.SetResolution(screenResolution.width, screenResolution.height, true);
 #endif
 
-            tokenSource = new CancellationTokenSource();
             Decoder.Initialize(map.GetFileName(Vector3.zero), cacheSize);
             buffer = new RawTexture.Buffer(Decoder.bufferPointer, map.resolution.width, map.resolution.height, cacheSize);
-            decoder = new DecodingThread(buffer, tokenSource.Token, decodingThreads, cacheSize);
+            decoder = new DecodingThread(buffer, decodingThreads, cacheSize);
             shaderManager = new ShaderManager(buffer.computeBuffer, projectionResolution, map, cacheSize);
         }
 
@@ -139,6 +136,7 @@ namespace PreRendering
             }
 
             // Project
+            buffer.Refresh();
             shaderManager.PositionOffset = positionOffset;
             shaderManager.Project(
                 Mathf.RoundToInt(projectionResolution.width),
@@ -160,7 +158,7 @@ namespace PreRendering
 
         private void OnDestroy()
         {
-            tokenSource.Cancel();
+            decoder.Release();
             buffer.Release();
             shaderManager.Release();
         }

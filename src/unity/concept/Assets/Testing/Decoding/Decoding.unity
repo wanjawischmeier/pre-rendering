@@ -213,7 +213,5 @@ MonoBehaviour:
   shader: {fileID: 4800000, guid: b1e49b08f9eba9b4b88210868e18f3d5, type: 3}
   relativeImagePaths:
   - testing/indexing/raw_lookup.png
-  - testing/indexing/test.png
-  - testing/indexing/raw_lookup.png
   selected: 0
-  resolution: {x: 5120, y: 1440}
+  resolution: {x: 512, y: 144}

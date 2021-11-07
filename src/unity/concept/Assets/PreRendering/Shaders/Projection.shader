@@ -17,6 +17,7 @@ Shader "PreRendering/Projection"
 
             #include "UnityCG.cginc"
             #include "ProjectionHelper.cginc"
+            #include "RawSampler.cginc"
 
             struct appdata
             {

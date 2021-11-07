@@ -1,10 +1,11 @@
 using UnityEngine;
 using System.Linq;
-using UnityEngine.Networking;
 using System.Collections.Generic;
 using Object = UnityEngine.Object;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
+using ThreadPriority = System.Threading.ThreadPriority;
 
 namespace PreRendering
 {
@@ -18,21 +19,21 @@ namespace PreRendering
         public int Pending { get { return pending.Count; } }
         public int Decoding { get { return decoding.Count; } }
 
-        public bool isCanceled = false;
+        bool cancelRequest;
 
         Dictionary<string, Vector3> pending;
         List<Vector3> decoding;
 
         readonly RawTexture.Buffer buffer;
-        readonly CancellationToken cancellationToken;
+        readonly ThreadPriority priority;
         readonly int decodingThreads, maxPending;
 
-        public DecodingThread(RawTexture.Buffer buffer, CancellationToken cancellationToken, int decodingThreads, int maxPending)
+        public DecodingThread(RawTexture.Buffer buffer, int decodingThreads, int maxPending, ThreadPriority priority = ThreadPriority.Lowest)
         {
             this.buffer = buffer;
             this.decodingThreads = decodingThreads;
             this.maxPending = maxPending;
-            this.cancellationToken = cancellationToken;
+            this.priority = priority;
 
             pending = new Dictionary<string, Vector3>();
             decoding = new List<Vector3>();
@@ -40,7 +41,9 @@ namespace PreRendering
             Decoder.ImageDecoded += OnImageDecoded;
         }
 
-        public bool DecodeToBuffer(string path, Vector3 value)
+        ~DecodingThread() => Release();
+
+        public bool DecodeToBuffer(string path, Vector3 key)
         {
             if (!File.Exists(path)) return false;
 
@@ -48,7 +51,7 @@ namespace PreRendering
             Texture2D texture = new Texture2D(0, 0, TextureFormat.ARGB32, false);
             texture.LoadImage(bytes);
 
-            buffer.Add(value);
+            buffer.Add(key);
 
 #if UNITY_EDITOR
             Object.DestroyImmediate(texture);
@@ -58,19 +61,23 @@ namespace PreRendering
             return true;
         }
         
-        public bool DecodeToBufferAsync(string path, Vector3 value, bool allowPending = true)
+        public bool DecodeToBufferAsync(string path, Vector3 key, bool allowPending = true)
         {
-            if (IsDecoding(value)) return false;
+            if (IsDecoding(key)) return false;
             if (decoding.Count < decodingThreads)
             {
-                Decoder.Decode(path, 0);
-                decoding.Add(value);
+                Task.Run(() =>
+                {
+                    Thread.CurrentThread.Priority = priority;
+                    Decoder.Decode(path, 0);
+                });
+                decoding.Add(key);
             }
             else
             {
                 if (allowPending && !IsPending(path) && pending.Count < maxPending)
                 {
-                    pending.Add(path, value);
+                    pending.Add(path, key);
                 }
             }
 
@@ -83,7 +90,7 @@ namespace PreRendering
 
             foreach (var item in temp)
             {
-                if (decoding.Count >= decodingThreads) break;
+                if (decoding.Count >= decodingThreads || cancelRequest) break;
                 DecodeToBufferAsync(item.Key, item.Value, false);
                 pending.Remove(item.Key);
             }
@@ -94,19 +101,13 @@ namespace PreRendering
             // Prevents crash due to memory acess violation
             // (if some stuff has already been deallocated)
             if (decoding.Count == 0) return;
-
-            Vector3 vector = Vector3.zero;
             buffer.Add(index);
 
-            decoding.Remove(vector);
+            Debug.Log($"Decoded {Path.GetFileName(path)} in {decodingTime}ms to position {index}\t\t(ThreadID:{threadId})");
 
-            if (cancellationToken.IsCancellationRequested)
-            {
-                isCanceled = true;
-                return;
-            }
-
-            DecodePending();
+            decoding.Remove(buffer.ElementAt(index));
+            Debug.Log(decoding.Count);
+            if (!cancelRequest) DecodePending();
         }
 
         public bool IsPending(string path)
@@ -125,5 +126,21 @@ namespace PreRendering
         }
 
         public void ClearPending() => pending.Clear();
+
+        public void Release()
+        {
+            cancelRequest = true;
+            while (true)
+            {
+                if (decoding.Count == 0) break;
+                else
+                {
+                    foreach (Vector3 key in decoding)
+                        Debug.Log($"Waiting for key {key}");
+                }
+                Thread.Sleep(10);
+            }
+            Decoder.Deinitialize();
+        }
     }
 }

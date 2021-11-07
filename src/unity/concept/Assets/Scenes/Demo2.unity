@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.44657874, g: 0.49641258, b: 0.5748172, a: 1}
+  m_IndirectSpecularColor: {r: 0.44657826, g: 0.49641263, b: 0.57481676, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -222,18 +222,34 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   editorAreas: 010101
-  renderPath: S:/users/wanja/Dokumente/pre-rendering/master/renders
+  renderPath: C:/Users/wanja/Documents/dev/pre-rendering\renders
   mapPaths:
-  - S:\users\wanja\Dokumente\pre-rendering\master\renders\desert_new_540p
-  - S:\users\wanja\Dokumente\pre-rendering\master\renders\room_simple_240x270
-  - S:\users\wanja\Dokumente\pre-rendering\master\renders\room_simple_480x540
-  - S:\users\wanja\Dokumente\pre-rendering\master\renders\room_simple_v2_270p
-  - S:\users\wanja\Dokumente\pre-rendering\master\renders\room_simple_v2_540p
-  - S:\users\wanja\Dokumente\pre-rendering\master\renders\room_simple_v2_720p
-  - S:\users\wanja\Dokumente\pre-rendering\master\renders\Rubbish\2021-10-16
-  - S:\users\wanja\Dokumente\pre-rendering\master\renders\Rubbish\2021-10-24
-  - S:\users\wanja\Dokumente\pre-rendering\master\renders\Rubbish\2021-10-24 16.45.33.00
-  - S:\users\wanja\Dokumente\pre-rendering\master\renders\Rubbish\2021-10-24 16.45.33.01
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\desert_new_540p
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\room_simple_240x270
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\room_simple_480x540
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\room_simple_v2_270p
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\room_simple_v2_540p
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\room_simple_v2_720p
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-17
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-17 12.34.56.00
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-17 12.34.57.00
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-19
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-24\cubes_single_frame_270s
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-24\cubes_single_frame_540p
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-24\desert-new
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-24\desert_540s
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-24\desert_new_270s
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-24\distancetest
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-24\first_render_landscape_540s
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-24\land
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-24\room_simple_single_720p
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-24\test
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-11-01
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-11-01 14.50.21.00
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-11-01 14.50.21.01
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-11-01 14.50.21.02
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-11-01 14.50.21.03
+  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-11-01 17.53.06.00
   mapFiles:
   - desert_new_540p
   - room_simple_240x270
@@ -241,10 +257,26 @@ MonoBehaviour:
   - room_simple_v2_270p
   - room_simple_v2_540p
   - room_simple_v2_720p
-  - 2021-10-16
-  - 2021-10-24
-  - 2021-10-24 16.45.33.00
-  - 2021-10-24 16.45.33.01
+  - 2021-10-17
+  - 2021-10-17 12.34.56.00
+  - 2021-10-17 12.34.57.00
+  - 2021-10-19
+  - cubes_single_frame_270s
+  - cubes_single_frame_540p
+  - desert-new
+  - desert_540s
+  - desert_new_270s
+  - distancetest
+  - first_render_landscape_540s
+  - land
+  - room_simple_single_720p
+  - test
+  - 2021-11-01
+  - 2021-11-01 14.50.21.00
+  - 2021-11-01 14.50.21.01
+  - 2021-11-01 14.50.21.02
+  - 2021-11-01 14.50.21.03
+  - 2021-11-01 17.53.06.00
   mapSelection: 2
   cacheSize: 10
   predictionBlend: 0.75
