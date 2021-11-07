@@ -1,10 +1,10 @@
-using UnityEngine;
-using System.Linq;
 using System.Collections.Generic;
-using Object = UnityEngine.Object;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using UnityEngine;
+using Object = UnityEngine.Object;
 using ThreadPriority = System.Threading.ThreadPriority;
 
 namespace PreRendering
@@ -19,14 +19,12 @@ namespace PreRendering
         public int Pending { get { return pending.Count; } }
         public int Decoding { get { return decoding.Count; } }
 
-        bool cancelRequest;
-
-        Dictionary<string, Vector3> pending;
-        List<Vector3> decoding;
-
-        readonly RawTexture.Buffer buffer;
-        readonly ThreadPriority priority;
-        readonly int decodingThreads, maxPending;
+        private bool cancelRequest;
+        private readonly Dictionary<string, Vector3> pending;
+        private readonly List<Vector3> decoding;
+        private readonly RawTexture.Buffer buffer;
+        private readonly ThreadPriority priority;
+        private readonly int decodingThreads, maxPending;
 
         public DecodingThread(RawTexture.Buffer buffer, int decodingThreads, int maxPending, ThreadPriority priority = ThreadPriority.Lowest)
         {
@@ -58,7 +56,7 @@ namespace PreRendering
 #endif
             return true;
         }
-        
+
         public bool DecodeToBufferAsync(string path, Vector3 key, bool allowPending = true)
         {
             if (IsDecoding(key)) return false;

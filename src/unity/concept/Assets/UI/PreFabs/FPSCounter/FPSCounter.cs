@@ -4,10 +4,10 @@ using UnityEngine.UI;
 [RequireComponent(typeof(Text))]
 public class FPSCounter : MonoBehaviour
 {
-    Text text;
-    const int Smoothing = 10;
-    int framesPassed = 0;
-    float fpsTotal = 0;
+    private Text text;
+    private const int Smoothing = 10;
+    private int framesPassed = 0;
+    private float fpsTotal = 0;
 
     private void Start() =>
         text = GetComponent<Text>();

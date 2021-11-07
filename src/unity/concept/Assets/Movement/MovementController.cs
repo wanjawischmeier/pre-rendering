@@ -7,10 +7,9 @@ public class MovementController : MonoBehaviour
     public float speed = 7.0f;
     public float lookSpeed = 2.0f;
     public float lookXLimit = 45.0f;
-
-    CharacterController characterController;
-    Vector3 moveDirection = Vector3.zero;
-    float rotationX = 0, rotationY = 0;
+    private CharacterController characterController;
+    private Vector3 moveDirection = Vector3.zero;
+    private float rotationX = 0, rotationY = 0;
 
     private void Start() =>
         characterController = GetComponent<CharacterController>();

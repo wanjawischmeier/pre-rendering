@@ -80,7 +80,7 @@ namespace PreRendering
         public bool Release(T key)
         {
             if (!reserved.ContainsKey(key)) return false;
-            
+
             int index = reserved[key];
             available.Enqueue(index);
             reserved.Remove(key);

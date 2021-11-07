@@ -1,28 +1,28 @@
 using System;
-using System.Runtime.InteropServices;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Debug = UnityEngine.Debug;
 
 namespace PreRendering
 {
     public static class Decoder
     {
-        const string DllPath = "image-decoder.dll";
+        private const string DllPath = "image-decoder.dll";
 
         [DllImport(DllPath)]
-        static extern IntPtr InitializeBuffer(string samplePath, ref int width, ref int height, int depth);
+        private static extern IntPtr InitializeBuffer(string samplePath, ref int width, ref int height, int depth);
 
         [DllImport(DllPath)]
-        static extern bool ReadToBuffer(string path, int index);
+        private static extern bool ReadToBuffer(string path, int index);
 
         [DllImport(DllPath)]
-        static extern bool ReleaseBuffer();
+        private static extern bool ReleaseBuffer();
 
         public delegate void ImageDecodedEvent(string path, int index, int threadId, long decodingTime);
         public static event ImageDecodedEvent ImageDecoded;
 
         public static IntPtr bufferPointer;
-        static int imageWidth, imageHeight;
+        private static int imageWidth, imageHeight;
 
         /// <summary>
         /// Initializes the buffer.

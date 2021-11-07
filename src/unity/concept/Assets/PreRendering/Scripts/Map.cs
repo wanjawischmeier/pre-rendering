@@ -19,9 +19,8 @@ namespace PreRendering
         public readonly int mxWidth;
         public readonly Resolution resolution;
         public readonly Vector3[] offsets;
-        readonly string mainPath;
-
-        const string MapError = "The map file is incomplete or corrupt. ";
+        private readonly string mainPath;
+        private const string MapError = "The map file is incomplete or corrupt. ";
 
         public Map(string path)
         {

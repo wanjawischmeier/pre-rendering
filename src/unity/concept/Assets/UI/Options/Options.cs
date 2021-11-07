@@ -1,13 +1,12 @@
 using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class Options : MonoBehaviour
 {
-    InputField screenResolutionWidth, screenResolutionHeight;
-    Text cacheSizeValue;
-
-    Resolution nativeResolution;
+    private InputField screenResolutionWidth, screenResolutionHeight;
+    private Text cacheSizeValue;
+    private Resolution nativeResolution;
 
     private void Start()
     {
@@ -51,7 +50,7 @@ public class Options : MonoBehaviour
         {
             screenResolutionWidth.interactable = false;
             screenResolutionHeight.interactable = false;
-            
+
             screenResolutionWidth.text = nativeResolution.width.ToString();
             screenResolutionHeight.text = nativeResolution.height.ToString();
         }

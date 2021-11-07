@@ -71,12 +71,12 @@ namespace PreRendering
             set { postProcessingMaterial.SetFloat("MIST_OFFSET", value); }
         }
 
-        Shader projectionShader;
-        Shader postProcessingShader;
-        Material projectionMaterial;
-        Material postProcessingMaterial;
-        RenderTexture projection;
-        Map map;
+        private readonly Shader projectionShader;
+        private readonly Shader postProcessingShader;
+        private readonly Material projectionMaterial;
+        private readonly Material postProcessingMaterial;
+        private readonly RenderTexture projection;
+        private readonly Map map;
 
         public enum ShaderDebugMode
         {

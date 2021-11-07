@@ -4,8 +4,8 @@ using UnityEngine;
 
 public static class EditorHelper
 {
-    const float SpacerLabel = 120;
-    const float SpacerValue = 60;
+    private const float SpacerLabel = 120;
+    private const float SpacerValue = 60;
 
     public static void BeginField<T>(string name, string tooltip, ref T value, bool enabled = true)
     {
@@ -81,7 +81,7 @@ public static class EditorHelper
         EndField(enabled);
     }
 
-    static int ParseToInt(this string str, int old = 0, int min = 0)
+    private static int ParseToInt(this string str, int old = 0, int min = 0)
     {
         try
         {
@@ -93,7 +93,7 @@ public static class EditorHelper
         }
     }
 
-    static float ParseToFloat(this string str, float old = 0, float min = 0)
+    private static float ParseToFloat(this string str, float old = 0, float min = 0)
     {
         try
         {

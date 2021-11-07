@@ -1,7 +1,6 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace PreRendering
@@ -20,7 +19,7 @@ namespace PreRendering
         public string[] mapPaths;
         public string[] mapFiles;
         public int mapSelection;
-        string mapPath;
+        private string mapPath;
 
         // Decoder
         public int cacheSize = 10;
@@ -41,14 +40,14 @@ namespace PreRendering
         public MovementController controller;
         public Resolution projectionResolution;
         public Resolution screenResolution;
-        Vector3 positionOffset = default;
-        Vector3 lastPosition = default;
+        private Vector3 positionOffset = default;
+        private Vector3 lastPosition = default;
 
         public Map map;
-        RawTexture.Buffer buffer;
-        DecodingThread decoder;
-        ShaderManager shaderManager;
-        Camera mainCamera;
+        private RawTexture.Buffer buffer;
+        private DecodingThread decoder;
+        private ShaderManager shaderManager;
+        private Camera mainCamera;
 
         public int pending, decoding;
         public const string RepoName = "pre-rendering";
@@ -109,7 +108,7 @@ namespace PreRendering
             // Clear old pending positions if the player has moved
             if (transform.position != lastPosition) decoder.ClearPending();
             lastPosition = transform.position;
-            
+
             // Load the closest image synchronously if it isn't available yet
             if (!buffer.ContainsAny(positions))
             {
@@ -118,7 +117,7 @@ namespace PreRendering
                 decoder.DecodeToBuffer(path, temp);
                 positionOffset = temp;
             }
-            
+
             // Load the closest images into the buffer asynchronously
             for (int i = cacheSize - 1; i >= 0; i--)
             {

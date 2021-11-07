@@ -1,6 +1,6 @@
-using UnityEngine;
 using PreRendering;
 using System.IO;
+using UnityEngine;
 
 public class BasicDecoding : MonoBehaviour
 {
@@ -9,13 +9,11 @@ public class BasicDecoding : MonoBehaviour
     public int selected;
     public Vector2Int resolution;
     public uint[] data;
-
-    Material material;
-    RawTexture.Buffer buffer;
-    DecodingThread decoder;
-    int depth;
-
-    const string RepoName = "pre-rendering";
+    private Material material;
+    private RawTexture.Buffer buffer;
+    private DecodingThread decoder;
+    private int depth;
+    private const string RepoName = "pre-rendering";
 
     private void Start()
     {
@@ -26,7 +24,7 @@ public class BasicDecoding : MonoBehaviour
         Decoder.Initialize(sampleImagePath, depth, resolution.x, resolution.y);
         buffer = new RawTexture.Buffer(Decoder.bufferPointer, resolution.x, resolution.y, depth);
         decoder = new DecodingThread(buffer, depth, depth);
-        
+
         material = new Material(shader);
         material.SetBuffer("RawTexture", buffer.computeBuffer);
         material.SetVector("Resolution", new Vector2(resolution.x, resolution.y));
@@ -44,7 +42,7 @@ public class BasicDecoding : MonoBehaviour
         buffer.Refresh();
 
         if (selected < 0) selected = 0;
-        if (selected >= depth) selected = depth -1;
+        if (selected >= depth) selected = depth - 1;
         material.SetInt("Offset", resolution.x * resolution.y * selected);
     }
 

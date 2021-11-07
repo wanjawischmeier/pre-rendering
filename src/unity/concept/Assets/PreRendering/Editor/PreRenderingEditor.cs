@@ -1,14 +1,14 @@
-using UnityEditor;
 using PreRendering;
-using UnityEngine;
-using System.IO;
 using System;
+using System.IO;
+using UnityEditor;
+using UnityEngine;
 
 [CustomEditor(typeof(PreRenderer))]
 public class PreRenderingEditor : Editor
 {
-    const float SpacerMedium = 20;
-    readonly string[] shaderDebugModes = Enum.GetNames(typeof(ShaderManager.ShaderDebugMode));
+    private const float SpacerMedium = 20;
+    private readonly string[] shaderDebugModes = Enum.GetNames(typeof(ShaderManager.ShaderDebugMode));
 
     private void OnValidate()
     {
@@ -99,7 +99,7 @@ public class PreRenderingEditor : Editor
         EditorGUILayout.EndFoldoutHeaderGroup();
 
 
-        
+
 
         renderer.editorAreas[2] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.editorAreas[2], "Projection & Post Processing");
 

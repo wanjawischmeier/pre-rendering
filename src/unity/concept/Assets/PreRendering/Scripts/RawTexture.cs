@@ -17,7 +17,7 @@ namespace PreRendering
         {
             public NativeArray<uint> nativeBuffer;
             public ComputeBuffer computeBuffer;
-            List<int> toCopy;
+            private readonly List<int> toCopy;
 
             public Buffer(IntPtr bufferPointer, int width, int height, int depth, Format format = Format.RGBA64) : base(depth)
             {
