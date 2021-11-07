@@ -7,18 +7,18 @@ using System;
 [CustomEditor(typeof(PreRenderer))]
 public class PreRenderingEditor : Editor
 {
-    const float spacer_medium = 20;
+    const float SpacerMedium = 20;
     readonly string[] shaderDebugModes = Enum.GetNames(typeof(ShaderManager.ShaderDebugMode));
 
     private void OnValidate()
     {
-        PreRenderer renderer = (PreRenderer)target;
+        var renderer = (PreRenderer)target;
 
         if (renderer.editorAreas == null || renderer.editorAreas.Length == 0)
             renderer.editorAreas = new bool[3];
 
-        renderer.renderPath = Application.dataPath.Split(new string[] { PreRenderer.repoName }, StringSplitOptions.None)[0];
-        renderer.renderPath = Path.Combine(renderer.renderPath, PreRenderer.repoName, "renders");
+        renderer.renderPath = Application.dataPath.Split(new string[] { PreRenderer.RepoName }, StringSplitOptions.None)[0];
+        renderer.renderPath = Path.Combine(renderer.renderPath, PreRenderer.RepoName, "renders");
 
         string[] mapConfigs = Directory.GetFiles(renderer.renderPath, ".mapconfig", SearchOption.AllDirectories);
 
@@ -34,7 +34,7 @@ public class PreRenderingEditor : Editor
 
     public override void OnInspectorGUI()
     {
-        PreRenderer renderer = (PreRenderer)target;
+        var renderer = (PreRenderer)target;
         bool playing = Application.isPlaying;
 
         renderer.editorAreas[0] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.editorAreas[0], "Map");
@@ -50,7 +50,7 @@ public class PreRenderingEditor : Editor
                 "The name of the folder the '.mapconfig' file is contained in. " +
                 "This folder has to be inside the 'renders' parent folder.", !playing);
 
-            GUILayout.Space(spacer_medium);
+            GUILayout.Space(SpacerMedium);
         }
 
         EditorGUILayout.EndFoldoutHeaderGroup();
@@ -93,7 +93,7 @@ public class PreRenderingEditor : Editor
                     "", 0, renderer.decodingThreads, false);
             }
 
-            GUILayout.Space(spacer_medium);
+            GUILayout.Space(SpacerMedium);
         }
 
         EditorGUILayout.EndFoldoutHeaderGroup();

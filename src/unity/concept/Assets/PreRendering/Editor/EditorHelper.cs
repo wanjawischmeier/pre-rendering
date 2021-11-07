@@ -1,17 +1,16 @@
 using System;
-using PreRendering;
 using UnityEditor;
 using UnityEngine;
 
 public static class EditorHelper
 {
-    const float spacer_label = 120;
-    const float spacer_value = 60;
+    const float SpacerLabel = 120;
+    const float SpacerValue = 60;
 
     public static void BeginField<T>(string name, string tooltip, ref T value, bool enabled = true)
     {
         GUILayout.BeginHorizontal(new GUIContent("", tooltip), GUIStyle.none);
-        GUILayout.Label(name, GUILayout.ExpandWidth(true), GUILayout.MaxWidth(spacer_label));
+        GUILayout.Label(name, GUILayout.ExpandWidth(true), GUILayout.MaxWidth(SpacerLabel));
         if (!enabled) EditorGUI.BeginDisabledGroup(true);
     }
 
@@ -57,7 +56,7 @@ public static class EditorHelper
         value = GUILayout.TextField(
             value.ToString(),
             EditorStyles.numberField,
-            GUILayout.MaxWidth(spacer_value))
+            GUILayout.MaxWidth(SpacerValue))
             .ParseToInt(value, min);
 
         value = Mathf.Clamp(value, min, max);
@@ -74,7 +73,7 @@ public static class EditorHelper
         value = GUILayout.TextField(
             (Mathf.Round(value * 10000) / 10000f).ToString(),
             EditorStyles.numberField,
-            GUILayout.MaxWidth(spacer_value))
+            GUILayout.MaxWidth(SpacerValue))
             .ParseToFloat(value, min);
 
         value = Mathf.Clamp(value, min, max);

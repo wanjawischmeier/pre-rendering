@@ -1,7 +1,6 @@
 using UnityEngine;
 using PreRendering;
 using System.IO;
-using System.Threading;
 
 public class BasicDecoding : MonoBehaviour
 {
@@ -9,22 +8,22 @@ public class BasicDecoding : MonoBehaviour
     public string[] relativeImagePaths;
     public int selected;
     public Vector2Int resolution;
+    public uint[] data;
 
     Material material;
     RawTexture.Buffer buffer;
     DecodingThread decoder;
     int depth;
 
-    const string repoName = "pre-rendering";
+    const string RepoName = "pre-rendering";
 
     private void Start()
     {
         depth = relativeImagePaths.Length;
-        string rootPath = Application.dataPath.Split(new string[] { repoName }, System.StringSplitOptions.None)[0];
-        string sampleImagePath = Path.Combine(rootPath, repoName, "renders", relativeImagePaths[0]);
+        string rootPath = Application.dataPath.Split(new string[] { RepoName }, System.StringSplitOptions.None)[0];
+        string sampleImagePath = Path.Combine(rootPath, RepoName, "renders", relativeImagePaths[0]);
 
         Decoder.Initialize(sampleImagePath, depth, resolution.x, resolution.y);
-
         buffer = new RawTexture.Buffer(Decoder.bufferPointer, resolution.x, resolution.y, depth);
         decoder = new DecodingThread(buffer, depth, depth);
         
@@ -34,7 +33,7 @@ public class BasicDecoding : MonoBehaviour
 
         for (int i = 0; i < depth; i++)
         {
-            string imagePath = Path.Combine(rootPath, repoName, "renders", relativeImagePaths[i]);
+            string imagePath = Path.Combine(rootPath, RepoName, "renders", relativeImagePaths[i]);
             Debug.Log($"Starting thread {i}");
             decoder.DecodeToBufferAsync(imagePath, Vector3.zero);
         }

@@ -21,7 +21,7 @@ namespace PreRendering
         public readonly Vector3[] offsets;
         readonly string mainPath;
 
-        const string mapError = "The map file is incomplete or corrupt. ";
+        const string MapError = "The map file is incomplete or corrupt. ";
 
         public Map(string path)
         {
@@ -39,7 +39,7 @@ namespace PreRendering
             }
             catch (ArgumentException e)
             {
-                throw new Exception(e.Message, new Exception(mapError + "Unable to parse the configuration file."));
+                throw new Exception(e.Message, new Exception(MapError + "Unable to parse the configuration file."));
             }
 
             nClip = config.nClip;
@@ -56,8 +56,8 @@ namespace PreRendering
 
         private void Verify()
         {
-            List<string> missingAttributes = new List<string>();
-            List<string> missingFiles = new List<string>();
+            var missingAttributes = new List<string>();
+            var missingFiles = new List<string>();
 
             if (nClip == 0) missingAttributes.Add("(float) nClip");
             if (fClip == 0) missingAttributes.Add("(float) fClip");
@@ -70,7 +70,7 @@ namespace PreRendering
                     missingFiles.Add(Path.GetFileName(offsetPath));
             }
 
-            string errorLog = "";
+            var errorLog = "";
 
             if (missingAttributes.Count > 0)
             {
@@ -95,7 +95,7 @@ namespace PreRendering
             }
 
             if (errorLog != "")
-                throw new Exception(errorLog, new Exception(mapError + "Certain values are missing."));
+                throw new Exception(errorLog, new Exception(MapError + "Certain values are missing."));
         }
 
         /// <summary>
@@ -127,7 +127,7 @@ namespace PreRendering
         public static Texture2D LoadTexture(string path)
         {
             byte[] rawTexture = File.ReadAllBytes(path);
-            Texture2D reader = new Texture2D(0, 0);
+            var reader = new Texture2D(0, 0);
             reader.LoadImage(rawTexture);
             return reader;
         }

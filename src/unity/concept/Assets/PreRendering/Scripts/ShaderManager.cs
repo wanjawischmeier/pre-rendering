@@ -116,8 +116,6 @@ namespace PreRendering
             Shader.SetGlobalTexture("_Projection", projection);
         }
 
-        ~ShaderManager() => Release();
-
         /// <summary>
         /// Releases all compute buffers and textures used at runtime.
         /// </summary>

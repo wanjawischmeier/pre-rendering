@@ -38,16 +38,6 @@ namespace PreRendering
                 computeBuffer = new ComputeBuffer(size, sizeof(uint));
                 toCopy = new List<int>();
             }
-            
-            ~Buffer() => Release();
-
-            public void Release() => computeBuffer.Release();
-
-            public override void Add(int index)
-            {
-                if (nativeBuffer == null) return;
-                toCopy.Add(index);
-            }
 
             public void Refresh()
             {
@@ -57,6 +47,14 @@ namespace PreRendering
                     toCopy.RemoveAt(i);
                 }
             }
+
+            public override void Add(int index)
+            {
+                if (nativeBuffer == null) return;
+                toCopy.Add(index);
+            }
+
+            public void Release() => computeBuffer.Release();
         }
     }
 }

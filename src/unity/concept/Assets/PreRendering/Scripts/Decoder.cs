@@ -7,16 +7,16 @@ namespace PreRendering
 {
     public static class Decoder
     {
-        const string dllPath = "image-decoder.dll";
+        const string DllPath = "image-decoder.dll";
 
-        [DllImport(dllPath)]
+        [DllImport(DllPath)]
         static extern IntPtr InitializeBuffer(string samplePath, ref int width, ref int height, int depth);
 
-        [DllImport(dllPath)]
+        [DllImport(DllPath)]
         static extern bool ReadToBuffer(string path, int index);
 
-        [DllImport(dllPath)]
-        static extern void ReleaseBuffer();
+        [DllImport(DllPath)]
+        static extern bool ReleaseBuffer();
 
         public delegate void ImageDecodedEvent(string path, int index, int threadId, long decodingTime);
         public static event ImageDecodedEvent ImageDecoded;
@@ -52,7 +52,7 @@ namespace PreRendering
         /// <param name="threadId">The id will be passed to the ImageDecoded event.</param>
         public static bool Decode(string path, int index, int threadId = 0)
         {
-            Stopwatch decodingTime = new Stopwatch();
+            var decodingTime = new Stopwatch();
             bool result;
 
             try
@@ -74,6 +74,12 @@ namespace PreRendering
         /// <summary>
         /// Releases the currently active buffer.
         /// </summary>
-        public static void Deinitialize() => ReleaseBuffer();
+        public static void Deinitialize()
+        {
+            if (!ReleaseBuffer())
+                Debug.LogError(
+                    "Failed to release raw texture buffer with pointer " +
+                    $"<{(bufferPointer.ToInt32() == 0 ? "nullptr" : bufferPointer.ToString())}>");
+        }
     }
 }

@@ -5,7 +5,7 @@ using UnityEngine.UI;
 public class FPSCounter : MonoBehaviour
 {
     Text text;
-    const int smoothing = 10;
+    const int Smoothing = 10;
     int framesPassed = 0;
     float fpsTotal = 0;
 
@@ -20,7 +20,7 @@ public class FPSCounter : MonoBehaviour
 
         text.text = $"FPS: {Mathf.Round((fpsTotal / framesPassed * 100) / 100)}";
 
-        if (framesPassed > smoothing)
+        if (framesPassed > Smoothing)
         {
             framesPassed = 0;
             fpsTotal = 0;

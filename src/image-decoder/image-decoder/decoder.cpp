@@ -27,6 +27,7 @@ ushort* InitializeBuffer(char* samplePath, int* width, int* height, int depth)
     buffer_depth = depth;
 
     pBuffer = new ushort[image_size * buffer_depth];
+    buffer_allocated = true;
     return pBuffer;
 }
 
@@ -44,7 +45,10 @@ bool ReadToBuffer(char* path, int index)
     return true;
 }
 
-void ReleaseBuffer()
+bool ReleaseBuffer()
 {
+    if (!buffer_allocated) return false;
+
     delete pBuffer;
+    return true;
 }

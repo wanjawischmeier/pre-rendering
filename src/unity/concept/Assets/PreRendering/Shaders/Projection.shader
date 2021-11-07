@@ -46,8 +46,7 @@ Shader "PreRendering/Projection"
             float3 Position, PositionOffset;
             Texture2DArray<half4> _InputArray;
 
-            const float2 size = float2(2.0, 0.0);
-            const float3 off = float3(-1, 0, 1);
+            const float2 Size = float2(2.0, 0.0);
 
             fixed4 frag (v2f i) : SV_Target
             {

@@ -20,7 +20,6 @@ namespace PreRendering
         public string[] mapPaths;
         public string[] mapFiles;
         public int mapSelection;
-        string mapName;
         string mapPath;
 
         // Decoder
@@ -52,17 +51,14 @@ namespace PreRendering
         Camera mainCamera;
 
         public int pending, decoding;
-
-        const float minimumPercision = 0.1f;
-        const float maximumPercision = 1;
-        public const string repoName = "pre-rendering";
+        public const string RepoName = "pre-rendering";
 
 
         private void Start()
         {
 #if UNITY_EDITOR
             string rootPath = Application.dataPath.Split(new string[] { "pre-rendering" }, System.StringSplitOptions.None)[0];
-            renderPath = Path.Combine(rootPath, repoName, "renders");
+            renderPath = Path.Combine(rootPath, RepoName, "renders");
 
             mapPath = Path.Combine(renderPath, mapPaths[mapSelection]);
 #else
@@ -176,7 +172,7 @@ namespace PreRendering
 
         public static Resolution EstimateScreenResolution(int width, int height, float fov)
         {
-            Resolution res = new Resolution
+            var res = new Resolution
             {
                 width = Mathf.RoundToInt(width * fov / 360),
                 height = Mathf.RoundToInt(height * fov / 180)
