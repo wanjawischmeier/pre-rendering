@@ -42,18 +42,19 @@ Shader "PreRendering/Projection"
 
             int IMG_IDX, MX_IDX;
             float NCLIP, FCLIP;
-            float2 InputArrayRes, ProjectionRes, ProjectedRes;
+            float2 InputArrayResolution, ProjectionRes, ProjectedRes;
             float3 Position, PositionOffset;
-            Texture2DArray<half4> _InputArray;
+            StructuredBuffer<uint> InputArray;
 
             const float2 Size = float2(2.0, 0.0);
 
             fixed4 frag (v2f i) : SV_Target
             {
-                float3 inpIdx = float3(i.uv * InputArrayRes, IMG_IDX);
                 float2 ll1 = normalizedToLatLon(i.uv.yx);
     
-                float CP = _InputArray[inpIdx].a * (FCLIP - NCLIP) + NCLIP;
+                float CP = rawTex2DA(InputArray, i.uv, InputArrayResolution, IMG_IDX);
+                CP *= (FCLIP - NCLIP) + NCLIP;
+
                 float2 ll2 = translateLatLon(ll1, Position - PositionOffset, CP);
                 ll2 = latLonToNormalized(ll2);
                 

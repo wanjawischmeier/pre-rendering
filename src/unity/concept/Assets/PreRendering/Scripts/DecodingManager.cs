@@ -14,25 +14,25 @@ namespace PreRendering
     /// This can be done asynchronously, (on multiple threads)
     /// and directly into a buffer.
     /// </summary>
-    public class DecodingThread
+    public class DecodingManager
     {
         public int Pending { get { return pending.Count; } }
         public int Decoding { get { return decoding.Count; } }
 
+        public ThreadPriority priority;
         private bool cancelRequest;
         private readonly Dictionary<string, Vector3> pending;
         private readonly List<Vector3> decoding;
         private readonly RawTexture.Buffer buffer;
-        private readonly ThreadPriority priority;
         private readonly int decodingThreads, maxPending;
 
-        public DecodingThread(RawTexture.Buffer buffer, int decodingThreads, int maxPending, ThreadPriority priority = ThreadPriority.Lowest)
+        public DecodingManager(RawTexture.Buffer buffer, int decodingThreads, int maxPending)
         {
             this.buffer = buffer;
             this.decodingThreads = decodingThreads;
             this.maxPending = maxPending;
-            this.priority = priority;
 
+            priority = ThreadPriority.Lowest;
             pending = new Dictionary<string, Vector3>();
             decoding = new List<Vector3>();
 

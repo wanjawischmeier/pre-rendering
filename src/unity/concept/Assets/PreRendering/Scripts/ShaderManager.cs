@@ -110,7 +110,7 @@ namespace PreRendering
             Shader.SetGlobalFloat("NCLIP", map.nClip);
             Shader.SetGlobalFloat("FCLIP", map.fClip);
             Shader.SetGlobalInt("MX_IDX", layerDepth);
-            Shader.SetGlobalVector("InputArrayRes", new Vector2(map.resolution.width, map.resolution.height));
+            Shader.SetGlobalVector("InputArrayResolution", new Vector2(map.resolution.width, map.resolution.height));
             Shader.SetGlobalVector("ProjectedRes", new Vector2(projection.width, projection.height));
             Shader.SetGlobalBuffer("_InputBuffer", buffer);
             Shader.SetGlobalTexture("_Projection", projection);

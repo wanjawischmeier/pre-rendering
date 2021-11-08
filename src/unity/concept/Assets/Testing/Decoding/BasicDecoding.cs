@@ -10,7 +10,7 @@ public class BasicDecoding : MonoBehaviour
     public Vector2Int resolution;
     private Material material;
     private RawTexture.Buffer buffer;
-    private DecodingThread decoder;
+    private DecodingManager decoder;
     private int depth;
     private const string RepoName = "pre-rendering";
 
@@ -22,7 +22,7 @@ public class BasicDecoding : MonoBehaviour
 
         Decoder.Initialize(sampleImagePath, depth, resolution.x, resolution.y);
         buffer = new RawTexture.Buffer(Decoder.bufferPointer, resolution.x, resolution.y, depth);
-        decoder = new DecodingThread(buffer, 1, depth);
+        decoder = new DecodingManager(buffer, 1, depth);
 
         material = new Material(shader);
         material.SetBuffer("RawTexture", buffer.computeBuffer);
@@ -42,7 +42,7 @@ public class BasicDecoding : MonoBehaviour
 
         if (selected < 0) selected = 0;
         if (selected >= depth) selected = depth - 1;
-        material.SetInt("Offset", resolution.x * resolution.y * selected);
+        material.SetInt("TextureOffset", resolution.x * resolution.y * selected);
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination) =>

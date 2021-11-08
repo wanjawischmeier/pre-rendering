@@ -25,7 +25,7 @@ half4 rawTex2D(StructuredBuffer<uint> rawTexture, float2 uv, uint2 resolution, u
     return normalizeColor16b(r, g, b, a);
 }
 
-half rawTex2DAlpha(StructuredBuffer<uint> rawTexture, float2 uv, uint2 resolution, uint offset)
+half rawTex2DA(StructuredBuffer<uint> rawTexture, float2 uv, uint2 resolution, uint offset)
 {
     int2 tc = uv * resolution;
     int idx = (tc.x + (resolution.y - tc.y - 1) * resolution.x + offset) * 2;

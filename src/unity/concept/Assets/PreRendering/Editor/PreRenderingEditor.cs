@@ -3,23 +3,27 @@ using System;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
+using ThreadPriority = System.Threading.ThreadPriority;
 
 [CustomEditor(typeof(PreRenderer))]
 public class PreRenderingEditor : Editor
 {
     private const float SpacerMedium = 20;
+    private readonly string[] decodingPriorityModes = Enum.GetNames(typeof(ThreadPriority));
     private readonly string[] shaderDebugModes = Enum.GetNames(typeof(ShaderManager.ShaderDebugMode));
+
+    private void OnEnable() => OnValidate();
 
     private void OnValidate()
     {
         var renderer = (PreRenderer)target;
 
-        if (renderer.editorAreas == null || renderer.editorAreas.Length == 0)
-            renderer.editorAreas = new bool[3];
+        if (renderer.foldouts == null || renderer.foldouts.Length == 0)
+            renderer.foldouts = new bool[3];
 
         renderer.renderPath = Application.dataPath.Split(new string[] { PreRenderer.RepoName }, StringSplitOptions.None)[0];
         renderer.renderPath = Path.Combine(renderer.renderPath, PreRenderer.RepoName, "renders");
-
+        
         string[] mapConfigs = Directory.GetFiles(renderer.renderPath, ".mapconfig", SearchOption.AllDirectories);
 
         renderer.mapPaths = new string[mapConfigs.Length];
@@ -37,9 +41,9 @@ public class PreRenderingEditor : Editor
         var renderer = (PreRenderer)target;
         bool playing = Application.isPlaying;
 
-        renderer.editorAreas[0] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.editorAreas[0], "Map");
+        renderer.foldouts[0] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.foldouts[0], "Map");
 
-        if (renderer.editorAreas[0])
+        if (renderer.foldouts[0])
         {
             EditorHelper.TextField(
                 "Render Path", ref renderer.renderPath,
@@ -58,15 +62,10 @@ public class PreRenderingEditor : Editor
 
 
 
-        renderer.editorAreas[1] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.editorAreas[1], "Decoder");
+        renderer.foldouts[1] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.foldouts[1], "Decoder");
 
-        if (renderer.editorAreas[1])
+        if (renderer.foldouts[1])
         {
-            EditorHelper.IntSlider(
-                "Cache Size", ref renderer.cacheSize,
-                "The size of the texture cache.",
-                1, 100, !playing);
-
             EditorHelper.FloatSlider(
                 "Prediction Blend", ref renderer.predictionBlend,
                 "How much the predicted future position should affect distance calculations.",
@@ -76,6 +75,15 @@ public class PreRenderingEditor : Editor
                 "Prediction Distance", ref renderer.predictionDistance,
                 "How far away the predicted position should be from the current position.",
                 1, 4, renderer.predictionBlend != 0);
+
+            EditorHelper.IntSlider(
+                "Cache Size", ref renderer.cacheSize,
+                "The size of the texture cache.",
+                1, 100, !playing);
+
+            EditorHelper.OptionField(
+                "Decoding Priority", ref renderer.decodingPrioritySelection, decodingPriorityModes,
+                "How much the threads used for decoding should be prioritized by the cpu.");
 
             EditorHelper.IntSlider(
                 "Decoding Threads", ref renderer.decodingThreads,
@@ -101,9 +109,9 @@ public class PreRenderingEditor : Editor
 
 
 
-        renderer.editorAreas[2] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.editorAreas[2], "Projection & Post Processing");
+        renderer.foldouts[2] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.foldouts[2], "Projection & Post Processing");
 
-        if (renderer.editorAreas[2])
+        if (renderer.foldouts[2])
         {
             EditorHelper.FloatSlider(
                 "Geometry Percision", ref renderer.geometryPercision,

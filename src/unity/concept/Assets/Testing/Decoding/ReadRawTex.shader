@@ -41,11 +41,11 @@ Shader "Hidden/ReadRawTex"
             sampler2D _MainTex;
             StructuredBuffer<uint> RawTexture;
             uint2 Resolution;
-            uint Offset;
+            uint TextureOffset;
 
             fixed4 frag(v2f i) : SV_Target
             {
-                half4 col = rawTex2D(RawTexture, i.uv, Resolution, Offset);
+                half4 col = rawTex2D(RawTexture, i.uv, Resolution, TextureOffset);
                 return col;
             }
 

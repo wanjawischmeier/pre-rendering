@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
+using ThreadPriority = System.Threading.ThreadPriority;
 
 namespace PreRendering
 {
@@ -11,7 +12,7 @@ namespace PreRendering
     public class PreRenderer : MonoBehaviour
     {
 #if UNITY_EDITOR
-        public bool[] editorAreas;
+        public bool[] foldouts;
 #endif
 
         // Map
@@ -22,9 +23,11 @@ namespace PreRendering
         private string mapPath;
 
         // Decoder
-        public int cacheSize = 10;
         public float predictionBlend = 0.75f;
         public float predictionDistance = 2;
+        public int cacheSize = 10;
+        public ThreadPriority decodingPriority = ThreadPriority.BelowNormal;
+        public int decodingPrioritySelection;
         public int decodingThreads = 4;
 
         // Projection & Post Processing
@@ -45,7 +48,7 @@ namespace PreRendering
 
         public Map map;
         private RawTexture.Buffer buffer;
-        private DecodingThread decoder;
+        private DecodingManager decoder;
         private ShaderManager shaderManager;
         private Camera mainCamera;
 
@@ -81,7 +84,7 @@ namespace PreRendering
 
             Decoder.Initialize(map.GetFileName(Vector3.zero), cacheSize);
             buffer = new RawTexture.Buffer(Decoder.bufferPointer, map.resolution.width, map.resolution.height, cacheSize);
-            decoder = new DecodingThread(buffer, decodingThreads, cacheSize);
+            decoder = new DecodingManager(buffer, decodingThreads, cacheSize);
             shaderManager = new ShaderManager(buffer.computeBuffer, projectionResolution, map, cacheSize);
         }
 
@@ -90,6 +93,7 @@ namespace PreRendering
 #if !UNITY_EDITOR
             if (Input.GetKeyDown(KeyCode.Escape)) Application.Quit();
 #endif
+            decoder.priority = decodingPriority;
 
             // Set shader values
             shaderManager.Position = transform.position;
