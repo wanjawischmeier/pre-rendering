@@ -214,6 +214,6 @@ MonoBehaviour:
   relativeImagePaths:
   - testing/indexing/raw_lookup.png
   - testing/indexing/test.png
+  - testing/indexing/test2.png
   selected: 0
   resolution: {x: 512, y: 144}
-  data: 

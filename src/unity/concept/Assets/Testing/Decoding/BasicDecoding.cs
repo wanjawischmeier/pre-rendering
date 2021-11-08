@@ -8,7 +8,6 @@ public class BasicDecoding : MonoBehaviour
     public string[] relativeImagePaths;
     public int selected;
     public Vector2Int resolution;
-    public uint[] data;
     private Material material;
     private RawTexture.Buffer buffer;
     private DecodingThread decoder;
@@ -23,7 +22,7 @@ public class BasicDecoding : MonoBehaviour
 
         Decoder.Initialize(sampleImagePath, depth, resolution.x, resolution.y);
         buffer = new RawTexture.Buffer(Decoder.bufferPointer, resolution.x, resolution.y, depth);
-        decoder = new DecodingThread(buffer, depth, depth);
+        decoder = new DecodingThread(buffer, 1, depth);
 
         material = new Material(shader);
         material.SetBuffer("RawTexture", buffer.computeBuffer);
@@ -32,8 +31,8 @@ public class BasicDecoding : MonoBehaviour
         for (int i = 0; i < depth; i++)
         {
             string imagePath = Path.Combine(rootPath, RepoName, "renders", relativeImagePaths[i]);
-            Debug.Log($"Starting thread {i}");
-            decoder.DecodeToBufferAsync(imagePath, Vector3.zero);
+            Debug.Log($"Request {i} with path {imagePath}");
+            decoder.DecodeToBufferAsync(imagePath, new Vector3(0, 0, i));
         }
     }
 

@@ -63,16 +63,21 @@ namespace PreRendering
             if (decoding.Count < decodingThreads)
             {
                 decoding.Add(key);
+                buffer.Add(key);
+                int index = buffer[key];
+
                 Task.Run(() =>
                 {
+                    Debug.Log($"Decoding {path}");
                     Thread.CurrentThread.Priority = priority;
-                    Decoder.Decode(path, 0);
+                    Decoder.Decode(path, index);
                 });
             }
             else
             {
                 if (allowPending && !IsPending(path) && pending.Count < maxPending)
                 {
+                    Debug.Log($"Pending {path}");
                     pending.Add(path, key);
                 }
             }
@@ -82,31 +87,26 @@ namespace PreRendering
 
         public void DecodePending()
         {
-            var temp = new Dictionary<string, Vector3>(pending);
+            var item = pending.ElementAt(0);
+            Debug.Log($"Decoding Pending with length {pending.Count}");
 
-            foreach (var item in temp)
-            {
-                if (decoding.Count >= decodingThreads || cancelRequest) break;
-                DecodeToBufferAsync(item.Key, item.Value, false);
-                pending.Remove(item.Key);
-                decoding.Add(item.Value);
-            }
+            Debug.Log($"Checking {item.Key} with count {decoding.Count} and {decodingThreads} threads and {(cancelRequest ? "a" : "no")} cancel request");
+            if (decoding.Count >= decodingThreads || cancelRequest) return;
+
+            Debug.Log($"Dequeueing {item.Key}");
+            DecodeToBufferAsync(item.Key, item.Value, false);
+            pending.Remove(item.Key);
         }
 
         private void OnImageDecoded(string path, int index, int threadId, long decodingTime)
         {
-            // Prevents crash due to memory acess violation
-            // (if some stuff has already been deallocated)
-            if (decoding.Count == 0) return;
-            buffer.Add(index);
-
             Debug.Log(
                 $"Decoded {Path.GetFileName(path)} " +
                 $"in {decodingTime}ms " +
                 $"to position {index}\t\t" +
                 $"(ThreadID:{threadId})");
 
-            decoding.Remove(decoding.ElementAt(index));
+            decoding.Remove(buffer.ElementAt(index));
             if (!cancelRequest) DecodePending();
         }
 
