@@ -94,12 +94,12 @@ Shader "PreRendering/PostProcessing"
 			}
 
 			Texture2D<half4> _Projection;
-			StructuredBuffer<uint> InputArray;
+			StructuredBuffer<uint> InputBuffer;
 			SamplerState linear_repeat_sampler;
 			float FOV, FCLIP, CUTOFF, DOF_INTENSITY, MIST_FALLOFF, MIST_OFFSET;
-			float2 Rotation, InputArrayResolution;
+			float2 Rotation, InputBufferResolution;
 			float3 MIST_COL;
-			int Debug, MX_IDX;
+			int Debug, MX_IDX, FIXED_IDX;
 
 			fixed4 frag (v2f i) : SV_Target
 			{
@@ -110,15 +110,15 @@ Shader "PreRendering/PostProcessing"
 				idx.z -= 1;
 
 				// Sampling
-				float2 texelSize = 1 / InputArrayResolution;
-				circularSamples s = sampleCircle(InputArray, idx.xy, InputArrayResolution, texelSize, idx.z);
+				float2 texelSize = 1 / InputBufferResolution;
+				circularSamples s = sampleCircle(InputBuffer, idx.xy, InputBufferResolution, texelSize, idx.z);
 
 				// Normals
 				float2 n = calculateNormals(s);
 				
 				// Depth of field
 				float2 cIdx = float2(0.5, 0.5) + Rotation.yx / float2(PI2, PI);
-				float cDist = rawTex2DA(InputArray, cIdx, InputArrayResolution, idx.z);
+				float cDist = rawTex2DA(InputBuffer, cIdx, InputBufferResolution, idx.z);
 				float dof = abs(cDist - s.s4.a) * DOF_INTENSITY;
 
 				// Debug
@@ -139,6 +139,8 @@ Shader "PreRendering/PostProcessing"
 				fixed4 col = blur(s, dof);
 				float eDist = pow(clamp(col.a - MIST_OFFSET, 0, 1), MIST_FALLOFF * FCLIP);
 				col = MIST_COL.rgbb * eDist + col * (1 - eDist);
+
+				col = rawTex2D(InputBuffer, i.uv, InputBufferResolution, FIXED_IDX);
 
 				return col;
 			}

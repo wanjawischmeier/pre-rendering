@@ -30,7 +30,7 @@ public class MovementController : MonoBehaviour
     {
         Vector3 forward = transform.TransformDirection(Vector3.back);
         Vector3 right = transform.TransformDirection(Vector3.left);
-
+        
         float curSpeedX = speed * -Input.GetAxis("Vertical");
         float curSpeedY = speed * -Input.GetAxis("Horizontal");
         moveDirection = (forward * curSpeedX) + (right * curSpeedY);

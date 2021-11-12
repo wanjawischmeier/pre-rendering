@@ -19,7 +19,10 @@ public class PreRenderingEditor : Editor
         var renderer = (PreRenderer)target;
 
         if (renderer.foldouts == null || renderer.foldouts.Length == 0)
-            renderer.foldouts = new bool[3];
+            renderer.foldouts = new bool[PreRenderer.NumFoldouts];
+
+        if (renderer.debuggingInts == null || renderer.debuggingInts.Length == 0)
+            renderer.debuggingInts = new int[renderer.debuggingIntNames.Length];
 
         renderer.renderPath = Application.dataPath.Split(new string[] { PreRenderer.RepoName }, StringSplitOptions.None)[0];
         renderer.renderPath = Path.Combine(renderer.renderPath, PreRenderer.RepoName, "renders");
@@ -147,6 +150,19 @@ public class PreRenderingEditor : Editor
             EditorGUI.EndDisabledGroup();
         }
 
+        EditorGUILayout.EndFoldoutHeaderGroup();
+
+
+
+
+        renderer.foldouts[3] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.foldouts[3], "Debugging");
+        
+        if (renderer.foldouts[3])
+        {
+            for (int i = 0; i < renderer.debuggingInts.Length; i++)
+                EditorHelper.IntField(renderer.debuggingIntNames[i], ref renderer.debuggingInts[i]);
+        }
+        
         EditorGUILayout.EndFoldoutHeaderGroup();
     }
 }

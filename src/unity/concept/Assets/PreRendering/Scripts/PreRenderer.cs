@@ -12,6 +12,7 @@ namespace PreRendering
     public class PreRenderer : MonoBehaviour
     {
 #if UNITY_EDITOR
+        public const int NumFoldouts = 4;
         public bool[] foldouts;
 #endif
 
@@ -39,6 +40,12 @@ namespace PreRendering
         public float mistFalloff = 0.1f;
         public Color mist = Color.white;
 
+        // Debugging
+        public int[] debuggingInts;
+        public string[] debuggingIntNames =
+        {
+            "FIXED_IDX"
+        };
 
         public MovementController controller;
         public Resolution projectionResolution;
@@ -104,6 +111,10 @@ namespace PreRendering
             shaderManager.Mist = mist;
             shaderManager.MistFalloff = mistFalloff;
             shaderManager.MistOffset = mistOffset;
+
+            // Set debug values
+            for (int i = 0; i < debuggingInts.Length; i++)
+                Shader.SetGlobalInt(debuggingIntNames[i], debuggingInts[i]);
 
             Vector3[] positions = map.offsets.GetClosest(transform.position, cacheSize);
             // Vector3[] positions = map.offsets.PredictClosest(lastPosition, transform.position, cacheSize, predictionBlend, predictionDistance);
