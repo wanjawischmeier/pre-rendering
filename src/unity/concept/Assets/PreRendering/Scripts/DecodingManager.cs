@@ -1,9 +1,11 @@
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 using Object = UnityEngine.Object;
 using ThreadPriority = System.Threading.ThreadPriority;
 
@@ -130,15 +132,20 @@ namespace PreRendering
         public void Release()
         {
             cancelRequest = true;
+
+            Stopwatch timeWaiting = Stopwatch.StartNew();
             for (int i = 0; i < 20; i++)
             {
                 if (decoding.Count == 0) break;
-                else
-                    foreach (Vector3 key in decoding)
-                        Debug.Log($"Waiting for key {key}");
-
                 Thread.Sleep(100);
             }
+            timeWaiting.Stop();
+
+            if (decoding.Count != 0)
+                Debug.LogWarning(
+                    $"Some decoding threads are not responding (waited for {timeWaiting.ElapsedMilliseconds}ms).\n" +
+                    "Deinitializing the decoder anyways, this may lead to a crash due to a memory acess violation.\n" +
+                    $"Waited for threads <{string.Join(",", decoding)}>.");
             Decoder.Deinitialize();
         }
     }

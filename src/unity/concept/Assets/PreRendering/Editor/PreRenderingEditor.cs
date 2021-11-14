@@ -19,7 +19,7 @@ public class PreRenderingEditor : Editor
         var renderer = (PreRenderer)target;
 
         if (renderer.foldouts == null || renderer.foldouts.Length == 0)
-            renderer.foldouts = new bool[PreRenderer.NumFoldouts];
+            renderer.foldouts = new bool[renderer.foldoutNames.Length];
 
         if (renderer.debuggingInts == null || renderer.debuggingInts.Length == 0)
             renderer.debuggingInts = new int[renderer.debuggingIntNames.Length];
