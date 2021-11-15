@@ -3,12 +3,9 @@ guid: e795f4c857e66124ca7c8e539ea7e60f
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
-  defaultReferences:
-  - projectShader: {fileID: 7200000, guid: 83ccade484494bc44a42d8da069d928b, type: 3}
-  - postProcessing: {fileID: 4800000, guid: 73c549cc703570c48a640a58a94eb33b, type: 3}
-  - controller: {instanceID: 0}
+  defaultReferences: []
   executionOrder: 0
-  icon: {fileID: 10910, guid: 0000000000000000f000000000000000, type: 0}
+  icon: {instanceID: 0}
   userData: 
   assetBundleName: 
   assetBundleVariant: 

@@ -12,8 +12,14 @@ namespace PreRendering
     public class PreRenderer : MonoBehaviour
     {
 #if UNITY_EDITOR
-        public const int NumFoldouts = 4;
         public bool[] foldouts;
+        public string[] foldoutNames =
+        {
+            "Map",
+            "Decoder",
+            "Projection & Post Processing",
+            "Debugging"
+        };
 #endif
 
         // Map
@@ -46,7 +52,7 @@ namespace PreRendering
         {
             "FIXED_IDX"
         };
-
+        
         public MovementController controller;
         public Resolution projectionResolution;
         public Resolution screenResolution;
@@ -68,7 +74,7 @@ namespace PreRendering
 #if UNITY_EDITOR
             string rootPath = Application.dataPath.Split(new string[] { "pre-rendering" }, System.StringSplitOptions.None)[0];
             renderPath = Path.Combine(rootPath, RepoName, "renders");
-
+            
             mapPath = Path.Combine(renderPath, mapPaths[mapSelection]);
 #else
             renderPath = Application.dataPath;
@@ -111,12 +117,12 @@ namespace PreRendering
             shaderManager.Mist = mist;
             shaderManager.MistFalloff = mistFalloff;
             shaderManager.MistOffset = mistOffset;
-
+            
             // Set debug values
             for (int i = 0; i < debuggingInts.Length; i++)
                 Shader.SetGlobalInt(debuggingIntNames[i], debuggingInts[i]);
 
-            Vector3[] positions = map.offsets.GetClosest(transform.position, cacheSize);
+            Vector3[] positions = map.offsets.GetClosest(transform.position, cacheSize + 1);
             // Vector3[] positions = map.offsets.PredictClosest(lastPosition, transform.position, cacheSize, predictionBlend, predictionDistance);
             Vector3 temp;
 
@@ -134,7 +140,7 @@ namespace PreRendering
             }
 
             // Load the closest images into the buffer asynchronously
-            for (int i = cacheSize - 1; i >= 0; i--)
+            for (int i = cacheSize; i >= 0; i--)
             {
                 temp = positions[i];
                 string path = map.GetFileName(temp);
