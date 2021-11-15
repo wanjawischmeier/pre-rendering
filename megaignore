@@ -10,7 +10,6 @@
 */Temp
 */Obj
 */Build
-*/Builds
 */Logs
 */UserSettings
 */fpslog
@@ -44,8 +43,6 @@
 *.VC.db
 *.pidb.meta
 *.mdb.meta
-*.apk
-*.dll
 *.aab
 *.unitypackage
 *.gitignore
