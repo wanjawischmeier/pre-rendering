@@ -13,6 +13,7 @@ Shader "PreRendering/PostProcessing"
 			#pragma fragment frag
 
 			#include "UnityCG.cginc"
+			#include "ProjectionHelper.cginc"
             #include "RawSampler.cginc"
 
 			struct appdata
@@ -31,25 +32,6 @@ Shader "PreRendering/PostProcessing"
 			{
 				float4 s0, s1, s2, s3, s4, s5, s6, s7, s8;
 			};
-			
-			float PI, PI2;
-			
-			float2 gnomonicProjection(float2 pos, float fov, float phi1, float lambda0)
-			{
-				float x = PI2 * (pos.x - 0.5);
-				float y = PI * (pos.y - 0.5);
-
-				float p = sqrt(x * x + y * y);
-				float c = atan2(p, fov);
-
-				float sinC = sin(c); float cosC = cos(c);
-				float sinPhi1 = sin(phi1); float cosPhi1 = cos(phi1);
-
-				float phi = asin(cosC * sinPhi1 + y * sinC * cosPhi1 / p);
-				float lambda = lambda0 + atan2(x * sinC, (p * cosPhi1 * cosC - y * sinPhi1 * sinC));
-
-				return float2(lambda / PI2 + 0.5, phi / PI + 0.5);
-			}
 
 			circularSamples sampleCircle(StructuredBuffer<uint> Input, float2 tc, float2 resolution, float2 texelSize, float index)
 			{

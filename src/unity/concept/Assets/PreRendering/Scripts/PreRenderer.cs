@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -98,7 +99,17 @@ namespace PreRendering
             Decoder.Initialize(map.GetFileName(Vector3.zero), cacheSize);
             buffer = new RawTexture.Buffer(Decoder.bufferPointer, map.resolution.width, map.resolution.height, cacheSize);
             decoder = new DecodingManager(buffer, decodingThreads, cacheSize);
-            shaderManager = new ShaderManager(buffer.computeBuffer, projectionResolution, map, cacheSize);
+            shaderManager = new ShaderManager();
+
+            ShaderManager.SetValues(
+                new Tuple<string, Material, object>("MX_IDX",                   null, cacheSize),
+                new Tuple<string, Material, object>("PI",                       null, Mathf.PI),
+                new Tuple<string, Material, object>("PI2",                      null, Mathf.PI * 2),
+                new Tuple<string, Material, object>("NCLIP",                    null, map.nClip),
+                new Tuple<string, Material, object>("FCLIP",                    null, map.fClip),
+                new Tuple<string, Material, object>("InputBufferResolution",    null, map.resolution.ToVector()),
+                new Tuple<string, Material, object>("ProjectedResolution",      null, projectionResolution.ToVector()),
+                new Tuple<string, Material, object>("InputBuffer",              null, buffer.computeBuffer));
         }
 
         private void Update()
@@ -109,15 +120,17 @@ namespace PreRendering
             decoder.priority = decodingPriority;
 
             // Set shader values
-            shaderManager.Position = transform.position;
-            shaderManager.Rotation = transform.eulerAngles;
-            shaderManager.Fov = mainCamera.fieldOfView;
-            shaderManager.DOFIntensity = depthOfField;
-            shaderManager.ShaderDebug = (ShaderManager.ShaderDebugMode)shaderDebugSelection;
-            shaderManager.Mist = mist;
-            shaderManager.MistFalloff = mistFalloff;
-            shaderManager.MistOffset = mistOffset;
+            ShaderManager.SetValues(
+                new Tuple<string, Material, object>("FOV", shaderManager.postProcessingMaterial, mainCamera.fieldOfView * Mathf.Deg2Rad),
+                new Tuple<string, Material, object>("Debug", shaderManager.postProcessingMaterial, shaderDebugSelection),
+                new Tuple<string, Material, object>("DOF_INTENSITY", shaderManager.postProcessingMaterial, depthOfField),
+                new Tuple<string, Material, object>("MIST_FALLOFF", shaderManager.postProcessingMaterial, mistFalloff),
+                new Tuple<string, Material, object>("MIST_OFFSET", shaderManager.postProcessingMaterial, mistOffset),
+                new Tuple<string, Material, object>("MIST_COL", shaderManager.postProcessingMaterial, (Vector4)mist),
+                new Tuple<string, Material, object>("Position", shaderManager.projectionMaterial, (Vector4)transform.position),
+                new Tuple<string, Material, object>("Rotation", shaderManager.postProcessingMaterial, (Vector4)transform.eulerAngles * Mathf.Deg2Rad));
             
+
             // Set debug values
             for (int i = 0; i < debuggingInts.Length; i++)
                 Shader.SetGlobalInt(debuggingIntNames[i], debuggingInts[i]);
@@ -153,7 +166,8 @@ namespace PreRendering
 
             // Project
             buffer.Refresh();
-            shaderManager.PositionOffset = positionOffset;
+
+            ShaderManager.SetValues(new Tuple<string, Material, object>("PositionOffset", shaderManager.projectionMaterial, positionOffset));
             shaderManager.Project(
                 Mathf.RoundToInt(projectionResolution.width),
                 Mathf.RoundToInt(projectionResolution.height),
@@ -247,6 +261,11 @@ namespace PreRendering
             }
 
             return false;
+        }
+
+        public static Vector4 ToVector(this Resolution resolution)
+        {
+            return new Vector4(resolution.width, resolution.height);
         }
     }
 }

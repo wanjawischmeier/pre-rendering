@@ -1,9 +1,5 @@
 Shader "PreRendering/Projection"
 {
-    Properties
-    {
-        _MainTex ("Texture", 2D) = "white" {}
-    }
     SubShader
     {
         // No culling or depth
@@ -42,7 +38,7 @@ Shader "PreRendering/Projection"
 
             int IMG_IDX, MX_IDX;
             float NCLIP, FCLIP;
-            float2 InputBufferResolution, ProjectionRes, ProjectedRes;
+            float2 InputBufferResolution, ProjectionRes, ProjectedResolution;
             float3 Position, PositionOffset;
             StructuredBuffer<uint> InputBuffer;
 
