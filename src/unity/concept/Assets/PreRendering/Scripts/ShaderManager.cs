@@ -6,6 +6,13 @@ namespace PreRendering
 {
     public class ShaderManager
     {
+        public struct Property
+        {
+            public string name;
+            public object value;
+            public Material material;
+        }
+
         // Based on https://stackoverflow.com/a/4478535/13215204
         private static Dictionary<Type, Func<Material, string, object>> getValue = new Dictionary<Type, Func<Material, string, object>>()
             {
@@ -75,10 +82,10 @@ namespace PreRendering
         /// Each pair has to have a name, a material and the actual value.
         /// If the material is set to null, the variable will be set globally.
         /// </summary>
-        public static void SetValues(params Tuple<string, Material, object>[] values)
+        public static void SetValues(params Property[] values)
         {
             foreach (var item in values)
-                setValue[item.Item3.GetType()](item.Item2, item.Item1, item.Item3);
+                setValue[item.value.GetType()](item.material, item.name, item.value);
         }
 
         public object this[string name, Type type, Material material]

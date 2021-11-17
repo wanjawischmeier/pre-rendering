@@ -148,6 +148,8 @@ public class PreRenderingEditor : Editor
                 "The color of the mist.");
 
             EditorGUI.EndDisabledGroup();
+
+            GUILayout.Space(SpacerMedium);
         }
 
         EditorGUILayout.EndFoldoutHeaderGroup();
