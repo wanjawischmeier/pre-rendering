@@ -116,7 +116,7 @@ namespace PreRendering
             DepthBuffer
         }
 
-        public ShaderManager()
+        public ShaderManager(Resolution projectedResolution)
         {
             projectionShader = Shader.Find("PreRendering/Projection");
             postProcessingShader = Shader.Find("PreRendering/PostProcessing");
@@ -124,11 +124,9 @@ namespace PreRendering
             projectionMaterial = new Material(projectionShader);
             postProcessingMaterial = new Material(postProcessingShader);
 
-            Vector2 projectedResolution = (Vector4)this["ProjectedResolution", typeof(Vector4), null];
-
             projection = new RenderTexture(
-                Mathf.RoundToInt(projectedResolution.x),
-                Mathf.RoundToInt(projectedResolution.y),
+                Mathf.RoundToInt(projectedResolution.width),
+                Mathf.RoundToInt(projectedResolution.height),
                 1, RenderTextureFormat.ARGB64)
             { enableRandomWrite = true };
             projection.Create();

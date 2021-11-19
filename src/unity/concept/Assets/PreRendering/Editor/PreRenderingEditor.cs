@@ -1,8 +1,11 @@
 using PreRendering;
 using System;
 using System.IO;
+using System.Linq;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using static PreRendering.ShowInEditorAttribute;
 using ThreadPriority = System.Threading.ThreadPriority;
 
 [CustomEditor(typeof(PreRenderer))]
@@ -12,17 +15,31 @@ public class PreRenderingEditor : Editor
     private readonly string[] decodingPriorityModes = Enum.GetNames(typeof(ThreadPriority));
     private readonly string[] shaderDebugModes = Enum.GetNames(typeof(ShaderManager.ShaderDebugMode));
 
+    private List<KeyValuePair<Info, SerializedProperty>>[] properties;
+
     private void OnEnable() => OnValidate();
 
     private void OnValidate()
     {
         var renderer = (PreRenderer)target;
 
-        if (renderer.foldouts == null || renderer.foldouts.Length == 0)
-            renderer.foldouts = new bool[renderer.foldoutNames.Length];
+        Info[] attributeInfos = GetFieldInfos(typeof(PreRenderer));
+        string[] foldoutNames = Enum.GetNames(typeof(PreRenderer.Foldout));
+        properties = new List<KeyValuePair<Info, SerializedProperty>>[foldoutNames.Length];
+        for (int i = 0; i < properties.Length; i++)
+            properties[i] = new List<KeyValuePair<Info, SerializedProperty>>();
 
-        if (renderer.debuggingInts == null || renderer.debuggingInts.Length == 0)
-            renderer.debuggingInts = new int[renderer.debuggingIntNames.Length];
+        for (int i = 0; i < attributeInfos.Length; i++)
+        {
+            Info info = attributeInfos[i];
+            SerializedProperty property = serializedObject.FindProperty(info.propertyName);
+
+            int index = Array.IndexOf(foldoutNames, Enum.GetName(typeof(PreRenderer.Foldout), info.foldout));
+            properties[index].Add(new KeyValuePair<Info, SerializedProperty>(info, property));
+        }
+
+        if (renderer.foldouts == null || renderer.foldouts.Length == 0)
+            renderer.foldouts = new bool[Enum.GetNames(typeof(PreRenderer.Foldout)).Length];
 
         renderer.renderPath = Application.dataPath.Split(new string[] { PreRenderer.RepoName }, StringSplitOptions.None)[0];
         renderer.renderPath = Path.Combine(renderer.renderPath, PreRenderer.RepoName, "renders");
@@ -43,6 +60,18 @@ public class PreRenderingEditor : Editor
     {
         var renderer = (PreRenderer)target;
         bool playing = Application.isPlaying;
+
+        for (int i = 0; i < properties.Length; i++)
+        {
+            string foldoutName = Enum.GetNames(typeof(PreRenderer.Foldout))[i];
+            renderer.foldouts[i] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.foldouts[i], foldoutName);
+
+            foreach (KeyValuePair<Info, SerializedProperty> property in properties[i])
+            {
+                Info info = property.Key;
+                SerializedProperty property = properties[i].Value;
+            }
+        }
 
         renderer.foldouts[0] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.foldouts[0], "Map");
 

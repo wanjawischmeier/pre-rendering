@@ -87,7 +87,7 @@ public static class EditorHelper
             EditorStyles.numberField,
             GUILayout.MaxWidth(SpacerValue))
             .ParseToFloat(value, min);
-
+        
         value = Mathf.Clamp(value, min, max);
 
         EndField(enabled);

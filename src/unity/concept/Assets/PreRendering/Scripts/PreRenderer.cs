@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using UnityEngine;
+using static PreRendering.ShowInEditorAttribute;
 using ThreadPriority = System.Threading.ThreadPriority;
 
 namespace PreRendering
@@ -13,15 +15,17 @@ namespace PreRendering
     public class PreRenderer : MonoBehaviour
     {
 #if UNITY_EDITOR
-        public bool[] foldouts;
-        public string[] foldoutNames =
+        public enum Foldout
         {
-            "Map",
-            "Decoder",
-            "Projection & Post Processing",
-            "Debugging"
-        };
+            Map,
+            Decoder,
+            Projection,
+            PostProcessing,
+            Debugging
+        }
 #endif
+
+        public bool[] foldouts;
 
         // Map
         public string renderPath;
@@ -31,6 +35,7 @@ namespace PreRendering
         private string mapPath;
 
         // Decoder
+        [ShowInEditor("", "", Foldout.Map, Qualifier.Enabled)]
         public float predictionBlend = 0.75f;
         public float predictionDistance = 2;
         public int cacheSize = 10;
@@ -99,7 +104,7 @@ namespace PreRendering
             Decoder.Initialize(map.GetFileName(Vector3.zero), cacheSize);
             buffer = new RawTexture.Buffer(Decoder.bufferPointer, map.resolution.width, map.resolution.height, cacheSize);
             decoder = new DecodingManager(buffer, decodingThreads, cacheSize);
-            shaderManager = new ShaderManager();
+            shaderManager = new ShaderManager(projectionResolution);
 
             ShaderManager.SetValues(
                 new ShaderManager.Property()
@@ -344,6 +349,55 @@ namespace PreRendering
         public static Vector4 ToVector(this Resolution resolution)
         {
             return new Vector4(resolution.width, resolution.height);
+        }
+    }
+
+    [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
+    public sealed class ShowInEditorAttribute : Attribute
+    {
+        public struct Info
+        {
+            public string name, propertyName, tooltip;
+            public PreRenderer.Foldout foldout;
+            public Qualifier qualifier;
+        }
+
+        public enum Qualifier
+        {
+            Disabled,
+            Enabled,
+            IfPlaying,
+            IfNotPlaying
+        }
+
+        private Info info;
+
+        public ShowInEditorAttribute(string name, string tooltip, PreRenderer.Foldout foldout, Qualifier qualifier = Qualifier.Enabled)
+        {
+            info = new Info()
+            {
+                name = name,
+                tooltip = tooltip,
+                foldout = foldout,
+                qualifier = qualifier
+            };
+        }
+
+        public static Info[] GetFieldInfos(Type type)
+        {
+            return type
+                .GetFields()
+                .Select(member =>
+                {
+                    ShowInEditorAttribute attribute = (ShowInEditorAttribute)member.GetCustomAttributes(
+                        typeof(ShowInEditorAttribute), true)[0];
+
+                    Info info = attribute.info;
+                    info.propertyName = member.Name;
+
+                    return info;
+                })
+                .ToArray();
         }
     }
 }
