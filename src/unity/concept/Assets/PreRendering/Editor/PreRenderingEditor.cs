@@ -11,18 +11,17 @@ public class PreRenderingEditor : Editor
     private const float SpacerMedium = 20;
     private readonly string[] decodingPriorityModes = Enum.GetNames(typeof(ThreadPriority));
     private readonly string[] shaderDebugModes = Enum.GetNames(typeof(ShaderManager.ShaderDebugMode));
-
+    private string[] foldoutNames;
     private void OnEnable() => OnValidate();
 
     private void OnValidate()
     {
         var renderer = (PreRenderer)target;
+        
+        foldoutNames = Enum.GetNames(typeof(PreRenderer.Foldout));
 
         if (renderer.foldouts == null || renderer.foldouts.Length == 0)
-            renderer.foldouts = new bool[renderer.foldoutNames.Length];
-
-        if (renderer.debuggingInts == null || renderer.debuggingInts.Length == 0)
-            renderer.debuggingInts = new int[renderer.debuggingIntNames.Length];
+            renderer.foldouts = new bool[foldoutNames.Length];
 
         renderer.renderPath = Application.dataPath.Split(new string[] { PreRenderer.RepoName }, StringSplitOptions.None)[0];
         renderer.renderPath = Path.Combine(renderer.renderPath, PreRenderer.RepoName, "renders");
@@ -43,10 +42,12 @@ public class PreRenderingEditor : Editor
     {
         var renderer = (PreRenderer)target;
         bool playing = Application.isPlaying;
+        int currentFoldout;
 
-        renderer.foldouts[0] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.foldouts[0], "Map");
+        currentFoldout = 0;
+        renderer.foldouts[currentFoldout] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.foldouts[currentFoldout], foldoutNames[currentFoldout]);
 
-        if (renderer.foldouts[0])
+        if (renderer.foldouts[currentFoldout])
         {
             EditorHelper.TextField(
                 "Render Path", ref renderer.renderPath,
@@ -65,9 +66,10 @@ public class PreRenderingEditor : Editor
 
 
 
-        renderer.foldouts[1] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.foldouts[1], "Decoder");
+        currentFoldout = 1;
+        renderer.foldouts[currentFoldout] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.foldouts[currentFoldout], foldoutNames[currentFoldout]);
 
-        if (renderer.foldouts[1])
+        if (renderer.foldouts[currentFoldout])
         {
             EditorHelper.FloatSlider(
                 "Prediction Blend", ref renderer.predictionBlend,
@@ -112,9 +114,10 @@ public class PreRenderingEditor : Editor
 
 
 
-        renderer.foldouts[2] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.foldouts[2], "Projection & Post Processing");
+        currentFoldout = 2;
+        renderer.foldouts[currentFoldout] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.foldouts[currentFoldout], foldoutNames[currentFoldout]);
 
-        if (renderer.foldouts[2])
+        if (renderer.foldouts[currentFoldout])
         {
             EditorHelper.FloatSlider(
                 "Geometry Percision", ref renderer.geometryPercision,
@@ -148,6 +151,8 @@ public class PreRenderingEditor : Editor
                 "The color of the mist.");
 
             EditorGUI.EndDisabledGroup();
+
+            GUILayout.Space(SpacerMedium);
         }
 
         EditorGUILayout.EndFoldoutHeaderGroup();
@@ -155,9 +160,10 @@ public class PreRenderingEditor : Editor
 
 
 
-        renderer.foldouts[3] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.foldouts[3], "Debugging");
-        
-        if (renderer.foldouts[3])
+        currentFoldout = 3;
+        renderer.foldouts[currentFoldout] = EditorGUILayout.BeginFoldoutHeaderGroup(renderer.foldouts[currentFoldout], foldoutNames[currentFoldout]);
+
+        if (renderer.foldouts[currentFoldout])
         {
             for (int i = 0; i < renderer.debuggingInts.Length; i++)
                 EditorHelper.IntField(renderer.debuggingIntNames[i], ref renderer.debuggingInts[i]);

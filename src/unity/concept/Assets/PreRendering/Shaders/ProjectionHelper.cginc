@@ -1,5 +1,4 @@
-const float PI  = 3.141592653589793;
-const float PI2 = 6.283185307179586;
+float PI, PI2;
 
 float magnitude(float3 vec)
 {
@@ -50,4 +49,21 @@ float2 translateLatLon(float2 latLon, float3 translation, float dist = 1)
     
     float d = magnitude(P);
     return vectorToLatLon(P, d);
+}
+
+float2 gnomonicProjection(float2 pos, float fov, float phi1, float lambda0)
+{
+    float x = PI2 * (pos.x - 0.5);
+    float y = PI * (pos.y - 0.5);
+
+    float p = sqrt(x * x + y * y);
+    float c = atan2(p, fov);
+
+    float sinC = sin(c); float cosC = cos(c);
+    float sinPhi1 = sin(phi1); float cosPhi1 = cos(phi1);
+
+    float phi = asin(cosC * sinPhi1 + y * sinC * cosPhi1 / p);
+    float lambda = lambda0 + atan2(x * sinC, (p * cosPhi1 * cosC - y * sinPhi1 * sinC));
+
+    return float2(lambda / PI2 + 0.5, phi / PI + 0.5);
 }

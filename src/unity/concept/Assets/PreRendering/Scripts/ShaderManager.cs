@@ -1,82 +1,110 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace PreRendering
 {
     public class ShaderManager
     {
-        /// <summary>
-        /// The position inside the compute shader.
-        /// </summary>
-        public Vector3 Position
+        public struct Property
         {
-            get { return projectionMaterial.GetVector("Position"); }
-            set { projectionMaterial.SetVector("Position", value); }
+            public string name;
+            public object value;
+            public Material material;
         }
+
+        // Based on https://stackoverflow.com/a/4478535/13215204
+        private static Dictionary<Type, Func<Material, string, object>> getValue = new Dictionary<Type, Func<Material, string, object>>()
+            {
+                {
+                    typeof(int), new Func<Material, string, object>(
+                        (material, name) =>
+                        {
+                            if (material == null) return Shader.GetGlobalInt(name);
+                            else return material.GetInt(name);
+                        })
+                },
+                {
+                    typeof(float), new Func<Material, string, object>(
+                        (material, name) =>
+                        {
+                            if (material == null) return Shader.GetGlobalFloat(name);
+                            else return material.GetFloat(name);
+                        })
+                },
+                {
+                    typeof(Vector4), new Func<Material, string, object>(
+                        (material, name) =>
+                        {
+                            if (material == null) return Shader.GetGlobalVector(name);
+                            else return material.GetVector(name);
+                        })
+                }
+            };
+        private static Dictionary<Type, Action<Material, string, object>> setValue = new Dictionary<Type, Action<Material, string, object>>()
+            {
+                {
+                    typeof(int), new Action<Material, string, object>(
+                        (material, name, value) =>
+                        {
+                            if (material == null) Shader.SetGlobalInt(name, (int)value);
+                            else material.SetInt(name, (int)value);
+                        })
+                },
+                {
+                    typeof(float), new Action<Material, string, object>(
+                        (material, name, value) =>
+                        {
+                            if (material == null) Shader.SetGlobalFloat(name, (float)value);
+                            else material.SetFloat(name, (float)value);
+                        })
+                },
+                {
+                    typeof(Vector4), new Action<Material, string, object>(
+                        (material, name, value) =>
+                        {
+                            if (material == null) Shader.SetGlobalVector(name, (Vector4)value);
+                            else material.SetVector(name, (Vector4)value);
+                        })
+                },
+                {
+                    typeof(ComputeBuffer), new Action<Material, string, object>(
+                        (material, name, value) =>
+                        {
+                            if (material == null) Shader.SetGlobalBuffer(name, (ComputeBuffer)value);
+                            else material.SetBuffer(name, (ComputeBuffer)value);
+                        })
+                }
+            };
 
         /// <summary>
-        /// Sets the position compute buffer.
+        /// Set an arbitrary amount of values on the gpu.
+        /// Each pair has to have a name, a material and the actual value.
+        /// If the material is set to null, the variable will be set globally.
         /// </summary>
-        public Vector3 PositionOffset
+        public static void SetValues(params Property[] values)
         {
-            get { return projectionMaterial.GetVector("PositionOffset"); }
-            set { projectionMaterial.SetVector("PositionOffset", value); }
+            foreach (var item in values)
+                setValue[item.value.GetType()](item.material, item.name, item.value);
         }
 
-        /// <summary>
-        /// The rotation inside the post processing shader.
-        /// The value will be converted to radians before passed to the gpu.
-        /// </summary>
-        public Vector3 Rotation
+        public object this[string name, Type type, Material material]
         {
-            get { return postProcessingMaterial.GetVector("Rotation"); }
-            set { postProcessingMaterial.SetVector("Rotation", value * Mathf.Deg2Rad); }
-        }
-
-        /// <summary>
-        /// The field of view used for the gnomonic projection inside the post processing shader.
-        /// </summary>
-        public float Fov
-        {
-            get { return postProcessingMaterial.GetFloat("FOV"); }
-            set { postProcessingMaterial.SetFloat("FOV", value * Mathf.Deg2Rad); }
-        }
-
-        public float DOFIntensity
-        {
-            get { return postProcessingMaterial.GetFloat("DOF_INTENSITY"); }
-            set { postProcessingMaterial.SetFloat("DOF_INTENSITY", value); }
-        }
-
-        public ShaderDebugMode ShaderDebug
-        {
-            get { return (ShaderDebugMode)postProcessingMaterial.GetInt("Debug"); }
-            set { postProcessingMaterial.SetInt("Debug", (int)value); }
-        }
-
-        public Color Mist
-        {
-            get { return postProcessingMaterial.GetColor("MIST_COL"); }
-            set { postProcessingMaterial.SetColor("MIST_COL", value); }
-        }
-
-        public float MistFalloff
-        {
-            get { return postProcessingMaterial.GetFloat("MIST_FALLOFF"); }
-            set { postProcessingMaterial.SetFloat("MIST_FALLOFF", value); }
-        }
-
-        public float MistOffset
-        {
-            get { return postProcessingMaterial.GetFloat("MIST_OFFSET"); }
-            set { postProcessingMaterial.SetFloat("MIST_OFFSET", value); }
+            get
+            {
+                return getValue[type](material, name);
+            }
+            set
+            {
+                setValue[type](material, name, value);
+            }
         }
 
         private readonly Shader projectionShader;
         private readonly Shader postProcessingShader;
-        private readonly Material projectionMaterial;
-        private readonly Material postProcessingMaterial;
+        public readonly Material projectionMaterial;
+        public readonly Material postProcessingMaterial;
         private readonly RenderTexture projection;
-        private readonly Map map;
 
         public enum ShaderDebugMode
         {
@@ -88,12 +116,8 @@ namespace PreRendering
             DepthBuffer
         }
 
-        public ShaderManager(
-            ComputeBuffer buffer, Resolution projectionResolution,
-            Map map, int layerDepth)
+        public ShaderManager(Resolution projectedResolution)
         {
-            this.map = map;
-
             projectionShader = Shader.Find("PreRendering/Projection");
             postProcessingShader = Shader.Find("PreRendering/PostProcessing");
 
@@ -101,18 +125,12 @@ namespace PreRendering
             postProcessingMaterial = new Material(postProcessingShader);
 
             projection = new RenderTexture(
-                projectionResolution.width, projectionResolution.height, 1, RenderTextureFormat.ARGB64)
+                Mathf.RoundToInt(projectedResolution.width),
+                Mathf.RoundToInt(projectedResolution.height),
+                1, RenderTextureFormat.ARGB64)
             { enableRandomWrite = true };
             projection.Create();
 
-            Shader.SetGlobalFloat("PI", Mathf.PI);
-            Shader.SetGlobalFloat("PI2", Mathf.PI * 2);
-            Shader.SetGlobalFloat("NCLIP", map.nClip);
-            Shader.SetGlobalFloat("FCLIP", map.fClip);
-            Shader.SetGlobalInt("MX_IDX", layerDepth);
-            Shader.SetGlobalVector("InputBufferResolution", new Vector2(map.resolution.width, map.resolution.height));
-            Shader.SetGlobalVector("ProjectedRes", new Vector2(projection.width, projection.height));
-            Shader.SetGlobalBuffer("InputBuffer", buffer);
             Shader.SetGlobalTexture("_Projection", projection);
         }
 
@@ -145,12 +163,11 @@ namespace PreRendering
         public void Render(ref RenderTexture destination)
         {
             Graphics.Blit(null, destination, postProcessingMaterial);
-
+            
             RenderTexture tmp = RenderTexture.active;
             RenderTexture.active = projection;
             GL.Clear(true, true, Color.clear);
             RenderTexture.active = tmp;
         }
     }
-
 }

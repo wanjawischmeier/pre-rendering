@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using UnityEngine;
 using ThreadPriority = System.Threading.ThreadPriority;
 
@@ -12,15 +14,17 @@ namespace PreRendering
     public class PreRenderer : MonoBehaviour
     {
 #if UNITY_EDITOR
-        public bool[] foldouts;
-        public string[] foldoutNames =
+        public enum Foldout
         {
-            "Map",
-            "Decoder",
-            "Projection & Post Processing",
-            "Debugging"
-        };
+            Map,
+            Decoder,
+            Projection,
+            PostProcessing,
+            Debugging
+        }
 #endif
+
+        public bool[] foldouts;
 
         // Map
         public string renderPath;
@@ -74,7 +78,7 @@ namespace PreRendering
 #if UNITY_EDITOR
             string rootPath = Application.dataPath.Split(new string[] { "pre-rendering" }, System.StringSplitOptions.None)[0];
             renderPath = Path.Combine(rootPath, RepoName, "renders");
-            
+
             mapPath = Path.Combine(renderPath, mapPaths[mapSelection]);
 #else
             renderPath = Application.dataPath;
@@ -98,7 +102,49 @@ namespace PreRendering
             Decoder.Initialize(map.GetFileName(Vector3.zero), cacheSize);
             buffer = new RawTexture.Buffer(Decoder.bufferPointer, map.resolution.width, map.resolution.height, cacheSize);
             decoder = new DecodingManager(buffer, decodingThreads, cacheSize);
-            shaderManager = new ShaderManager(buffer.computeBuffer, projectionResolution, map, cacheSize);
+            shaderManager = new ShaderManager(projectionResolution);
+
+            ShaderManager.SetValues(
+                new ShaderManager.Property()
+                {
+                    name = "MX_IDX",
+                    value = cacheSize
+                },
+                new ShaderManager.Property()
+                {
+                    name = "PI",
+                    value = Mathf.PI
+                },
+                new ShaderManager.Property()
+                {
+                    name = "PI2",
+                    value = Mathf.PI * 2
+                },
+                new ShaderManager.Property()
+                {
+                    name = "NCLIP",
+                    value = map.nClip
+                },
+                new ShaderManager.Property()
+                {
+                    name = "FCLIP",
+                    value = map.fClip
+                },
+                new ShaderManager.Property()
+                {
+                    name = "InputBufferResolution",
+                    value = map.resolution.ToVector()
+                },
+                new ShaderManager.Property()
+                {
+                    name = "ProjectedResolution",
+                    value = projectionResolution.ToVector()
+                },
+                new ShaderManager.Property()
+                {
+                    name = "InputBuffer",
+                    value = buffer.computeBuffer
+                });
         }
 
         private void Update()
@@ -109,15 +155,57 @@ namespace PreRendering
             decoder.priority = decodingPriority;
 
             // Set shader values
-            shaderManager.Position = transform.position;
-            shaderManager.Rotation = transform.eulerAngles;
-            shaderManager.Fov = mainCamera.fieldOfView;
-            shaderManager.DOFIntensity = depthOfField;
-            shaderManager.ShaderDebug = (ShaderManager.ShaderDebugMode)shaderDebugSelection;
-            shaderManager.Mist = mist;
-            shaderManager.MistFalloff = mistFalloff;
-            shaderManager.MistOffset = mistOffset;
+            ShaderManager.SetValues(
+                new ShaderManager.Property()
+                {
+                    name = "FOV",
+                    value = mainCamera.fieldOfView * Mathf.Deg2Rad,
+                    material = shaderManager.postProcessingMaterial
+                },
+                new ShaderManager.Property()
+                {
+                    name = "Debug",
+                    value = shaderDebugSelection,
+                    material = shaderManager.postProcessingMaterial
+                },
+                new ShaderManager.Property()
+                {
+                    name = "DOF_INTENSITY",
+                    value = depthOfField,
+                    material = shaderManager.postProcessingMaterial
+                },
+                new ShaderManager.Property()
+                {
+                    name = "MIST_FALLOFF",
+                    value = mistFalloff,
+                    material = shaderManager.postProcessingMaterial
+                },
+                new ShaderManager.Property()
+                {
+                    name = "MIST_OFFSET",
+                    value = mistOffset,
+                    material = shaderManager.postProcessingMaterial
+                },
+                new ShaderManager.Property()
+                {
+                    name = "MIST_COL",
+                    value = (Vector4)mist,
+                    material = shaderManager.postProcessingMaterial
+                },
+                new ShaderManager.Property()
+                {
+                    name = "Position",
+                    value = (Vector4)transform.position,
+                    material = shaderManager.projectionMaterial
+                },
+                new ShaderManager.Property()
+                {
+                    name = "Rotation",
+                    value = (Vector4)transform.eulerAngles * Mathf.Deg2Rad,
+                    material = shaderManager.postProcessingMaterial
+                });
             
+
             // Set debug values
             for (int i = 0; i < debuggingInts.Length; i++)
                 Shader.SetGlobalInt(debuggingIntNames[i], debuggingInts[i]);
@@ -153,7 +241,14 @@ namespace PreRendering
 
             // Project
             buffer.Refresh();
-            shaderManager.PositionOffset = positionOffset;
+
+            ShaderManager.SetValues(new ShaderManager.Property()
+            {
+                name = "PositionOffset",
+                value = (Vector4)positionOffset,
+                material = shaderManager.projectionMaterial
+            });
+
             shaderManager.Project(
                 Mathf.RoundToInt(projectionResolution.width),
                 Mathf.RoundToInt(projectionResolution.height),
@@ -247,6 +342,11 @@ namespace PreRendering
             }
 
             return false;
+        }
+
+        public static Vector4 ToVector(this Resolution resolution)
+        {
+            return new Vector4(resolution.width, resolution.height);
         }
     }
 }
