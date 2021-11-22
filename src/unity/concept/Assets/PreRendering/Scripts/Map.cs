@@ -13,16 +13,17 @@ namespace PreRendering
         public Vector3[] offsets;
     }
 
-    public class Map
+    public static class Map
     {
-        public readonly float nClip, fClip;
-        public readonly int mxWidth;
-        public readonly Resolution resolution;
-        public readonly Vector3[] offsets;
-        private readonly string mainPath;
+        public static float nClip, fClip;
+        public static int mxWidth;
+        public static Resolution resolution;
+        public static Vector3[] offsets;
+
+        private static string mainPath;
         private const string MapError = "The map file is incomplete or corrupt. ";
 
-        public Map(string path)
+        public static void LoadFromPath(string path)
         {
             mainPath = path;
             string rawConfigPath = Path.Combine(mainPath, ".mapconfig");
@@ -45,15 +46,16 @@ namespace PreRendering
             fClip = config.fClip;
             mxWidth = config.mxWidth;
             offsets = config.offsets;
-            Verify();
+
+            Validate();
 
             string sampleTexturePath = GetFileName(config.offsets[0]);
-            Texture2D texture = Utility.LoadTexture(sampleTexturePath);
+            Texture2D texture = LoadTexture(sampleTexturePath);
 
             resolution = new Resolution() { width = texture.width, height = texture.height };
         }
 
-        private void Verify()
+        private static void Validate()
         {
             var missingAttributes = new List<string>();
             var missingFiles = new List<string>();
@@ -101,18 +103,12 @@ namespace PreRendering
         /// Get a file name for a vector, based on a root directory.
         /// The vector has to be contained inside the vector array this method extends from.
         /// </summary>
-        public string GetFileName(Vector3 vector)
+        public static string GetFileName(Vector3 vector)
         {
             int index = Array.IndexOf(offsets, vector);
-            return Utility.GetFileName(mainPath, index);
+            return GetFileName(mainPath, index);
         }
-    }
 
-    /// <summary>
-    /// Contains all static helper functions used inside the 'PreRendering' namespace.
-    /// </summary>
-    public static partial class Utility
-    {
         public static string GetFileName(string path, int index)
         {
             return Path.Combine(path, index.ToString().PadLeft(4, '0') + ".png");

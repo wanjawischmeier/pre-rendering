@@ -7,7 +7,7 @@ namespace PreRendering
     /// <summary>
     /// An abstract class intended to buffer data.
     /// </summary>
-    /// <typeparam name="T">The key under which objects can be stored inside the buffer.</typeparam>
+    /// <typeparam name="T">The index under which objects can be stored inside the buffer.</typeparam>
     public abstract class Buffer<T> : IEnumerable<T>
     {
         public Dictionary<T, int> reserved;
@@ -24,8 +24,8 @@ namespace PreRendering
         /// <summary>
         /// Acess an element inside the buffer.
         /// </summary>
-        /// <param name="index">The key under which the value is stored inside the buffer.</param>
-        /// <returns>The index under which the element can be accessed</returns>
+        /// <param name="index">The index under which the value is stored inside the buffer.</param>
+        /// <returns>The native index under which the element can be accessed</returns>
         public int this[T index]
         {
             get
@@ -33,6 +33,16 @@ namespace PreRendering
                 if (reserved.ContainsKey(index))
                     return reserved[index];
                 else return -1;
+            }
+        }
+
+        public T this[int nativeIndex]
+        {
+            get
+            {
+                if (reserved.ContainsValue(nativeIndex))
+                    return reserved.First(x => x.Value == nativeIndex).Key;
+                else return default;
             }
         }
 
@@ -45,27 +55,35 @@ namespace PreRendering
         /// </summary>
         /// <returns>
         /// Wether the element could be added to the buffer.
-        /// Returns false if there is already an element stored under the specified key
+        /// Returns false if there is already an element stored under the specified index
         /// and returns true otherwise.
         /// </returns>
-        public bool Add(T key)
+        public bool Add(T index)
         {
-            if (reserved.ContainsKey(key)) return false;
+            if (reserved.ContainsKey(index)) return false;
+            if (available.Count == 0) FreeOne();
 
-            if (available.Count == 0)
-            {
-                T anyKey = Enumerable.ToArray(reserved.Keys)[0];
-                Release(anyKey);
-            }
-
-            int index = available.Dequeue();
-            Add(index);
-            reserved.Add(key, index);
+            int nativeIndex = available.Dequeue();
+            Add(nativeIndex);
+            reserved.Add(index, nativeIndex);
 
             return true;
         }
 
         public abstract void Add(int index);
+
+
+        /// <summary>
+        /// Deallocate the first value of the buffer.
+        /// </summary>
+        private void FreeOne()
+        {
+            if (reserved.Count == 0) return;
+
+            T anyIndex = this[0];
+            reserved.Remove(anyIndex);
+            available.Enqueue(0);
+        }
 
         /// <summary>
         /// Release an element from the buffer. This won't immediately remove it though,
@@ -74,17 +92,17 @@ namespace PreRendering
         /// </summary>
         /// <returns>
         /// Wether the element could be released.
-        /// Returns false if the buffer doesn't countain the specified key,
+        /// Returns false if the buffer doesn't countain the specified index,
         /// returns true otherwise.
         /// </returns>
-        public bool Release(T key)
+        public bool Release(T index)
         {
-            if (!reserved.ContainsKey(key)) return false;
+            if (!reserved.ContainsKey(index)) return false;
 
-            int index = reserved[key];
-            available.Enqueue(index);
-            reserved.Remove(key);
-            Release(index);
+            int nativeIndex = reserved[index];
+            reserved.Remove(index);
+            available.Enqueue(nativeIndex);
+            Release(nativeIndex);
 
             return true;
         }

@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using UnityEngine;
 using Debug = UnityEngine.Debug;
 
 namespace PreRendering
@@ -17,9 +18,6 @@ namespace PreRendering
 
         [DllImport(DllPath)]
         private static extern bool ReleaseBuffer();
-
-        public delegate void ImageDecodedEvent(string path, int index, int threadId, long decodingTime);
-        public static event ImageDecodedEvent ImageDecoded;
 
         public static IntPtr bufferPointer;
         private static int imageWidth, imageHeight;
@@ -50,15 +48,22 @@ namespace PreRendering
         /// <param name="path">The path to the image</param>
         /// <param name="index">The buffer position it should be written to.</param>
         /// <param name="threadId">The id will be passed to the ImageDecoded event.</param>
-        public static bool Decode(string path, int index, int threadId = 0)
+        public static bool Decode(string path, int index, out long elapsedMilliseconds)
         {
             var decodingTime = new Stopwatch();
             bool result;
 
             try
             {
+                Debug.Log($"Trying to read {path} to index {index}");
                 decodingTime.Start();
-                result = ReadToBuffer(path, index);
+                if (index >= 0)
+                    result = ReadToBuffer(path, index);
+                else
+                {
+                    Debug.Log($"Aborting image {path} due to invalid index");
+                    result = false;
+                }
                 decodingTime.Stop();
             }
             catch (Exception e)
@@ -67,7 +72,7 @@ namespace PreRendering
                 result = false;
             }
 
-            ImageDecoded.Invoke(path, index, threadId, decodingTime.ElapsedMilliseconds);
+            elapsedMilliseconds = decodingTime.ElapsedMilliseconds;
             return result;
         }
 

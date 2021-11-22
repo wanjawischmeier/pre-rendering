@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.37311918, g: 0.3807398, b: 0.35872716, a: 1}
+  m_IndirectSpecularColor: {r: 0.3731193, g: 0.38073996, b: 0.35872698, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -221,35 +221,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e795f4c857e66124ca7c8e539ea7e60f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  foldouts: 00000000
-  renderPath: C:/Users/wanja/Documents/dev/pre-rendering\renders
+  foldouts: 01000000
+  renderPath: S:/users/wanja/Dokumente/pre-rendering\renders
   mapPaths:
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\desert_new_540p
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\room_simple_240x270
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\room_simple_480x540
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\room_simple_v2_270p
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\room_simple_v2_540p
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\room_simple_v2_720p
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-17
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-17 12.34.56.00
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-17 12.34.57.00
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-19
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-24\cubes_single_frame_270s
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-24\cubes_single_frame_540p
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-24\desert-new
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-24\desert_540s
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-24\desert_new_270s
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-24\distancetest
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-24\first_render_landscape_540s
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-24\land
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-24\room_simple_single_720p
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-10-24\test
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-11-01
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-11-01 14.50.21.00
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-11-01 14.50.21.01
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-11-01 14.50.21.02
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-11-01 14.50.21.03
-  - C:\Users\wanja\Documents\dev\pre-rendering\renders\Rubbish\2021-11-01 17.53.06.00
+  - S:\users\wanja\Dokumente\pre-rendering\renders\desert_new_540p
+  - S:\users\wanja\Dokumente\pre-rendering\renders\room_simple_240x270
+  - S:\users\wanja\Dokumente\pre-rendering\renders\room_simple_480x540
+  - S:\users\wanja\Dokumente\pre-rendering\renders\room_simple_v2_270p
+  - S:\users\wanja\Dokumente\pre-rendering\renders\room_simple_v2_540p
+  - S:\users\wanja\Dokumente\pre-rendering\renders\room_simple_v2_720p
+  - S:\users\wanja\Dokumente\pre-rendering\renders\Rubbish\2021-10-24
+  - S:\users\wanja\Dokumente\pre-rendering\renders\Rubbish\2021-10-24 16.45.33.00
+  - S:\users\wanja\Dokumente\pre-rendering\renders\Rubbish\2021-10-24 16.45.33.01
   mapFiles:
   - desert_new_540p
   - room_simple_240x270
@@ -257,26 +240,9 @@ MonoBehaviour:
   - room_simple_v2_270p
   - room_simple_v2_540p
   - room_simple_v2_720p
-  - 2021-10-17
-  - 2021-10-17 12.34.56.00
-  - 2021-10-17 12.34.57.00
-  - 2021-10-19
-  - cubes_single_frame_270s
-  - cubes_single_frame_540p
-  - desert-new
-  - desert_540s
-  - desert_new_270s
-  - distancetest
-  - first_render_landscape_540s
-  - land
-  - room_simple_single_720p
-  - test
-  - 2021-11-01
-  - 2021-11-01 14.50.21.00
-  - 2021-11-01 14.50.21.01
-  - 2021-11-01 14.50.21.02
-  - 2021-11-01 14.50.21.03
-  - 2021-11-01 17.53.06.00
+  - 2021-10-24
+  - 2021-10-24 16.45.33.00
+  - 2021-10-24 16.45.33.01
   mapSelection: 2
   predictionBlend: 0.75
   predictionDistance: 2

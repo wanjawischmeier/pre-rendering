@@ -1,6 +1,7 @@
 using PreRendering;
 using System;
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using ThreadPriority = System.Threading.ThreadPriority;
@@ -21,7 +22,7 @@ public class PreRenderingEditor : Editor
         foldoutNames = Enum.GetNames(typeof(PreRenderer.Foldout));
 
         if (renderer.foldouts == null || renderer.foldouts.Length == 0)
-            renderer.foldouts = new bool[foldoutNames.Length];
+            renderer.foldouts = Enumerable.Repeat(true, foldoutNames.Length).ToArray();
 
         renderer.renderPath = Application.dataPath.Split(new string[] { PreRenderer.RepoName }, StringSplitOptions.None)[0];
         renderer.renderPath = Path.Combine(renderer.renderPath, PreRenderer.RepoName, "renders");
@@ -88,7 +89,7 @@ public class PreRenderingEditor : Editor
 
             EditorHelper.OptionField(
                 "Decoding Priority", ref renderer.decodingPrioritySelection, decodingPriorityModes,
-                "How much the threads used for decoding should be prioritized by the cpu.");
+                "How much the threads used for decoding should be prioritized by the cpu.", !playing);
 
             EditorHelper.IntSlider(
                 "Decoding Threads", ref renderer.decodingThreads,
