@@ -55,7 +55,7 @@ namespace PreRendering
 
             try
             {
-                Debug.Log($"Trying to read {path} to index {index}");
+                // Debug.Log($"Trying to read {path} to index {index}");
                 decodingTime.Start();
                 if (index >= 0)
                     result = ReadToBuffer(path, index);
