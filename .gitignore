@@ -4,6 +4,7 @@ __pycache__
 build
 bin
 obj
+packages
 x64
 Debug
 Release
