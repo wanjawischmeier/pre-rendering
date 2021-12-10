@@ -24,9 +24,6 @@
     <ClInclude Include="decoder.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="tinyexr\tinyexr.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
