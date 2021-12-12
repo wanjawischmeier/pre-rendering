@@ -31,6 +31,9 @@ function setup() {
   noStroke();
   fill(blue_col);
   square(offsetX, offsetY, blockWidth, blockWidth/10);
+  
+  i0 = 12
+  i1 = 43
 }
 
 function draw() {
@@ -122,8 +125,8 @@ function getCoordinateSystemPosition(x, y) {
   ];
 }
 
-function getIndex(x, y) {
-  return x + y * chunkWidth;
+function getIndex(x, y, w) {
+  return x + y * w;
 }
 
 function getChunkIndex(x, y) {
@@ -131,6 +134,7 @@ function getChunkIndex(x, y) {
   chunkCoordinateX = floor(x/chunkWidth);
   chunkCoordinateY = floor(y/chunkWidth);
   
+  // Draw chunk outline
   noFill();
   stroke(blue_col);
   square(
