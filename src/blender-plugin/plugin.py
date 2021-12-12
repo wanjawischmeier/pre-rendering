@@ -1,6 +1,35 @@
 # ________________________________________________________ #
 
-#                            Info                          #
+#                          Imports                         #
+# ________________________________________________________ #
+
+# Blender modules
+from numpy.core.shape_base import block
+import bpy
+from bpy.types import (
+    TOPBAR_MT_render,
+    Collection,
+    Operator,
+    Object,
+    Scene
+)
+from bpy.props import (
+    IntProperty,
+    FloatProperty,
+    StringProperty,
+    EnumProperty
+)
+
+# Libraries
+from numpy import arange, array, ndarray
+from math import radians
+from json import dumps
+from os import makedirs
+from os.path import join
+
+# ________________________________________________________ #
+
+#                        Structures                        #
 # ________________________________________________________ #
 
 bl_info = {
@@ -15,32 +44,118 @@ bl_info = {
     "category":     "Render"
 }
 
-# ________________________________________________________ #
+qualitys = [
+    (
+        "low",
+        "Low quality (720p)",
+        "Low filesize and fast reading, but may look bad"
+    ),
+    (
+        "medium",
+        "Medium quality (1080p)",
+        "Propably the best option for large maps"
+    ),
+    (
+        "high",
+        "High quality (1440p)",
+        "Will result in a large map file, but capture more detail"
+    ),
+    (
+        "ultra",
+        "Very high quality (2160p)",
+        "Very large filesize, only for very good PC's"
+    )
+]
 
-#                          Imports                         #
-# ________________________________________________________ #
+resolutions = {
+    "low":      (1280, 720),
+    "medium":   (1920, 1080),
+    "high":     (2560, 1440),
+    "ultra":    (3840, 2160)
+}
 
-# Blender modules
-from os import name, makedirs
-import bpy
-from bpy.types import (
-    Operator,
-    TOPBAR_MT_render,
-    Context,
-    Object,
-    Scene
-)
-from bpy.props import (
-    FloatProperty,
-    StringProperty,
-    BoolProperty,
-    EnumProperty
-)
-# Libraries
-from numpy import arange, array, empty, ndarray
-from math import radians
-from json import dumps
-from os.path import join
+class Property:
+    def __init__(self, target: str, path: str, description: str=None, default=None) -> None:
+        self.target = target
+        self.path = path
+        self.description = description
+        self.default = default
+
+properties: dict[str, Property] = {
+    "chunkWidth": Property(
+        target="Domain",
+        path='["chunkWidth"]',
+        default=4,
+        description="""
+How many positions should fit into each chunk row and column.
+This setting can later be changed in the domain
+(go to "Object Properties" and expand "Custom Properties")"""
+    ),
+    "chunkColumns": Property(
+        target="Domain",
+        path='["chunkColumns"]',
+        default=5,
+        description="""
+How many chunks should fit into each domain column.
+This setting can later be changed in the domain
+(go to "Object Properties" and expand "Custom Properties")""",
+    ),
+    "chunkRows": Property(
+        target="Domain",
+        path='["chunkRows"]',
+        default=5,
+        description="""
+How many chunks should fit into each domain row.
+This setting can later be changed in the domain
+(go to "Object Properties" and expand "Custom Properties")"""
+    ),
+    "domainLocation": Property(
+        target="Domain",
+        path="location[{i}]"
+    ),
+    "domainScale": Property(
+        target="Domain",
+        path="scale[{i}]"
+    ),
+    "chunkPosition": Property(
+        target="ChunkBounds",
+        path="location[{i}]"
+    )
+}
+
+variables = {
+    "chunkIndex": "(frame%chunkSize)",
+    "rowSize": "(chunkSize*chunkColumns)",
+    "chunkSize": "(chunkWidth**2)",
+    "blockWidth": "(domainScale/chunkColumns/chunkWidth)",
+    "blockHeight": "(domainScale/chunkRows/chunkWidth)",
+    "domainOffset": "(-domainScale/2+domainLocation)"
+}
+
+expressions = {
+    "ChunkBounds": {
+        "location": [
+            "(frame-chunkIndex)/chunkSize%chunkColumns*chunkWidth*blockWidth+domainOffset",
+            "(frame-frame%rowSize)/rowSize*chunkWidth*blockWidth+domainOffset"
+        ],
+        "scale": [
+            "domainScale/chunkColumns",
+            "domainScale/chunkRows"
+        ]
+    },
+    "ChunkPosition": {
+        "location": [
+            "chunkPosition+chunkIndex%chunkWidth*blockWidth",
+            "chunkPosition+(chunkIndex-chunkIndex%chunkWidth)/chunkWidth*blockWidth"
+        ],
+        "scale": [
+            "blockWidth",
+            "blockHeight"
+        ]
+    }
+}
+
+default_domain_size = 20
 
 # ________________________________________________________ #
 
@@ -63,22 +178,34 @@ def getNeeded(start: list, end: list, step_size: float) -> ndarray:
                 needed.append([x, y, z])
     return array(needed)
 
-def estimatePanoramaResolution(width: int, height: int, fov: int = 90) -> tuple:
+def estimatePanoramaResolution(width: int, height: int, fov: int=90) -> tuple:
     return (
         round(width * 360 / fov),
         round(height * 180 / fov)
     )
 
-def setKeyframe(self, context: Context, frame: int, location: list, keyframe_type = 'Location') -> None:
-    context.scene.frame_set(frame)
-    self.location = location
-    bpy.ops.anim.keyframe_insert(type=keyframe_type)
-Object.setKeyframe = setKeyframe
-
-def setKeyframes(self, context: Context, locations: list) -> None:
-    for i in range(len(locations)):
-        self.setKeyframe(context, i, locations[i])
-Object.setKeyframes = setKeyframes
+def instantiatePreviewPlane(
+    self, name: str, context, location=(0.5, 0.5, 0),
+    display_bounds=True, apply_transform=True, selectable=False
+) -> Object:
+    bpy.ops.mesh.primitive_plane_add(
+        size=1,
+        location=location
+    )
+    if apply_transform:
+        bpy.ops.object.transform_apply()
+    obj = context.object
+    obj.name = name
+    obj.hide_select = not selectable
+    obj.hide_render = True
+    obj.display.show_shadows = False
+    if display_bounds:
+        obj.display_type = 'BOUNDS'
+    
+    self.objects.link(obj)
+    context.scene.collection.objects.unlink(obj)
+    return obj
+Collection.instantiatePreviewPlane = instantiatePreviewPlane
 
 def setUpForRendering(self, near_clip: float, far_clip: float) -> None:
     self.rotation_euler = toRadians([90, 0, 0])
@@ -94,7 +221,7 @@ def setRenderSettings(self, path: str, resolution: tuple, frame_end: int) -> Non
     self.render.fps = 30
     self.render.resolution_x = resolution[0]
     self.render.resolution_y = resolution[1]
-    self.frame_start = 0
+    self.frame_start = 1
     self.frame_end = frame_end
 
     self.use_nodes = True
@@ -123,44 +250,28 @@ def setRenderSettings(self, path: str, resolution: tuple, frame_end: int) -> Non
     links.new(render_node.outputs['Depth'], out_node.inputs['Map'])
 Scene.setRenderSettings = setRenderSettings
 
-def createConfigFile(path: str, nclip: float, fclip: float, mx_width: float, offsets: ndarray):
-    off_vectors = [
-        {
-            "x":offsets[i][0],
-            "y":offsets[i][2],
-            "z":offsets[i][1]
-        }
-        for i in range(round(len(offsets)))
-    ]
+class Configuration:
+    nclip: float
+    fclip: float
+    chunkWidth: int
+    chunkColumns: int
+    chunkRows: int
+    blockWidth: float
+    blockHeight: float
+    blocks: int
 
-    makedirs(path, exist_ok=True)
+def createConfigFile(path: str, config: Configuration) -> None:
+    try:
+        makedirs(path, exist_ok=True)
+    except Exception as e:
+        raise OSError(f"Failed to create file at {path}")
     with open(join(path, ".mapconfig"), 'w') as file:
-        config = dumps({
-            "nCLip": nclip,
-            "fClip": fclip,
-            "mxWidth": mx_width,
-            "offsets": off_vectors
-        }, indent = 2, separators=(',', ': '))
+        config = dumps(
+            config.__dict__,
+            indent = 2,
+            separators=(',', ': ')
+        )
         file.write(config)
-
-# ________________________________________________________ #
-
-#                        Structures                        #
-# ________________________________________________________ #
-
-qualitys = [
-    ("low",     "Low quality (720p)",  "Low filesize and fast reading, but may look bad"),
-    ("medium",  "Medium quality (1080p)",   "Propably the best option for large maps"),
-    ("high",    "High quality (1440p)",        "Will result in a large map file, but capture more detail"),
-    ("ultra",   "Very high quality (2160p)",   "Very large filesize, only for very good PC's")
-]
-
-resolutions = {
-    "low":      (1280, 720),
-    "medium":   (1920, 1080),
-    "high":     (2560, 1440),
-    "ultra":    (3840, 2160)
-}
 
 # ________________________________________________________ #
 
@@ -178,39 +289,102 @@ class TOPBAR_OT_prerender_create_domain(Operator):
     bl_region_type = "UI"
     bl_options = {'REGISTER', 'UNDO'}
     bl_description = "Create a domain to define an area to PreRender"
+    
+    chunkWidth: IntProperty(
+        name="Chunk Width",
+        default=properties["chunkWidth"].default,
+        description=properties["chunkWidth"].description
+    )
+    chunkColumns: IntProperty(
+        name="Chunk Columns",
+        default=properties["chunkColumns"].default,
+        description=properties["chunkColumns"].description
+    )
+    chunkRows: IntProperty(
+        name="Chunk Rows",
+        default=properties["chunkRows"].default,
+        description=properties["chunkRows"].description
+    )
 
     @classmethod
     def poll(cls, context):
-        return 'PreRendering Domain' not in bpy.data.objects
+        return 'Domain' not in bpy.data.objects
+    
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
 
     def execute(self, context):
-        bpy.ops.mesh.primitive_cube_add(scale = [10, 10, 1])
-        domain = context.object
-        domain.name = 'PreRendering Domain'
-        domain.display_type = 'WIRE'
-        domain.hide_render = True
+        collection = bpy.data.collections.new("PreRendering")
+        context.scene.collection.children.link(collection)
 
+        # Add all objects
+        obj = collection.instantiatePreviewPlane(
+            "Domain",
+            context,
+            location=(0, 0, 0),
+            apply_transform=False,
+            selectable=True
+        )
+        obj.scale = (default_domain_size, default_domain_size, 1)
+        collection.instantiatePreviewPlane("ChunkBounds", context)
+        collection.instantiatePreviewPlane("ChunkPosition", context, display_bounds=False)
+
+        bpy.ops.object.select_camera()
+        bpy.ops.object.constraint_add(type='COPY_LOCATION')
+        camera = context.object
+        camera.rotation_euler = [90, 0, 0]
+        camera.constraints["Copy Location"].target = collection.objects["ChunkPosition"]
+
+        # Set custom properties
+        domain = collection.objects["Domain"]
+        domain["chunkWidth"] = self.chunkWidth
+        domain["chunkColumns"] = self.chunkColumns
+        domain["chunkRows"] = self.chunkRows
+        domain.update_tag()
+
+        for expression_collection_name in expressions:
+            expression_collection = expressions[expression_collection_name]
+
+            for i in range(2):
+                # Add driver to location coordinate
+                for expression_path in expression_collection:
+                    driver = collection.objects[expression_collection_name].driver_add(expression_path, i).driver
+                    driver.type = 'SCRIPTED'
+                    
+                    expression_pair = expression_collection[expression_path]
+                    expression = expression_pair[i]
+                    for variable in variables:
+                        expression = expression.replace(variable, variables[variable])
+                    
+                    # Add all properties
+                    for property_name in properties:
+                        if property_name in expression:
+                            property = properties[property_name]
+                            path = property.path.replace("{i}", str(i))
+
+                            var = driver.variables.new()
+                            var.targets[0].id = collection.objects[property.target]
+                            var.targets[0].data_path = path
+                            var.name = property_name
+                    
+                    driver.expression = expression
+        
         return {'FINISHED'}
 
 def add_setup_button(self, context):
     layout = self.layout
     layout.operator(
         TOPBAR_OT_prerender_setup.bl_idname,
-        text="Set up the scene")
+        text="Scene setup")
 
 class TOPBAR_OT_prerender_setup(Operator):
     bl_idname = "render.prerender_setup"
-    bl_label = "PreRendering Setup"
+    bl_label = "Setup"
     bl_space_type = "VIEW3D"
     bl_region_type = "UI"
     bl_options = {'REGISTER', 'UNDO'}
-    bl_description = "Set up the selected camera for PreRendering inside a fixed area defined by the PreRendering domain"
+    bl_description = "Set up the selected camera for PreRendering inside the domain"
 
-    step_size: FloatProperty(
-        name="Step Size",
-        default=1,
-        description="The size of the gap between renders"
-    )
     near_clip: FloatProperty(
         name="Near Clip",
         default=0.1,
@@ -227,23 +401,30 @@ class TOPBAR_OT_prerender_setup(Operator):
         default = "medium",
         description = "The quality of the map file, mainly determined by it's resolution. Please don't change the resolution manually after running this setup (You can change the amount of compression)."
     )
-    path: StringProperty(
+    directory: StringProperty(
         name = "Target Path",
         default = "",
-        description = "Where the render and the .mapconfig file should be saved."
-    )
-    delete_domain: BoolProperty(
-        name = "Delete Domain",
-        default = False,
-        description = "Wether the domain should be deleted after setting up the camera."
+        description = "Where the render and the .mapconfig file should be saved.",
+        subtype="DIR_PATH"
     )
 
     @classmethod
     def poll(cls, context):
-        return 'PreRendering Domain' in bpy.data.objects and context.object != None and context.object.type == 'CAMERA'
+        return 'Domain' in bpy.data.objects
 
     def invoke(self, context, event):
-        return context.window_manager.invoke_props_dialog(self)
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+
+    def draw(self, context):
+        layout = self.layout
+        col = layout.column()
+        col.label(text="PreRendering scene setup")
+ 
+        row = col.row(heading="Configuration file")
+        row.prop(self, "quality")
+        col.prop(self, "near_clip")
+        col.prop(self, "far_clip")
 
 # ________________________________________________________ #
 
@@ -251,42 +432,33 @@ class TOPBAR_OT_prerender_setup(Operator):
 # ________________________________________________________ #
 
     def execute(self, context):
-        domain = bpy.data.objects['PreRendering Domain']
-        start = domain.matrix_world @ domain.data.vertices[0].co
-        end   = domain.matrix_world @ domain.data.vertices[7].co
+        collection = bpy.data.collections['PreRendering']
+        domain = collection.objects["Domain"]
+        config = Configuration()
+        
+        config.chunkWidth = domain["chunkWidth"]
+        config.chunkColumns = domain["chunkColumns"]
+        config.chunkRows = domain["chunkRows"]
+        domainScale = tuple(domain.scale)
 
-        frames = getNeeded(start, end, self.step_size)
+        config.blockWidth = domainScale[0]/config.chunkColumns/config.chunkWidth
+        config.blockHeight = domainScale[1]/config.chunkRows/config.chunkWidth
+        config.blocks = config.chunkColumns*config.chunkRows*(config.chunkWidth**2)
 
         screen_resolution = resolutions.get(self.quality)
         resolution = estimatePanoramaResolution(
             screen_resolution[0],
             screen_resolution[1]
         )
-        
-        mx_width = max(
-            end[0] - start[0],
-            end[1] - start[1],
-            end[2] - start[2]
-        )
 
         scene = context.scene
-        scene.setRenderSettings(self.path, resolution, len(frames) -1)
+        scene.setRenderSettings(self.directory, resolution, config.blocks)
 
+        bpy.ops.object.select_camera()
         cam = context.object
         cam.setUpForRendering(self.near_clip, self.far_clip)
-        cam.setKeyframes(context, frames)
 
-        createConfigFile(
-            self.path,
-            self.near_clip, self.far_clip,
-            mx_width, frames
-        )
-
-        if self.delete_domain:
-            cam.select_set(False)
-            domain.select_set(True)
-            bpy.ops.object.delete()
-            cam.select_set(True)
+        createConfigFile(self.directory, config)
 
         return {'FINISHED'}
 

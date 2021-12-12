@@ -1,0 +1,3 @@
+[submodule "src/exr-decoder/exr-decoder/tinyexr"]
+	path = src/exr-decoder/exr-decoder/tinyexr
+	url = https://github.com/wanjawischmeier/tinyexr
