@@ -4,7 +4,6 @@
 # ________________________________________________________ #
 
 # Blender modules
-from numpy.core.shape_base import block
 import bpy
 from bpy.types import (
     TOPBAR_MT_render,
@@ -21,7 +20,6 @@ from bpy.props import (
 )
 
 # Libraries
-from numpy import arange, array, ndarray
 from math import radians
 from json import dumps
 from os import makedirs
@@ -123,20 +121,24 @@ This setting can later be changed in the domain
     )
 }
 
+# Order is important here!
+# (Variables with references to other ones have to be declared beneath those)
 variables = {
-    "chunkIndex": "(frame%chunkSize)",
-    "rowSize": "(chunkSize*chunkColumns)",
-    "chunkSize": "(chunkWidth**2)",
-    "blockWidth": "(domainScale/chunkColumns/chunkWidth)",
-    "blockHeight": "(domainScale/chunkRows/chunkWidth)",
-    "domainOffset": "(-domainScale/2+domainLocation)"
+    "blocks":       "chunkColumns*chunkRows*(chunkWidth**2)",
+    "clampedFrame": "frame%blocks",
+    "blockWidth":   "domainScale/chunkColumns/chunkWidth",
+    "blockHeight":  "domainScale/chunkRows/chunkWidth",
+    "domainOffset": "-domainScale/2+domainLocation",
+    "chunkSize":    "chunkWidth**2",
+    "chunkIndex":   "clampedFrame%chunkSize",
+    "rowSize":      "chunkSize*chunkColumns",
 }
 
 expressions = {
     "ChunkBounds": {
         "location": [
-            "(frame-chunkIndex)/chunkSize%chunkColumns*chunkWidth*blockWidth+domainOffset",
-            "(frame-frame%rowSize)/rowSize*chunkWidth*blockWidth+domainOffset"
+            "(clampedFrame-chunkIndex)/chunkSize%chunkColumns*chunkWidth*blockWidth+domainOffset",
+            "(clampedFrame-clampedFrame%rowSize)/rowSize*chunkWidth*blockHeight+domainOffset"
         ],
         "scale": [
             "domainScale/chunkColumns",
@@ -146,7 +148,7 @@ expressions = {
     "ChunkPosition": {
         "location": [
             "chunkPosition+chunkIndex%chunkWidth*blockWidth",
-            "chunkPosition+(chunkIndex-chunkIndex%chunkWidth)/chunkWidth*blockWidth"
+            "chunkPosition+(chunkIndex-chunkIndex%chunkWidth)/chunkWidth*blockHeight"
         ],
         "scale": [
             "blockWidth",
@@ -169,14 +171,6 @@ def toRadians(degrees: list) -> list:
         radians_list.append(radians(degree))
 
     return radians_list
-
-def getNeeded(start: list, end: list, step_size: float) -> ndarray:
-    needed = []
-    for x in arange(start[0], end[0] + step_size, step_size):
-        for y in arange(start[1], end[1] + step_size, step_size):
-            for z in arange(start[2], end[2] + step_size, step_size):
-                needed.append([x, y, z])
-    return array(needed)
 
 def estimatePanoramaResolution(width: int, height: int, fov: int=90) -> tuple:
     return (
@@ -204,26 +198,23 @@ def instantiatePreviewPlane(
     
     self.objects.link(obj)
     context.scene.collection.objects.unlink(obj)
+
     return obj
 Collection.instantiatePreviewPlane = instantiatePreviewPlane
 
-def setUpForRendering(self, near_clip: float, far_clip: float) -> None:
-    self.rotation_euler = toRadians([90, 0, 0])
-    self.data.type = 'PANO'
-    self.data.clip_start = near_clip
-    self.data.clip_end = far_clip
-    self.data.cycles.panorama_type = 'EQUIRECTANGULAR'
-    bpy.ops.anim.keyframe_clear_v3d()
-Object.setUpForRendering = setUpForRendering
+def addConstraint(self, target, x: bool, y: bool, z: bool) -> None:
+    bpy.ops.object.constraint_add(type='COPY_LOCATION')
+    constraint = self.constraints["Copy Location"]
+    constraint.target = target
+    constraint.use_x = x
+    constraint.use_y = y
+    constraint.use_z = z
+Object.addConstraint = addConstraint
 
-def setRenderSettings(self, path: str, resolution: tuple, frame_end: int) -> None:
-    self.render.engine = 'CYCLES'
-    self.render.fps = 30
-    self.render.resolution_x = resolution[0]
-    self.render.resolution_y = resolution[1]
-    self.frame_start = 1
-    self.frame_end = frame_end
+def createSurfaceNodeGroup() -> None:
+    group = bpy.data.node_groups.new('PreRendering Surface', 'ShaderNodeTree')
 
+def setUpCompositorNodes(self, context) -> None:
     self.use_nodes = True
     tree = self.node_tree
 
@@ -235,7 +226,7 @@ def setRenderSettings(self, path: str, resolution: tuple, frame_end: int) -> Non
     out_node = tree.nodes.new(type='CompositorNodeOutputFile')
     out_node.location = 500, 0
     out_node.label = 'Output'
-    out_node.base_path = join(path, 'color')
+    # out_node.base_path = join(path, 'color')
 
     format = out_node.format
     format.color_mode = 'RGB'
@@ -248,6 +239,25 @@ def setRenderSettings(self, path: str, resolution: tuple, frame_end: int) -> Non
     links = tree.links
     links.new(render_node.outputs['Image'], out_node.inputs['Color'])
     links.new(render_node.outputs['Depth'], out_node.inputs['Map'])
+Scene.setUpCompositorNodes = setUpCompositorNodes
+
+def setUpForRendering(self, near_clip: float, far_clip: float) -> None:
+    self.rotation_euler = toRadians([90, 0, 0])
+    self.data.type = 'PANO'
+    self.data.clip_start = near_clip
+    self.data.clip_end = far_clip
+    self.data.cycles.panorama_type = 'EQUIRECTANGULAR'
+Object.setUpForRendering = setUpForRendering
+
+def setRenderSettings(self, context, path: str, resolution: tuple, frame_end: int) -> None:
+    self.render.engine = 'CYCLES'
+    self.render.fps = 30
+    self.render.resolution_x = resolution[0]
+    self.render.resolution_y = resolution[1]
+    self.frame_end = frame_end
+
+    createSurfaceNodeGroup()
+    self.setUpCompositorNodes(context)
 Scene.setRenderSettings = setRenderSettings
 
 class Configuration:
@@ -316,27 +326,32 @@ class TOPBAR_OT_prerender_create_domain(Operator):
     def execute(self, context):
         collection = bpy.data.collections.new("PreRendering")
         context.scene.collection.children.link(collection)
+        context.scene.frame_start = 0
+        context.scene.frame_current = 0
 
         # Add all objects
-        obj = collection.instantiatePreviewPlane(
+        domain = collection.instantiatePreviewPlane(
             "Domain",
             context,
             location=(0, 0, 0),
             apply_transform=False,
             selectable=True
         )
-        obj.scale = (default_domain_size, default_domain_size, 1)
-        collection.instantiatePreviewPlane("ChunkBounds", context)
-        collection.instantiatePreviewPlane("ChunkPosition", context, display_bounds=False)
+        domain.scale = (default_domain_size, default_domain_size, 1)
+
+        obj = collection.instantiatePreviewPlane("ChunkBounds", context)
+        obj.addConstraint(domain, False, False, True)
+
+        obj = collection.instantiatePreviewPlane("ChunkPosition", context, display_bounds=False)
+        obj.addConstraint(domain, False, False, True)
 
         bpy.ops.object.select_camera()
         bpy.ops.object.constraint_add(type='COPY_LOCATION')
         camera = context.object
-        camera.rotation_euler = [90, 0, 0]
+        camera.rotation_euler = [radians(90), 0, 0]
         camera.constraints["Copy Location"].target = collection.objects["ChunkPosition"]
 
         # Set custom properties
-        domain = collection.objects["Domain"]
         domain["chunkWidth"] = self.chunkWidth
         domain["chunkColumns"] = self.chunkColumns
         domain["chunkRows"] = self.chunkRows
@@ -353,8 +368,8 @@ class TOPBAR_OT_prerender_create_domain(Operator):
                     
                     expression_pair = expression_collection[expression_path]
                     expression = expression_pair[i]
-                    for variable in variables:
-                        expression = expression.replace(variable, variables[variable])
+                    for variable in reversed(variables):
+                        expression = expression.replace(variable, f"({variables[variable]})")
                     
                     # Add all properties
                     for property_name in properties:
@@ -452,7 +467,7 @@ class TOPBAR_OT_prerender_setup(Operator):
         )
 
         scene = context.scene
-        scene.setRenderSettings(self.directory, resolution, config.blocks)
+        scene.setRenderSettings(context, self.directory, resolution, config.blocks*2 -1)
 
         bpy.ops.object.select_camera()
         cam = context.object
