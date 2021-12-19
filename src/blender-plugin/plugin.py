@@ -196,7 +196,7 @@ def estimatePanoramaResolution(width: int, height: int, fov: int=90) -> tuple:
 
 def instantiatePreviewPlane(
     self, name: str, context, location=(0.5, 0.5, 0),
-    display_bounds=True, apply_transform=True, selectable=False
+    display_bounds=True, apply_transform=True, selectable=False, ray_visible=False
 ) -> Object:
     bpy.ops.mesh.primitive_plane_add(
         size=1,
@@ -211,6 +211,12 @@ def instantiatePreviewPlane(
     obj.display.show_shadows = False
     if display_bounds:
         obj.display_type = 'BOUNDS'
+
+    obj.visible_camera = (obj.visible_diffuse
+    ) = (obj.visible_glossy
+    ) = (obj.visible_transmission
+    ) = (obj.visible_volume_scatter
+    ) = obj.visible_shadow = ray_visible
     
     obj.users_collection[0].objects.unlink(obj)
     self.objects.link(obj)
@@ -350,7 +356,6 @@ class TOPBAR_OT_prerender_create_domain(Operator):
         obj = collection.instantiatePreviewPlane('ChunkPosition', context, display_bounds=False)
         obj.addZConstraint(domain)
 
-        camera.location = (0.5, 0.5, 0)
         camera.rotation_euler = [radians(90), 0, 0]
         constraint = camera.constraints.new('COPY_LOCATION')
         constraint.target = collection.objects['ChunkPosition']
@@ -589,6 +594,8 @@ Where the render and the .mapconfig file should be saved.''',
 
         group.outputs.new('NodeSocketShader', 'InputShader')
         
+        group.inputs['Alpha'].default_value = 1
+
         group.links.new(node_input.outputs['InputShader'],  node_mix_shader.inputs[1])
         group.links.new(node_input.outputs['Roughness'],    node_comb_rgb.inputs['R'])
         group.links.new(node_input.outputs['Alpha'],        node_comb_rgb.inputs['G'])
