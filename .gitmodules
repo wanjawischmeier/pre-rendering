@@ -1,3 +1,6 @@
 [submodule "src/exr-decoder/exr-decoder/tinyexr"]
 	path = src/exr-decoder/exr-decoder/tinyexr
 	url = https://github.com/wanjawischmeier/tinyexr
+[submodule "src/street-view"]
+	path = src/street-view
+	url = https://github.com/wanjawischmeier/google-street-view-panorama-download
