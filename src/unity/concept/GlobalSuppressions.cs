@@ -9,3 +9,4 @@ using System.Diagnostics.CodeAnalysis;
 [assembly: SuppressMessage("Style", "IDE0051")]
 [assembly: SuppressMessage("Style", "IDE0060")]
 [assembly: SuppressMessage("Style", "IDE0090")]
+[assembly: SuppressMessage("Style", "IDE0059:Unnecessary assignment of a value", Justification = "<Pending>", Scope = "member", Target = "~M:MediaPlaybackRunner.Play")]

@@ -36,7 +36,6 @@ public class MovementController : MonoBehaviour
         moveDirection = (forward * curSpeedX) + (right * curSpeedY);
 
         moveDirection.y = Input.GetKey(KeyCode.Q) ? -speed * Time.deltaTime * 25 : Input.GetKey(KeyCode.E) ? speed * Time.deltaTime * 25 : 0;
-        Vector3 oldPos = transform.position;
         characterController.Move(moveDirection * Time.deltaTime);
 
         rotationX += Input.GetAxis("Mouse Y") * lookSpeed;

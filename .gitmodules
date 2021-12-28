@@ -4,3 +4,6 @@
 [submodule "src/street-view"]
 	path = src/street-view
 	url = https://github.com/wanjawischmeier/google-street-view-panorama-download
+[submodule "src/unity/concept/Assets/MediaPlayback"]
+	path = src/unity/concept/Assets/MediaPlayback
+	url = https://github.com/wanjawischmeier/MediaPlayback

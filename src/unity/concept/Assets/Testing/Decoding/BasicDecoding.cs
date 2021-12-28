@@ -18,7 +18,7 @@ public class BasicDecoding : MonoBehaviour
     {
         depth = relativeImagePaths.Length;
         string rootPath = Application.dataPath.Split(new string[] { RepoName }, System.StringSplitOptions.None)[0];
-        string sampleImagePath = Path.Combine(rootPath, RepoName, "renders", relativeImagePaths[0]);
+        string sampleImagePath = Path.Combine(rootPath, RepoName, "images", relativeImagePaths[0]);
 
         Decoder.Initialize(sampleImagePath, depth, resolution.x, resolution.y);
         buffer = new RawTexture.Buffer(Decoder.bufferPointer, resolution.x, resolution.y, depth);

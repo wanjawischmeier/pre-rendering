@@ -14,7 +14,7 @@ namespace PreRendering
         }
 
         // Based on https://stackoverflow.com/a/4478535/13215204
-        private static Dictionary<Type, Func<Material, string, object>> getValue = new Dictionary<Type, Func<Material, string, object>>()
+        private static readonly Dictionary<Type, Func<Material, string, object>> getValue = new Dictionary<Type, Func<Material, string, object>>()
             {
                 {
                     typeof(int), new Func<Material, string, object>(
@@ -41,7 +41,7 @@ namespace PreRendering
                         })
                 }
             };
-        private static Dictionary<Type, Action<Material, string, object>> setValue = new Dictionary<Type, Action<Material, string, object>>()
+        private static readonly Dictionary<Type, Action<Material, string, object>> setValue = new Dictionary<Type, Action<Material, string, object>>()
             {
                 {
                     typeof(int), new Action<Material, string, object>(

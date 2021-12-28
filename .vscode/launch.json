@@ -5,6 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: Bulk download",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "args": ["-q1", "-s4", "-rsrc\\street-view\\route.pickle", "-wsrc\\street-view\\waypoints.json", "-nE411"],
+            "console": "integratedTerminal"
+        },
+        {
             "name": "Python: Aktuelle Datei",
             "type": "python",
             "request": "launch",
