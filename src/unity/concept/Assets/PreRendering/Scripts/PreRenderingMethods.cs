@@ -27,12 +27,12 @@ namespace PreRendering
                 new ShaderManager.Property()
                 {
                     name = "NCLIP",
-                    value = Map.nClip
+                    value = Map.nclip
                 },
                 new ShaderManager.Property()
                 {
                     name = "FCLIP",
-                    value = Map.fClip
+                    value = Map.fclip
                 },
                 new ShaderManager.Property()
                 {

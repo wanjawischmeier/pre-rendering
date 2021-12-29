@@ -8,15 +8,15 @@ namespace PreRendering
     [Serializable]
     public struct MapConfig
     {
-        public float nClip, fClip;
-        public int mxWidth;
+        public float nclip, fclip, blockWidth, blockHeight;
+        public int chunkWidth, chunkColumns, chunkRows;
         public Vector3[] offsets;
     }
 
     public static class Map
     {
-        public static float nClip, fClip;
-        public static int mxWidth;
+        public static float nclip, fclip, blockWidth, blockHeight;
+        public static int chunkWidth, chunkColumns, chunkRows;
         public static Resolution resolution;
         public static Vector3[] offsets;
 
@@ -42,9 +42,9 @@ namespace PreRendering
                 throw new Exception(e.Message, new Exception(MapError + "Unable to parse the configuration file."));
             }
 
-            nClip = config.nClip;
-            fClip = config.fClip;
-            mxWidth = config.mxWidth;
+            nclip = config.nclip;
+            fclip = config.fclip;
+            // mxWidth = config.mxWidth;
             offsets = config.offsets;
 
             Validate();
@@ -60,9 +60,9 @@ namespace PreRendering
             var missingAttributes = new List<string>();
             var missingFiles = new List<string>();
 
-            if (nClip == 0) missingAttributes.Add("(float) nClip");
-            if (fClip == 0) missingAttributes.Add("(float) fClip");
-            if (mxWidth == 0) missingAttributes.Add("(int) mxWidth");
+            if (nclip == 0) missingAttributes.Add("(float) nclip");
+            if (fclip == 0) missingAttributes.Add("(float) fclip");
+            // if (mxWidth == 0) missingAttributes.Add("(int) mxWidth");
 
             for (int i = 0; i < offsets.Length; i++)
             {

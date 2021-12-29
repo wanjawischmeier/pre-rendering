@@ -6,7 +6,7 @@
 # Blender modules
 import bpy
 from bpy.types import (
-    TOPBAR_MT_render,
+    TOPBAR_MT_render,z
     Collection,
     NodeSocket,
     Operator,
@@ -166,11 +166,11 @@ default_domain_size = 20
 class Configuration:
     nclip: float
     fclip: float
+    blockWidth: float
+    blockHeight: float
     chunkWidth: int
     chunkColumns: int
     chunkRows: int
-    blockWidth: float
-    blockHeight: float
 
 
 
