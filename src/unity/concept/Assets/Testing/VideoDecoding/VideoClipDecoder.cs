@@ -5,15 +5,27 @@ using System;
 
 public class VideoClipDecoder : MonoBehaviour
 {
+    [Header("Source")]
     public string url;
     public MapConfig config;
+
+    [Header("Player")]
     public Vector2 position;
-    VideoPlayer[] players;
-    public int[] chunkIndicies;
+
+    [Header("Performance")]
+    public int targetFps = 60;
+    public int tolerance = 10;
+    public int intervallSize = 100;
+    public float rateOfChange = 0.1f;
+
+
     ComputeBuffer buffer;
+    Texture2DArray chunk;
+    VideoPlayer[] players;
+    int[] chunkIndicies;
     int chunkSize, totalSize;
     int prepared = 0;
-    public Texture2DArray chunk;
+    long lastPlaybackSpeedChange = 0;
 
     enum VideoPlayerState
     {
@@ -45,11 +57,62 @@ public class VideoClipDecoder : MonoBehaviour
 
             player.url = url;
             player.frame = i * totalSize;
-            player.playbackSpeed = 1;
             player.Prepare();
 
             players[i] = player;
         }
+    }
+
+    private void Update()
+    {
+        float fps = 1 / Time.unscaledDeltaTime;
+
+        if (Time.frameCount > lastPlaybackSpeedChange + intervallSize)
+        {
+            foreach (var player in players)
+            {
+                float factor = 0;
+
+                if (fps < targetFps - tolerance)
+                    factor = -rateOfChange;
+                else if (fps > targetFps + tolerance)
+                    factor = rateOfChange;
+
+                if (factor != 0 && player.isPlaying)
+                {
+                    player.playbackSpeed = Mathf.Max(player.playbackSpeed + factor, rateOfChange);
+                    lastPlaybackSpeedChange = Time.frameCount;
+                }
+            }
+        }
+
+        for (int i = 0; i < config.channelBlocks; i++)
+        {
+            VideoPlayer player = players[i];
+            int channelBlock = Array.IndexOf(players, player);
+
+            if (player.isPaused)
+            {
+                int start = channelBlock * chunkSize;
+                int end = start + chunkSize;
+
+                CorrectChunkIndex(player, channelBlock, player.frame, position, out int newChunkIndex, out long newFrame);
+
+                // Check wether chunk is fully loaded
+                if (chunkIndicies[0] != newChunkIndex)
+                {
+                    if (player.frame != newFrame)
+                        player.frame = newFrame;
+
+                    player.Play();
+                }
+            }
+        }
+    }
+
+    private void OnDisable()
+    {
+        buffer.Release();
     }
 
     private void Player_PrepareCompleted(VideoPlayer source)
@@ -78,7 +141,7 @@ public class VideoClipDecoder : MonoBehaviour
         buffer.SetData(chunkIndicies, localIndex, localIndex, 1);
 
         // Finished decoding channel block of chunk
-        if ((frameIdx +1) % chunkSize == 0 && (frameIdx +1) - channelBlock * totalSize != 0)
+        if ((frameIdx + 1) % chunkSize == 0 && (frameIdx + 1) - channelBlock * totalSize != 0)
         {
             chunkIndicies[localIndex] = newChunkIndex;
             buffer.SetData(chunkIndicies, localIndex, localIndex, 1);
@@ -91,37 +154,6 @@ public class VideoClipDecoder : MonoBehaviour
         // Player is loading the wrong chunk
         if (!correct)
             source.frame = newFrame;
-    }
-
-    private void Update()
-    {
-        for (int i = 0; i < config.channelBlocks; i++)
-        {
-            VideoPlayer player = players[i];
-            int channelBlock = Array.IndexOf(players, player);
-
-            if (player.isPaused)
-            {
-                int start = channelBlock * chunkSize;
-                int end = start + chunkSize;
-
-                CorrectChunkIndex(player, channelBlock, player.frame, position, out int newChunkIndex, out long newFrame);
-
-                // Check wether chunk is fully loaded
-                if (chunkIndicies[0] != newChunkIndex)
-                {
-                    if (player.frame != newFrame)
-                        player.frame = newFrame;
-
-                    player.Play();
-                }
-            }
-        }
-    }
-
-    private void OnDisable()
-    {
-        buffer.Release();
     }
 
     private bool CorrectChunkIndex(VideoPlayer player, int channelBlock, long frame, Vector2 position, out int newChunkIndex, out long newFrame)

@@ -232,8 +232,10 @@ MonoBehaviour:
     channelBlocks: 3
     offsets: []
   position: {x: 5, y: 0}
-  chunkIndicies: 
-  chunk: {fileID: 0}
+  targetFps: 60
+  tolerance: 10
+  intervallSize: 100
+  rateOfChange: 0.1
 --- !u!1 &1462570577
 GameObject:
   m_ObjectHideFlags: 0
