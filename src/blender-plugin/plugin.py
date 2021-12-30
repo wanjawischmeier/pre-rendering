@@ -128,12 +128,12 @@ This setting can later be changed in the domain
 # Order is important here!
 # (Variables with references to other ones have to be declared beneath those)
 variables = {
-    'blocks':       'chunkColumns*chunkRows*(chunkWidth**2)',
-    'clampedFrame': 'frame%blocks',
+    'chunkSize':    'chunkWidth**2',
     'blockWidth':   'domainScale/chunkColumns/chunkWidth',
     'blockHeight':  'domainScale/chunkRows/chunkWidth',
+    'blocks':       'chunkColumns*chunkRows*chunkSize',
+    'clampedFrame': 'frame%blocks',
     'domainOffset': '-domainScale/2+domainLocation',
-    'chunkSize':    'chunkWidth**2',
     'chunkIndex':   'clampedFrame%chunkSize',
     'rowSize':      'chunkSize*chunkColumns',
 }

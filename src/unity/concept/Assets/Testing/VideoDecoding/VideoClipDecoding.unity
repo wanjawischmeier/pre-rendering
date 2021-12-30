@@ -220,7 +220,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2a3233e9deb71e348aa7622ecc0572cf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  url: C:\Users\wanja\Videos\Soundfile.mp4
+  url: C:\Users\wanja\Documents\dev\pre-rendering\renders\cycles\chunk_debugger.mp4
   config:
     nclip: 0
     fclip: 0
@@ -229,9 +229,10 @@ MonoBehaviour:
     chunkWidth: 4
     chunkColumns: 5
     chunkRows: 5
+    channelBlocks: 3
     offsets: []
-  channelBlocks: 2
-  performance: 
+  position: {x: 5, y: 0}
+  chunkIndicies: 
   chunk: {fileID: 0}
 --- !u!1 &1462570577
 GameObject:

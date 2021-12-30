@@ -9,7 +9,7 @@ namespace PreRendering
     public struct MapConfig
     {
         public float nclip, fclip, blockWidth, blockHeight;
-        public int chunkWidth, chunkColumns, chunkRows;
+        public int chunkWidth, chunkColumns, chunkRows, channelBlocks;
         public Vector3[] offsets;
     }
 
