@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text;
 using UnityEngine;
 
 namespace PreRendering
@@ -10,15 +12,12 @@ namespace PreRendering
     {
         public float nclip, fclip, blockWidth, blockHeight;
         public int chunkWidth, chunkColumns, chunkRows, channelBlocks;
-        public Vector3[] offsets;
     }
 
     public static class Map
     {
         public static float nclip, fclip, blockWidth, blockHeight;
-        public static int chunkWidth, chunkColumns, chunkRows;
-        public static Resolution resolution;
-        public static Vector3[] offsets;
+        public static int chunkWidth, chunkColumns, chunkRows, channelBlocks;
 
         private static string mainPath;
         private const string MapError = "The map file is incomplete or corrupt. ";
@@ -42,89 +41,41 @@ namespace PreRendering
                 throw new Exception(e.Message, new Exception(MapError + "Unable to parse the configuration file."));
             }
 
+            config.Validate();
             nclip = config.nclip;
             fclip = config.fclip;
-            // mxWidth = config.mxWidth;
-            offsets = config.offsets;
-
-            Validate();
-
-            string sampleTexturePath = GetFileName(config.offsets[0]);
-            Texture2D texture = LoadTexture(sampleTexturePath);
-
-            resolution = new Resolution() { width = texture.width, height = texture.height };
+            blockWidth = config.blockWidth;
+            blockHeight = config.blockHeight;
+            chunkWidth = config.chunkWidth;
+            chunkColumns = config.chunkColumns;
+            chunkRows = config.chunkRows;
+            channelBlocks = config.channelBlocks;
         }
 
-        private static void Validate()
+        private static void Validate(this MapConfig config)
         {
             var missingAttributes = new List<string>();
-            var missingFiles = new List<string>();
 
-            if (nclip == 0) missingAttributes.Add("(float) nclip");
-            if (fclip == 0) missingAttributes.Add("(float) fclip");
-            // if (mxWidth == 0) missingAttributes.Add("(int) mxWidth");
+            var fieldValues = config.GetType()
+                     .GetFields()
+                     .Select(field => field.GetValue(config))
+                     .ToList();
 
-            for (int i = 0; i < offsets.Length; i++)
-            {
-                string offsetPath = GetFileName(offsets[i]);
-                if (!File.Exists(offsetPath))
-                    missingFiles.Add(Path.GetFileName(offsetPath));
-            }
+            foreach (var field in fieldValues)
+                if ((float)field == 0)
+                    missingAttributes.Add($"({field.GetType().Name}) {nameof(field)}");
 
-            var errorLog = "";
+            var errorLog = new StringBuilder();
 
             if (missingAttributes.Count > 0)
             {
-                errorLog += "\nMissing Attributes:\n";
+                errorLog.AppendLine("Missing Attributes:");
 
                 foreach (string missingAttribute in missingAttributes)
-                {
-                    errorLog += missingAttribute;
-                    errorLog += "\n";
-                }
+                    errorLog.AppendLine(missingAttribute);
+
+                throw new Exception(errorLog.ToString(), new Exception(MapError + "Certain values are missing."));
             }
-
-            if (missingFiles.Count > 0)
-            {
-                errorLog += "\nMissing Files:\n";
-
-                foreach (string missingFile in missingFiles)
-                {
-                    errorLog += missingFile;
-                    errorLog += "\n";
-                }
-            }
-
-            if (errorLog != "")
-                throw new Exception(errorLog, new Exception(MapError + "Certain values are missing."));
-        }
-
-        /// <summary>
-        /// Get a file name for a vector, based on a root directory.
-        /// The vector has to be contained inside the vector array this method extends from.
-        /// </summary>
-        public static string GetFileName(Vector3 vector)
-        {
-            int index = Array.IndexOf(offsets, vector);
-            return GetFileName(mainPath, index);
-        }
-
-        public static string GetFileName(string path, int index)
-        {
-            return Path.Combine(path, index.ToString().PadLeft(4, '0') + ".png");
-        }
-
-        /// <summary>
-        /// Loads an image into a texture.
-        /// !IMPORTANT! The returned texture will always be in the RGBA32 format.
-        /// </summary>
-        /// <param name="path">The path of the image file</param>
-        public static Texture2D LoadTexture(string path)
-        {
-            byte[] rawTexture = File.ReadAllBytes(path);
-            var reader = new Texture2D(0, 0);
-            reader.LoadImage(rawTexture);
-            return reader;
         }
     }
 }

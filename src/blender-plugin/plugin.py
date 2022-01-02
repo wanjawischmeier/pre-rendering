@@ -171,6 +171,7 @@ class Configuration:
     chunkWidth: int
     chunkColumns: int
     chunkRows: int
+    channelBlocks: int
 
 
 
