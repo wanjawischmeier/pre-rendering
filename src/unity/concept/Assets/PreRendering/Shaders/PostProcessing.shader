@@ -13,8 +13,7 @@ Shader "PreRendering/PostProcessing"
 			#pragma fragment frag
 
 			#include "UnityCG.cginc"
-			#include "ProjectionHelper.cginc"
-            #include "RawSampler.cginc"
+			#include "Helper.cginc"
 
 			struct appdata
 			{
@@ -28,43 +27,39 @@ Shader "PreRendering/PostProcessing"
 				float4 vertex : SV_POSITION;
 			};
 
-			struct circularSamples
+			UNITY_DECLARE_TEX2DARRAY(_InputBuffer);
+			Texture2D<half4> _Projection;
+			SamplerState linear_repeat_sampler;
+			float FOV, FCLIP, CUTOFF, DOF_INTENSITY, MIST_FALLOFF, MIST_OFFSET;
+			float2 Rotation, InputBufferResolution;
+			float3 MIST_COL;
+			int Debug, MX_IDX, FIXED_IDX;
+
+			circularSamples sampleCircle(float2 tc, float2 texelSize, float index)
 			{
-				float4 s0, s1, s2, s3, s4, s5, s6, s7, s8;
-			};
-
-			circularSamples sampleCircle(StructuredBuffer<uint> Input, float2 tc, float2 resolution, float2 texelSize, float index)
-			{
-				circularSamples s;
-
-				s.s0 = rawTex2D(Input, tc + float2(-texelSize.x, -texelSize.y), resolution, index);
-				s.s1 = rawTex2D(Input, tc + float2(0,            -texelSize.y), resolution, index);
-				s.s2 = rawTex2D(Input, tc + float2(texelSize.x,  -texelSize.y), resolution, index);
-				s.s3 = rawTex2D(Input, tc + float2(-texelSize.x, 0           ), resolution, index);
-				s.s4 = rawTex2D(Input, tc									  , resolution, index);
-				s.s5 = rawTex2D(Input, tc + float2(texelSize.x,  0           ), resolution, index);
-				s.s6 = rawTex2D(Input, tc + float2(-texelSize.x, texelSize.y ), resolution, index);
-				s.s7 = rawTex2D(Input, tc + float2(0,            texelSize.y ), resolution, index);
-				s.s8 = rawTex2D(Input, tc + float2(texelSize.x,  texelSize.y ), resolution, index);
-
-				return s;
-			}
-
-			// Based on https://stackoverflow.com/a/26357357/13215204
-			float2 calculateNormals(circularSamples s)
-			{
-				float2 n = float2(
-					-(s.s2.a - s.s0.a + 2 * (s.s5.a - s.s3.a) + s.s8.a - s.s6.a),
-					-(s.s6.a - s.s0.a + 2 * (s.s7.a - s.s1.a) + s.s8.a - s.s2.a)
-				);
-
-				return normalize(n) * 0.5 + 0.5;
-			}
-
-			float4 blur(circularSamples s, float amount)
-			{
-				float4 averaged = (s.s0 + s.s1 + s.s2 + s.s3 + s.s4 + s.s5 + s.s6 + s.s7 + s.s8) / 9;
-				return averaged * amount + s.s4 * (1 - amount);
+			    circularSamples s;
+			
+			    float3 i0 = float3(tc + float2(-texelSize.x, -texelSize.y),  index);
+			    float3 i1 = float3(tc + float2( 0,           -texelSize.y),  index);
+			    float3 i2 = float3(tc + float2( texelSize.x, -texelSize.y),  index);
+			    float3 i3 = float3(tc + float2(-texelSize.x,  0          ),  index);
+			    float3 i4 = float3(tc,                                          index);
+			    float3 i5 = float3(tc + float2( texelSize.x,  0          ), index);
+			    float3 i6 = float3(tc + float2(-texelSize.x,  texelSize.y), index);
+			    float3 i7 = float3(tc + float2( 0,            texelSize.y), index);
+			    float3 i8 = float3(tc + float2( texelSize.x,   texelSize.y), index);
+			
+			    s.s0 = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, i0);
+			    s.s1 = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, i1);
+			    s.s2 = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, i2);
+			    s.s3 = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, i3);
+			    s.s4 = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, i4);
+			    s.s5 = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, i5);
+			    s.s6 = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, i6);
+			    s.s7 = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, i7);
+			    s.s8 = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, i8);
+			
+			    return s;
 			}
 
 			v2f vert (appdata v)
@@ -74,14 +69,6 @@ Shader "PreRendering/PostProcessing"
 				o.uv = v.uv;
 				return o;
 			}
-
-			Texture2D<half4> _Projection;
-			StructuredBuffer<uint> InputBuffer;
-			SamplerState linear_repeat_sampler;
-			float FOV, FCLIP, CUTOFF, DOF_INTENSITY, MIST_FALLOFF, MIST_OFFSET;
-			float2 Rotation, InputBufferResolution;
-			float3 MIST_COL;
-			int Debug, MX_IDX, FIXED_IDX;
 
 			fixed4 frag (v2f i) : SV_Target
 			{
@@ -93,14 +80,14 @@ Shader "PreRendering/PostProcessing"
 
 				// Sampling
 				float2 texelSize = 1 / InputBufferResolution;
-				circularSamples s = sampleCircle(InputBuffer, idx.xy, InputBufferResolution, texelSize, idx.z);
+				circularSamples s = sampleCircle(idx.xy, texelSize, idx.z);
 
 				// Normals
 				float2 n = calculateNormals(s);
 				
 				// Depth of field
-				float2 cIdx = float2(0.5, 0.5) + Rotation.yx / float2(PI2, PI);
-				float cDist = rawTex2DA(InputBuffer, cIdx, InputBufferResolution, idx.z);
+				float3 cIdx = float3(float2(0.5, 0.5) + Rotation.yx / float2(PI2, PI), idx.z);
+				float cDist = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, cIdx);
 				float dof = abs(cDist - s.s4.a) * DOF_INTENSITY;
 
 				// Debug
@@ -122,7 +109,7 @@ Shader "PreRendering/PostProcessing"
 				float eDist = pow(clamp(col.a - MIST_OFFSET, 0, 1), MIST_FALLOFF * FCLIP);
 				col = MIST_COL.rgbb * eDist + col * (1 - eDist);
 
-				col = rawTex2D(InputBuffer, i.uv, InputBufferResolution, FIXED_IDX);
+				col = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, float3(i.uv, FIXED_IDX));
 
 				return col;
 			}

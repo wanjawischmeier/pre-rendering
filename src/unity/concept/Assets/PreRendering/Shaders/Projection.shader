@@ -12,8 +12,7 @@ Shader "PreRendering/Projection"
             #pragma fragment frag
 
             #include "UnityCG.cginc"
-            #include "ProjectionHelper.cginc"
-            #include "RawSampler.cginc"
+            #include "Helper.cginc"
 
             struct appdata
             {
@@ -36,11 +35,11 @@ Shader "PreRendering/Projection"
                 return o;
             }
 
+            UNITY_DECLARE_TEX2DARRAY(_InputBuffer);
             int IMG_IDX, MX_IDX;
             float NCLIP, FCLIP;
-            float2 InputBufferResolution, ProjectionRes, ProjectedResolution;
+            float2 ProjectionRes, ProjectedResolution;
             float3 Position, PositionOffset;
-            StructuredBuffer<uint> InputBuffer;
 
             const float2 Size = float2(2.0, 0.0);
 
@@ -48,7 +47,7 @@ Shader "PreRendering/Projection"
             {
                 float2 ll1 = normalizedToLatLon(i.uv.yx);
     
-                float CP = rawTex2DA(InputBuffer, i.uv, InputBufferResolution, IMG_IDX);
+                float CP = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, float3(i.uv, IMG_IDX));
                 CP *= (FCLIP - NCLIP) + NCLIP;
 
                 float2 ll2 = translateLatLon(ll1, Position - PositionOffset, CP);

@@ -1,9 +1,5 @@
 Shader "PreRendering/SimpleDebug"
 {
-    Properties
-    {
-        _MainTex ("Texture", 2DArray) = "white" {}
-    }
     SubShader
     {
         // No culling or depth

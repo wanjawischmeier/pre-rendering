@@ -16,7 +16,7 @@ Shader "Hidden/ReadRawTex"
             #pragma fragment frag
 
             #include "UnityCG.cginc"
-            #include "Assets/PreRendering/Shaders/RawSampler.cginc"
+            #include "RawSampler.cginc"
 
             struct appdata
             {

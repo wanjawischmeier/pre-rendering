@@ -1,4 +1,19 @@
-float PI, PI2;
+float PI, PI2, NegativeInfinity, PositiveInfinity;
+
+struct circularSamples
+{
+    float4 s0, s1, s2, s3, s4, s5, s6, s7, s8;
+};
+
+struct cRay
+{
+    float3 pos, dir;
+};
+
+struct boundingBox
+{
+    float3 min, max;
+};
 
 float magnitude(float3 vec)
 {
@@ -66,4 +81,36 @@ float2 gnomonicProjection(float2 pos, float fov, float phi1, float lambda0)
     float lambda = lambda0 + atan2(x * sinC, (p * cosPhi1 * cosC - y * sinPhi1 * sinC));
 
     return float2(lambda / PI2 + 0.5, phi / PI + 0.5);
+}
+
+bool rayAABBIntersection(cRay ray, boundingBox aabb, out float tmin, out float tmax)
+{
+    float3 invD = rcp(ray.dir);
+    float3 t0s = (aabb.min - ray.pos) * invD;
+    float3 t1s = (aabb.max - ray.pos) * invD;
+
+    float3 tsmaller = min(t0s, t1s);
+    float3 tbigger = max(t0s, t1s);
+    
+    tmin = max(NegativeInfinity, max(tsmaller[0], max(tsmaller[1], tsmaller[2])));
+    tmax = min(PositiveInfinity, min(tbigger[0], min(tbigger[1], tbigger[2])));
+
+    return (tmin < tmax);
+}
+
+// Based on https://stackoverflow.com/a/26357357/13215204
+float2 calculateNormals(circularSamples s)
+{
+    float2 n = float2(
+	    -(s.s2.a - s.s0.a + 2 * (s.s5.a - s.s3.a) + s.s8.a - s.s6.a),
+	    -(s.s6.a - s.s0.a + 2 * (s.s7.a - s.s1.a) + s.s8.a - s.s2.a)
+	);
+
+    return normalize(n) * 0.5 + 0.5;
+}
+
+float4 blur(circularSamples s, float amount)
+{
+    float4 averaged = (s.s0 + s.s1 + s.s2 + s.s3 + s.s4 + s.s5 + s.s6 + s.s7 + s.s8) / 9;
+    return averaged * amount + s.s4 * (1 - amount);
 }

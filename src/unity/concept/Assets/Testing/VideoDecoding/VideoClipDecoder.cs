@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.Video;
 using PreRendering;
 using static PreRendering.ChunkIndexing;
+using System.Collections.Generic;
 
 public class VideoClipDecoder : MonoBehaviour
 {
@@ -19,6 +20,7 @@ public class VideoClipDecoder : MonoBehaviour
     public int intervallSize = 100;
     public float rateOfChange = 0.1f;
     public int searchCircleRadius = 3;
+    public bool loaded = false;
 
     ComputeBuffer buffer;
     Texture2DArray chunk;
@@ -92,6 +94,8 @@ public class VideoClipDecoder : MonoBehaviour
             }
         }
 
+        loaded = true;
+
         // Restart any paused players if needed
         for (int i = 0; i < config.channelBlocks; i++)
         {
@@ -111,6 +115,7 @@ public class VideoClipDecoder : MonoBehaviour
                     player.Play();
                 }
             }
+            else loaded = false;
         }
     }
 
