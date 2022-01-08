@@ -86,30 +86,30 @@ class Property:
 properties: dict[str, Property] = {
     'chunkWidth': Property(
         target='Domain',
-        path='["chunkWidth"]',
+        path='['chunkWidth']',
         default=4,
         description='''
 How many positions should fit into each chunk row and column.
 This setting can later be changed in the domain
-(go to "Object Properties" and expand "Custom Properties")'''
+(go to 'Object Properties' and expand 'Custom Properties')'''
     ),
     'chunkColumns': Property(
         target='Domain',
-        path='["chunkColumns"]',
+        path='['chunkColumns']',
         default=5,
         description='''
 How many chunks should fit into each domain column.
 This setting can later be changed in the domain
-(go to "Object Properties" and expand "Custom Properties")''',
+(go to 'Object Properties' and expand 'Custom Properties')''',
     ),
     'chunkRows': Property(
         target='Domain',
-        path='["chunkRows"]',
+        path='['chunkRows']',
         default=5,
         description='''
 How many chunks should fit into each domain row.
 This setting can later be changed in the domain
-(go to "Object Properties" and expand "Custom Properties")'''
+(go to 'Object Properties' and expand 'Custom Properties')'''
     ),
     'domainLocation': Property(
         target='Domain',
@@ -120,50 +120,9 @@ This setting can later be changed in the domain
         path='scale[{i}]'
     ),
     'chunkPosition': Property(
-        target='ChunkBounds',
+        target='chunkBounds',
         path='location[{i}]'
     )
-}
-
-# Order is important here!
-# (Variables with references to other ones have to be declared beneath those)
-variables = {
-    'chunkSize':    'chunkWidth**2',
-    'blockWidth':   'domainScale/chunkColumns/chunkWidth',
-    'blockHeight':  'domainScale/chunkRows/chunkWidth',
-    'blocks':       'chunkColumns*chunkRows*chunkSize',
-    'clampedFrame': 'frame%blocks',
-    'domainOffset': '-domainScale/2+domainLocation',
-    'chunkIndex':   'clampedFrame%chunkSize',
-    'rowSize':      'chunkSize*chunkColumns',
-}
-
-expressions = {
-    'ChunkBounds': {
-        'location': [
-            '(clampedFrame-chunkIndex)/chunkSize%chunkColumns*chunkWidth*blockWidth+domainOffset',
-            '(clampedFrame-clampedFrame%rowSize)/rowSize*chunkWidth*blockHeight+domainOffset'
-            # ((frame%(chunkColumns*chunkRows*(chunkWidth**2)))-((frame%(chunkColumns*chunkRows*(chunkWidth**2)))%(chunkWidth**2)))/(chunkWidth**2)%chunkColumns*chunkWidth+((frame%(chunkColumns*chunkRows*(chunkWidth**2)))%(chunkWidth**2))%chunkWidth
-            # ((frame%(chunkColumns*chunkRows*(chunkWidth**2)))-(frame%(chunkColumns*chunkRows*(chunkWidth**2)))%((chunkWidth**2)*chunkColumns))/((chunkWidth**2)*chunkColumns)*chunkWidth+(((frame%(chunkColumns*chunkRows*(chunkWidth**2)))%(chunkWidth**2))-((frame%(chunkColumns*chunkRows*(chunkWidth**2)))%(chunkWidth**2))%chunkWidth)/chunkWidth
-            
-            # ((frame%(chunkColumns*chunkRows*(chunkWidth**2)))-((frame%(chunkColumns*chunkRows*(chunkWidth**2)))%(chunkWidth**2)))/(chunkWidth**2)%chunkColumns*chunkWidth+((frame%(chunkColumns*chunkRows*(chunkWidth**2)))%(chunkWidth**2))%chunkWidth
-            # ((frame%(chunkColumns*chunkRows*(chunkWidth**2)))-(frame%(chunkColumns*chunkRows*(chunkWidth**2)))%((chunkWidth**2)*chunkColumns))/((chunkWidth**2)*chunkColumns)*chunkWidth+(((frame%(chunkColumns*chunkRows*(chunkWidth**2)))%(chunkWidth**2))-((frame%(chunkColumns*chunkRows*(chunkWidth**2)))%(chunkWidth**2))%chunkWidth)/chunkWidth
-        ],
-        'scale': [
-            'domainScale/chunkColumns',
-            'domainScale/chunkRows'
-        ]
-    },
-    'ChunkPosition': {
-        'location': [
-            'chunkPosition+chunkIndex%chunkWidth*blockWidth',
-            'chunkPosition+(chunkIndex-chunkIndex%chunkWidth)/chunkWidth*blockHeight'
-        ],
-        'scale': [
-            'blockWidth',
-            'blockHeight'
-        ]
-    }
 }
 
 default_domain_size = 20
@@ -185,6 +144,56 @@ class Configuration:
 
 #                      Helper Methods                      #
 # ________________________________________________________ #
+
+def calculateFrame(self):
+    collection = bpy.data.collections['PreRendering']
+    domain = collection.objects['Domain']
+
+    frame = bpy.context.scene.frame_current
+    chunkWidth = domain['chunkWidth']
+    chunkColumns = domain['chunkColumns']
+    chunkRows = domain['chunkRows']
+    domainLocation = tuple(domain.location)
+    domainScale = tuple(domain.scale)
+
+    chunkSize =    chunkWidth**2
+    blockWidth =   domainScale[0]/chunkColumns/chunkWidth
+    blockHeight =  domainScale[1]/chunkRows/chunkWidth
+    blocks =       chunkColumns*chunkRows*chunkSize
+    clampedFrame = frame%blocks
+    domainOffset = -domainScale/2+domainLocation
+    chunkIndex =   clampedFrame%chunkSize
+    rowSize =      chunkSize*chunkColumns
+
+    cbp = {} # chunk-based positions
+    cbp['chunkBounds'] = {
+        'location': [
+            (clampedFrame-chunkIndex)/chunkSize%chunkColumns*chunkWidth*blockWidth+domainOffset,
+            (clampedFrame-clampedFrame%rowSize)/rowSize*chunkWidth*blockHeight+domainOffset
+        ],
+        'scale': [
+            domainScale/chunkColumns,
+            domainScale/chunkRows
+        ]
+    }
+    
+    cbp['chunkPosition'] = {
+        'location': [
+            cbp['chunkBounds']['location'][0]+chunkIndex%chunkWidth*blockWidth,
+            cbp['chunkBounds']['location'][1]+(chunkIndex-chunkIndex%chunkWidth)/chunkWidth*blockHeight
+        ],
+        'scale': [
+            blockWidth,
+            blockHeight
+        ]
+    }
+
+    bpy.app.driver_namespace['cbp'] = cbp
+
+    handler = bpy.app.handlers.frame_change_pre
+    if calculateFrame not in handler:
+        handler.append(calculateFrame)
+    
 
 def toRadians(degrees: list) -> list:
     radians_list = []
@@ -356,15 +365,15 @@ class TOPBAR_OT_prerender_create_domain(Operator):
         )
         domain.scale = (default_domain_size, default_domain_size, 1)
 
-        obj = collection.instantiatePreviewPlane('ChunkBounds', context)
-        obj.addZConstraint(domain)
+        chunkBounds = collection.instantiatePreviewPlane('chunkBounds', context)
+        chunkBounds.addZConstraint(domain)
 
-        obj = collection.instantiatePreviewPlane('ChunkPosition', context, display_bounds=False)
-        obj.addZConstraint(domain)
+        chunkPosition = collection.instantiatePreviewPlane('chunkPosition', context, display_bounds=False)
+        chunkPosition.addZConstraint(domain)
 
         camera.rotation_euler = [radians(90), 0, 0]
         constraint = camera.constraints.new('COPY_LOCATION')
-        constraint.target = collection.objects['ChunkPosition']
+        constraint.target = collection.objects['chunkPosition']
         constraint.use_offset = True
 
         # ------------- Set custom properties -------------- #
@@ -378,33 +387,17 @@ class TOPBAR_OT_prerender_create_domain(Operator):
 
         # ------------------ Add drivers ------------------- #
         # __________________________________________________ #
+        
+        cbp = bpy.app.driver_namespace['cbp']
 
-        for expression_collection_name in expressions:
-            expression_collection = expressions[expression_collection_name]
+        for cbp_collection_name in cbp:
+            cbp_collection = cbp[cbp_collection_name]
 
-            for i in range(2):
-                # Add driver to location coordinate
-                for expression_path in expression_collection:
-                    driver = collection.objects[expression_collection_name].driver_add(expression_path, i).driver
+            for driver_path in cbp_collection:
+                for i in range(2):
+                    driver = collection.objects[cbp_collection_name].driver_add(driver_path, i).driver
                     driver.type = 'SCRIPTED'
-                    
-                    expression_pair = expression_collection[expression_path]
-                    expression = expression_pair[i]
-                    for variable in reversed(variables):
-                        expression = expression.replace(variable, f'({variables[variable]})')
-                    
-                    # Add all properties
-                    for property_name in properties:
-                        if property_name in expression:
-                            property = properties[property_name]
-                            path = property.path.replace('{i}', str(i))
-
-                            var = driver.variables.new()
-                            var.targets[0].id = collection.objects[property.target]
-                            var.targets[0].data_path = path
-                            var.name = property_name
-                    
-                    driver.expression = expression
+                    driver.expression = f'cbp["{cbp_collection_name}"]["{driver_path}"]["{i}"]'
         
         # __________________________________________________ #
         
