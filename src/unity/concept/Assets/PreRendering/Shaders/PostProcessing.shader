@@ -28,12 +28,11 @@ Shader "PreRendering/PostProcessing"
 			};
 
 			UNITY_DECLARE_TEX2DARRAY(_InputBuffer);
-			Texture2D<half4> _Projection;
-			SamplerState linear_repeat_sampler;
-			float FOV, FCLIP, CUTOFF, DOF_INTENSITY, MIST_FALLOFF, MIST_OFFSET;
-			float2 Rotation, InputBufferResolution;
-			float3 MIST_COL;
-			int Debug, MX_IDX, FIXED_IDX;
+            StructuredBuffer<int> ChunkIndicies;
+			float FOV, NCLIP, FCLIP, CUTOFF, DOF_INTENSITY, MIST_FALLOFF, MIST_OFFSET;
+			float2 ROTATION, InputBufferResolution;
+			float3 POSITION, POSITION_OFFSET, MIST_COL;
+			int Debug, IMG_IDX;
 
 			circularSamples sampleCircle(float2 tc, float2 texelSize, float index)
 			{
@@ -62,6 +61,18 @@ Shader "PreRendering/PostProcessing"
 			    return s;
 			}
 
+			float2 project(float3 tc, float3 offset)
+			{
+				float2 ll1 = normalizedToLatLon(tc.yx);
+
+				float CP = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, tc);
+				CP *= (FCLIP - NCLIP) + NCLIP;
+
+				float2 ll2 = translateLatLon(ll1, offset, CP);
+
+				return latLonToNormalized(ll2);
+			}
+
 			v2f vert (appdata v)
 			{
 				v2f o;
@@ -73,20 +84,18 @@ Shader "PreRendering/PostProcessing"
 			fixed4 frag (v2f i) : SV_Target
 			{
 				// Projection
-				float2 tc = gnomonicProjection(i.uv, FOV, Rotation.x, Rotation.y);
-				half4 idx = _Projection.Sample(linear_repeat_sampler, tc);
-				idx.z *= MX_IDX;
-				idx.z -= 1;
-
+				float2 tc = gnomonicProjection(i.uv, FOV, ROTATION.x, ROTATION.y);
+				float2 idx = project(float3(tc, IMG_IDX), POSITION - POSITION_OFFSET);
+				/*
 				// Sampling
 				float2 texelSize = 1 / InputBufferResolution;
-				circularSamples s = sampleCircle(idx.xy, texelSize, idx.z);
+				circularSamples s = sampleCircle(idx.xy, texelSize, IMG_IDX);
 
 				// Normals
 				float2 n = calculateNormals(s);
 				
 				// Depth of field
-				float3 cIdx = float3(float2(0.5, 0.5) + Rotation.yx / float2(PI2, PI), idx.z);
+				float3 cIdx = float3(float2(0.5, 0.5) + ROTATION.yx / float2(PI2, PI), IMG_IDX);
 				float cDist = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, cIdx);
 				float dof = abs(cDist - s.s4.a) * DOF_INTENSITY;
 
@@ -108,8 +117,8 @@ Shader "PreRendering/PostProcessing"
 				fixed4 col = blur(s, dof);
 				float eDist = pow(clamp(col.a - MIST_OFFSET, 0, 1), MIST_FALLOFF * FCLIP);
 				col = MIST_COL.rgbb * eDist + col * (1 - eDist);
-
-				col = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, float3(i.uv, FIXED_IDX));
+				*/
+				fixed4 col = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, float3(idx, IMG_IDX));
 
 				return col;
 			}

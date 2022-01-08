@@ -143,6 +143,11 @@ expressions = {
         'location': [
             '(clampedFrame-chunkIndex)/chunkSize%chunkColumns*chunkWidth*blockWidth+domainOffset',
             '(clampedFrame-clampedFrame%rowSize)/rowSize*chunkWidth*blockHeight+domainOffset'
+            # ((frame%(chunkColumns*chunkRows*(chunkWidth**2)))-((frame%(chunkColumns*chunkRows*(chunkWidth**2)))%(chunkWidth**2)))/(chunkWidth**2)%chunkColumns*chunkWidth+((frame%(chunkColumns*chunkRows*(chunkWidth**2)))%(chunkWidth**2))%chunkWidth
+            # ((frame%(chunkColumns*chunkRows*(chunkWidth**2)))-(frame%(chunkColumns*chunkRows*(chunkWidth**2)))%((chunkWidth**2)*chunkColumns))/((chunkWidth**2)*chunkColumns)*chunkWidth+(((frame%(chunkColumns*chunkRows*(chunkWidth**2)))%(chunkWidth**2))-((frame%(chunkColumns*chunkRows*(chunkWidth**2)))%(chunkWidth**2))%chunkWidth)/chunkWidth
+            
+            # ((frame%(chunkColumns*chunkRows*(chunkWidth**2)))-((frame%(chunkColumns*chunkRows*(chunkWidth**2)))%(chunkWidth**2)))/(chunkWidth**2)%chunkColumns*chunkWidth+((frame%(chunkColumns*chunkRows*(chunkWidth**2)))%(chunkWidth**2))%chunkWidth
+            # ((frame%(chunkColumns*chunkRows*(chunkWidth**2)))-(frame%(chunkColumns*chunkRows*(chunkWidth**2)))%((chunkWidth**2)*chunkColumns))/((chunkWidth**2)*chunkColumns)*chunkWidth+(((frame%(chunkColumns*chunkRows*(chunkWidth**2)))%(chunkWidth**2))-((frame%(chunkColumns*chunkRows*(chunkWidth**2)))%(chunkWidth**2))%chunkWidth)/chunkWidth
         ],
         'scale': [
             'domainScale/chunkColumns',

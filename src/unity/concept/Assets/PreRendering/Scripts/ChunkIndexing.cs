@@ -116,6 +116,19 @@ namespace PreRendering
                     Mathf.FloorToInt(position.y / blockHeight));
                 this.channelBlock = channelBlock;
             }
+
+            public GlobalPosition(GlobalIndex globalIndex)
+            {
+                var localPosition = globalIndex.Local.Local;
+                var chunkIndex = globalIndex.Chunk.Global;
+                
+                int x = (int)(chunkIndex % chunkSize);
+                int y = Mathf.FloorToInt((0 - x) / (float)chunkWidth);
+
+
+                value = new Vector2Int(x, y);
+                channelBlock = globalIndex.channelBlock;
+            }
         }
 
         public struct LocalPosition
@@ -134,6 +147,14 @@ namespace PreRendering
                 value = new Vector2Int(
                     position.x % chunkWidth,
                     position.y % chunkWidth);
+            }
+
+            public LocalPosition(int localIndex)
+            {
+                int x = localIndex % chunkWidth;
+                int y = Mathf.FloorToInt((localIndex - x) / (float)chunkWidth);
+
+                value = new Vector2Int(x, y);
             }
         }
 
@@ -203,6 +224,11 @@ namespace PreRendering
             int value;
 
             public static implicit operator int(LocalIndex i) => i.value;
+
+            /// <summary>
+            /// The position of this index relative to the parent chunk (repetitive)
+            /// </summary>
+            public LocalPosition Local => new LocalPosition(value);
 
             public LocalIndex(Vector2Int position)
             {

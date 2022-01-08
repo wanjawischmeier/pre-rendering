@@ -1,7 +1,6 @@
 using UnityEngine;
 
 [RequireComponent(typeof(CharacterController))]
-
 public class MovementController : MonoBehaviour
 {
     public float speed = 7.0f;

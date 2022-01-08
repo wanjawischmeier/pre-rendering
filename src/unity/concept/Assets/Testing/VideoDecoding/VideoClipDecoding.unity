@@ -135,6 +135,8 @@ GameObject:
   - component: {fileID: 423862450}
   - component: {fileID: 423862449}
   - component: {fileID: 423862453}
+  - component: {fileID: 423862455}
+  - component: {fileID: 423862454}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -222,21 +224,68 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   url: C:\Users\wanja\Documents\dev\pre-rendering\renders\cycles\chunk_debugger.mp4
   config:
-    nclip: 0
-    fclip: 0
+    nclip: 1
+    fclip: 10
     blockWidth: 1
     blockHeight: 1
     chunkWidth: 4
     chunkColumns: 5
     chunkRows: 5
     channelBlocks: 3
-  shader: {fileID: 4800000, guid: 43c4e3fdd8092e24692eda7feff768f9, type: 3}
-  position: {x: 5, y: 0}
+  shader: {fileID: 4800000, guid: 73c549cc703570c48a640a58a94eb33b, type: 3}
   targetFps: 60
   tolerance: 10
   intervallSize: 100
   rateOfChange: 0.1
   searchCircleRadius: 3
+  loaded: 0
+  renderPath: 
+  mapPaths: []
+  mapFiles: []
+  mapSelection: 0
+  predictionBlend: 0.75
+  predictionDistance: 2
+  cacheSize: 10
+  decodingThreads: 4
+  geometryPercision: 0.75
+  shaderDebug: 0
+  depthOfField: 0
+  mistOffset: 1
+  mistFalloff: 0.1
+  mistColor: {r: 1, g: 1, b: 1, a: 1}
+--- !u!114 &423862454
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 423862448}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1294e014c405bac4a86ffd9f1f87b9f2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  speed: 7
+  lookSpeed: 2
+  lookXLimit: 45
+--- !u!143 &423862455
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 423862448}
+  m_Material: {fileID: 0}
+  m_IsTrigger: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Height: 2
+  m_Radius: 0.5
+  m_SlopeLimit: 45
+  m_StepOffset: 0.3
+  m_SkinWidth: 0.08
+  m_MinMoveDistance: 0.001
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &779160866
 GameObject:
   m_ObjectHideFlags: 0

@@ -2,17 +2,16 @@ using UnityEngine;
 using UnityEngine.Video;
 using PreRendering;
 using static PreRendering.ChunkIndexing;
-using System.Collections.Generic;
 
+[DisallowMultipleComponent]
+[RequireComponent(typeof(Camera))]
+[RequireComponent(typeof (MovementController))]
 public class VideoClipDecoder : MonoBehaviour
 {
     [Header("Source")]
     public string url;
     public MapConfig config;
     public Shader shader;
-
-    [Header("Player")]
-    public Vector2 position;
 
     [Header("Performance")]
     public int targetFps = 60;
@@ -21,14 +20,51 @@ public class VideoClipDecoder : MonoBehaviour
     public float rateOfChange = 0.1f;
     public int searchCircleRadius = 3;
     public bool loaded = false;
+    
+    [Header("Map")]
+    public string renderPath;
+    public string[] mapPaths;
+    public string[] mapFiles;
+    public int mapSelection;
+    private string mapPath;
 
-    ComputeBuffer buffer;
-    Texture2DArray chunk;
-    Material material;
-    VideoPlayer[] players;
-    int[] chunkIndicies;
-    int prepared = 0;
-    long lastPlaybackSpeedChange = 0;
+    [Header("Decoder")]
+    public float predictionBlend = 0.75f;
+    public float predictionDistance = 2;
+    public int cacheSize = 10;
+    public int decodingThreads = 4;
+
+    [Header("Projection & Post Processing")]
+    public float geometryPercision = 0.75f;
+    public ShaderDebugMode shaderDebug = ShaderDebugMode.Disabled;
+    public float depthOfField = 0;
+    public float mistOffset = 1;
+    public float mistFalloff = 0.1f;
+    public Color mistColor = Color.white;
+
+    private Resolution projectionResolution;
+    private Resolution screenResolution;
+    private Vector3 positionOffset = default;
+    private Vector3 lastPosition = default;
+    private MovementController controller;
+    private Texture2DArray chunk;
+    private ComputeBuffer buffer;
+    private VideoPlayer[] players;
+    private Material material;
+    private Camera mainCamera;
+    private long lastPlaybackSpeedChange = 0;
+    private int[] chunkIndicies;
+    private int prepared = 0;
+
+    public enum ShaderDebugMode
+    {
+        Disabled,
+        TextureCoordinates,
+        ProjectedCoordinates,
+        Normals,
+        DepthOfField,
+        DepthBuffer
+    }
 
     private void Start()
     {
@@ -43,11 +79,20 @@ public class VideoClipDecoder : MonoBehaviour
         circleRadius = searchCircleRadius;
         CalculateConstants();
 
+        mainCamera = GetComponent<Camera>();
         players = new VideoPlayer[channelBlocks];
         chunkIndicies = new int[chunkSize * channelBlocks];
         buffer = new ComputeBuffer(chunkIndicies.Length, sizeof(int));
         material = new Material(shader);
-        
+        material.SetInt("MX_IDX", cacheSize);
+        material.SetFloat("PI", Mathf.PI);
+        material.SetFloat("PI2", Mathf.PI * 2);
+        material.SetFloat("NegativeInfinity", float.NegativeInfinity);
+        material.SetFloat("PositiveInfinity", float.PositiveInfinity);
+        material.SetFloat("NCLIP", nclip);
+        material.SetFloat("FCLIP", fclip);
+        material.SetBuffer("ChunkIndicies", buffer);
+
         for (int i = 0; i < config.channelBlocks; i++)
         {
             VideoPlayer player = gameObject.AddComponent<VideoPlayer>();
@@ -72,7 +117,6 @@ public class VideoClipDecoder : MonoBehaviour
     private void Update()
     {
         float fps = 1 / Time.unscaledDeltaTime;
-        material.SetVector("Position", position);
 
         // Optimize playback speed
         if (Time.frameCount > lastPlaybackSpeedChange + intervallSize)
@@ -94,6 +138,15 @@ public class VideoClipDecoder : MonoBehaviour
             }
         }
 
+        material.SetInteger("DEBUG", (int)shaderDebug);
+        material.SetFloat("FOV", mainCamera.fieldOfView * Mathf.Deg2Rad);
+        material.SetFloat("DOF_INTENSITY", depthOfField);
+        material.SetFloat("MIST_FALLOFF", mistFalloff);
+        material.SetFloat("MIST_OFFSET", mistOffset);
+        material.SetVector("MIST_COLOR", mistColor);
+        material.SetVector("POSITION", transform.position);
+        material.SetVector("ROTATION", transform.eulerAngles * Mathf.Deg2Rad);
+
         loaded = true;
 
         // Restart any paused players if needed
@@ -104,7 +157,7 @@ public class VideoClipDecoder : MonoBehaviour
             if (player.isPaused)
             {
                 var globalIndex = player.frame.GetGlobalIndex(out int channelBlock);
-                CorrectChunkIndex(globalIndex, position, out ChunkIndex newChunkIndex, out GlobalIndex newFrame);
+                CorrectChunkIndex(globalIndex, transform.position, out ChunkIndex newChunkIndex, out GlobalIndex newFrame);
 
                 // Check wether chunk is fully loaded
                 if (chunkIndicies[0] != newChunkIndex)
@@ -132,7 +185,7 @@ public class VideoClipDecoder : MonoBehaviour
         if (prepared == config.channelBlocks)
         {
             chunk = new Texture2DArray((int)source.width, (int)source.height, chunkIndicies.Length, TextureFormat.RGBA32, false);
-            material.SetTexture("_MainTex", chunk);
+            material.SetTexture("_InputBuffer", chunk);
 
             foreach (var player in players)
                 player.Play();
@@ -143,7 +196,7 @@ public class VideoClipDecoder : MonoBehaviour
     {
         var globalIndex = frameIdx.GetGlobalIndex(out int channelBlock);
         int localIndex = globalIndex.Local;
-        bool correct = CorrectChunkIndex(globalIndex, position, out ChunkIndex newChunkIndex, out GlobalIndex newFrame);
+        bool correct = CorrectChunkIndex(globalIndex, transform.position, out ChunkIndex newChunkIndex, out GlobalIndex newFrame);
         
         Graphics.CopyTexture(source.texture, 0, chunk, localIndex);
         chunkIndicies[localIndex] = newChunkIndex;
@@ -171,7 +224,7 @@ public class VideoClipDecoder : MonoBehaviour
 
         foreach (var offset in circularOffsets)
         {
-            var clamped = (position + offset).ClampToChunkGrid();
+            var clamped = ((Vector2)transform.position + offset).ClampToChunkGrid();
             var chunkIndex = clamped.Chunk.Global;
             var localIndex = clamped.Grid.Local.Local;
 
@@ -183,7 +236,7 @@ public class VideoClipDecoder : MonoBehaviour
             }
         }
 
-        material.SetInteger("Index", available);
-        Graphics.Blit(players[0].texture, destination, material);
+        material.SetInteger("IMG_IDX", available);
+        Graphics.Blit(null, destination, material);
     }
 }
