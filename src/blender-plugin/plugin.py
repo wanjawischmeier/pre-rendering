@@ -119,7 +119,7 @@ This setting can later be changed in the domain
         target='Domain',
         path='scale[{i}]'
     ),
-    'chunkPosition': Property(
+    'absolutePosition': Property(
         target='chunkBounds',
         path='location[{i}]'
     )
@@ -145,54 +145,66 @@ class Configuration:
 #                      Helper Methods                      #
 # ________________________________________________________ #
 
-def calculateFrame(self):
+def calculateFrame():
     collection = bpy.data.collections['PreRendering']
     domain = collection.objects['Domain']
 
-    frame = bpy.context.scene.frame_current
-    chunkWidth = domain['chunkWidth']
-    chunkColumns = domain['chunkColumns']
-    chunkRows = domain['chunkRows']
+    frame: int = bpy.context.scene.frame_current
+    chunkWidth: int = domain['chunkWidth']
+    chunkColumns: int = domain['chunkColumns']
+    chunkRows: int = domain['chunkRows']
     domainLocation = tuple(domain.location)
     domainScale = tuple(domain.scale)
 
     chunkSize =    chunkWidth**2
-    blockWidth =   domainScale[0]/chunkColumns/chunkWidth
-    blockHeight =  domainScale[1]/chunkRows/chunkWidth
+    blockWidth: int =   domainScale[0]/chunkColumns/chunkWidth
+    blockHeight: int =  domainScale[1]/chunkRows/chunkWidth
     blocks =       chunkColumns*chunkRows*chunkSize
     clampedFrame = frame%blocks
-    domainOffset = -domainScale/2+domainLocation
+    domainOffset = (
+        -domainScale[0]/2+domainLocation[0],
+        -domainScale[1]/2+domainLocation[1]
+    )
     chunkIndex =   clampedFrame%chunkSize
     rowSize =      chunkSize*chunkColumns
 
+    chunkBoundsPosition = [
+        (clampedFrame-chunkIndex)/chunkSize%chunkColumns*chunkWidth*blockWidth+domainOffset[0],
+        (clampedFrame-clampedFrame%rowSize)/rowSize*chunkWidth*blockHeight+domainOffset[1]
+    ]
+
+    chunkBoundsScale = [
+        domainScale[0]/chunkColumns,
+        domainScale[1]/chunkRows
+    ]
+
+    absolutePosition = [
+        chunkBoundsPosition[0] + chunkIndex%chunkWidth*blockWidth,
+        chunkBoundsPosition[1] + (chunkIndex-chunkIndex%chunkWidth)/chunkWidth*blockHeight
+    ]
+
+    absoluteScale = [
+        blockWidth,
+        blockHeight
+    ]
+
     cbp = {} # chunk-based positions
+    # if the values aren't getter functions, the driver won't update them
     cbp['chunkBounds'] = {
-        'location': [
-            (clampedFrame-chunkIndex)/chunkSize%chunkColumns*chunkWidth*blockWidth+domainOffset,
-            (clampedFrame-clampedFrame%rowSize)/rowSize*chunkWidth*blockHeight+domainOffset
-        ],
-        'scale': [
-            domainScale/chunkColumns,
-            domainScale/chunkRows
-        ]
+        'location': lambda i : chunkBoundsPosition[i],
+        'scale': lambda i : chunkBoundsScale[i]
     }
     
-    cbp['chunkPosition'] = {
-        'location': [
-            cbp['chunkBounds']['location'][0]+chunkIndex%chunkWidth*blockWidth,
-            cbp['chunkBounds']['location'][1]+(chunkIndex-chunkIndex%chunkWidth)/chunkWidth*blockHeight
-        ],
-        'scale': [
-            blockWidth,
-            blockHeight
-        ]
+    cbp['absolutePosition'] = {
+        'location': lambda i : absolutePosition[i],
+        'scale': lambda i : absoluteScale[i]
     }
 
     bpy.app.driver_namespace['cbp'] = cbp
 
-    handler = bpy.app.handlers.frame_change_pre
-    if calculateFrame not in handler:
-        handler.append(calculateFrame)
+handler = bpy.app.handlers.frame_change_pre
+if calculateFrame not in handler:
+    handler.append(calculateFrame)
     
 
 def toRadians(degrees: list) -> list:
@@ -368,12 +380,12 @@ class TOPBAR_OT_prerender_create_domain(Operator):
         chunkBounds = collection.instantiatePreviewPlane('chunkBounds', context)
         chunkBounds.addZConstraint(domain)
 
-        chunkPosition = collection.instantiatePreviewPlane('chunkPosition', context, display_bounds=False)
-        chunkPosition.addZConstraint(domain)
+        absolutePosition = collection.instantiatePreviewPlane('absolutePosition', context, display_bounds=False)
+        absolutePosition.addZConstraint(domain)
 
         camera.rotation_euler = [radians(90), 0, 0]
         constraint = camera.constraints.new('COPY_LOCATION')
-        constraint.target = collection.objects['chunkPosition']
+        constraint.target = collection.objects['absolutePosition']
         constraint.use_offset = True
 
         # ------------- Set custom properties -------------- #
@@ -383,7 +395,6 @@ class TOPBAR_OT_prerender_create_domain(Operator):
         domain['chunkColumns'] = self.chunkColumns
         domain['chunkRows'] = self.chunkRows
         domain['camera'] = camera
-        domain.update_tag()
 
         # ------------------ Add drivers ------------------- #
         # __________________________________________________ #

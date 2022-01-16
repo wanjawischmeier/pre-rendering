@@ -1,17 +1,57 @@
-import cv2
-import os
-# from plugin import variables, expressions
+import bpy
 
-path = "C:\\Users\\wanja\\Documents\\dev\\pre-rendering\\renders\\cycles\\room_simple_v2_720p"
-out = cv2.VideoWriter(os.path.join(path, "optimized.mp4"), cv2.VideoWriter_fourcc(*"h264"), 30, (5120, 1440))
-# add pre-rendering\libraries to sys env vars
+chunkWidthOld = 4
+chunkWidth = 4
+chunkColumns = 5
+chunkRows = 5
 
-for root, dirs, files in os.walk(path):
-    for name in files:
-        if ".png" in name:
-            file_path = os.path.join(root, name)
-            mat = cv2.imread(file_path)
-            out.write(mat)
-            print(name)
+def calculateOldFrameOffset(a,b):
+    frame: int = bpy.context.scene.frame_current
 
-out.release()
+    x = frame%chunkWidth
+    y = (frame-x)/chunkWidth
+
+    localIndex = x%chunkWidthOld + y%(chunkWidthOld**2)
+    chunkIndex = (frame-localIndex)/chunkWidthOld
+    targetOffset = localIndex+chunkIndex-frame
+
+    bpy.app.driver_namespace['frameOffset'] = targetOffset
+
+
+def calculateFrameOffset(a,b):
+    frame: int = bpy.context.scene.frame_current
+    domainLocation = [0, 0]
+    domainScale = [1, 1]
+
+    chunkSize = chunkWidth**2
+    blockWidth: int = domainScale[0]/chunkColumns/chunkWidth
+    blockHeight: int = domainScale[1]/chunkRows/chunkWidth
+    blocks = chunkColumns*chunkRows*chunkSize
+    clampedFrame = frame%blocks
+    domainOffset = (
+        -domainScale[0]/2+domainLocation[0],
+        -domainScale[1]/2+domainLocation[1]
+    )
+    
+    chunkIndex = clampedFrame%chunkSize
+    rowSize = chunkSize*chunkColumns
+
+    chunkBoundsPosition = [
+        (clampedFrame-chunkIndex)/chunkSize%chunkColumns*chunkWidth*blockWidth+domainOffset[0],
+        (clampedFrame-clampedFrame%rowSize)/rowSize*chunkWidth*blockHeight+domainOffset[1]
+    ]
+
+    absolutePosition = [
+        chunkBoundsPosition[0] + chunkIndex%chunkWidth*blockWidth,
+        chunkBoundsPosition[1] + (chunkIndex-chunkIndex%chunkWidth)/chunkWidth*blockHeight
+    ]
+
+    localIndex = absolutePosition[0]%chunkWidthOld + absolutePosition[1]%(chunkWidthOld**2)
+    chunkIndex = (frame-localIndex)/chunkWidthOld
+    targetOffset = localIndex+chunkIndex-frame
+
+    bpy.app.driver_namespace['frameOffset'] = targetOffset
+
+handler = bpy.app.handlers.frame_change_pre
+handler.clear()
+handler.append(calculateFrameOffset)
