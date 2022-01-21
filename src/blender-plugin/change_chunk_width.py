@@ -8,13 +8,18 @@ chunkRows = 5
 def calculateOldFrameOffset(a,b):
     frame: int = bpy.context.scene.frame_current
 
-    x = frame%chunkWidth
-    y = (frame-x)/chunkWidth
+    y = frame%(chunkWidth*chunkColumns)
+    x = (frame-y)/(chunkWidth*chunkColumns)
 
     localIndex = x%chunkWidthOld + y%(chunkWidthOld**2)
     chunkIndex = (frame-localIndex)/chunkWidthOld
     targetOffset = localIndex+chunkIndex-frame
 
+    bpy.app.driver_namespace['frame'] = frame
+    bpy.app.driver_namespace['x'] = x
+    bpy.app.driver_namespace['y'] = y
+    bpy.app.driver_namespace['localIndex'] = localIndex
+    bpy.app.driver_namespace['chunkIndex'] = chunkIndex
     bpy.app.driver_namespace['frameOffset'] = targetOffset
 
 
@@ -54,4 +59,4 @@ def calculateFrameOffset(a,b):
 
 handler = bpy.app.handlers.frame_change_pre
 handler.clear()
-handler.append(calculateFrameOffset)
+handler.append(calculateOldFrameOffset)
