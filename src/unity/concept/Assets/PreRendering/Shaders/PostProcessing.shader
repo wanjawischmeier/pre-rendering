@@ -29,7 +29,7 @@ Shader "PreRendering/PostProcessing"
 
 			UNITY_DECLARE_TEX2DARRAY(_InputBuffer);
             StructuredBuffer<int> ChunkIndicies;
-			float FOV, NCLIP, FCLIP, CUTOFF, DOF_INTENSITY, MIST_FALLOFF, MIST_OFFSET;
+			float FOV, NCLIP, FCLIP, CUTOFF, DOF_INTENSITY, MIST_FALLOFF, MIST_OFFSET, PLAYER_ICON;
 			float2 ROTATION, InputBufferResolution;
 			float3 POSITION, POSITION_OFFSET, MIST_COL;
 			int Debug, IMG_IDX;
@@ -118,7 +118,13 @@ Shader "PreRendering/PostProcessing"
 				float eDist = pow(clamp(col.a - MIST_OFFSET, 0, 1), MIST_FALLOFF * FCLIP);
 				col = MIST_COL.rgbb * eDist + col * (1 - eDist);
 				*/
-				fixed4 col = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, float3(idx, IMG_IDX));
+				// fixed4 col = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, float3(idx, IMG_IDX));
+				fixed4 col = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, float3(i.uv, IMG_IDX));
+
+				float3 rpos = (POSITION - POSITION_OFFSET) / float3(20, 20, 20);
+
+				if (distance(i.uv, rpos.xz) < PLAYER_ICON)
+					col = fixed4(0.5, 1, 1, 1);
 
 				return col;
 			}

@@ -18,6 +18,7 @@ public class VideoClipDecoder : MonoBehaviour
     public int tolerance = 10;
     public int intervallSize = 100;
     public float rateOfChange = 0.1f;
+    public float pIcon = 0.05f;
     public int searchCircleRadius = 3;
     public bool loaded = false;
     
@@ -138,8 +139,9 @@ public class VideoClipDecoder : MonoBehaviour
             }
         }
 
-        material.SetInteger("DEBUG", (int)shaderDebug);
+        material.SetInt("DEBUG", (int)shaderDebug);
         material.SetFloat("FOV", mainCamera.fieldOfView * Mathf.Deg2Rad);
+        material.SetFloat("PLAYER_ICON", pIcon);
         material.SetFloat("DOF_INTENSITY", depthOfField);
         material.SetFloat("MIST_FALLOFF", mistFalloff);
         material.SetFloat("MIST_OFFSET", mistOffset);
@@ -208,7 +210,7 @@ public class VideoClipDecoder : MonoBehaviour
             chunkIndicies[localIndex] = newChunkIndex;
             buffer.SetData(chunkIndicies, localIndex, localIndex, 1);
 
-            Debug.LogFormat("Finished decoding channel block {0} of the chunk.", channelBlock);
+            Debug.LogFormat("Finished decoding channel block {0} of chunk {1}.", channelBlock, (int)newChunkIndex);
             source.Pause();
             return;
         }
@@ -224,7 +226,7 @@ public class VideoClipDecoder : MonoBehaviour
 
         foreach (var offset in circularOffsets)
         {
-            var clamped = ((Vector2)transform.position + offset).ClampToChunkGrid();
+            var clamped = (transform.position + offset.Expand()).ClampToChunkGrid();
             var chunkIndex = clamped.Chunk.Global;
             var localIndex = clamped.Grid.Local.Local;
 
@@ -236,7 +238,8 @@ public class VideoClipDecoder : MonoBehaviour
             }
         }
 
-        material.SetInteger("IMG_IDX", available);
+        material.SetInt("IMG_IDX", available);
         Graphics.Blit(null, destination, material);
+        // Graphics.Blit(chunk, destination, available, 0);
     }
 }

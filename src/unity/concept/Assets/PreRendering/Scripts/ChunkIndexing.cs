@@ -30,7 +30,11 @@ namespace PreRendering
             }
         }
 
-        public static bool CorrectChunkIndex(GlobalIndex globalIndex, Vector2 position, out ChunkIndex newChunkIndex, out GlobalIndex newGlobalIndex)
+        public static Vector2 Flatten(this Vector3 vector) => new Vector2(vector.x, vector.z);
+
+        public static Vector3 Expand(this Vector2 vector) => new Vector3(vector.x, 0, vector.y);
+
+        public static bool CorrectChunkIndex(GlobalIndex globalIndex, Vector3 position, out ChunkIndex newChunkIndex, out GlobalIndex newGlobalIndex)
         {
             newChunkIndex = position.ClampToChunkGrid(globalIndex.channelBlock).Chunk.Global;
             newGlobalIndex = newChunkIndex.Global;
@@ -40,7 +44,7 @@ namespace PreRendering
         /// <summary>
         /// Clamp the position vector to the grid bounds to avoid errors
         /// </summary>
-        public static ClampedPosition ClampToChunkGrid(this Vector2 position, int channelBlock = 0) => new ClampedPosition(position, channelBlock);
+        public static ClampedPosition ClampToChunkGrid(this Vector3 position, int channelBlock = 0) => new ClampedPosition(position.Flatten(), channelBlock);
 
         public static GlobalIndex GetGlobalIndex(this long frameIndex, out int channelBlock) => new GlobalIndex(frameIndex, out channelBlock);
 

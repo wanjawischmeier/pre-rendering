@@ -2,6 +2,7 @@ import bpy
 
 # chunkWidthOld = 4
 heightOld = 21
+framesOld = 440
 chunkWidth = 4
 chunkColumns = 5
 chunkRows = 5
@@ -52,12 +53,13 @@ node_tree = bpy.data.scenes['Scene'].node_tree
 image_node = node_tree.nodes['Image']
 mix_node_fac = node_tree.nodes["Mix"].inputs[0]
 
-totalBlocks = chunkWidth**2*chunkColumns*chunkRows
 chunkSize = chunkWidth**2
 blocks = chunkColumns*chunkRows*chunkSize
-frames = totalBlocks*channelBlocks-1
+frames = blocks*channelBlocks
 
-bpy.data.scenes[0].frame_end = frames
+scene = bpy.data.scenes[0]
+scene.frame_end = frames
+scene.node_tree.animation_data_clear()
 
 for frame in range(frames):
     clampedFrame = frame%blocks
@@ -77,8 +79,8 @@ for frame in range(frames):
         
     targetOffset = absolutePosition[1]+absolutePosition[0]*heightOld
 
-    mix_node_fac.default_value = (frame-frame%totalBlocks)/totalBlocks
-    image_node.frame_offset = targetOffset-frame-1
+    mix_node_fac.default_value = (frame-frame%blocks)/blocks
+    image_node.frame_offset = targetOffset-min(frame, framesOld)-1
 
     # drivers for the frame offset wouldn't update when rendering
     mix_node_fac.keyframe_insert("default_value", frame=frame)

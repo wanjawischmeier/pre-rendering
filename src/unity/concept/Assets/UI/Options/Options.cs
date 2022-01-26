@@ -13,7 +13,7 @@ public class Options : MonoBehaviour
         screenResolutionWidth = GameObject.FindGameObjectWithTag("ScreenResolutionWidth").GetComponent<InputField>();
         screenResolutionHeight = GameObject.FindGameObjectWithTag("ScreenResolutionHeight").GetComponent<InputField>();
         Dropdown dropdown = GameObject.FindGameObjectWithTag("ScreenResolutionDropdown").GetComponent<Dropdown>();
-        nativeResolution = Screen.resolutions[^1];
+        nativeResolution = Screen.resolutions[1];
         int width, height, resolutionType = PlayerPrefs.GetInt("Screen Resolution Type");
         if (resolutionType == 0)
         {
