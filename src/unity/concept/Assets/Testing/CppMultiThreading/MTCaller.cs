@@ -6,6 +6,7 @@ using UnityEngine;
 
 public class MTCaller : MonoBehaviour
 {
+    [Serializable]
     public struct VideoInfo
     {
         public int width, height, fps;
@@ -31,28 +32,48 @@ public class MTCaller : MonoBehaviour
     public delegate void FrameEvent(long frame);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    public delegate bool EmptyCall();
+    public delegate void EmptyCall();
+
+
+
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    public delegate VideoInfo TestCall(FrameEvent frameEvent, out VideoInfo videoInfo);
+    public delegate void TestCallback(FrameEvent frameEvent);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate bool TestInit(string videoPath, int threads, out VideoInfo videoInfo, out int error);
 
     InitializeBuffer initializeBuffer;
     FrameEvent readToBuffer, frameReady = OnFrameReady;
     EmptyCall releaseBuffer;
-    TestCall test;
     IntPtr dllPtr;
 
     public string dllPath, videoPath;
+    public int error;
+    public VideoInfo videoInfo;
+
+    private T LoadFromLibrary<T>(IntPtr library, string name = "")
+    {
+        Type type = typeof(T);
+        IntPtr dllAddr = GetProcAddress(library, name == "" ? type.Name : name);
+        Delegate @delegate = Marshal.GetDelegateForFunctionPointer(dllAddr, type);
+        return (T)(object)@delegate;
+    }
 
     private void Start()
     {
         dllPtr = LoadLibrary(dllPath);
 
-        IntPtr dllAddr = GetProcAddress(dllPtr, "Test");
-        test = (TestCall)Marshal.GetDelegateForFunctionPointer(dllAddr, typeof(TestCall));
-        // VideoInfo videoInfo = new VideoInfo();
-        VideoInfo info = test(frameReady, out VideoInfo videoInfo);
-        Debug.Log(info.width);
+        TestCallback testCallback = LoadFromLibrary<TestCallback>(dllPtr);
+        TestInit testInit = LoadFromLibrary<TestInit>(dllPtr);
+        releaseBuffer = LoadFromLibrary<EmptyCall>(dllPtr, "ReleaseBuffer");
+
+
+        bool res = testInit(videoPath, 2, out videoInfo, out error);
+        Debug.Log(res);
+
+        // testCallback(frameReady);
+
         /*
         IntPtr dllAddr = GetProcAddress(dllPtr, "InitializeBuffer");
         initializeBuffer = (InitializeBuffer)Marshal.GetDelegateForFunctionPointer(dllAddr, typeof(InitializeBuffer));
@@ -69,6 +90,7 @@ public class MTCaller : MonoBehaviour
 
     private void OnDestroy()
     {
+        releaseBuffer();
         FreeLibrary(dllPtr);
     }
 

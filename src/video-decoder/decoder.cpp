@@ -76,26 +76,57 @@ bool ReadToBuffer(size_t frame)
 
     return true;
 }
-
-bool ReleaseBuffer()
+*/
+DECODER void ReleaseBuffer()
 {
+    for (size_t i = 0; i < instances; i++)
+    {
+        VideoCapture cap = caps[i];
+        if (cap.isOpened())
+            cap.release();
+
+        mats[i].release();
+    }
+
     if (pBuffer == nullptr)
-        return false;
+        return;
 
     delete pBuffer;
     pBuffer = nullptr;
-    return true;
 }
-*/
-DECODER VideoInfo Test(FrameReady callback, VideoInfo& test)
+
+DECODER void TestCallback(FrameReady callback)
 {
     callback(24);
+    *out_error_code = 64;
+}
 
-    VideoInfo info = VideoInfo();
-    info.width = 12;
+DECODER bool TestInit(char* videoPath, int threads, VideoInfo& info, int* error)
+{
+    instances = threads;
+    out_error_code = error;
 
-    test.width = 32;
-    callback(32);
+    caps = new VideoCapture[instances];
+    mats = new Mat[instances];
 
-    return info;
+    try
+    {
+        caps[0] = VideoCapture(videoPath);
+
+        for (size_t i = 1; i < instances; i++)
+            caps[i] = VideoCapture(caps[0]);
+    }
+    catch (const Exception&)
+    {
+        *out_error_code = 1;
+        return false;
+    }
+
+    VideoCapture cap = caps[0];
+    info.width = (int)cap.get(CAP_PROP_FRAME_WIDTH);
+    info.height = (int)cap.get(CAP_PROP_FRAME_HEIGHT);
+    info.fps = (int)cap.get(CAP_PROP_FPS);
+    info.frame_count = (size_t)cap.get(CAP_PROP_FRAME_COUNT);
+
+    return true;
 }

@@ -17,13 +17,20 @@ struct VideoInfo
 };
 
 ushort* pBuffer;		// Pointer to the image buffer
-VideoCapture color, maps;
-Mat color_mat, maps_mat;
+VideoCapture* caps;
+Mat* mats;
 FrameReady frame_ready;
 bool resize_image = false;
 Size image_resolution;	// If so, to which resolution
 size_t image_size;		// The total size of an image
-size_t maps_offset;
+int instances;
+int* out_error_code;
+
+/*
+* ERROR CODES:
+* 0: No error
+* 1: Unable to open Video Captures
+*/
 
 
 
@@ -32,6 +39,9 @@ extern "C" DECODER bool InitializeBuffer(
 	char* videoPath, FrameReady callback,
 	int width, int height, int depth,
 	VideoInfo* info, ushort* buffer);
-extern "C" DECODER bool ReadToBuffer(size_t frame);
-extern "C" DECODER bool ReleaseBuffer();*/
-extern "C" DECODER VideoInfo Test(FrameReady callback, VideoInfo& test);
+extern "C" DECODER bool ReadToBuffer(size_t frame);*/
+extern "C" DECODER void ReleaseBuffer();
+
+
+extern "C" DECODER void TestCallback(FrameReady callback);
+extern "C" DECODER bool TestInit(char* videoPath, int threads, VideoInfo& info, int* error);
