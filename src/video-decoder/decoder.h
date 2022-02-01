@@ -18,7 +18,7 @@ struct VideoInfo
 	size_t frame_count;
 };
 
-ushort* pBuffer;		// Pointer to the image buffer
+uchar* pBuffer;		// Pointer to the image buffer
 VideoCapture* pCaps;
 Mat* pMats;
 FrameCallback frame_ready;
@@ -34,6 +34,8 @@ int instances;
 extern "C" DECODER bool InitializeBuffer(
 	char* videoPath, int width, int height, int threads,
 	FrameCallback frameCallback, ErrorMessage errorCallback,
-	VideoInfo & info, int* error, ushort* buffer);
+	VideoInfo& info, int* error, uchar* buffer);
 extern "C" DECODER bool ReadToBuffer(size_t frameIdx, int threadIdx, int bufferIdx);
 extern "C" DECODER void ReleaseBuffer();
+
+extern "C" DECODER void DecodeFrame(size_t frameIdx, int threadIdx, int bufferIdx);

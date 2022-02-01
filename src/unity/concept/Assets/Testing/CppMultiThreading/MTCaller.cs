@@ -90,7 +90,7 @@ public class MTCaller : MonoBehaviour
             OnFrameReady, errorCallback,
             out videoInfo, out error, out buffer);
 
-        readToBuffer(1000, 0, 0);
+        StartCoroutine(TestSeeks());
     }
 
     private void OnDestroy()
@@ -99,10 +99,22 @@ public class MTCaller : MonoBehaviour
         FreeLibrary(dllPtr);
     }
 
-    public static void OnFrameReady(long frameIdx, int threadIdx, int bufferIdx)
+    private IEnumerator TestSeeks()
+    {
+        yield return new WaitForSeconds(2);
+
+        Task.Run(() =>
+        {
+            readToBuffer(UnityEngine.Random.Range(0, (int)videoInfo.frame_count - 1), 0, 0);
+        });
+    }
+
+    private void OnFrameReady(long frameIdx, int threadIdx, int bufferIdx)
     {
         Debug.LogFormat(
             "FrameReady callback for frame {0} from thread {1} invoked (stored at {2})",
             frameIdx, threadIdx, bufferIdx);
+
+        // readToBuffer(UnityEngine.Random.Range(0, (int)videoInfo.frame_count - 1), 0, 0);
     }
 }

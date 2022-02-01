@@ -5,7 +5,7 @@
 bool InitializeBuffer(
     char* videoPath, int width, int height, int threads,
     FrameCallback frameCallback, ErrorMessage errorCallback,
-    VideoInfo& info, int* error, ushort* buffer)
+    VideoInfo& info, int* error, uchar* buffer)
 {
     instances = threads;
     frame_ready = frameCallback;
@@ -44,7 +44,7 @@ bool InitializeBuffer(
     }
 
     image_size = width * height * 3;
-    pBuffer = new ushort[image_size * instances];
+    pBuffer = new uchar[image_size * instances];
     buffer = pBuffer;
 
     return true;
@@ -63,11 +63,14 @@ DECODER bool ReadToBuffer(size_t frameIdx, int threadIdx, int bufferIdx)
         error_callback("Thread index out of bounds", "");
         return false;
     }
-    
+
     VideoCapture cap = pCaps[threadIdx];
     Mat mat = pMats[threadIdx];
-    cap.set(CAP_PROP_POS_FRAMES, (double)frameIdx);
-    
+
+    size_t currentFrame = (size_t)cap.get(CAP_PROP_POS_FRAMES);
+    if (currentFrame != frameIdx)
+        cap.set(CAP_PROP_POS_FRAMES, (double)frameIdx);
+
     if (!cap.read(mat))
     {
         error_callback("Failed to grab frame", "");
@@ -89,12 +92,11 @@ DECODER bool ReadToBuffer(size_t frameIdx, int threadIdx, int bufferIdx)
     }
 
     size_t start_idx = bufferIdx * image_size;
-    size_t count = image_size * sizeof(ushort);
-    error_callback(to_string(start_idx).c_str(), "");
-    error_callback(to_string(count).c_str(), "");
-    error_callback(to_string(sizeof(ushort)).c_str(), "");
-    // memcpy(&pBuffer[start_idx], mat.data, count);
+    size_t count = image_size * sizeof(uchar);
+    memcpy(&pBuffer[start_idx], mat.data, count);
     frame_ready(frameIdx, threadIdx, bufferIdx);
+
+    // thread decoding_thread(DecodeFrame, frameIdx, threadIdx, bufferIdx);
     return true;
 }
 
@@ -103,4 +105,40 @@ DECODER void ReleaseBuffer()
     delete[] pCaps;
     delete[] pMats;
     delete pBuffer;
+}
+
+DECODER void DecodeFrame(size_t frameIdx, int threadIdx, int bufferIdx)
+{
+    /*
+    VideoCapture cap = pCaps[threadIdx];
+    Mat mat = pMats[threadIdx];
+
+    size_t currentFrame = (size_t)cap.get(CAP_PROP_POS_FRAMES);
+    if (currentFrame != frameIdx)
+        cap.set(CAP_PROP_POS_FRAMES, (double)frameIdx);
+
+    if (!cap.read(mat))
+    {
+        error_callback("Failed to grab frame", "");
+        return;
+    }
+
+
+    if (resize_image)
+    {
+        try
+        {
+            resize(mat, mat, image_resolution);
+        }
+        catch (const Exception& ex)
+        {
+            error_callback("Failed to resize image", ex.what());
+            return;
+        }
+    }
+
+    size_t start_idx = bufferIdx * image_size;
+    size_t count = image_size * sizeof(uchar);
+    memcpy(&pBuffer[start_idx], mat.data, count);*/
+    // frame_ready(frameIdx, threadIdx, bufferIdx);
 }
