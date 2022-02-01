@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -24,29 +25,46 @@ public class MTCaller : MonoBehaviour
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate bool InitializeBuffer(
-        string videoPath, FrameEvent callback,
-        int width, int height, int depth,
-        out VideoInfo info, out IntPtr buffer);
+        string videoPath, int width, int height, int threads,
+        FrameEvent frameCallback, ErrorCallback errorCallback,
+        out VideoInfo info, out int error, out IntPtr buffer);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    public delegate void FrameEvent(long frame);
+    public delegate void FrameEvent(long frameIdx, int threadIdx, int bufferIdx);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void ErrorCallback(string message, string error);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate void EmptyCall();
 
+    ErrorCallback errorCallback = (message, error) =>
+    {
+        // Custom error, not thrown by opencv
+        if (error == "")
+        {
+            Debug.LogErrorFormat("VideoPlayerNativePlugin: {0}", message);
+            return;
+        }
 
+        int pathStart = error.IndexOf(')');
+        int pathEnd = error.IndexOf(".cpp", pathStart);
+        int fileStart = error.LastIndexOf('\\', pathEnd);
+        
+        string openCvInfo = error.Substring(0, pathStart +1);
+        string errorMessage = error.Substring(fileStart + 1)
+            .Replace(": error:", "\nerror:")
+            .Replace(") ", ")\n");
 
-
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    public delegate void TestCallback(FrameEvent frameEvent);
-
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    public delegate bool TestInit(string videoPath, int threads, out VideoInfo videoInfo, out int error);
+        Debug.LogErrorFormat(
+            "VideoPlayerNativePlugin: {0}\n{1} {2}",
+            message, openCvInfo, errorMessage);
+    };
 
     InitializeBuffer initializeBuffer;
-    FrameEvent readToBuffer, frameReady = OnFrameReady;
+    FrameEvent readToBuffer;
     EmptyCall releaseBuffer;
-    IntPtr dllPtr;
+    IntPtr dllPtr, buffer;
 
     public string dllPath, videoPath;
     public int error;
@@ -63,29 +81,16 @@ public class MTCaller : MonoBehaviour
     private void Start()
     {
         dllPtr = LoadLibrary(dllPath);
-
-        TestCallback testCallback = LoadFromLibrary<TestCallback>(dllPtr);
-        TestInit testInit = LoadFromLibrary<TestInit>(dllPtr);
+        initializeBuffer = LoadFromLibrary<InitializeBuffer>(dllPtr);
+        readToBuffer = LoadFromLibrary<FrameEvent>(dllPtr, "ReadToBuffer");
         releaseBuffer = LoadFromLibrary<EmptyCall>(dllPtr, "ReleaseBuffer");
 
+        bool ret = initializeBuffer(
+            videoPath, 512, 512, 1,
+            OnFrameReady, errorCallback,
+            out videoInfo, out error, out buffer);
 
-        bool res = testInit(videoPath, 2, out videoInfo, out error);
-        Debug.Log(res);
-
-        // testCallback(frameReady);
-
-        /*
-        IntPtr dllAddr = GetProcAddress(dllPtr, "InitializeBuffer");
-        initializeBuffer = (InitializeBuffer)Marshal.GetDelegateForFunctionPointer(dllAddr, typeof(InitializeBuffer));
-
-        dllAddr = GetProcAddress(dllPtr, "ReadToBuffer");
-        readToBuffer = (FrameEvent)Marshal.GetDelegateForFunctionPointer(dllAddr, typeof(FrameEvent));
-
-        dllAddr = GetProcAddress(dllPtr, "ReleaseBuffer");
-        releaseBuffer = (EmptyCall)Marshal.GetDelegateForFunctionPointer(dllAddr, typeof(EmptyCall));
-
-        bool ret = initializeBuffer(videoPath, frameReady, 512, 512, 1, out VideoInfo info, out IntPtr buffer);
-        */
+        readToBuffer(1000, 0, 0);
     }
 
     private void OnDestroy()
@@ -94,8 +99,10 @@ public class MTCaller : MonoBehaviour
         FreeLibrary(dllPtr);
     }
 
-    public static void OnFrameReady(long frame)
+    public static void OnFrameReady(long frameIdx, int threadIdx, int bufferIdx)
     {
-        Debug.LogFormat("FrameReady callback for frame {0} invoked!", frame);
+        Debug.LogFormat(
+            "FrameReady callback for frame {0} from thread {1} invoked (stored at {2})",
+            frameIdx, threadIdx, bufferIdx);
     }
 }

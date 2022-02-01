@@ -1,6 +1,8 @@
 #pragma once
 #define DECODER __declspec(dllexport)
-typedef size_t(__stdcall* FrameReady)(size_t);
+
+typedef void(__stdcall* FrameCallback)(size_t, int, int);
+typedef void(__stdcall* ErrorMessage)(const char*, const char*);
 
 #include "opencv2/opencv.hpp"
 
@@ -17,31 +19,21 @@ struct VideoInfo
 };
 
 ushort* pBuffer;		// Pointer to the image buffer
-VideoCapture* caps;
-Mat* mats;
-FrameReady frame_ready;
+VideoCapture* pCaps;
+Mat* pMats;
+FrameCallback frame_ready;
+ErrorMessage error_callback;
+VideoInfo video_info;
 bool resize_image = false;
 Size image_resolution;	// If so, to which resolution
 size_t image_size;		// The total size of an image
 int instances;
-int* out_error_code;
-
-/*
-* ERROR CODES:
-* 0: No error
-* 1: Unable to open Video Captures
-*/
 
 
 
-/*
 extern "C" DECODER bool InitializeBuffer(
-	char* videoPath, FrameReady callback,
-	int width, int height, int depth,
-	VideoInfo* info, ushort* buffer);
-extern "C" DECODER bool ReadToBuffer(size_t frame);*/
+	char* videoPath, int width, int height, int threads,
+	FrameCallback frameCallback, ErrorMessage errorCallback,
+	VideoInfo & info, int* error, ushort* buffer);
+extern "C" DECODER bool ReadToBuffer(size_t frameIdx, int threadIdx, int bufferIdx);
 extern "C" DECODER void ReleaseBuffer();
-
-
-extern "C" DECODER void TestCallback(FrameReady callback);
-extern "C" DECODER bool TestInit(char* videoPath, int threads, VideoInfo& info, int* error);
