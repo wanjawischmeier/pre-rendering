@@ -10,16 +10,17 @@ namespace PreRendering
     {
         public enum Format
         {
-            RGBA64
+            RGBA64,
+            RGBA32
         }
 
-        public class Buffer : Buffer<Vector3>
+        public class NativeBuffer : Buffer<Vector3>
         {
             public NativeArray<uint> nativeBuffer;
             public ComputeBuffer computeBuffer;
             private readonly List<int> toCopy;
 
-            public Buffer(IntPtr bufferPointer, int width, int height, int depth, Format format = Format.RGBA64) : base(depth)
+            public NativeBuffer(IntPtr bufferPointer, int width, int height, int depth, Format format) : base(depth)
             {
                 int size = width * height * depth * 2;
 
@@ -39,6 +40,10 @@ namespace PreRendering
                 toCopy = new List<int>();
             }
 
+            /// <summary>
+            /// Pushes all available new frames to the gpu
+            /// (To be called in MonoBehaviour.Update)
+            /// </summary>
             public void Refresh()
             {
                 for (int i = 0; i < toCopy.Count; i++)

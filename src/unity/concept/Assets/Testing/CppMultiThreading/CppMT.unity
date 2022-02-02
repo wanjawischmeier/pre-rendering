@@ -314,4 +314,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   videoPath: C:\Users\wanja\Documents\dev\pre-rendering\branches\master\src\unity\concept\Assets\PreRendering\4000px_30fps_lowestq0001-0210.mp4
   threads: 1
-  iters: 100
+  iters: 20

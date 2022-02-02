@@ -30,10 +30,10 @@ namespace PreRendering
         private readonly Dictionary<string, Vector3> pending;
         private readonly List<Vector3> decoding;
         private readonly List<Tuple<string, Vector3, long>> decoded;
-        private readonly RawTexture.Buffer buffer;
+        private readonly RawTexture.NativeBuffer buffer;
         private readonly int decodingThreads, maxPending;
 
-        public DecodingManager(RawTexture.Buffer buffer, int decodingThreads, int maxPending)
+        public DecodingManager(RawTexture.NativeBuffer buffer, int decodingThreads, int maxPending)
         {
             this.buffer = buffer;
             this.decodingThreads = decodingThreads;

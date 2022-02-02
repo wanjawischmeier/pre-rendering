@@ -18,6 +18,11 @@ public class MTCaller : MonoBehaviour
         StartCoroutine(TestSeeks());
     }
 
+    private void Update()
+    {
+        videoPlayer.computeBuffer.Refresh();
+    }
+
     private void OnDestroy()
     {
         ExternalVideoPlayer.FrameReady -= OnFrameReady;
@@ -31,8 +36,8 @@ public class MTCaller : MonoBehaviour
         for (int i = 0; i < iters; i++)
         {
             // Can only be called on the main thread!
-            int frame = UnityEngine.Random.Range(0, (int)videoPlayer.info.frame_count - 1);
-            videoPlayer.ReadToBuffer(frame, 0, 0);
+            int frame = Random.Range(0, (int)videoPlayer.info.frame_count - 1);
+            videoPlayer.ReadToBuffer(i, 0, 0);
         }
     }
 
