@@ -24,9 +24,9 @@ Mat* pMats;
 FrameCallback frame_ready;
 ErrorMessage error_callback;
 VideoInfo video_info;
-bool resize_image = false;
-Size image_resolution;	// If so, to which resolution
+Size image_resolution;
 size_t image_size;		// The total size of an image
+bool resize_image = false;
 int instances;
 
 
@@ -34,8 +34,6 @@ int instances;
 extern "C" DECODER bool InitializeBuffer(
 	char* videoPath, int width, int height, int threads,
 	FrameCallback frameCallback, ErrorMessage errorCallback,
-	VideoInfo& info, int* error, uchar* buffer);
+	VideoInfo& info, uchar* buffer);
 extern "C" DECODER bool ReadToBuffer(size_t frameIdx, int threadIdx, int bufferIdx);
 extern "C" DECODER void ReleaseBuffer();
-
-extern "C" DECODER void DecodeFrame(size_t frameIdx, int threadIdx, int bufferIdx);

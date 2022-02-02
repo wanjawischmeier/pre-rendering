@@ -312,11 +312,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 40a2a1e809fb9aa4db5428e091986b52, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  dllPath: C:\Users\wanja\Documents\dev\pre-rendering\branches\master\src\video-decoder\x64\Debug\video-decoder.dll
-  videoPath: C:\Users\wanja\Documents\dev\pre-rendering\renders\cycles\chunk_system\chunk_debugger.mp4
-  error: 0
-  videoInfo:
-    width: 0
-    height: 0
-    fps: 0
-    frame_count: 0
+  videoPath: C:\Users\wanja\Documents\dev\pre-rendering\branches\master\src\unity\concept\Assets\PreRendering\4000px_30fps_lowestq0001-0210.mp4
+  threads: 1
+  iters: 100
