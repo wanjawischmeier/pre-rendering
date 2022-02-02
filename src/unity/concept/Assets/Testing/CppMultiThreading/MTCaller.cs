@@ -43,8 +43,6 @@ public class MTCaller : MonoBehaviour
 
     private void OnFrameReady(long frameIdx, int threadIdx, int bufferIdx)
     {
-        Debug.LogFormat(
-            "FrameReady callback for frame {0} from thread {1} invoked (stored at {2})",
-            frameIdx, threadIdx, bufferIdx);
+        Debug.Log($"FrameReady callback for frame {frameIdx} from thread {threadIdx} invoked (stored at {bufferIdx})");
     }
 }

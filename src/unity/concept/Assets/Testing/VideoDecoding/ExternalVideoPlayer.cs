@@ -96,7 +96,6 @@ namespace PreRendering
                 out info, out bufferPtr);
 
             computeBuffer = new RawTexture.NativeBuffer(bufferPtr, info.width, info.height, instances, RawTexture.Format.RGBA32);
-
             workerThread = Task.Run(Worker);
         }
 
@@ -113,7 +112,7 @@ namespace PreRendering
             // Custom error, not thrown by opencv
             if (error == "")
             {
-                Debug.LogErrorFormat("VideoPlayerNativePlugin: {0}", message);
+                Debug.LogError($"VideoPlayerNativePlugin: {message}");
                 return;
             }
 
@@ -126,9 +125,7 @@ namespace PreRendering
                 .Replace(": error:", "\nerror:")
                 .Replace(") ", ")\n");
 
-            Debug.LogErrorFormat(
-                "VideoPlayerNativePlugin: {0}\n{1} {2}",
-                message, openCvInfo, errorMessage);
+            Debug.LogError($"VideoPlayerNativePlugin: {message}\n{openCvInfo} {2}");
         }
 
         /// <summary>
@@ -200,12 +197,9 @@ namespace PreRendering
             workerThread.Wait(workerThreadTimeout);
 
             if (workerThread.Status == TaskStatus.Running)
-                Debug.LogWarningFormat(
-                    "Worker thread not responding (waited {0}ms). Deallocating memory anyways, this might result in a crash.",
-                    workerThreadTimeout);
+                Debug.LogWarning($"Worker thread not responding (waited {workerThreadTimeout}ms). Deallocating memory anyways, this might result in a crash.");
 
             releaseBuffer();
-            computeBuffer.Release();
             FreeLibrary(dllPtr);
         }
     }

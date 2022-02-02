@@ -41,7 +41,7 @@ namespace PreRendering
             }
 
             /// <summary>
-            /// Pushes all available new frames to the gpu
+            /// Pushes all new frames to the gpu
             /// (To be called in MonoBehaviour.Update)
             /// </summary>
             public void Refresh()

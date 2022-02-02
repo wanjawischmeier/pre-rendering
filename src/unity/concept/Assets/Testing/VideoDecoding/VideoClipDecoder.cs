@@ -50,7 +50,7 @@ public class VideoClipDecoder : MonoBehaviour
     private MovementController controller;
     private Texture2DArray chunk;
     private ComputeBuffer buffer;
-    private VideoPlayer[] players;
+    private ExternalVideoPlayer videoPlayer;
     private Material material;
     private Camera mainCamera;
     private long lastPlaybackSpeedChange = 0;
@@ -81,7 +81,8 @@ public class VideoClipDecoder : MonoBehaviour
         CalculateConstants();
 
         mainCamera = GetComponent<Camera>();
-        players = new VideoPlayer[channelBlocks];
+        videoPlayer = new ExternalVideoPlayer(mapPath, config.channelBlocks);
+        ExternalVideoPlayer.FrameReady += Player_FrameReady;
         chunkIndicies = new int[chunkSize * channelBlocks];
         buffer = new ComputeBuffer(chunkIndicies.Length, sizeof(int));
         material = new Material(shader);
@@ -93,51 +94,11 @@ public class VideoClipDecoder : MonoBehaviour
         material.SetFloat("NCLIP", nclip);
         material.SetFloat("FCLIP", fclip);
         material.SetBuffer("ChunkIndicies", buffer);
-
-        for (int i = 0; i < config.channelBlocks; i++)
-        {
-            VideoPlayer player = gameObject.AddComponent<VideoPlayer>();
-            player.playOnAwake = false;
-            player.waitForFirstFrame = false;
-            player.skipOnDrop = false;
-            player.sendFrameReadyEvents = true;
-            player.source = VideoSource.Url;
-            player.renderMode = VideoRenderMode.APIOnly;
-            player.audioOutputMode = VideoAudioOutputMode.None;
-            player.prepareCompleted += Player_PrepareCompleted;
-            player.frameReady += Player_FrameReady;
-
-            player.url = url;
-            player.frame = i * totalSize;
-            player.Prepare();
-
-            players[i] = player;
-        }
     }
 
     private void Update()
     {
         float fps = 1 / Time.unscaledDeltaTime;
-
-        // Optimize playback speed
-        if (Time.frameCount > lastPlaybackSpeedChange + intervallSize)
-        {
-            foreach (var player in players)
-            {
-                float factor = 0;
-
-                if (fps < targetFps - tolerance)
-                    factor = -rateOfChange;
-                else if (fps > targetFps + tolerance)
-                    factor = rateOfChange;
-
-                if (factor != 0 && player.isPlaying)
-                {
-                    player.playbackSpeed = Mathf.Max(player.playbackSpeed + factor, rateOfChange);
-                    lastPlaybackSpeedChange = Time.frameCount;
-                }
-            }
-        }
 
         material.SetInt("DEBUG", (int)shaderDebug);
         material.SetFloat("FOV", mainCamera.fieldOfView * Mathf.Deg2Rad);
