@@ -8,7 +8,7 @@ using Debug = UnityEngine.Debug;
 
 namespace PreRendering
 {
-    public class ExternalVideoPlayer
+    public static class ExternalVideoPlayer
     {
         [Serializable]
         public struct VideoInfo
@@ -39,12 +39,12 @@ namespace PreRendering
         /// <param name="frameCallback">The function to be called after a frame has been grabbed</param>
         /// <param name="errorCallback">The function to be called if an error occurs</param>
         /// <param name="videoInfo">Containing basic information about the video</param>
-        /// <param name="buffer">The pointer of the buffer grabbed frames will be written to</param>
+        /// <returns>The pointer of the buffer grabbed frames will be written to</returns>
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        private delegate bool InitializeBuffer(
+        private delegate IntPtr InitializeBuffer(
             string videoPath, int threads,
             FrameReadyHandler frameCallback, ErrorCallback errorCallback,
-            out VideoInfo videoInfo, out IntPtr buffer);
+            out VideoInfo videoInfo);
 
         /// <summary>
         /// Docodes a frame and copies it to the buffer
@@ -66,19 +66,25 @@ namespace PreRendering
         public delegate void FrameReadyHandler(long frameIdx, int threadIdx, int bufferIdx);
         public static event FrameReadyHandler FrameReady;
 
-        public VideoInfo info;
-        public RawTexture.NativeBuffer computeBuffer;
+        public static VideoInfo info;
+        public static RawTexture.NativeBuffer buffer;
+        public static bool invokeFrameReadyEvents = false;
 
-        private InitializeBuffer initializeBuffer;
-        private FrameEvent readToBuffer;
-        private EmptyCall releaseBuffer;
-        private IntPtr dllPtr, bufferPtr;
-        private Task workerThread;
-        private List<PendingFrame> pendingFrames;
-        private int instances;
-        private bool working, reading = false;
+        public static int ImageSize
+        {
+            get { return info.width * info.height * 3; }
+        }
 
-        public ExternalVideoPlayer(string videoPath, int threads)
+        private static InitializeBuffer initializeBuffer;
+        private static FrameEvent readToBuffer;
+        private static EmptyCall releaseBuffer;
+        private static IntPtr dllPtr, bufferPtr;
+        private static Task workerThread;
+        private static List<PendingFrame> pendingFrames;
+        private static int instances;
+        private static bool working, reading = false;
+
+        public static void Initialize(string videoPath, int threads, int cacheSize)
         {
             string dllPath = "C:\\Users\\wanja\\Documents\\dev\\pre-rendering\\branches\\master\\src\\video-decoder\\x64\\Debug\\video-decoder.dll";
             dllPtr = LoadLibrary(dllPath);
@@ -89,25 +95,30 @@ namespace PreRendering
             
             pendingFrames = new List<PendingFrame>();
             instances = threads;
-
-            bool ret = initializeBuffer(
+            bufferPtr = new IntPtr(32);
+            bufferPtr = initializeBuffer(
                 videoPath, instances,
                 OnFrameReady, OnError,
-                out info, out bufferPtr);
+                out info);
 
-            computeBuffer = new RawTexture.NativeBuffer(bufferPtr, info.width, info.height, instances, RawTexture.Format.RGBA32);
+            buffer = new RawTexture.NativeBuffer(bufferPtr, info.width, info.height, cacheSize, RawTexture.Format.RGB24);
             workerThread = Task.Run(Worker);
         }
 
-        private bool ReadToBuffer(PendingFrame frame) => readToBuffer(frame.frameIdx, frame.threadIdx, frame.bufferIdx);
+        private static bool ReadToBuffer(PendingFrame frame) => readToBuffer(frame.frameIdx, frame.threadIdx, frame.bufferIdx);
 
-        private void OnFrameReady(long frameIdx, int threadIdx, int bufferIdx) =>
+        private static void OnFrameReady(long frameIdx, int threadIdx, int bufferIdx)
+        {
+            buffer.Add(frameIdx);
+
+            if (invokeFrameReadyEvents)
                 FrameReady?.Invoke(frameIdx, threadIdx, bufferIdx);
+        }
 
         /// <summary>
         /// Formats error messages by the plugin to be displayed in the unity console
         /// </summary>
-        private void OnError(string message, string error)
+        private static void OnError(string message, string error)
         {
             // Custom error, not thrown by opencv
             if (error == "")
@@ -134,7 +145,7 @@ namespace PreRendering
         /// <typeparam name="T">The delegate of the desired function</typeparam>
         /// <param name="library">The pointer to an already loaded library</param>
         /// <param name="name">The name of the function, using delegate name by default</param>
-        private T LoadFromLibrary<T>(IntPtr library, string name = "")
+        private static T LoadFromLibrary<T>(IntPtr library, string name = "")
         {
             Type type = typeof(T);
             IntPtr dllAddr = GetProcAddress(library, name == "" ? type.Name : name);
@@ -142,7 +153,7 @@ namespace PreRendering
             return (T)(object)@delegate;
         }
 
-        private void Worker()
+        private static void Worker()
         {
             working = true;
 
@@ -172,7 +183,7 @@ namespace PreRendering
         /// <param name="frameIdx">The frame to be added</param>
         /// <param name="threadIdx">On which thread it should be decoded</param>
         /// <param name="bufferIdx">The buffer index to which it should be copied</param>
-        public void ReadToBuffer(long frameIdx, int threadIdx, int bufferIdx)
+        public static void ReadToBuffer(long frameIdx, int threadIdx, int bufferIdx)
         {
             pendingFrames.Add(new PendingFrame()
             {
@@ -191,7 +202,7 @@ namespace PreRendering
         /// How long to wait for the worker thread to cancel before deallocating memory anyways
         /// (Which will propably result in a crash)
         /// </param>
-        public void Release(int workerThreadTimeout = 10000)
+        public static void Release(int workerThreadTimeout = 10000)
         {
             working = false;
             workerThread.Wait(workerThreadTimeout);
@@ -200,6 +211,7 @@ namespace PreRendering
                 Debug.LogWarning($"Worker thread not responding (waited {workerThreadTimeout}ms). Deallocating memory anyways, this might result in a crash.");
 
             releaseBuffer();
+            buffer.Release();
             FreeLibrary(dllPtr);
         }
     }

@@ -50,7 +50,6 @@ public class VideoClipDecoder : MonoBehaviour
     private MovementController controller;
     private Texture2DArray chunk;
     private ComputeBuffer buffer;
-    private ExternalVideoPlayer videoPlayer;
     private Material material;
     private Camera mainCamera;
     private long lastPlaybackSpeedChange = 0;
@@ -81,11 +80,13 @@ public class VideoClipDecoder : MonoBehaviour
         CalculateConstants();
 
         mainCamera = GetComponent<Camera>();
-        videoPlayer = new ExternalVideoPlayer(mapPath, config.channelBlocks);
-        ExternalVideoPlayer.FrameReady += Player_FrameReady;
+        ExternalVideoPlayer.Initialize(mapPath, config.channelBlocks, cacheSize);
+        // ExternalVideoPlayer.FrameReady += Player_FrameReady;
+        chunk = new Texture2DArray(ExternalVideoPlayer.info.width, ExternalVideoPlayer.info.height, chunkIndicies.Length, TextureFormat.RGBA32, false);
         chunkIndicies = new int[chunkSize * channelBlocks];
         buffer = new ComputeBuffer(chunkIndicies.Length, sizeof(int));
         material = new Material(shader);
+
         material.SetInt("MX_IDX", cacheSize);
         material.SetFloat("PI", Mathf.PI);
         material.SetFloat("PI2", Mathf.PI * 2);
@@ -94,6 +95,7 @@ public class VideoClipDecoder : MonoBehaviour
         material.SetFloat("NCLIP", nclip);
         material.SetFloat("FCLIP", fclip);
         material.SetBuffer("ChunkIndicies", buffer);
+        material.SetTexture("_InputBuffer", chunk);
     }
 
     private void Update()
@@ -115,7 +117,7 @@ public class VideoClipDecoder : MonoBehaviour
         // Restart any paused players if needed
         for (int i = 0; i < config.channelBlocks; i++)
         {
-            VideoPlayer player = players[i];
+            VideoPlayer player = default;// players[i];
 
             if (player.isPaused)
             {
@@ -138,21 +140,6 @@ public class VideoClipDecoder : MonoBehaviour
     private void OnDisable()
     {
         buffer.Release();
-    }
-
-    private void Player_PrepareCompleted(VideoPlayer source)
-    {
-        prepared += 1;
-
-        // Check if all players are prepared
-        if (prepared == config.channelBlocks)
-        {
-            chunk = new Texture2DArray((int)source.width, (int)source.height, chunkIndicies.Length, TextureFormat.RGBA32, false);
-            material.SetTexture("_InputBuffer", chunk);
-
-            foreach (var player in players)
-                player.Play();
-        }
     }
 
     private void Player_FrameReady(VideoPlayer source, long frameIdx)

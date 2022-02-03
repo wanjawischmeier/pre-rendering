@@ -312,6 +312,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 40a2a1e809fb9aa4db5428e091986b52, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  videoPath: C:\Users\wanja\Documents\dev\pre-rendering\branches\master\src\unity\concept\Assets\PreRendering\4000px_30fps_lowestq0001-0210.mp4
+  videoPath: C:\Users\wanja\Documents\dev\pre-rendering\branches\master\src\unity\concept\Assets\PreRendering\100px_30fps_lowestq0001-0210.mp4
   threads: 1
-  iters: 20
+  iters: 1
+  cacheSize: 2
+  address: 3
+  res: {x: 100, y: 100}
+  array: 
+  shader: {fileID: 4800000, guid: 7ce1fa92956a5704a83b80c5a004bbd0, type: 3}

@@ -1,4 +1,10 @@
-void unpack(uint v, out uint v0, out uint v1)
+void unpack16b(uint v, out uint v0, out uint v1)
+{
+    v0 = v & 0xFFFF;
+    v1 = v >> 16;
+}
+
+void unpack8b(uint v, out uint v0, out uint v1)
 {
     v0 = v & 0xFFFF;
     v1 = v >> 16;
@@ -19,8 +25,8 @@ half4 rawTex2D(StructuredBuffer<uint> rawTexture, float2 uv, uint2 resolution, u
 
     uint r, g, b, a;
 
-    unpack(bgPacked, b, g);
-    unpack(raPacked, r, a);
+    unpack16b(bgPacked, b, g);
+    unpack16b(raPacked, r, a);
 
     return normalizeColor16b(r, g, b, a);
 }
@@ -32,7 +38,7 @@ half rawTex2DA(StructuredBuffer<uint> rawTexture, float2 uv, uint2 resolution, u
 
     uint raPacked = rawTexture[idx + 1];
     uint a, _;
-    unpack(raPacked, _, a);
+    unpack16b(raPacked, _, a);
 
     return a / (float)0xFFFF;
 }

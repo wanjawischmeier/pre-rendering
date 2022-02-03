@@ -10,23 +10,31 @@ namespace PreRendering
     {
         public enum Format
         {
-            RGBA64,
-            RGBA32
+            RGB24 = 3,  // 3 channels * 1 byte per channel
+            RGBA32 = 4, // 4 channels * 1 byte per channel
+            RGB48 = 6,  // 3 channels * 2 bytes per channel
+            RGBA64 = 8  // 4 channels * 2 bytes per channel
         }
 
-        public class NativeBuffer : Buffer<Vector3>
+        public class NativeBuffer : Buffer<long>
         {
-            public NativeArray<uint> nativeBuffer;
+            public NativeArray<byte> nativeBuffer;
             public ComputeBuffer computeBuffer;
             private readonly List<int> toCopy;
 
             public NativeBuffer(IntPtr bufferPointer, int width, int height, int depth, Format format) : base(depth)
             {
-                int size = width * height * depth * 2;
+                if (bufferPointer == IntPtr.Zero)
+                {
+                    Debug.LogError("Passed a nullptr, buffer cannot be initialized");
+                    return;
+                }
+
+                int size = width * height * (int)format * depth;
 
                 unsafe
                 {
-                    nativeBuffer = NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<uint>(
+                    nativeBuffer = NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<byte>(
                         bufferPointer.ToPointer(),
                         size,
                         Allocator.None);
@@ -36,7 +44,7 @@ namespace PreRendering
                 NativeArrayUnsafeUtility.SetAtomicSafetyHandle(ref nativeBuffer, AtomicSafetyHandle.Create());
 #endif
 
-                computeBuffer = new ComputeBuffer(size, sizeof(uint));
+                computeBuffer = new ComputeBuffer(size / sizeof(int), sizeof(int), ComputeBufferType.Raw);
                 toCopy = new List<int>();
             }
 
@@ -48,6 +56,7 @@ namespace PreRendering
             {
                 for (int i = 0; i < toCopy.Count; i++)
                 {
+                    // TODO: Set start index and count
                     computeBuffer.SetData(nativeBuffer);
                     toCopy.RemoveAt(i);
                 }

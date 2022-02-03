@@ -2,10 +2,10 @@
 #include "decoder.h"
 
 
-bool InitializeBuffer(
+uchar* InitializeBuffer(
     char *videoPath, int threads,
     FrameCallback frameCallback, ErrorMessage errorCallback,
-    VideoInfo &rInfo, uchar *buffer)
+    VideoInfo &rInfo, uchar *buffer, int *lol)
 {
     instances = threads;
     frame_ready = frameCallback;
@@ -24,8 +24,8 @@ bool InitializeBuffer(
     }
     catch (const Exception& ex)
     {
-        errorCallback("Error while opening Video Capture", ex.what());
-        return false;
+        error_callback("Error while opening Video Capture", ex.what());
+        return nullptr;
     }
 
     for (size_t i = 0; i < instances; i++)
@@ -40,8 +40,10 @@ bool InitializeBuffer(
     image_size = video_info.width * video_info.height * 3;
     pBuffer = new uchar[image_size * instances];
     buffer = pBuffer;
+    error_callback(to_string((uint)buffer).c_str(), "");
+    *lol = 69;
 
-    return true;
+    return pBuffer;
 }
 
 DECODER bool ReadToBuffer(size_t frameIdx, int threadIdx, int bufferIdx)
@@ -74,7 +76,7 @@ DECODER bool ReadToBuffer(size_t frameIdx, int threadIdx, int bufferIdx)
     size_t start_idx = bufferIdx * image_size;
     size_t count = image_size * sizeof(uchar);
     memcpy(&pBuffer[start_idx], mat.data, count);
-
+    pBuffer[1234] = 234;
     frame_ready(frameIdx, threadIdx, bufferIdx);
     return true;
 }
