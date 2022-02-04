@@ -5,7 +5,7 @@
 uchar* InitializeBuffer(
     char *videoPath, int threads,
     FrameCallback frameCallback, ErrorMessage errorCallback,
-    VideoInfo &rInfo, uchar *buffer, int *lol)
+    VideoInfo &rInfo, uchar *buffer)
 {
     instances = threads;
     frame_ready = frameCallback;
@@ -28,20 +28,22 @@ uchar* InitializeBuffer(
         return nullptr;
     }
 
-    for (size_t i = 0; i < instances; i++)
-        pCaps[i] = VideoCapture(cap);
-
     rInfo.width = (int)cap.get(CAP_PROP_FRAME_WIDTH);
     rInfo.height = (int)cap.get(CAP_PROP_FRAME_HEIGHT);
     rInfo.fps = (int)cap.get(CAP_PROP_FPS);
     rInfo.frame_count = (size_t)cap.get(CAP_PROP_FRAME_COUNT);
     video_info = rInfo;
 
+    for (size_t i = 0; i < instances; i++)
+    {
+        pCaps[i] = VideoCapture(cap);
+        pMats[i] = Mat(video_info.width, video_info.height, CV_8UC3);
+    }
+
     image_size = video_info.width * video_info.height * 3;
     pBuffer = new uchar[image_size * instances];
     buffer = pBuffer;
-    error_callback(to_string((uint)buffer).c_str(), "");
-    *lol = 69;
+    error_callback(to_string(pMats[0].isContinuous()).c_str(), "");
 
     return pBuffer;
 }

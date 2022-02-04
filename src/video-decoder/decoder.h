@@ -29,6 +29,6 @@ int instances;
 extern "C" DECODER uchar* InitializeBuffer(
 	char* videoPath, int threads,
 	FrameCallback frameCallback, ErrorMessage errorCallback,
-	VideoInfo &rInfo, uchar *buffer, int *lol);
+	VideoInfo &rInfo, uchar *buffer);
 extern "C" DECODER bool ReadToBuffer(size_t frameIdx, int threadIdx, int bufferIdx);
 extern "C" DECODER void ReleaseBuffer();

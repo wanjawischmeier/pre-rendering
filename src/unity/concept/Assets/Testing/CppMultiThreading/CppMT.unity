@@ -315,8 +315,9 @@ MonoBehaviour:
   videoPath: C:\Users\wanja\Documents\dev\pre-rendering\branches\master\src\unity\concept\Assets\PreRendering\100px_30fps_lowestq0001-0210.mp4
   threads: 1
   iters: 1
-  cacheSize: 2
-  address: 3
+  cacheSize: 1
+  address: 2
+  comp: 33686018
   res: {x: 100, y: 100}
   array: 
   shader: {fileID: 4800000, guid: 7ce1fa92956a5704a83b80c5a004bbd0, type: 3}

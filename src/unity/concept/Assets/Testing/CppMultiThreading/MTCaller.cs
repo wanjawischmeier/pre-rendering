@@ -5,7 +5,7 @@ using PreRendering;
 public class MTCaller : MonoBehaviour
 {
     public string videoPath;
-    public int threads, iters, cacheSize, address;
+    public int threads, iters, cacheSize, address, comp;
     public Vector2 res;
     public byte[] array;
     public Shader shader;
@@ -14,6 +14,7 @@ public class MTCaller : MonoBehaviour
 
     private void Start()
     {
+        Screen.SetResolution(1280, 720, true);
         Application.targetFrameRate = Screen.currentResolution.refreshRate;
         
         ExternalVideoPlayer.Initialize(videoPath, threads, cacheSize);
@@ -22,7 +23,15 @@ public class MTCaller : MonoBehaviour
 
         int size = ExternalVideoPlayer.ImageSize * cacheSize;
         array = new byte[size];
-
+        /*
+        array[0] = 2;
+        array[1] = 3;
+        array[2] = 4;
+        array[3] = 5;
+        array[4] = 6;
+        array[5] = 7;
+        array[6] = 8;
+        */
         material = new Material(shader);
         material.SetVector("Resolution", new Vector2(ExternalVideoPlayer.info.width, ExternalVideoPlayer.info.height));
         material.SetBuffer("InputBuffer", ExternalVideoPlayer.buffer.computeBuffer);
@@ -36,6 +45,7 @@ public class MTCaller : MonoBehaviour
         ExternalVideoPlayer.buffer.computeBuffer.GetData(array);
         material.SetVector("Resolution", res);
         material.SetInt("Address", address);
+        material.SetInt("Comp", comp);
     }
 
     private void OnDestroy()
