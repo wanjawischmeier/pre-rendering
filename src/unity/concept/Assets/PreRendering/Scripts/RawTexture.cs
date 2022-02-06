@@ -44,7 +44,7 @@ namespace PreRendering
                 NativeArrayUnsafeUtility.SetAtomicSafetyHandle(ref nativeBuffer, AtomicSafetyHandle.Create());
 #endif
 
-                computeBuffer = new ComputeBuffer(size / sizeof(int), sizeof(int), ComputeBufferType.Raw);
+                computeBuffer = new ComputeBuffer(size / sizeof(uint), sizeof(uint));
                 toCopy = new List<int>();
             }
 

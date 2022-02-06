@@ -316,8 +316,9 @@ MonoBehaviour:
   threads: 1
   iters: 1
   cacheSize: 1
-  address: 2
+  address: 1
   comp: 33686018
-  res: {x: 100, y: 100}
+  res: {x: 75, y: 75}
+  texture: {fileID: 0}
   array: 
   shader: {fileID: 4800000, guid: 7ce1fa92956a5704a83b80c5a004bbd0, type: 3}

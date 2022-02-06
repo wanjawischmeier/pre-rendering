@@ -43,7 +43,6 @@ uchar* InitializeBuffer(
     image_size = video_info.width * video_info.height * 3;
     pBuffer = new uchar[image_size * instances];
     buffer = pBuffer;
-    error_callback(to_string(pMats[0].isContinuous()).c_str(), "");
 
     return pBuffer;
 }

@@ -37,20 +37,35 @@ Shader "Hidden/ReadUnpacked"
                 return o;
             }
 
-            ByteAddressBuffer InputBuffer;
+            StructuredBuffer<uint> InputBuffer;
             uint Address, Comp;
-            int2 Resolution;
+            float2 Resolution;
+            float2 TexelOffset;
 
             fixed4 frag(v2f i) : SV_Target
             {
+                /*
                 uint offset = 0;
-                int2 tc = i.uv * Resolution;
-                // int idx = (tc.x + (Resolution.y - tc.y - 0) * Resolution.x + offset) * Address;
-                int idx = tc.x + tc.y * Resolution.x;
+                int2 tc = (1 - i.uv) * Resolution;
+                int idx = (tc.x + (Resolution.y - tc.y - 0) * Resolution.x + offset) * Address;
+                */
+                /*
+                float2 tc = i.uv * Resolution;
+                int idx = (tc.x + tc.y * Resolution.x) * 3;
+                */
+                /*
+                float2 tc = i.uv.xy * Resolution;
+                int idx = (tc.x + (Resolution.y - tc.y) * Resolution.x) * 3;
+                */
+
+                int2 tc = i.uv.xy * Resolution;
+                int idx = tc.x + (Resolution.y - tc.y - 1) * Resolution.x;
+
+                // int idx = (tc.x + tc.y * Resolution.x) * 3;
                 // uint3 val = InputBuffer.Load3(idx * 3);
                 // uint val = InputBuffer.Load(Address-3);
 
-                uint val = InputBuffer.Load(idx*3);
+                uint val = InputBuffer.Load(idx);
                 uint r = val & 0xFF;
                 uint g = (val >> 8) & 0xFF;
                 uint b = (val >> 16) & 0xFF;
@@ -62,6 +77,8 @@ Shader "Hidden/ReadUnpacked"
                     (val >> 16) & 0xFF,
                     0xFF
                 ) / (fixed)0xFF;
+
+                if (val == 0 && idx > 2000) col = fixed4(1, 0, 1, 1);
                 /*
                 if (r == 5) col.r = 1;
                 if (g == 6) col.g = 1;
