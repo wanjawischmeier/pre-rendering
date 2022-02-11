@@ -80,8 +80,8 @@ namespace PreRendering
         {
             if (reserved.Count == 0) return;
 
-            T anyIndex = this[0];
-            reserved.Remove(anyIndex);
+            T index = this[0];
+            reserved.Remove(index);
             available.Enqueue(0);
         }
 

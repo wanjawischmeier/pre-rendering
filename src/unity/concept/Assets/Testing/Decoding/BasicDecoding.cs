@@ -9,7 +9,7 @@ public class BasicDecoding : MonoBehaviour
     public int selected;
     public Vector2Int resolution;
     private Material material;
-    private RawTexture.Buffer buffer;
+    private RawTexture.NativeBuffer buffer;
     private DecodingManager decoder;
     private int depth;
     private const string RepoName = "pre-rendering";
@@ -21,7 +21,7 @@ public class BasicDecoding : MonoBehaviour
         string sampleImagePath = Path.Combine(rootPath, RepoName, "images", relativeImagePaths[0]);
 
         Decoder.Initialize(sampleImagePath, depth, resolution.x, resolution.y);
-        buffer = new RawTexture.Buffer(Decoder.bufferPointer, resolution.x, resolution.y, depth);
+        buffer = new RawTexture.NativeBuffer(Decoder.bufferPointer, resolution.x, resolution.y, depth, RawTexture.Format.RGBA64);
         decoder = new DecodingManager(buffer, 1, depth);
 
         material = new Material(shader);

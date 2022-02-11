@@ -30,10 +30,10 @@ namespace PreRendering
         private readonly Dictionary<string, Vector3> pending;
         private readonly List<Vector3> decoding;
         private readonly List<Tuple<string, Vector3, long>> decoded;
-        private readonly RawTexture.Buffer buffer;
+        private readonly RawTexture.NativeBuffer buffer;
         private readonly int decodingThreads, maxPending;
 
-        public DecodingManager(RawTexture.Buffer buffer, int decodingThreads, int maxPending)
+        public DecodingManager(RawTexture.NativeBuffer buffer, int decodingThreads, int maxPending)
         {
             this.buffer = buffer;
             this.decodingThreads = decodingThreads;
@@ -53,7 +53,7 @@ namespace PreRendering
             var texture = new Texture2D(0, 0, TextureFormat.ARGB32, false);
             texture.LoadImage(bytes);
 
-            buffer.Add(index);
+            // buffer.Add(index);
 
 #if UNITY_EDITOR
             Object.DestroyImmediate(texture);
@@ -69,14 +69,15 @@ namespace PreRendering
             if (decoding.Count < decodingThreads)
             {
                 decoding.Add(index);
-                buffer.Add(index);
+                // buffer.Add(index);
 
                 Task.Run(() =>
                 {
 
-                    Debug.Log($"Decoding {path} with index {index} and nativeIndex {buffer[index]}");
+                    // Debug.Log($"Decoding {path} with index {index} and nativeIndex {buffer[index]}");
                     Thread.CurrentThread.Priority = priority;
-                    Decoder.Decode(path, buffer[index], out long decodingTime);
+                    // Decoder.Decode(path, buffer[index], out long decodingTime);
+                    long decodingTime = -1;
 
                     Debug.Log(
                         $"Decoded {Path.GetFileName(path)} " +
@@ -144,7 +145,7 @@ namespace PreRendering
 
         public bool IsDecoded(Vector3 index)
         {
-            return buffer.Contains(index);
+            return false; // buffer.Contains(index);
         }
 
         public bool IsProcessing(Vector3 index)

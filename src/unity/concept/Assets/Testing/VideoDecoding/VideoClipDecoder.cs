@@ -50,7 +50,6 @@ public class VideoClipDecoder : MonoBehaviour
     private MovementController controller;
     private Texture2DArray chunk;
     private ComputeBuffer buffer;
-    private VideoPlayer[] players;
     private Material material;
     private Camera mainCamera;
     private long lastPlaybackSpeedChange = 0;
@@ -81,10 +80,13 @@ public class VideoClipDecoder : MonoBehaviour
         CalculateConstants();
 
         mainCamera = GetComponent<Camera>();
-        players = new VideoPlayer[channelBlocks];
+        ExternalVideoPlayer.Initialize(mapPath, config.channelBlocks, cacheSize);
+        // ExternalVideoPlayer.FrameReady += Player_FrameReady;
+        chunk = new Texture2DArray(ExternalVideoPlayer.info.width, ExternalVideoPlayer.info.height, chunkIndicies.Length, TextureFormat.RGBA32, false);
         chunkIndicies = new int[chunkSize * channelBlocks];
         buffer = new ComputeBuffer(chunkIndicies.Length, sizeof(int));
         material = new Material(shader);
+
         material.SetInt("MX_IDX", cacheSize);
         material.SetFloat("PI", Mathf.PI);
         material.SetFloat("PI2", Mathf.PI * 2);
@@ -93,51 +95,12 @@ public class VideoClipDecoder : MonoBehaviour
         material.SetFloat("NCLIP", nclip);
         material.SetFloat("FCLIP", fclip);
         material.SetBuffer("ChunkIndicies", buffer);
-
-        for (int i = 0; i < config.channelBlocks; i++)
-        {
-            VideoPlayer player = gameObject.AddComponent<VideoPlayer>();
-            player.playOnAwake = false;
-            player.waitForFirstFrame = false;
-            player.skipOnDrop = false;
-            player.sendFrameReadyEvents = true;
-            player.source = VideoSource.Url;
-            player.renderMode = VideoRenderMode.APIOnly;
-            player.audioOutputMode = VideoAudioOutputMode.None;
-            player.prepareCompleted += Player_PrepareCompleted;
-            player.frameReady += Player_FrameReady;
-
-            player.url = url;
-            player.frame = i * totalSize;
-            player.Prepare();
-
-            players[i] = player;
-        }
+        material.SetTexture("_InputBuffer", chunk);
     }
 
     private void Update()
     {
         float fps = 1 / Time.unscaledDeltaTime;
-
-        // Optimize playback speed
-        if (Time.frameCount > lastPlaybackSpeedChange + intervallSize)
-        {
-            foreach (var player in players)
-            {
-                float factor = 0;
-
-                if (fps < targetFps - tolerance)
-                    factor = -rateOfChange;
-                else if (fps > targetFps + tolerance)
-                    factor = rateOfChange;
-
-                if (factor != 0 && player.isPlaying)
-                {
-                    player.playbackSpeed = Mathf.Max(player.playbackSpeed + factor, rateOfChange);
-                    lastPlaybackSpeedChange = Time.frameCount;
-                }
-            }
-        }
 
         material.SetInt("DEBUG", (int)shaderDebug);
         material.SetFloat("FOV", mainCamera.fieldOfView * Mathf.Deg2Rad);
@@ -154,7 +117,7 @@ public class VideoClipDecoder : MonoBehaviour
         // Restart any paused players if needed
         for (int i = 0; i < config.channelBlocks; i++)
         {
-            VideoPlayer player = players[i];
+            VideoPlayer player = default;// players[i];
 
             if (player.isPaused)
             {
@@ -177,21 +140,6 @@ public class VideoClipDecoder : MonoBehaviour
     private void OnDisable()
     {
         buffer.Release();
-    }
-
-    private void Player_PrepareCompleted(VideoPlayer source)
-    {
-        prepared += 1;
-
-        // Check if all players are prepared
-        if (prepared == config.channelBlocks)
-        {
-            chunk = new Texture2DArray((int)source.width, (int)source.height, chunkIndicies.Length, TextureFormat.RGBA32, false);
-            material.SetTexture("_InputBuffer", chunk);
-
-            foreach (var player in players)
-                player.Play();
-        }
     }
 
     private void Player_FrameReady(VideoPlayer source, long frameIdx)
