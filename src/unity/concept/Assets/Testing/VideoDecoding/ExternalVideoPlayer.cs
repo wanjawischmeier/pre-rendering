@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using UnityEngine;
 using Debug = UnityEngine.Debug;
 
 namespace PreRendering
@@ -75,6 +77,8 @@ namespace PreRendering
             get { return info.width * info.height * 3; }
         }
 
+        private const string relativeDllPath = "branches\\master\\src\\video-decoder\\x64\\Debug\\video-decoder.dll";
+
         private static InitializeBuffer initializeBuffer;
         private static FrameEvent readToBuffer;
         private static EmptyCall releaseBuffer;
@@ -86,8 +90,15 @@ namespace PreRendering
 
         public static void Initialize(string videoPath, int threads, int cacheSize)
         {
-            string dllPath = "C:\\Users\\wanja\\Documents\\dev\\pre-rendering\\branches\\master\\src\\video-decoder\\x64\\Debug\\video-decoder.dll";
+            string rootPath = Application.dataPath.Split(new string[] { "pre-rendering" }, StringSplitOptions.None)[0];
+            string dllPath = Path.Combine(rootPath, "pre-rendering\\", relativeDllPath);
             dllPtr = LoadLibrary(dllPath);
+
+            if (dllPtr == IntPtr.Zero)
+            {
+                Debug.LogError($"Failed to load video decoding library at {dllPath}");
+                return;
+            }
 
             initializeBuffer = LoadFromLibrary<InitializeBuffer>(dllPtr);
             readToBuffer = LoadFromLibrary<FrameEvent>(dllPtr, "ReadToBuffer");
