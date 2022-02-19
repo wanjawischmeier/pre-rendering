@@ -182,7 +182,7 @@ namespace PreRendering
                 {
                     reading = false;
                     s.Stop();
-                    Debug.Log(s.ElapsedMilliseconds);
+                    Debug.Log($"Reading frame took {s.ElapsedMilliseconds}ms");
                 }
                 else Thread.Sleep(100);
             }

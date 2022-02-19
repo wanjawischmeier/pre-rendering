@@ -17,6 +17,11 @@ Shader "Hidden/ReadUnpacked"
 
             #include "UnityCG.cginc"
 
+            static const uint PACKED_SIZE = 3;
+            static const uint PIXELS_PER_PACK = 4;
+            static const uint BYTES_PER_PIXEL = 8;
+            static const uint PERCISION = 0xFF;     // 0xFF = 2^8
+
             struct appdata
             {
                 float4 vertex : POSITION;
@@ -29,6 +34,60 @@ Shader "Hidden/ReadUnpacked"
                 float4 vertex : SV_POSITION;
             };
 
+            struct packed4
+            {
+                uint p[PACKED_SIZE];
+            };
+
+            struct unpacked4
+            {
+                fixed4 p[PIXELS_PER_PACK];
+            };
+
+            StructuredBuffer<packed4> InputBuffer;
+            float2 Resolution;
+            float2 TexelOffset;
+
+            half unpackSingle(packed4 val, inout uint idx)
+            {
+                uint pid = idx / PIXELS_PER_PACK;                   // pixel index
+                uint sid = idx % PIXELS_PER_PACK * BYTES_PER_PIXEL; // shift index
+                idx++;
+
+                half res = (half)((val.p[pid] >> sid) & PERCISION) / PERCISION;
+                return res;
+            }
+
+            unpacked4 unpack(packed4 packed)
+            {
+                unpacked4 unpacked;
+                half r, g, b;
+                uint idx = 0;
+
+                [unroll(PIXELS_PER_PACK)] for (uint i = 0; i < PIXELS_PER_PACK; i++)
+                {
+                    r = unpackSingle(packed, idx);
+                    g = unpackSingle(packed, idx);
+                    b = unpackSingle(packed, idx);
+
+                    unpacked.p[i] = fixed4(r, g, b, 1);
+                }
+
+                return unpacked;
+            }
+
+            fixed4 samplePackedBuffer(float2 uv)
+            {
+                int2 tc = float2(uv.x, 1 - uv.y) * Resolution;
+                uint idx = tc.x + tc.y * Resolution.x;      // image pixel index
+                uint gid = floor(idx / PIXELS_PER_PACK);    // packed global index
+                uint lid = idx % PIXELS_PER_PACK;           // packed local index
+
+                packed4 ppx = InputBuffer[gid];
+                unpacked4 upx = unpack(ppx);
+                return upx.p[lid];
+            }
+
             v2f vert(appdata v)
             {
                 v2f o;
@@ -37,71 +96,10 @@ Shader "Hidden/ReadUnpacked"
                 return o;
             }
 
-            StructuredBuffer<uint> InputBuffer;
-            uint Address, Comp;
-            float2 Resolution;
-            float2 TexelOffset;
-
             fixed4 frag(v2f i) : SV_Target
             {
-                /*
-                uint offset = 0;
-                int2 tc = (1 - i.uv) * Resolution;
-                int idx = (tc.x + (Resolution.y - tc.y - 0) * Resolution.x + offset) * Address;
-                */
-                /*
-                float2 tc = i.uv * Resolution;
-                int idx = (tc.x + tc.y * Resolution.x) * 3;
-                */
-                /*
-                float2 tc = i.uv.xy * Resolution;
-                int idx = (tc.x + (Resolution.y - tc.y) * Resolution.x) * 3;
-                */
-
-                int2 tc = i.uv.xy * Resolution;
-                int idx = tc.x + (Resolution.y - tc.y - 1) * Resolution.x;
-
-                // int idx = (tc.x + tc.y * Resolution.x) * 3;
-                // uint3 val = InputBuffer.Load3(idx * 3);
-                // uint val = InputBuffer.Load(Address-3);
-
-                uint val = InputBuffer.Load(idx);
-                uint r = val & 0xFF;
-                uint g = (val >> 8) & 0xFF;
-                uint b = (val >> 16) & 0xFF;
+                fixed4 col = samplePackedBuffer(i.uv);
                 
-                // fixed4 col = fixed4(0, 0, 0, 1);
-                fixed4 col = fixed4(
-                    val & 0xFF,
-                    (val >> 8) & 0xFF,
-                    (val >> 16) & 0xFF,
-                    0xFF
-                ) / (fixed)0xFF;
-
-                if (val == 0 && idx > 2000) col = fixed4(1, 0, 1, 1);
-                /*
-                if (r == 5) col.r = 1;
-                if (g == 6) col.g = 1;
-                if (b == 7) col.b = 1;
-                */
-                /*
-                float max = 0xFFFFFFFF;
-                // float max = Resolution.x * Resolution.y * 3;
-                // float3 r = (float3)val / float3(max, max, max);
-                float r = (float)val / (float)100;
-                // col = fixed4(r, 1);
-                col = fixed4(r, r, r, 1);
-
-                if (val < 0)
-                    col = fixed4(1, 1, 0, 1);
-                if (val > asint(0xFF))
-                    col = fixed4(1, 0, 0, 1);
-
-                if (val < Comp)
-                    col = fixed4(1, 0, 1, 1);
-                if (val == Comp)
-                    col = fixed4(0, 1, 0, 1);
-                */
                 return col;
             }
             ENDCG

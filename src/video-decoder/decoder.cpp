@@ -77,7 +77,6 @@ DECODER bool ReadToBuffer(size_t frameIdx, int threadIdx, int bufferIdx)
     size_t start_idx = bufferIdx * image_size;
     size_t count = image_size * sizeof(uchar);
     memcpy(&pBuffer[start_idx], mat.data, count);
-    pBuffer[1234] = 234;
     frame_ready(frameIdx, threadIdx, bufferIdx);
     return true;
 }
