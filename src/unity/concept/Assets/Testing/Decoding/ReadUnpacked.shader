@@ -48,14 +48,12 @@ Shader "Hidden/ReadUnpacked"
             float2 Resolution;
             float2 TexelOffset;
 
-            half unpackSingle(packed4 val, inout uint idx)
+            fixed unpackSingle(packed4 val, uint idx)
             {
                 uint pid = idx / PIXELS_PER_PACK;                   // pixel index
                 uint sid = idx % PIXELS_PER_PACK * BYTES_PER_PIXEL; // shift index
-                idx++;
 
-                half res = (half)((val.p[pid] >> sid) & PERCISION) / PERCISION;
-                return res;
+                return ((val.p[pid] >> sid) & PERCISION) / (half)PERCISION;
             }
 
             unpacked4 unpack(packed4 packed)
@@ -66,11 +64,14 @@ Shader "Hidden/ReadUnpacked"
 
                 [unroll(PIXELS_PER_PACK)] for (uint i = 0; i < PIXELS_PER_PACK; i++)
                 {
-                    r = unpackSingle(packed, idx);
-                    g = unpackSingle(packed, idx);
-                    b = unpackSingle(packed, idx);
+                    fixed4 upx = fixed4(0, 0, 0, 1);
 
-                    unpacked.p[i] = fixed4(r, g, b, 1);
+                    [unroll(PACKED_SIZE)] for (uint j = 0; j < PACKED_SIZE; j++)
+                    {
+                        upx[j] = unpackSingle(packed, idx++);
+                    }
+
+                    unpacked.p[i] = upx;
                 }
 
                 return unpacked;
@@ -99,7 +100,7 @@ Shader "Hidden/ReadUnpacked"
             fixed4 frag(v2f i) : SV_Target
             {
                 fixed4 col = samplePackedBuffer(i.uv);
-                
+
                 return col;
             }
             ENDCG
