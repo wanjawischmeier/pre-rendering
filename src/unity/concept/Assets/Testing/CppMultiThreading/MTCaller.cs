@@ -6,7 +6,7 @@ public class MTCaller : MonoBehaviour
 {
 
     public string videoPath;
-    public int threads, iters, cacheSize;
+    public int threads, iters, cacheSize, imgIdx;
     public Shader shader;
 
     private Material material;
@@ -30,6 +30,7 @@ public class MTCaller : MonoBehaviour
     private void Update()
     {
         ExternalVideoPlayer.buffer.Refresh();
+        material.SetInt("ImgIdx", imgIdx);
     }
 
     private void OnDestroy()
@@ -57,6 +58,6 @@ public class MTCaller : MonoBehaviour
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
-        Graphics.Blit(source, destination, material);
+        Graphics.Blit(null, destination, material);
     }
 }

@@ -45,6 +45,7 @@ Shader "Hidden/ReadUnpacked"
             };
 
             StructuredBuffer<packed4> InputBuffer;
+            uint ImgIdx;
             float2 Resolution;
             float2 TexelOffset;
 
@@ -81,6 +82,7 @@ Shader "Hidden/ReadUnpacked"
             {
                 int2 tc = float2(uv.x, 1 - uv.y) * Resolution;
                 uint idx = tc.x + tc.y * Resolution.x;      // image pixel index
+                idx += Resolution.x * Resolution.y * ImgIdx;
                 uint gid = floor(idx / PIXELS_PER_PACK);    // packed global index
                 uint lid = idx % PIXELS_PER_PACK;           // packed local index
 

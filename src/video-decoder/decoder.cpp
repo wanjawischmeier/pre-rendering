@@ -2,10 +2,10 @@
 #include "decoder.h"
 
 
-uchar* InitializeBuffer(
+uchar** InitializeBuffer(
     char *videoPath, int threads,
     FrameCallback frameCallback, ErrorMessage errorCallback,
-    VideoInfo &rInfo, uchar *buffer)
+    VideoInfo &rInfo)
 {
     instances = threads;
     frame_ready = frameCallback;
@@ -34,17 +34,18 @@ uchar* InitializeBuffer(
     rInfo.frame_count = (size_t)cap.get(CAP_PROP_FRAME_COUNT);
     video_info = rInfo;
 
+    image_size = video_info.width * video_info.height * 3;
+
+    pData = new uchar*[instances];
+
     for (size_t i = 0; i < instances; i++)
     {
         pCaps[i] = VideoCapture(cap);
         pMats[i] = Mat(video_info.width, video_info.height, CV_8UC3);
+        pData[i] = pMats[i].data;
     }
 
-    image_size = video_info.width * video_info.height * 3;
-    pBuffer = new uchar[image_size * instances];
-    buffer = pBuffer;
-
-    return pBuffer;
+    return pData;
 }
 
 DECODER bool ReadToBuffer(size_t frameIdx, int threadIdx, int bufferIdx)
@@ -76,7 +77,6 @@ DECODER bool ReadToBuffer(size_t frameIdx, int threadIdx, int bufferIdx)
 
     size_t start_idx = bufferIdx * image_size;
     size_t count = image_size * sizeof(uchar);
-    memcpy(&pBuffer[start_idx], mat.data, count);
     frame_ready(frameIdx, threadIdx, bufferIdx);
     return true;
 }
@@ -85,5 +85,5 @@ DECODER void ReleaseBuffer()
 {
     delete[] pCaps;
     delete[] pMats;
-    delete pBuffer;
+    delete[] pData;
 }

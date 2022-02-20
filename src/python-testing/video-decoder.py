@@ -20,4 +20,4 @@ print(frame[y][x])
 print(i1, list(f)[i1:i1+c], i2, list(f)[i2:i2+c])
 
 cv2.imshow("f", frame)
-cv2.waitKey()
+cv2.waitKey()   

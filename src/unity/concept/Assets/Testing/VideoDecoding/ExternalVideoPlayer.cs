@@ -83,6 +83,7 @@ namespace PreRendering
         private static FrameEvent readToBuffer;
         private static EmptyCall releaseBuffer;
         private static IntPtr dllPtr, bufferPtr;
+        private static IntPtr[] dataPtr;
         private static Task workerThread;
         private static List<PendingFrame> pendingFrames;
         private static int instances;
@@ -103,16 +104,19 @@ namespace PreRendering
             initializeBuffer = LoadFromLibrary<InitializeBuffer>(dllPtr);
             readToBuffer = LoadFromLibrary<FrameEvent>(dllPtr, "ReadToBuffer");
             releaseBuffer = LoadFromLibrary<EmptyCall>(dllPtr, "ReleaseBuffer");
-            
+
             pendingFrames = new List<PendingFrame>();
             instances = threads;
-            bufferPtr = new IntPtr(32);
+
             bufferPtr = initializeBuffer(
                 videoPath, instances,
                 OnFrameReady, OnError,
                 out info);
 
-            buffer = new RawTexture.NativeBuffer(bufferPtr, info.width, info.height, cacheSize, RawTexture.Format.RGB24);
+            dataPtr = new IntPtr[instances];
+            Marshal.Copy(bufferPtr, dataPtr, 0, dataPtr.Length);
+
+            buffer = new RawTexture.NativeBuffer(dataPtr[0], info.width, info.height, cacheSize, RawTexture.Format.RGB24);
             workerThread = Task.Run(Worker);
         }
 
@@ -168,7 +172,7 @@ namespace PreRendering
         {
             working = true;
 
-            var s = Stopwatch.StartNew();
+            var s = new Stopwatch();
 
             while (working)
             {
@@ -176,6 +180,7 @@ namespace PreRendering
                 {
                     PendingFrame frame = pendingFrames[0];
                     pendingFrames.RemoveAt(0);
+                    s.Restart();
                     ReadToBuffer(frame);
                 }
                 else if (reading)
@@ -215,11 +220,14 @@ namespace PreRendering
         /// </param>
         public static void Release(int workerThreadTimeout = 10000)
         {
-            working = false;
-            workerThread.Wait(workerThreadTimeout);
+            if (working)
+            {
+                working = false;
+                workerThread.Wait(workerThreadTimeout);
 
-            if (workerThread.Status == TaskStatus.Running)
-                Debug.LogWarning($"Worker thread not responding (waited {workerThreadTimeout}ms). Deallocating memory anyways, this might result in a crash.");
+                if (workerThread.Status == TaskStatus.Running)
+                    Debug.LogWarning($"Worker thread not responding (waited {workerThreadTimeout}ms). Deallocating memory anyways, this might result in a crash.");
+            }
 
             releaseBuffer();
             buffer.Release();
