@@ -1,5 +1,27 @@
-Credit:
+# Setting up the build environment
+
+## Video Decoder
+
+1. Download and install the [OpenCV binaries](https://opencv.org/releases) (tested with v4.5.5)
+
+2. Download and install [Visual Studio](https://visualstudio.microsoft.com/de/downloads) (tested with Visual Studio 2022 Community)
+    * Make sure to include the *`Desktop Development with C++`* workload when running the installer
+
+3. Open the *`pre-rendering/src/video-decoder/video-decoder.sln`* solution in Visual Studio
+
+4. Go to *`View > Other Windows > Property Manager`*
+
+5. 
+
+5. Enter the path to your OpenCV installation as the value for the *"OpenCVPath"* macro
+
+6. Try building the solution by pressing *`STRG`* + *`B`*
+
+(*`Game Development with Unity`* )
+
+# Credit
 https://github.com/bodhid/UnityEquiCam
+
 @inproceedings{zhang2018single,
   title = {Single Image Reflection Separation with Perceptual Losses},
   author = {Zhang, Xuaner and Ng, Ren and Chen, Qifeng}
