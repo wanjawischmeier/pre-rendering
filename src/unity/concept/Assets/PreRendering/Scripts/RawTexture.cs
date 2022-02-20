@@ -18,34 +18,38 @@ namespace PreRendering
 
         public class NativeBuffer : Buffer<long>
         {
-            public NativeArray<byte> nativeBuffer;
+            public NativeArray<byte>[] nativeBuffer;
             public ComputeBuffer computeBuffer;
-            private readonly List<int> toCopy;
+            private readonly Queue<int> toCopy;
 
-            public NativeBuffer(IntPtr bufferPointer, int width, int height, int depth, Format format) : base(depth)
+            public NativeBuffer(IntPtr[] bufferPointers, int width, int height, int depth, Format format) : base(depth)
             {
-                if (bufferPointer == IntPtr.Zero)
-                {
-                    Debug.LogError("Passed a nullptr, buffer cannot be initialized");
-                    return;
-                }
-
                 int size = width * height * (int)format * depth;
+                nativeBuffer = new NativeArray<byte>[depth];
 
-                unsafe
+                for (int i = 0; i < depth; i++)
                 {
-                    nativeBuffer = NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<byte>(
-                        bufferPointer.ToPointer(),
-                        size,
-                        Allocator.None);
-                }
+                    if (bufferPointers[i] == IntPtr.Zero)
+                    {
+                        Debug.LogError("Passed a nullptr, buffer cannot be initialized");
+                        return;
+                    }
+
+                    unsafe
+                    {
+                        nativeBuffer[i] = NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<byte>(
+                            bufferPointers[i].ToPointer(),
+                            size,
+                            Allocator.None);
+                    }
 
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-                NativeArrayUnsafeUtility.SetAtomicSafetyHandle(ref nativeBuffer, AtomicSafetyHandle.Create());
+                    NativeArrayUnsafeUtility.SetAtomicSafetyHandle(ref nativeBuffer[i], AtomicSafetyHandle.Create());
 #endif
+                }
 
                 computeBuffer = new ComputeBuffer(size / sizeof(uint), sizeof(uint));
-                toCopy = new List<int>();
+                toCopy = new Queue<int>();
             }
 
             /// <summary>
@@ -56,16 +60,17 @@ namespace PreRendering
             {
                 for (int i = 0; i < toCopy.Count; i++)
                 {
+                    int idx = toCopy.Dequeue();
+
                     // TODO: Set start index and count
-                    computeBuffer.SetData(nativeBuffer);
-                    toCopy.RemoveAt(i);
+                    computeBuffer.SetData(nativeBuffer[0]);
                 }
             }
 
             public override void Add(int index)
             {
                 if (nativeBuffer == null) return;
-                toCopy.Add(index);
+                toCopy.Enqueue(index);
             }
 
             public void Release() => computeBuffer.Release();

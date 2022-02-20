@@ -116,7 +116,7 @@ namespace PreRendering
             dataPtr = new IntPtr[instances];
             Marshal.Copy(bufferPtr, dataPtr, 0, dataPtr.Length);
 
-            buffer = new RawTexture.NativeBuffer(dataPtr[0], info.width, info.height, cacheSize, RawTexture.Format.RGB24);
+            buffer = new RawTexture.NativeBuffer(dataPtr, info.width, info.height, cacheSize, RawTexture.Format.RGB24);
             workerThread = Task.Run(Worker);
         }
 
