@@ -5,19 +5,31 @@
 1. Download and install the [OpenCV binaries](https://opencv.org/releases) (tested with v4.5.5)
 
 2. Download and install [Visual Studio](https://visualstudio.microsoft.com/de/downloads) (tested with Visual Studio 2022 Community)
-    * Make sure to include the *`Desktop Development with C++`* workload when running the installer
 
+    * Make sure to include the *`Desktop Development with C++`* workload when running the installer
+<br><br>
 3. Open the *`pre-rendering/src/video-decoder/video-decoder.sln`* solution in Visual Studio
 
 4. Go to *`View > Other Windows > Property Manager`*
 
-5. 
+5. Expand any configuration and open the *`LibraryPaths`* Property Sheet
 
-5. Enter the path to your OpenCV installation as the value for the *"OpenCVPath"* macro
+6. Go to *`Common Properties > User Macros`*
 
-6. Try building the solution by pressing *`STRG`* + *`B`*
+7. Enter the path of your OpenCV installation as the value for the *`OpenCV`* macro (e.g. *`C:/libraries/opencv`*)
 
-(*`Game Development with Unity`* )
+8. Hit *`OK`*, *`Apply`*, and then *`OK`* again
+
+9. Open a terminal inside the repo and run the following command
+
+    ```git update-index --assume-unchanged .\src\video-decoder\LibraryPaths.props```
+
+10. Try building the solution by pressing *`STRG`* + *`B`*
+
+
+
+
+(*`Game Development with Unity`*)
 
 # Credit
 https://github.com/bodhid/UnityEquiCam
