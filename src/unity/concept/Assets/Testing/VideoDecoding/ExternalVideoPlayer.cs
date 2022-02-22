@@ -77,7 +77,7 @@ namespace PreRendering
             get { return info.width * info.height * 3; }
         }
 
-        private const string relativeDllPath = "branches\\master\\src\\video-decoder\\x64\\Debug\\video-decoder.dll";
+        private const string relativeDllPath = "src\\video-decoder\\x64\\Debug\\video-decoder.dll";
 
         private static InitializeBuffer initializeBuffer;
         private static FrameEvent readToBuffer;
@@ -89,12 +89,15 @@ namespace PreRendering
         private static int instances;
         private static bool working, reading = false;
 
-        public static void Initialize(string videoPath, int threads, int cacheSize)
+        public static void Initialize(string relativeVideoPath, int threads, int cacheSize)
         {
-            string rootPath = Application.dataPath.Split(new string[] { "pre-rendering" }, StringSplitOptions.None)[0];
-            string dllPath = Path.Combine(rootPath, "pre-rendering\\", relativeDllPath);
-            dllPtr = LoadLibrary(dllPath);
+            string[] seperator = new string[] { "pre-rendering" };
+            string[] split = Application.dataPath.Split(seperator, StringSplitOptions.None);
+            string rootPath = split[0].Replace('/', '\\');
+            string dllPath = Path.Combine(rootPath, "pre-rendering\\branches\\master\\", relativeDllPath);
+            string videoPath = Path.Combine(rootPath, "pre-rendering\\", relativeVideoPath);
 
+            dllPtr = LoadLibrary(dllPath);
             if (dllPtr == IntPtr.Zero)
             {
                 Debug.LogError($"Failed to load video decoding library at {dllPath}");
