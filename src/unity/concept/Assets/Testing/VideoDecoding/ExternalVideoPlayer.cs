@@ -158,7 +158,7 @@ namespace PreRendering
         }
 
         /// <summary>
-        /// Loads the instance of the given delegate from the library
+        /// Loads an instance of the given delegate from the library
         /// </summary>
         /// <typeparam name="T">The delegate of the desired function</typeparam>
         /// <param name="library">The pointer to an already loaded library</param>

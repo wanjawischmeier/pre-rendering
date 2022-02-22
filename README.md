@@ -8,6 +8,7 @@
 
     * Make sure to include the *`Desktop Development with C++`* workload when running the installer
 <br><br>
+
 3. Open the *`pre-rendering/src/video-decoder/video-decoder.sln`* solution in Visual Studio
 
 4. Go to *`View > Other Windows > Property Manager`*
@@ -24,7 +25,9 @@
 
     ```git update-index --assume-unchanged .\src\video-decoder\LibraryPaths.props```
 
-10. Try building the solution by pressing *`STRG`* + *`B`*
+10. Add the path of your OpenCV binaries as an enviromnment variable (e.g. *`C:/libraries/opencv/build/x64/vc15/bin`*) 
+
+The installation process should be complete now. Try building the *`video-decoder`* solution by pressing *`STRG`* + *`B`*
 
 
 
