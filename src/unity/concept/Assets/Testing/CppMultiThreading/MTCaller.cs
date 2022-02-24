@@ -7,14 +7,13 @@ public class MTCaller : MonoBehaviour
 
     public string videoPath;
     public int threads, iters, cacheSize, imgIdx;
-    public byte[] vs;
     public Shader shader;
 
     private Material material;
 
     private void Start()
     {
-        Screen.SetResolution(1280, 720, true);
+        Screen.SetResolution(1280, 720, false);
         Application.targetFrameRate = Screen.currentResolution.refreshRate;
         
         ExternalVideoPlayer.Initialize(videoPath, threads, cacheSize);
@@ -49,7 +48,6 @@ public class MTCaller : MonoBehaviour
             // Can only be called on the main thread!
             int frame = Random.Range(0, (int)ExternalVideoPlayer.info.frame_count - 1);
             ExternalVideoPlayer.ReadToBuffer(i, 0, 0);
-            vs = ExternalVideoPlayer.buffer.native[0].ToArray();
         }
     }
 
