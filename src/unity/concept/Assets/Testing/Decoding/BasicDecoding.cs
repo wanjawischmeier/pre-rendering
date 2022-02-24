@@ -25,7 +25,7 @@ public class BasicDecoding : MonoBehaviour
         decoder = new DecodingManager(buffer, 1, depth);
 
         material = new Material(shader);
-        material.SetBuffer("RawTexture", buffer.computeBuffer);
+        material.SetBuffer("RawTexture", buffer.compute);
         material.SetVector("Resolution", new Vector2(resolution.x, resolution.y));
 
         for (int i = 0; i < depth; i++)

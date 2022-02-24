@@ -118,7 +118,7 @@ namespace PreRendering
 
             dataPtr = new IntPtr[instances];
             Marshal.Copy(bufferPtr, dataPtr, 0, dataPtr.Length);
-
+            
             buffer = new RawTexture.NativeBuffer(dataPtr, info.width, info.height, cacheSize, RawTexture.Format.RGB24);
             workerThread = Task.Run(Worker);
         }
@@ -232,7 +232,8 @@ namespace PreRendering
                     Debug.LogWarning($"Worker thread not responding (waited {workerThreadTimeout}ms). Deallocating memory anyways, this might result in a crash.");
             }
 
-            releaseBuffer();
+            if (releaseBuffer != null)
+                releaseBuffer();
             buffer.Release();
             FreeLibrary(dllPtr);
         }
