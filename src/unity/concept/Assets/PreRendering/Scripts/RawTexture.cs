@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
@@ -20,14 +19,14 @@ namespace PreRendering
         {
             public NativeArray<byte>[] native;
             public ComputeBuffer compute;
-            private readonly Queue<int> toCopy;
+            private readonly int imageSize;
 
             public NativeBuffer(IntPtr[] bufferPointers, int width, int height, int depth, Format format) : base(depth)
             {
-                int size = width * height * (int)format * depth;
+                imageSize = width * height * (int)format;
                 native = new NativeArray<byte>[depth];
 
-                for (int i = 0; i < depth; i++)
+                for (int i = 0; i < bufferPointers.Length; i++)
                 {
                     if (bufferPointers[i] == IntPtr.Zero)
                     {
@@ -39,7 +38,7 @@ namespace PreRendering
                     {
                         native[i] = NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<byte>(
                             bufferPointers[i].ToPointer(),
-                            size,
+                            imageSize,
                             Allocator.None);
                     }
 
@@ -48,32 +47,15 @@ namespace PreRendering
 #endif
                 }
 
-                compute = new ComputeBuffer(size / sizeof(uint), sizeof(uint));
-                toCopy = new Queue<int>();
-            }
-
-            /// <summary>
-            /// Pushes all new frames to the gpu
-            /// (To be called in MonoBehaviour.Update)
-            /// </summary>
-            public void Refresh()
-            {
-                for (int i = 0; i < toCopy.Count; i++)
-                {
-                    int idx = toCopy.Dequeue();
-
-                    // TODO: Set start index and count
-                    compute.SetData(native[0]);
-                }
-            }
-
-            public override void Add(int index)
-            {
-                if (native == null) return;
-                toCopy.Enqueue(index);
+                compute = new ComputeBuffer(imageSize * depth / sizeof(uint), sizeof(uint));
             }
 
             public void Release() => compute.Release();
+
+            public override void SetData(int nativeIdx, int bufferIdx)
+            {
+                compute.SetData(native[nativeIdx], 0, imageSize * bufferIdx, imageSize);
+            }
         }
     }
 }

@@ -23,6 +23,7 @@ public class MTCaller : MonoBehaviour
         material = new Material(shader);
         material.SetVector("Resolution", new Vector2(ExternalVideoPlayer.info.width, ExternalVideoPlayer.info.height));
         material.SetBuffer("InputBuffer", ExternalVideoPlayer.buffer.compute);
+        material.SetInt("ImgIdx", -1);
 
         StartCoroutine(TestSeeks());
     }
@@ -47,13 +48,13 @@ public class MTCaller : MonoBehaviour
 
             // Can only be called on the main thread!
             int frame = Random.Range(0, (int)ExternalVideoPlayer.info.frame_count - 1);
-            ExternalVideoPlayer.ReadToBuffer(i, 0, 0);
+            ExternalVideoPlayer.ReadToBuffer(i, i);
         }
     }
 
-    private void OnFrameReady(long frameIdx, int threadIdx, int bufferIdx)
+    private void OnFrameReady(long frameIdx, int threadIdx)
     {
-        Debug.Log($"FrameReady callback for frame {frameIdx} from thread {threadIdx} invoked (stored at {bufferIdx})");
+        Debug.Log($"FrameReady callback for frame {frameIdx} from thread {threadIdx} invoked");
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)

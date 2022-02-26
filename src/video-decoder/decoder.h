@@ -1,7 +1,7 @@
 #pragma once
 #define DECODER __declspec(dllexport)
 
-typedef void(__stdcall* FrameCallback)(size_t, int, int);
+typedef void(__stdcall* FrameCallback)(size_t, int);
 typedef void(__stdcall* ErrorMessage)(const char*, const char*);
 
 #include "opencv2/opencv.hpp"
@@ -30,5 +30,5 @@ extern "C" DECODER uchar** InitializeBuffer(
 	char* videoPath, int threads,
 	FrameCallback frameCallback, ErrorMessage errorCallback,
 	VideoInfo &rInfo);
-extern "C" DECODER bool ReadToBuffer(size_t frameIdx, int threadIdx, int bufferIdx);
+extern "C" DECODER bool ReadToBuffer(size_t frameIdx, int bufferIdx);
 extern "C" DECODER void ReleaseBuffer();

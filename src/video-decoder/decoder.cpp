@@ -38,7 +38,7 @@ uchar** InitializeBuffer(
 
     pData = new uchar*[instances];
 
-    for (size_t i = 0; i < instances; i++)
+    for (int i = 0; i < instances; i++)
     {
         pCaps[i] = VideoCapture(cap);
         pMats[i] = Mat(video_info.width, video_info.height, CV_8UC3);
@@ -48,7 +48,7 @@ uchar** InitializeBuffer(
     return pData;
 }
 
-DECODER bool ReadToBuffer(size_t frameIdx, int threadIdx, int bufferIdx)
+DECODER bool ReadToBuffer(size_t frameIdx, int bufferIdx)
 {
     if (frameIdx >= video_info.frame_count)
     {
@@ -56,14 +56,14 @@ DECODER bool ReadToBuffer(size_t frameIdx, int threadIdx, int bufferIdx)
         return false;
     }
 
-    if (threadIdx >= instances)
+    if (bufferIdx >= instances)
     {
         error_callback("Thread index out of bounds", "");
         return false;
     }
 
-    VideoCapture cap = pCaps[threadIdx];
-    Mat mat = pMats[threadIdx];
+    VideoCapture cap = pCaps[bufferIdx];
+    Mat mat = pMats[bufferIdx];
 
     size_t current_frame = (size_t)cap.get(CAP_PROP_POS_FRAMES);
     if (current_frame != frameIdx)
@@ -75,14 +75,20 @@ DECODER bool ReadToBuffer(size_t frameIdx, int threadIdx, int bufferIdx)
         return false;
     }
 
-    size_t start_idx = bufferIdx * image_size;
-    size_t count = image_size * sizeof(uchar);
-    frame_ready(frameIdx, threadIdx, bufferIdx);
+    frame_ready(frameIdx, bufferIdx);
     return true;
 }
 
 DECODER void ReleaseBuffer()
 {
+    if (instances == 0) return;
+
+    for (int i = 0; i < instances; i++)
+    {
+        pCaps[i].release();
+        pMats[i].release();
+    }
+
     delete[] pCaps;
     delete[] pMats;
     delete[] pData;

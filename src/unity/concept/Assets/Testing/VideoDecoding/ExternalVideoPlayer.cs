@@ -22,7 +22,7 @@ namespace PreRendering
         private struct PendingFrame
         {
             public long frameIdx;
-            public int threadIdx, bufferIdx;
+            public int threadIdx;
         }
 
         [DllImport("kernel32.dll")]
@@ -53,9 +53,8 @@ namespace PreRendering
         /// </summary>
         /// <param name="frameIdx">The target frame</param>
         /// <param name="threadIdx">On which thread it will be decoded</param>
-        /// <param name="bufferIdx">The target position in the buffer</param>
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        private delegate bool FrameEvent(long frameIdx, int threadIdx, int bufferIdx);
+        private delegate bool FrameEvent(long frameIdx, int threadIdx);
 
         /// <param name="message">A custom message by the plugin</param>
         /// <param name="error">OpenCV or std error message, plugin error if left empty</param>
@@ -65,7 +64,7 @@ namespace PreRendering
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate void EmptyCall();
 
-        public delegate void FrameReadyHandler(long frameIdx, int threadIdx, int bufferIdx);
+        public delegate void FrameReadyHandler(long frameIdx, int threadIdx);
         public static event FrameReadyHandler FrameReady;
 
         public static VideoInfo info;
@@ -123,14 +122,14 @@ namespace PreRendering
             workerThread = Task.Run(Worker);
         }
 
-        private static bool ReadToBuffer(PendingFrame frame) => readToBuffer(frame.frameIdx, frame.threadIdx, frame.bufferIdx);
+        private static bool ReadToBuffer(PendingFrame frame) => readToBuffer(frame.frameIdx, frame.threadIdx);
 
-        private static void OnFrameReady(long frameIdx, int threadIdx, int bufferIdx)
+        private static void OnFrameReady(long frameIdx, int threadIdx)
         {
-            buffer.Add(frameIdx);
+            buffer.Add(frameIdx, threadIdx);
 
             if (invokeFrameReadyEvents)
-                FrameReady?.Invoke(frameIdx, threadIdx, bufferIdx);
+                FrameReady?.Invoke(frameIdx, threadIdx);
         }
 
         /// <summary>
@@ -201,14 +200,12 @@ namespace PreRendering
         /// </summary>
         /// <param name="frameIdx">The frame to be added</param>
         /// <param name="threadIdx">On which thread it should be decoded</param>
-        /// <param name="bufferIdx">The buffer index to which it should be copied</param>
-        public static void ReadToBuffer(long frameIdx, int threadIdx, int bufferIdx)
+        public static void ReadToBuffer(long frameIdx, int threadIdx)
         {
             pendingFrames.Add(new PendingFrame()
             {
                 frameIdx = frameIdx,
-                threadIdx = threadIdx,
-                bufferIdx = bufferIdx
+                threadIdx = threadIdx
             });
             reading = true;
         }
@@ -232,8 +229,7 @@ namespace PreRendering
                     Debug.LogWarning($"Worker thread not responding (waited {workerThreadTimeout}ms). Deallocating memory anyways, this might result in a crash.");
             }
 
-            if (releaseBuffer != null)
-                releaseBuffer();
+            releaseBuffer?.Invoke();
             buffer.Release();
             FreeLibrary(dllPtr);
         }

@@ -78,11 +78,13 @@ Shader "Hidden/ReadUnpacked"
                 return unpacked;
             }
 
-            fixed4 samplePackedBuffer(float2 uv)
+            fixed4 samplePackedBuffer(float2 uv, int id)
             {
+                if (id == -1) return fixed4(0, 0, 0, 1);
+
                 int2 tc = float2(uv.x, 1 - uv.y) * Resolution;
                 uint idx = tc.x + tc.y * Resolution.x;      // image pixel index
-                idx += Resolution.x * Resolution.y * ImgIdx;
+                idx += Resolution.x * Resolution.y * id;
                 uint gid = floor(idx / PIXELS_PER_PACK);    // packed global index
                 uint lid = idx % PIXELS_PER_PACK;           // packed local index
 
@@ -101,7 +103,7 @@ Shader "Hidden/ReadUnpacked"
 
             fixed4 frag(v2f i) : SV_Target
             {
-                fixed4 col = samplePackedBuffer(i.uv);
+                fixed4 col = samplePackedBuffer(i.uv, ImgIdx);
 
                 return col;
             }

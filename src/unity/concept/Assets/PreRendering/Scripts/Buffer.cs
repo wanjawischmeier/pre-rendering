@@ -12,11 +12,13 @@ namespace PreRendering
     {
         public Dictionary<T, int> reserved;
         public Queue<int> available;
+        public Queue<int> copyQueue;
 
         public Buffer(int cacheSize)
         {
             reserved = new Dictionary<T, int>(cacheSize);
             available = new Queue<int>(cacheSize);
+            copyQueue = new Queue<int>();
 
             for (int i = 0; i < cacheSize; i++) available.Enqueue(i);
         }
@@ -58,20 +60,17 @@ namespace PreRendering
         /// Returns false if there is already an element stored under the specified index
         /// and returns true otherwise.
         /// </returns>
-        public bool Add(T index)
+        public bool Add(T index, int bufferIdx)
         {
             if (reserved.ContainsKey(index)) return false;
             if (available.Count == 0) FreeOne();
 
             int nativeIndex = available.Dequeue();
-            Add(nativeIndex);
+            copyQueue.Enqueue(bufferIdx);
             reserved.Add(index, nativeIndex);
 
             return true;
         }
-
-        public abstract void Add(int index);
-
 
         /// <summary>
         /// Deallocate the first value of the buffer.
@@ -99,14 +98,28 @@ namespace PreRendering
         {
             if (!reserved.ContainsKey(index)) return false;
 
-            int nativeIndex = reserved[index];
+            int nativeIdx = reserved[index];
             reserved.Remove(index);
-            available.Enqueue(nativeIndex);
-            Release(nativeIndex);
+            available.Enqueue(nativeIdx);
 
             return true;
         }
 
-        public virtual void Release(int index) { }
+        /// <summary>
+        /// Pushes all new frames to the gpu
+        /// (To be called in MonoBehaviour.Update)
+        /// </summary>
+        public void Refresh()
+        {
+            for (int i = 0; i < copyQueue.Count; i++)
+            {
+                int bufferIdx = copyQueue.Dequeue();
+
+                // TODO: Set start index and count
+                SetData(bufferIdx, bufferIdx);
+            }
+        }
+
+        public abstract void SetData(int nativeIdx, int bufferIdx);
     }
 }
