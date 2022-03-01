@@ -48,7 +48,7 @@ uchar** InitializeBuffer(
     return pData;
 }
 
-DECODER bool ReadToBuffer(size_t frameIdx, int bufferIdx)
+DECODER bool ReadToBuffer(size_t frameIdx, int threadIdx)
 {
     if (frameIdx >= video_info.frame_count)
     {
@@ -56,14 +56,14 @@ DECODER bool ReadToBuffer(size_t frameIdx, int bufferIdx)
         return false;
     }
 
-    if (bufferIdx >= instances)
+    if (threadIdx >= instances)
     {
         error_callback("Thread index out of bounds", "");
         return false;
     }
 
-    VideoCapture cap = pCaps[bufferIdx];
-    Mat mat = pMats[bufferIdx];
+    VideoCapture cap = pCaps[threadIdx];
+    Mat mat = pMats[threadIdx];
 
     size_t current_frame = (size_t)cap.get(CAP_PROP_POS_FRAMES);
     if (current_frame != frameIdx)
@@ -75,7 +75,7 @@ DECODER bool ReadToBuffer(size_t frameIdx, int bufferIdx)
         return false;
     }
 
-    frame_ready(frameIdx, bufferIdx);
+    frame_ready(frameIdx, threadIdx);
     return true;
 }
 

@@ -4,20 +4,26 @@ namespace PreRendering
 {
     public static class ChunkIndexing
     {
-        public static float nclip, fclip, blockWidth, blockHeight;
-        public static int chunkWidth, chunkSize, totalSize, chunkColumns, chunkRows, channelBlocks, circleRadius;
+        public static int chunkSize, totalSize, circleRadius;
         public static Vector2[] circularOffsets;
+        public static int[] chunkIndicies;
 
-        public static void CalculateConstants()
+        private static MapConfig config;
+
+        public static void CalculateConstants(MapConfig config, int searchCircleRadius)
         {
-            chunkSize = Mathf.RoundToInt(Mathf.Pow(chunkWidth, 2));
-            totalSize = chunkSize * chunkColumns * chunkRows;
+            ChunkIndexing.config = config;
+            circleRadius = searchCircleRadius;
+
+            chunkSize = Mathf.RoundToInt(Mathf.Pow(config.chunkWidth, 2));
+            totalSize = chunkSize * config.chunkColumns * config.chunkRows;
 
             // Based on https://stackoverflow.com/a/31864777/13215204
             int x = 0;
             int y = 0;
             int numPoints = Mathf.RoundToInt(Mathf.Pow(2 * circleRadius - 1, 2));
             circularOffsets = new Vector2[numPoints];
+            chunkIndicies = new int[chunkSize * config.channelBlocks];
 
             for (int i = 0; i < numPoints; ++i)
             {
@@ -69,8 +75,8 @@ namespace PreRendering
             public ClampedPosition(Vector2 position, int channelBlock)
             {
                 value = new Vector2(
-                    Mathf.Clamp(position.x, 0, chunkWidth * chunkColumns - 1),
-                    Mathf.Clamp(position.y, 0, chunkWidth * chunkRows - 1));
+                    Mathf.Clamp(position.x, 0, config.chunkWidth * config.chunkColumns - 1),
+                    Mathf.Clamp(position.y, 0, config.chunkWidth * config.chunkRows - 1));
                 this.channelBlock = channelBlock;
             }
         }
@@ -90,8 +96,8 @@ namespace PreRendering
             public ChunkPosition(Vector2 position, int channelBlock)
             {
                 value = new Vector2Int(
-                    Mathf.FloorToInt(position.x / chunkWidth),
-                    Mathf.FloorToInt(position.y / chunkWidth));
+                    Mathf.FloorToInt(position.x / config.chunkWidth),
+                    Mathf.FloorToInt(position.y / config.chunkWidth));
                 this.channelBlock = channelBlock;
             }
         }
@@ -116,8 +122,8 @@ namespace PreRendering
             public GlobalPosition(Vector2 position, int channelBlock)
             {
                 value = new Vector2Int(
-                    Mathf.FloorToInt(position.x / blockWidth),
-                    Mathf.FloorToInt(position.y / blockHeight));
+                    Mathf.FloorToInt(position.x / config.blockWidth),
+                    Mathf.FloorToInt(position.y / config.blockHeight));
                 this.channelBlock = channelBlock;
             }
 
@@ -127,7 +133,7 @@ namespace PreRendering
                 var chunkIndex = globalIndex.Chunk.Global;
                 
                 int x = (int)(chunkIndex % chunkSize);
-                int y = Mathf.FloorToInt((0 - x) / (float)chunkWidth);
+                int y = Mathf.FloorToInt((0 - x) / (float)config.chunkWidth);
 
 
                 value = new Vector2Int(x, y);
@@ -149,14 +155,14 @@ namespace PreRendering
             public LocalPosition(Vector2Int position)
             {
                 value = new Vector2Int(
-                    position.x % chunkWidth,
-                    position.y % chunkWidth);
+                    position.x % config.chunkWidth,
+                    position.y % config.chunkWidth);
             }
 
             public LocalPosition(int localIndex)
             {
-                int x = localIndex % chunkWidth;
-                int y = Mathf.FloorToInt((localIndex - x) / (float)chunkWidth);
+                int x = localIndex % config.chunkWidth;
+                int y = Mathf.FloorToInt((localIndex - x) / (float)config.chunkWidth);
 
                 value = new Vector2Int(x, y);
             }
@@ -176,7 +182,7 @@ namespace PreRendering
 
             public ChunkIndex(Vector2Int position, int channelBlock)
             {
-                value = position.x + position.y * chunkColumns;
+                value = position.x + position.y * config.chunkColumns;
                 this.channelBlock = channelBlock;
             }
 
@@ -206,7 +212,7 @@ namespace PreRendering
 
             public GlobalIndex(Vector2Int position, int channelBlock)
             {
-                value = position.x + position.y * chunkWidth * chunkColumns;
+                value = position.x + position.y * config.chunkWidth * config.chunkColumns;
                 this.channelBlock = channelBlock;
             }
 
@@ -236,7 +242,7 @@ namespace PreRendering
 
             public LocalIndex(Vector2Int position)
             {
-                value = position.x + position.y * chunkWidth;
+                value = position.x + position.y * config.chunkWidth;
             }
 
             public LocalIndex(long globalIndex)

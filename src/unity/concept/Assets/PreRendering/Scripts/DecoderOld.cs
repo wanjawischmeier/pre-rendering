@@ -6,7 +6,7 @@ using Debug = UnityEngine.Debug;
 
 namespace PreRendering
 {
-    public static class Decoder
+    public static class DecoderOld
     {
         private const string DllPath = "image-decoder.dll";
 

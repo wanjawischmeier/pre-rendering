@@ -1,13 +1,10 @@
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Diagnostics;
 using System.Threading.Tasks;
-using UnityEngine;
+using System.Collections.Generic;
 using Debug = UnityEngine.Debug;
-using Object = UnityEngine.Object;
 using ThreadPriority = System.Threading.ThreadPriority;
 
 namespace PreRendering
@@ -19,57 +16,56 @@ namespace PreRendering
     /// </summary>
     public class DecodingManager
     {
-        public int Pending { get { return pending.Count; } }
-        public int Decoding { get { return decoding.Count; } }
-
-        public delegate void ImageDecodedEvent(string path, Vector3 index, long decodingTime);
-        public event ImageDecodedEvent ImageDecoded;
+        #region Variables
 
         public ThreadPriority priority;
+        public readonly DecodingBuffer buffer;
+
         private bool cancelRequest;
-        private readonly Dictionary<string, Vector3> pending;
-        private readonly List<Vector3> decoding;
-        private readonly List<Tuple<string, Vector3, long>> decoded;
-        private readonly RawTexture.NativeBuffer buffer;
+        private readonly List<long> lowPriority, highPriority, decoding;
+        private readonly Dictionary<long, int> decoded;
         private readonly int decodingThreads, maxPending;
 
-        public DecodingManager(RawTexture.NativeBuffer buffer, int decodingThreads, int maxPending)
+        #endregion
+
+        #region Properties
+
+        public int Pending { get { return lowPriority.Count + highPriority.Count; } }
+        public int Decoding { get { return decoding.Count; } }
+
+        public bool IsPending(long frameIdx) => lowPriority.Contains(frameIdx);
+
+        public bool IsDecoding(long frameIdx) => decoding.Contains(frameIdx);
+
+        public bool IsDecoded(long frameIdx) => false; // buffer.Contains(index);
+
+        public bool IsProcessing(long frameIdx) => IsPending(frameIdx) || IsDecoding(frameIdx);
+
+        #endregion
+
+        public DecodingManager(string relativeVideoPath, int decodingThreads, int maxPending)
         {
-            this.buffer = buffer;
             this.decodingThreads = decodingThreads;
             this.maxPending = maxPending;
 
             priority = ThreadPriority.Lowest;
-            pending = new Dictionary<string, Vector3>();
-            decoding = new List<Vector3>();
-            decoded = new List<Tuple<string, Vector3, long>>();
+
+            lowPriority = new List<long>();
+            highPriority = new List<long>();
+            decoding = new List<long>();
+            decoded = new Dictionary<long, int>();
+
+            Decoder.Initialize(relativeVideoPath, decodingThreads, out IntPtr[] dataPointers);
+            buffer = new DecodingBuffer(dataPointers, Decoder.info, decodingThreads, DecodingBuffer.BufferFormat.RGB24);
         }
 
-        public bool DecodeToBuffer(string path, Vector3 index)
+        public bool DecodeToBufferAsync(long frameIdx, bool allowPending = true)
         {
-            if (!File.Exists(path)) return false;
-
-            byte[] bytes = File.ReadAllBytes(path);
-            var texture = new Texture2D(0, 0, TextureFormat.ARGB32, false);
-            texture.LoadImage(bytes);
-
-            // buffer.Add(index);
-
-#if UNITY_EDITOR
-            Object.DestroyImmediate(texture);
-#else
-            Object.Destroy(texture);
-#endif
-            return true;
-        }
-
-        public bool DecodeToBufferAsync(string path, Vector3 index, bool allowPending = true)
-        {
-            if (IsDecoding(index) || IsDecoded(index)) return false;
+            if (IsDecoding(frameIdx) || IsDecoded(frameIdx)) return false;
             if (decoding.Count < decodingThreads)
             {
-                decoding.Add(index);
-                // buffer.Add(index);
+                decoding.Add(frameIdx);
+                int threadIdx = decoding.IndexOf(frameIdx);
 
                 Task.Run(() =>
                 {
@@ -77,23 +73,24 @@ namespace PreRendering
                     // Debug.Log($"Decoding {path} with index {index} and nativeIndex {buffer[index]}");
                     Thread.CurrentThread.Priority = priority;
                     // Decoder.Decode(path, buffer[index], out long decodingTime);
+                    Decoder.Decode(frameIdx, threadIdx);
                     long decodingTime = -1;
 
                     Debug.Log(
-                        $"Decoded {Path.GetFileName(path)} " +
+                        $"Decoded {frameIdx} " +
                         $"in {decodingTime}ms " +
-                        $"to position {index}");
+                        $"to position {frameIdx}");
 
-                    decoding.Remove(index);
-                    decoded.Add(new Tuple<string, Vector3, long>(path, index, decodingTime));
+                    decoding.Remove(frameIdx);
+                    decoded.Add(frameIdx, threadIdx);
                 });
             }
             else
             {
-                if (allowPending && !IsPending(index) && pending.Count < maxPending)
+                if (allowPending && !IsPending(frameIdx) && lowPriority.Count < maxPending)
                 {
-                    Debug.Log($"Pending {path}");
-                    pending.Add(path, index);
+                    Debug.Log($"Pending {frameIdx}");
+                    lowPriority.Add(frameIdx);
                 }
             }
 
@@ -104,56 +101,25 @@ namespace PreRendering
         {
             var currentlyDecoded = decoded.ToArray();
 
-            foreach (var item in currentlyDecoded)
-            {
-                ImageDecodedEvent temp = ImageDecoded;
-                if (temp != null)
-                {
-                    temp.Invoke(item.Item1, item.Item2, item.Item3);
-                }
-            }
-
-            if (!cancelRequest && decoding.Count < decodingThreads && pending.Count > 0 && pending.Count < maxPending)
-                Debug.Log($"{cancelRequest} {decoding.Count} {pending.Count}");
+            if (!cancelRequest && decoding.Count < decodingThreads && lowPriority.Count > 0 && lowPriority.Count < maxPending)
+                Debug.Log($"{cancelRequest} {decoding.Count} {lowPriority.Count}");
                 // DecodePending();
         }
 
         private void DecodePending()
         {
-            var item = pending.ElementAt(0);
-            Debug.Log($"Decoding Pending with length {pending.Count}");
+            var item = lowPriority.ElementAt(0);
+            Debug.Log($"Decoding Pending with length {lowPriority.Count}");
 
             Debug.Log(
-                $"Preparing {item.Key} with count {decoding.Count} and " +
+                $"Preparing {item} with count {decoding.Count} and " +
                 $"{decodingThreads} threads and " +
                 $"{(cancelRequest ? "a" : "no")} cancel request");
 
-            Debug.Log($"Dequeuing {item.Key}");
-            DecodeToBufferAsync(item.Key, item.Value, false);
-            pending.Remove(item.Key);
+            Debug.Log($"Dequeuing {item}");
+            DecodeToBufferAsync(item, false);
+            lowPriority.Remove(item);
         }
-
-        public bool IsPending(Vector3 index)
-        {
-            return pending.Values.Contains(index);
-        }
-
-        public bool IsDecoding(Vector3 index)
-        {
-            return decoding.Contains(index);
-        }
-
-        public bool IsDecoded(Vector3 index)
-        {
-            return false; // buffer.Contains(index);
-        }
-
-        public bool IsProcessing(Vector3 index)
-        {
-            return IsPending(index) || IsDecoding(index);
-        }
-
-        public void ClearPending() => pending.Clear();
 
         public void Release()
         {
@@ -172,7 +138,9 @@ namespace PreRendering
                     $"Some decoding threads are not responding (waited for {timeWaiting.ElapsedMilliseconds}ms).\n" +
                     "Deinitializing the decoder anyways, this may lead to a crash due to a memory acess violation.\n" +
                     $"Waited for threads <{string.Join(",", decoding)}>.");
-            Decoder.Deinitialize();
+
+            DecoderOld.Deinitialize();
+            buffer.Release();
         }
     }
 }
