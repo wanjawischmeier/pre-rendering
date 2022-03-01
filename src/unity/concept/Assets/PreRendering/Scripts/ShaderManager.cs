@@ -4,15 +4,17 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class ShaderManager : MonoBehaviour
 {
+    #region Data
+
+    public Shader shader;
     public float geometryPercision = 0.75f;
     public ShaderDebugMode shaderDebugging = ShaderDebugMode.Disabled;
     public float depthOfField = 0;
     public float mistOffset = 1;
     public float mistFalloff = 0.1f;
     public Color mistColor = Color.white;
+    public float pIcon = 0.05f;
 
-    [NonSerialized]
-    public Shader shader;
     [NonSerialized]
     public VideoClipDecoder decoder;
     [NonSerialized]
@@ -30,6 +32,8 @@ public class ShaderManager : MonoBehaviour
         DepthBuffer
     }
 
+    #endregion
+
     private void Start()
     {
         mainCamera = GetComponent<Camera>();
@@ -44,14 +48,14 @@ public class ShaderManager : MonoBehaviour
         material.SetFloat("NCLIP", decoder.config.nclip);
         material.SetFloat("FCLIP", decoder.config.fclip);
         // material.SetBuffer("ChunkIndicies", buffer);
-        material.SetBuffer("_InputBuffer", decoder.decodingManager.buffer.compute);
+        // material.SetBuffer("_InputBuffer", decoder.decodingManager.buffer.compute);
     }
 
     private void Update()
     {
         material.SetInt("DEBUG", (int)shaderDebugging);
         material.SetFloat("FOV", mainCamera.fieldOfView * Mathf.Deg2Rad);
-        material.SetFloat("PLAYER_ICON", decoder.pIcon);
+        material.SetFloat("PLAYER_ICON", pIcon);
         material.SetFloat("DOF_INTENSITY", depthOfField);
         material.SetFloat("MIST_FALLOFF", mistFalloff);
         material.SetFloat("MIST_OFFSET", mistOffset);

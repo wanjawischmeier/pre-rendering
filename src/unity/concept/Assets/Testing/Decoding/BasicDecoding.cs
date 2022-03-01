@@ -20,7 +20,7 @@ public class BasicDecoding : MonoBehaviour
         string rootPath = Application.dataPath.Split(new string[] { RepoName }, System.StringSplitOptions.None)[0];
         string sampleImagePath = Path.Combine(rootPath, RepoName, "images", relativeImagePaths[0]);
 
-        DecoderOld.Initialize(sampleImagePath, depth, resolution.x, resolution.y);
+        // DecoderOld.Initialize(sampleImagePath, depth, resolution.x, resolution.y);
         // buffer = new RawTexture.NativeBuffer(Decoder.bufferPointer, resolution.x, resolution.y, depth, RawTexture.Format.RGBA64);
         decoder = new DecodingManager(sampleImagePath, 1, depth);
 

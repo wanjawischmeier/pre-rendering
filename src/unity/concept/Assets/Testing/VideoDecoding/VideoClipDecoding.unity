@@ -223,7 +223,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2a3233e9deb71e348aa7622ecc0572cf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  url: S:\users\wanja\Dokumente\pre-rendering\renders\cycles\chunk_system\chunk_debugger.mp4
+  relativeVideoPath: branches\master\src\unity\concept\Assets\PreRendering\100px_30fps_lowestq0001-0210.mp4
   config:
     nclip: 1
     fclip: 10
@@ -233,27 +233,13 @@ MonoBehaviour:
     chunkColumns: 5
     chunkRows: 5
     channelBlocks: 2
-  targetFps: 60
-  tolerance: 10
-  intervallSize: 100
-  rateOfChange: 0.1
-  pIcon: 0.05
   searchCircleRadius: 3
   loaded: 0
-  renderPath: 
-  mapPaths: []
-  mapFiles: []
-  mapSelection: 0
   predictionBlend: 0.75
   predictionDistance: 2
   cacheSize: 10
   decodingThreads: 4
-  geometryPercision: 0.75
-  shaderDebug: 0
-  depthOfField: 0
-  mistOffset: 1
-  mistFalloff: 0.1
-  mistColor: {r: 1, g: 1, b: 1, a: 1}
+  maxPending: 8
 --- !u!114 &423862454
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -299,8 +285,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7a55924af9e836447a12a626bc915605, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  decoder: {fileID: 0}
-  shader: {fileID: 4800000, guid: 73c549cc703570c48a640a58a94eb33b, type: 3}
+  geometryPercision: 0.75
+  shaderDebugging: 0
+  depthOfField: 0
+  mistOffset: 1
+  mistFalloff: 0.1
+  mistColor: {r: 1, g: 1, b: 1, a: 1}
+  pIcon: 0.05
+  shader: {fileID: 4800000, guid: b1e49b08f9eba9b4b88210868e18f3d5, type: 3}
 --- !u!1 &779160866
 GameObject:
   m_ObjectHideFlags: 0

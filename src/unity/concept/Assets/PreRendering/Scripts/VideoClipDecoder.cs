@@ -16,17 +16,9 @@ public class VideoClipDecoder : MonoBehaviour
     public MapConfig config;
 
     [Header("Performance")]
-    public float pIcon = 0.05f;
     public int searchCircleRadius = 3;
     public bool loaded = false;
     
-    [Header("Map")]
-    public string renderPath;
-    public string[] mapPaths;
-    public string[] mapFiles;
-    public int mapSelection;
-    private string mapPath;
-
     [Header("Decoder")]
     public float predictionBlend = 0.75f;
     public float predictionDistance = 2;
@@ -53,16 +45,15 @@ public class VideoClipDecoder : MonoBehaviour
 
     #endregion
 
-    private void Start()
+    private void Awake()
     {
         shaderManager = GetComponent<ShaderManager>();
         // controller = GetComponent<MovementController>();
 
         ChunkIndexing.CalculateConstants(config, searchCircleRadius);
-        // ExternalVideoPlayer.FrameReady += Player_FrameReady;
-        Decoder.FrameReady += OnFrameReady;
 
-        decodingManager = new DecodingManager(relativeVideoPath, decodingThreads, maxPending);
+        // decodingManager = new DecodingManager(relativeVideoPath, decodingThreads, maxPending);
+        // Decoder.FrameReady += OnFrameReady;
     }
 
     private void Update()
@@ -70,12 +61,10 @@ public class VideoClipDecoder : MonoBehaviour
         float fps = 1 / Time.unscaledDeltaTime;
 
         loaded = true;
-
+        /*
         // Restart any paused players if needed
         for (int i = 0; i < config.channelBlocks; i++)
         {
-            VideoPlayer player = default;// players[i];
-
             if (player.isPaused)
             {
                 var globalIndex = player.frame.GetGlobalIndex(out int channelBlock);
@@ -92,9 +81,10 @@ public class VideoClipDecoder : MonoBehaviour
             }
             else loaded = false;
         }
+        */
     }
 
-    private void OnDisable() => decodingManager.Release();
+    private void OnDisable() => decodingManager?.Release();
 
     private void OnFrameReady(long frameIdx, int threadIdx)
     {

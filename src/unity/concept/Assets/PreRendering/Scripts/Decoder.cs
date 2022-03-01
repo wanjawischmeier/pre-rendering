@@ -13,18 +13,7 @@ namespace PreRendering
 {
     public static class Decoder
     {
-        [Serializable]
-        public struct VideoInfo
-        {
-            public int width, height, fps;
-            public long frame_count;
-        };
-
-        private struct DecodingFrame
-        {
-            public long frameIdx;
-            public int threadIdx;
-        }
+        #region Native Plugin
 
         [DllImport("kernel32.dll")]
         private static extern IntPtr LoadLibrary(string dllToLoad);
@@ -44,18 +33,22 @@ namespace PreRendering
         /// <param name="videoInfo">Containing basic information about the video</param>
         /// <returns>The pointer of the buffer grabbed frames will be written to</returns>
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        private delegate IntPtr InitializeBufferHandler(
+        private delegate IntPtr InitializationHandler(
             string videoPath, int threads,
             FrameReadyHandler frameCallback, ErrorCallback errorCallback,
             out VideoInfo videoInfo);
 
         /// <summary>
+        /// Performs a seek with decoder corresponding to the thread
+        /// </summary>
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate bool SeekFrameHandler(long frameIdx, int threadIdx);
+
+        /// <summary>
         /// Docodes a frame and copies it to the buffer
         /// </summary>
-        /// <param name="frameIdx">The target frame</param>
-        /// <param name="threadIdx">On which thread it will be decoded</param>
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        private delegate bool ReadToBufferHandler(long frameIdx, int threadIdx);
+        private delegate bool ReadFrameHandler(int threadIdx);
 
         /// <param name="message">A custom message by the plugin</param>
         /// <param name="error">OpenCV or std error message, plugin error if left empty</param>
@@ -64,6 +57,23 @@ namespace PreRendering
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate void EmptyCallHandler();
+
+        #endregion
+
+        #region Data
+
+        [Serializable]
+        public struct VideoInfo
+        {
+            public int width, height, fps;
+            public long frame_count;
+        };
+
+        private struct DecodingFrame
+        {
+            public long frameIdx;
+            public int threadIdx;
+        }
 
         public delegate void FrameReadyHandler(long frameIdx, int threadIdx);
         public static event FrameReadyHandler FrameReady;
@@ -76,9 +86,10 @@ namespace PreRendering
             get { return info.width * info.height * 3; }
         }
 
-        private static InitializeBufferHandler initializeBuffer;
-        private static ReadToBufferHandler readToBuffer;
+        private static InitializationHandler initializeBuffer;
         private static EmptyCallHandler releaseBuffer;
+        private static SeekFrameHandler seekFrame;
+        private static ReadFrameHandler readFrame;
         private static IntPtr dllPtr, bufferPtr;
         private static IntPtr[] dataPtr;
         private static Task workerThread;
@@ -88,6 +99,14 @@ namespace PreRendering
 
         private const string relativeDllPath = "src\\video-decoder\\x64\\Debug\\video-decoder.dll";
 
+        #endregion
+
+        /// <summary>
+        /// Prepare a given amount of captures and materials for decoding
+        /// </summary>
+        /// <param name="relativeVideoPath">The video path relative to the repo root directory</param>
+        /// <param name="threads">How many instances should be prepared</param>
+        /// <param name="dataPointers">Pointers to the data field of each instance</param>
         public static void Initialize(string relativeVideoPath, int threads, out IntPtr[] dataPointers)
         {
             string[] seperator = new string[] { "pre-rendering" };
@@ -104,9 +123,10 @@ namespace PreRendering
                 return;
             }
 
-            initializeBuffer = LoadFromLibrary<InitializeBufferHandler>(dllPtr, "InitializeBuffer");
-            readToBuffer = LoadFromLibrary<ReadToBufferHandler>(dllPtr, "ReadToBuffer");
-            releaseBuffer = LoadFromLibrary<EmptyCallHandler>(dllPtr, "ReleaseBuffer");
+            initializeBuffer = LoadFromLibrary<InitializationHandler>("InitializeBuffer");
+            releaseBuffer = LoadFromLibrary<EmptyCallHandler>("ReleaseBuffer");
+            seekFrame = LoadFromLibrary<SeekFrameHandler>("Seek");
+            readFrame = LoadFromLibrary<ReadFrameHandler>("Read");
 
             pendingFrames = new List<DecodingFrame>();
             instances = threads;
@@ -123,7 +143,47 @@ namespace PreRendering
             workerThread = Task.Run(Worker);
         }
 
-        private static bool ReadToBuffer(DecodingFrame frame) => readToBuffer(frame.frameIdx, frame.threadIdx);
+        /// <summary>
+        /// Stops all currently decoding threads, releases memory allocated by them and frees the plugin
+        /// (To be called in MonoBehaviour.OnDestroy)
+        /// </summary>
+        /// <param name="workerThreadTimeout">
+        /// How long to wait for decoding threads to cancel before deallocating memory anyways
+        /// (Which will propably result in a crash)
+        /// </param>
+        public static void Deinitialize(int workerThreadTimeout = 10000)
+        {
+            if (working)
+            {
+                working = false;
+                workerThread.Wait(workerThreadTimeout);
+
+                if (workerThread.Status == TaskStatus.Running)
+                    Debug.LogWarning($"Worker thread not responding (waited {workerThreadTimeout}ms). Deallocating memory anyways, this might result in a crash.");
+            }
+
+            FrameReady = delegate { };
+
+            releaseBuffer?.Invoke();
+            FreeLibrary(dllPtr);
+        }
+
+        /// <summary>
+        /// Adds a frame to the decoding queue
+        /// </summary>
+        /// <param name="frameIdx">The frame to be added</param>
+        /// <param name="threadIdx">On which thread it should be decoded</param>
+        public static void Decode(long frameIdx, int threadIdx)
+        {
+            pendingFrames.Add(new DecodingFrame()
+            {
+                frameIdx = frameIdx,
+                threadIdx = threadIdx
+            });
+            reading = true;
+        }
+
+        #region Events
 
         private static void OnFrameReady(long frameIdx, int threadIdx)
         {
@@ -155,19 +215,7 @@ namespace PreRendering
             Debug.LogError($"VideoPlayerNativePlugin: {message}\n{openCvInfo} {2}");
         }
 
-        /// <summary>
-        /// Loads an instance of the given delegate from the library
-        /// </summary>
-        /// <typeparam name="T">The delegate of the desired function</typeparam>
-        /// <param name="library">The pointer to an already loaded library</param>
-        /// <param name="name">The name of the function, using delegate name by default</param>
-        private static T LoadFromLibrary<T>(IntPtr library, string name = "")
-        {
-            Type type = typeof(T);
-            IntPtr dllAddr = GetProcAddress(library, name == "" ? type.Name : name);
-            Delegate @delegate = Marshal.GetDelegateForFunctionPointer(dllAddr, type);
-            return (T)(object)@delegate;
-        }
+        #endregion
 
         private static void Worker()
         {
@@ -182,7 +230,7 @@ namespace PreRendering
                     DecodingFrame frame = pendingFrames[0];
                     pendingFrames.RemoveAt(0);
                     s.Restart();
-                    ReadToBuffer(frame);
+                    readFrame(frame.threadIdx);
                 }
                 else if (reading)
                 {
@@ -195,43 +243,17 @@ namespace PreRendering
         }
 
         /// <summary>
-        /// Adds a frame to the decoding queue
+        /// Loads an instance of the given delegate from the library
         /// </summary>
-        /// <param name="frameIdx">The frame to be added</param>
-        /// <param name="threadIdx">On which thread it should be decoded</param>
-        public static void Decode(long frameIdx, int threadIdx)
+        /// <typeparam name="T">The delegate of the desired function</typeparam>
+        /// <param name="library">The pointer to an already loaded library</param>
+        /// <param name="name">The name of the function, using delegate name by default</param>
+        private static T LoadFromLibrary<T>(string name)
         {
-            pendingFrames.Add(new DecodingFrame()
-            {
-                frameIdx = frameIdx,
-                threadIdx = threadIdx
-            });
-            reading = true;
-        }
-
-        /// <summary>
-        /// Stops all currently decoding threads, releases memory allocated by them and frees the plugin
-        /// (To be called in MonoBehaviour.OnDestroy)
-        /// </summary>
-        /// <param name="workerThreadTimeout">
-        /// How long to wait for decoding threads to cancel before deallocating memory anyways
-        /// (Which will propably result in a crash)
-        /// </param>
-        public static void Deinitialize(int workerThreadTimeout = 10000)
-        {
-            if (working)
-            {
-                working = false;
-                workerThread.Wait(workerThreadTimeout);
-
-                if (workerThread.Status == TaskStatus.Running)
-                    Debug.LogWarning($"Worker thread not responding (waited {workerThreadTimeout}ms). Deallocating memory anyways, this might result in a crash.");
-            }
-
-            FrameReady = delegate { };
-
-            releaseBuffer?.Invoke();
-            FreeLibrary(dllPtr);
+            Type type = typeof(T);
+            IntPtr dllAddr = GetProcAddress(dllPtr, name);
+            Delegate @delegate = Marshal.GetDelegateForFunctionPointer(dllAddr, type);
+            return (T)(object)@delegate;
         }
     }
 }

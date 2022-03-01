@@ -139,7 +139,6 @@ namespace PreRendering
                     "Deinitializing the decoder anyways, this may lead to a crash due to a memory acess violation.\n" +
                     $"Waited for threads <{string.Join(",", decoding)}>.");
 
-            DecoderOld.Deinitialize();
             buffer.Release();
         }
     }

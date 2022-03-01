@@ -7,6 +7,8 @@ namespace PreRendering
 {
     public class DecodingBuffer : Buffer<long>
     {
+        #region Data
+
         public enum BufferFormat
         {
             RGB24 = 3,  // 3 channels * 1 byte per channel
@@ -18,6 +20,8 @@ namespace PreRendering
         public NativeArray<byte>[] native;
         public ComputeBuffer compute;
         private readonly int imageSize;
+
+        #endregion
 
         public DecodingBuffer(IntPtr[] bufferPointers, Decoder.VideoInfo info, int depth, BufferFormat format) : base(depth)
         {

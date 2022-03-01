@@ -30,5 +30,6 @@ extern "C" DECODER uchar** InitializeBuffer(
 	char* videoPath, int threads,
 	FrameCallback frameCallback, ErrorMessage errorCallback,
 	VideoInfo &rInfo);
-extern "C" DECODER bool ReadToBuffer(size_t frameIdx, int threadIdx);
+extern "C" DECODER bool Seek(size_t frameIdx, int threadIdx);
+extern "C" DECODER bool Read(int threadIdx);
 extern "C" DECODER void ReleaseBuffer();
