@@ -48,6 +48,12 @@ uchar** InitializeBuffer(
     return pData;
 }
 
+DECODER size_t CurrentFrame(int threadIdx)
+{
+    VideoCapture cap = pCaps[threadIdx];
+    return (size_t)cap.get(CAP_PROP_POS_FRAMES);
+}
+
 DECODER bool Seek(size_t frameIdx, int threadIdx)
 {
     if (frameIdx >= video_info.frame_count)
@@ -66,12 +72,10 @@ DECODER bool Seek(size_t frameIdx, int threadIdx)
     cap.set(CAP_PROP_POS_FRAMES, (double)frameIdx);
 }
 
-extern "C" DECODER bool Read(int threadIdx)
+extern "C" DECODER bool Read(size_t frameIdx, int threadIdx)
 {
     VideoCapture cap = pCaps[threadIdx];
     Mat mat = pMats[threadIdx];
-
-    size_t frameIdx = (size_t)cap.get(CAP_PROP_POS_FRAMES);
 
     if (!cap.read(mat))
     {

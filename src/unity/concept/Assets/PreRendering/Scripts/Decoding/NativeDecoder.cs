@@ -11,7 +11,7 @@ using Debug = UnityEngine.Debug;
 
 namespace PreRendering
 {
-    public static class Decoder
+    public partial class Decoder
     {
         #region Native Plugin
 
@@ -38,17 +38,11 @@ namespace PreRendering
             FrameReadyHandler frameCallback, ErrorCallback errorCallback,
             out VideoInfo videoInfo);
 
-        /// <summary>
-        /// Performs a seek with decoder corresponding to the thread
-        /// </summary>
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        private delegate bool SeekFrameHandler(long frameIdx, int threadIdx);
+        private delegate bool FrameHandler(long frameIdx, int threadIdx);
 
-        /// <summary>
-        /// Docodes a frame and copies it to the buffer
-        /// </summary>
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        private delegate bool ReadFrameHandler(int threadIdx);
+        private delegate long CurrentFrameHandler(int threadIdx);
 
         /// <param name="message">A custom message by the plugin</param>
         /// <param name="error">OpenCV or std error message, plugin error if left empty</param>
@@ -80,24 +74,20 @@ namespace PreRendering
 
         public static VideoInfo info;
         public static bool invokeFrameReadyEvents = false;
-
-        public static int ImageSize
-        {
-            get { return info.width * info.height * 3; }
-        }
+        public static Decoder[] decoders;
 
         private static InitializationHandler initializeBuffer;
         private static EmptyCallHandler releaseBuffer;
-        private static SeekFrameHandler seekFrame;
-        private static ReadFrameHandler readFrame;
+        private static FrameHandler seekFrame, readFrame;
+        private static CurrentFrameHandler currentFrame;
         private static IntPtr dllPtr, bufferPtr;
         private static IntPtr[] dataPtr;
-        private static Task workerThread;
         private static List<DecodingFrame> pendingFrames;
-        private static int instances;
-        private static bool working, reading = false;
+        private static bool reading = false;
 
-        private const string relativeDllPath = "src\\video-decoder\\x64\\Debug\\video-decoder.dll";
+        private const string relativeDllPath = "branches\\master\\src\\video-decoder\\x64\\Debug\\video-decoder.dll";
+
+        public static int ImageSize => info.width * info.height * 3;
 
         #endregion
 
@@ -112,8 +102,8 @@ namespace PreRendering
             string[] seperator = new string[] { "pre-rendering" };
             string[] split = Application.dataPath.Split(seperator, StringSplitOptions.None);
             string rootPath = split[0].Replace('/', '\\');
-            string dllPath = Path.Combine(rootPath, "pre-rendering\\branches\\master\\", relativeDllPath);
-            string videoPath = Path.Combine(rootPath, "pre-rendering\\", relativeVideoPath);
+            string dllPath = Path.Combine(rootPath, "pre-rendering\\", relativeDllPath);
+            string videoPath = Path.Combine(rootPath, "pre-rendering\\renders\\", relativeVideoPath);
 
             dllPtr = LoadLibrary(dllPath);
             if (dllPtr == IntPtr.Zero)
@@ -125,22 +115,24 @@ namespace PreRendering
 
             initializeBuffer = LoadFromLibrary<InitializationHandler>("InitializeBuffer");
             releaseBuffer = LoadFromLibrary<EmptyCallHandler>("ReleaseBuffer");
-            seekFrame = LoadFromLibrary<SeekFrameHandler>("Seek");
-            readFrame = LoadFromLibrary<ReadFrameHandler>("Read");
+            seekFrame = LoadFromLibrary<FrameHandler>("Seek");
+            readFrame = LoadFromLibrary<FrameHandler>("Read");
+            currentFrame = LoadFromLibrary<CurrentFrameHandler>("CurrentFrame");
 
             pendingFrames = new List<DecodingFrame>();
-            instances = threads;
+
+            decoders = new Decoder[threads];
+            for (int i = 0; i < threads; i++)
+                decoders[i] = new Decoder(i);
 
             bufferPtr = initializeBuffer(
-                videoPath, instances,
+                videoPath, threads,
                 OnFrameReady, OnError,
                 out info);
 
-            dataPtr = new IntPtr[instances];
+            dataPtr = new IntPtr[threads];
             Marshal.Copy(bufferPtr, dataPtr, 0, dataPtr.Length);
             dataPointers = dataPtr;
-
-            workerThread = Task.Run(Worker);
         }
 
         /// <summary>
@@ -155,11 +147,18 @@ namespace PreRendering
         {
             if (working)
             {
+                bool success = true;
                 working = false;
-                workerThread.Wait(workerThreadTimeout);
 
-                if (workerThread.Status == TaskStatus.Running)
-                    Debug.LogWarning($"Worker thread not responding (waited {workerThreadTimeout}ms). Deallocating memory anyways, this might result in a crash.");
+
+                foreach (var instance in decoders)
+                {
+                    if (!instance.Wait(workerThreadTimeout))
+                        success = false;
+                }
+
+                if (!success)
+                    Debug.LogWarning($"Some threads are not responding. Deallocating memory anyways, this might result in a crash.");
             }
 
             FrameReady = delegate { };
@@ -175,11 +174,7 @@ namespace PreRendering
         /// <param name="threadIdx">On which thread it should be decoded</param>
         public static void Decode(long frameIdx, int threadIdx)
         {
-            pendingFrames.Add(new DecodingFrame()
-            {
-                frameIdx = frameIdx,
-                threadIdx = threadIdx
-            });
+            decoders[threadIdx].Decode(frameIdx);
             reading = true;
         }
 
@@ -216,31 +211,6 @@ namespace PreRendering
         }
 
         #endregion
-
-        private static void Worker()
-        {
-            working = true;
-
-            var s = new Stopwatch();
-
-            while (working)
-            {
-                if (pendingFrames.Count > 0)
-                {
-                    DecodingFrame frame = pendingFrames[0];
-                    pendingFrames.RemoveAt(0);
-                    s.Restart();
-                    readFrame(frame.threadIdx);
-                }
-                else if (reading)
-                {
-                    reading = false;
-                    s.Stop();
-                    Debug.Log($"Reading frame took {s.ElapsedMilliseconds}ms");
-                }
-                else Thread.Sleep(100);
-            }
-        }
 
         /// <summary>
         /// Loads an instance of the given delegate from the library

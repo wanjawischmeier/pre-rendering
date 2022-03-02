@@ -1,6 +1,5 @@
 using System;
 using UnityEngine;
-using UnityEngine.Video;
 using PreRendering;
 
 [DisallowMultipleComponent]
@@ -24,7 +23,6 @@ public class VideoClipDecoder : MonoBehaviour
     public float predictionDistance = 2;
     public int cacheSize = 10;
     public int decodingThreads = 4;
-    public int maxPending = 8;
 
     #endregion
 
@@ -91,10 +89,12 @@ public class VideoClipDecoder : MonoBehaviour
         var globalIndex = frameIdx.GetGlobalIndex(out int channelBlock);
         int localIndex = globalIndex.Local;
         bool correct = ChunkIndexing.CorrectChunkIndex(globalIndex, transform.position, out ChunkIndexing.ChunkIndex newChunkIndex, out ChunkIndexing.GlobalIndex newFrame);
-        /*
-        Graphics.CopyTexture(source.texture, 0, chunk, localIndex);
+
+        var decoder = Decoder.decoders[threadIdx];
+
+        // Graphics.CopyTexture(source.texture, 0, chunk, localIndex);
         ChunkIndexing.chunkIndicies[localIndex] = newChunkIndex;
-        buffer.SetData(ChunkIndexing.chunkIndicies, localIndex, localIndex, 1);
+        // buffer.SetData(ChunkIndexing.chunkIndicies, localIndex, localIndex, 1);
 
         // Finished decoding channel block of chunk
         if ((frameIdx + 1) % ChunkIndexing.chunkSize == 0 && (frameIdx + 1) - channelBlock * ChunkIndexing.totalSize != 0)
@@ -103,14 +103,13 @@ public class VideoClipDecoder : MonoBehaviour
             buffer.SetData(ChunkIndexing.chunkIndicies, localIndex, localIndex, 1);
 
             Debug.LogFormat("Finished decoding channel block {0} of chunk {1}.", channelBlock, (int)newChunkIndex);
-            source.Pause();
+            decoder.Pause();
             return;
         }
 
         // Player is loading the wrong chunk
         if (!correct)
-            source.frame = newFrame;
-        */
+            decoder.Frame = newFrame;
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)

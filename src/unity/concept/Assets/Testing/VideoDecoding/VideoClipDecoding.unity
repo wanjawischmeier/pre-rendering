@@ -223,7 +223,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2a3233e9deb71e348aa7622ecc0572cf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  relativeVideoPath: branches\master\src\unity\concept\Assets\PreRendering\100px_30fps_lowestq0001-0210.mp4
+  relativeVideoPath: cycles\chunk_system\chunk_debugger\quality_sets\100px_30fps_lowestq0001-0210.mp4
   config:
     nclip: 1
     fclip: 10
@@ -285,6 +285,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7a55924af9e836447a12a626bc915605, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  shader: {fileID: 4800000, guid: b1e49b08f9eba9b4b88210868e18f3d5, type: 3}
   geometryPercision: 0.75
   shaderDebugging: 0
   depthOfField: 0
@@ -292,7 +293,6 @@ MonoBehaviour:
   mistFalloff: 0.1
   mistColor: {r: 1, g: 1, b: 1, a: 1}
   pIcon: 0.05
-  shader: {fileID: 4800000, guid: b1e49b08f9eba9b4b88210868e18f3d5, type: 3}
 --- !u!1 &779160866
 GameObject:
   m_ObjectHideFlags: 0
@@ -305,6 +305,8 @@ GameObject:
   - component: {fileID: 779160869}
   - component: {fileID: 779160868}
   - component: {fileID: 779160867}
+  - component: {fileID: 779160872}
+  - component: {fileID: 779160871}
   m_Layer: 0
   m_Name: Cube
   m_TagString: Untagged
@@ -390,6 +392,67 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!143 &779160871
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 779160866}
+  m_Material: {fileID: 0}
+  m_IsTrigger: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Height: 1
+  m_Radius: 0.5
+  m_SlopeLimit: 45
+  m_StepOffset: 0.3
+  m_SkinWidth: 0.08
+  m_MinMoveDistance: 0.001
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!20 &779160872
+Camera:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 779160866}
+  m_Enabled: 1
+  serializedVersion: 2
+  m_ClearFlags: 1
+  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_projectionMatrixMode: 1
+  m_GateFitMode: 2
+  m_FOVAxisMode: 0
+  m_SensorSize: {x: 36, y: 24}
+  m_LensShift: {x: 0, y: 0}
+  m_FocalLength: 50
+  m_NormalizedViewPortRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 1
+    height: 1
+  near clip plane: 0.3
+  far clip plane: 1000
+  field of view: 60
+  orthographic: 0
+  orthographic size: 5
+  m_Depth: 0
+  m_CullingMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_RenderingPath: -1
+  m_TargetTexture: {fileID: 0}
+  m_TargetDisplay: 0
+  m_TargetEye: 3
+  m_HDR: 1
+  m_AllowMSAA: 1
+  m_AllowDynamicResolution: 0
+  m_ForceIntoRT: 0
+  m_OcclusionCulling: 1
+  m_StereoConvergence: 10
+  m_StereoSeparation: 0.022
 --- !u!1 &1462570577
 GameObject:
   m_ObjectHideFlags: 0
