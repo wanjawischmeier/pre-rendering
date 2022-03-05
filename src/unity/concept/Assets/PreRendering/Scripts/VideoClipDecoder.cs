@@ -45,13 +45,18 @@ public class VideoClipDecoder : MonoBehaviour
 
     private void Awake()
     {
+        decodingManager = new DecodingManager(relativeVideoPath, decodingThreads);
+    }
+
+    private void Start()
+    {
         shaderManager = GetComponent<ShaderManager>();
         // controller = GetComponent<MovementController>();
 
-        ChunkIndexing.CalculateConstants(config, searchCircleRadius);
+        Application.targetFrameRate = Screen.currentResolution.refreshRate;
+        Decoder.FrameReady += OnFrameReady;
 
-        // decodingManager = new DecodingManager(relativeVideoPath, decodingThreads, maxPending);
-        // Decoder.FrameReady += OnFrameReady;
+        ChunkIndexing.CalculateConstants(config, searchCircleRadius);
     }
 
     private void Update()
@@ -100,7 +105,7 @@ public class VideoClipDecoder : MonoBehaviour
         if ((frameIdx + 1) % ChunkIndexing.chunkSize == 0 && (frameIdx + 1) - channelBlock * ChunkIndexing.totalSize != 0)
         {
             ChunkIndexing.chunkIndicies[localIndex] = newChunkIndex;
-            buffer.SetData(ChunkIndexing.chunkIndicies, localIndex, localIndex, 1);
+            // buffer.SetData(ChunkIndexing.chunkIndicies, localIndex, localIndex, 1);
 
             Debug.LogFormat("Finished decoding channel block {0} of chunk {1}.", channelBlock, (int)newChunkIndex);
             decoder.Pause();
@@ -110,26 +115,5 @@ public class VideoClipDecoder : MonoBehaviour
         // Player is loading the wrong chunk
         if (!correct)
             decoder.Frame = newFrame;
-    }
-
-    private void OnRenderImage(RenderTexture source, RenderTexture destination)
-    {
-        int available = 0;
-
-        foreach (var offset in ChunkIndexing.circularOffsets)
-        {
-            var clamped = (transform.position + offset.Expand()).ClampToChunkGrid();
-            var chunkIndex = clamped.Chunk.Global;
-            var localIndex = clamped.Grid.Local.Local;
-
-            // The point is in the buffer
-            if (ChunkIndexing.chunkIndicies[localIndex] == chunkIndex)
-            {
-                available = localIndex;
-                break;
-            }
-        }
-
-        shaderManager.BlitWithIndex(available, ref destination);
     }
 }

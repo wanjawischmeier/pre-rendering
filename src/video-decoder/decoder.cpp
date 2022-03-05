@@ -2,7 +2,7 @@
 #include "decoder.h"
 
 
-uchar** InitializeBuffer(
+uchar** InitializeDecoder(
     char *videoPath, int threads,
     FrameCallback frameCallback, ErrorMessage errorCallback,
     VideoInfo &rInfo)
@@ -87,7 +87,7 @@ extern "C" DECODER bool Read(size_t frameIdx, int threadIdx)
     return true;
 }
 
-DECODER void ReleaseBuffer()
+DECODER void ReleaseDecoder()
 {
     if (instances == 0) return;
 

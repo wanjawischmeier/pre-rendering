@@ -53,7 +53,7 @@ public class MTCaller : MonoBehaviour
 
             // Can only be called on the main thread!
             int frame = Random.Range(0, (int)Decoder.info.frame_count - 1);
-            Decoder.Decode(i, i);
+            // Decoder.Decode(i, i);
         }
     }
 

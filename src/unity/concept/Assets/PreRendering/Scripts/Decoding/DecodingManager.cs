@@ -21,10 +21,9 @@ namespace PreRendering
         public ThreadPriority priority;
         public readonly DecodingBuffer buffer;
 
-        private bool cancelRequest;
         private readonly List<long> lowPriority, highPriority, decoding;
         private readonly Dictionary<long, int> decoded;
-        private readonly int decodingThreads, maxPending;
+        private readonly int decodingThreads;
 
         #endregion
 
@@ -43,10 +42,9 @@ namespace PreRendering
 
         #endregion
 
-        public DecodingManager(string relativeVideoPath, int decodingThreads, int maxPending)
+        public DecodingManager(string relativeVideoPath, int decodingThreads)
         {
             this.decodingThreads = decodingThreads;
-            this.maxPending = maxPending;
 
             priority = ThreadPriority.Lowest;
 
@@ -58,7 +56,7 @@ namespace PreRendering
             Decoder.Initialize(relativeVideoPath, decodingThreads, out IntPtr[] dataPointers);
             buffer = new DecodingBuffer(dataPointers, Decoder.info, decodingThreads, DecodingBuffer.BufferFormat.RGB24);
         }
-
+        /*
         public bool DecodeToBufferAsync(long frameIdx, bool allowPending = true)
         {
             if (IsDecoding(frameIdx) || IsDecoded(frameIdx)) return false;
@@ -73,7 +71,7 @@ namespace PreRendering
                     // Debug.Log($"Decoding {path} with index {index} and nativeIndex {buffer[index]}");
                     Thread.CurrentThread.Priority = priority;
                     // Decoder.Decode(path, buffer[index], out long decodingTime);
-                    Decoder.Decode(frameIdx, threadIdx);
+                    // Decoder.Decode(frameIdx, threadIdx);
                     long decodingTime = -1;
 
                     Debug.Log(
@@ -96,35 +94,19 @@ namespace PreRendering
 
             return true;
         }
-
+        */
         public void Refresh()
         {
             var currentlyDecoded = decoded.ToArray();
-
+            /*
             if (!cancelRequest && decoding.Count < decodingThreads && lowPriority.Count > 0 && lowPriority.Count < maxPending)
                 Debug.Log($"{cancelRequest} {decoding.Count} {lowPriority.Count}");
                 // DecodePending();
-        }
-
-        private void DecodePending()
-        {
-            var item = lowPriority.ElementAt(0);
-            Debug.Log($"Decoding Pending with length {lowPriority.Count}");
-
-            Debug.Log(
-                $"Preparing {item} with count {decoding.Count} and " +
-                $"{decodingThreads} threads and " +
-                $"{(cancelRequest ? "a" : "no")} cancel request");
-
-            Debug.Log($"Dequeuing {item}");
-            DecodeToBufferAsync(item, false);
-            lowPriority.Remove(item);
+            */
         }
 
         public void Release()
         {
-            cancelRequest = true;
-
             Stopwatch timeWaiting = Stopwatch.StartNew();
             for (int i = 0; i < 20; i++)
             {
@@ -140,6 +122,7 @@ namespace PreRendering
                     $"Waited for threads <{string.Join(",", decoding)}>.");
 
             buffer.Release();
+            Decoder.Deinitialize();
         }
     }
 }

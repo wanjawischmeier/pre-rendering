@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
-
 using Debug = UnityEngine.Debug;
 
 namespace PreRendering
@@ -76,8 +75,8 @@ namespace PreRendering
         public static bool invokeFrameReadyEvents = false;
         public static Decoder[] decoders;
 
-        private static InitializationHandler initializeBuffer;
-        private static EmptyCallHandler releaseBuffer;
+        private static InitializationHandler initializeDecoder;
+        private static EmptyCallHandler releaseDecoder;
         private static FrameHandler seekFrame, readFrame;
         private static CurrentFrameHandler currentFrame;
         private static IntPtr dllPtr, bufferPtr;
@@ -90,93 +89,6 @@ namespace PreRendering
         public static int ImageSize => info.width * info.height * 3;
 
         #endregion
-
-        /// <summary>
-        /// Prepare a given amount of captures and materials for decoding
-        /// </summary>
-        /// <param name="relativeVideoPath">The video path relative to the repo root directory</param>
-        /// <param name="threads">How many instances should be prepared</param>
-        /// <param name="dataPointers">Pointers to the data field of each instance</param>
-        public static void Initialize(string relativeVideoPath, int threads, out IntPtr[] dataPointers)
-        {
-            string[] seperator = new string[] { "pre-rendering" };
-            string[] split = Application.dataPath.Split(seperator, StringSplitOptions.None);
-            string rootPath = split[0].Replace('/', '\\');
-            string dllPath = Path.Combine(rootPath, "pre-rendering\\", relativeDllPath);
-            string videoPath = Path.Combine(rootPath, "pre-rendering\\renders\\", relativeVideoPath);
-
-            dllPtr = LoadLibrary(dllPath);
-            if (dllPtr == IntPtr.Zero)
-            {
-                Debug.LogError($"Failed to load video decoding library at {dllPath}");
-                dataPointers = null;
-                return;
-            }
-
-            initializeBuffer = LoadFromLibrary<InitializationHandler>("InitializeBuffer");
-            releaseBuffer = LoadFromLibrary<EmptyCallHandler>("ReleaseBuffer");
-            seekFrame = LoadFromLibrary<FrameHandler>("Seek");
-            readFrame = LoadFromLibrary<FrameHandler>("Read");
-            currentFrame = LoadFromLibrary<CurrentFrameHandler>("CurrentFrame");
-
-            pendingFrames = new List<DecodingFrame>();
-
-            decoders = new Decoder[threads];
-            for (int i = 0; i < threads; i++)
-                decoders[i] = new Decoder(i);
-
-            bufferPtr = initializeBuffer(
-                videoPath, threads,
-                OnFrameReady, OnError,
-                out info);
-
-            dataPtr = new IntPtr[threads];
-            Marshal.Copy(bufferPtr, dataPtr, 0, dataPtr.Length);
-            dataPointers = dataPtr;
-        }
-
-        /// <summary>
-        /// Stops all currently decoding threads, releases memory allocated by them and frees the plugin
-        /// (To be called in MonoBehaviour.OnDestroy)
-        /// </summary>
-        /// <param name="workerThreadTimeout">
-        /// How long to wait for decoding threads to cancel before deallocating memory anyways
-        /// (Which will propably result in a crash)
-        /// </param>
-        public static void Deinitialize(int workerThreadTimeout = 10000)
-        {
-            if (working)
-            {
-                bool success = true;
-                working = false;
-
-
-                foreach (var instance in decoders)
-                {
-                    if (!instance.Wait(workerThreadTimeout))
-                        success = false;
-                }
-
-                if (!success)
-                    Debug.LogWarning($"Some threads are not responding. Deallocating memory anyways, this might result in a crash.");
-            }
-
-            FrameReady = delegate { };
-
-            releaseBuffer?.Invoke();
-            FreeLibrary(dllPtr);
-        }
-
-        /// <summary>
-        /// Adds a frame to the decoding queue
-        /// </summary>
-        /// <param name="frameIdx">The frame to be added</param>
-        /// <param name="threadIdx">On which thread it should be decoded</param>
-        public static void Decode(long frameIdx, int threadIdx)
-        {
-            decoders[threadIdx].Decode(frameIdx);
-            reading = true;
-        }
 
         #region Events
 
@@ -211,6 +123,74 @@ namespace PreRendering
         }
 
         #endregion
+
+        /// <summary>
+        /// Prepare a given amount of captures and materials for decoding
+        /// </summary>
+        /// <param name="relativeVideoPath">The video path relative to the repo root directory</param>
+        /// <param name="threads">How many instances should be prepared</param>
+        /// <param name="dataPointers">Pointers to the data field of each instance</param>
+        public static void Initialize(string relativeVideoPath, int threads, out IntPtr[] dataPointers)
+        {
+            string[] seperator = new string[] { "pre-rendering" };
+            string[] split = Application.dataPath.Split(seperator, StringSplitOptions.None);
+            string rootPath = split[0].Replace('/', '\\');
+            string dllPath = Path.Combine(rootPath, "pre-rendering\\", relativeDllPath);
+            string videoPath = Path.Combine(rootPath, "pre-rendering\\renders\\", relativeVideoPath);
+
+            dllPtr = LoadLibrary(dllPath);
+            if (dllPtr == IntPtr.Zero)
+            {
+                Debug.LogError($"Failed to load video decoding library at {dllPath}");
+                dataPointers = null;
+                return;
+            }
+
+            initializeDecoder = LoadFromLibrary<InitializationHandler>("InitializeDecoder");
+            releaseDecoder = LoadFromLibrary<EmptyCallHandler>("ReleaseDecoder");
+            seekFrame = LoadFromLibrary<FrameHandler>("Seek");
+            readFrame = LoadFromLibrary<FrameHandler>("Read");
+            currentFrame = LoadFromLibrary<CurrentFrameHandler>("CurrentFrame");
+
+            pendingFrames = new List<DecodingFrame>();
+
+            decoders = new Decoder[threads];
+            for (int i = 0; i < threads; i++)
+                decoders[i] = new Decoder(i);
+
+            bufferPtr = initializeDecoder(
+                videoPath, threads,
+                OnFrameReady, OnError,
+                out info);
+
+            dataPtr = new IntPtr[threads];
+            Marshal.Copy(bufferPtr, dataPtr, 0, dataPtr.Length);
+            dataPointers = dataPtr;
+        }
+
+        /// <summary>
+        /// Stops all currently decoding threads, releases memory allocated by them and frees the plugin
+        /// (To be called in MonoBehaviour.OnDestroy)
+        /// </summary>
+        /// <param name="workerThreadTimeout">
+        /// How long to wait for decoding threads to cancel before deallocating memory anyways
+        /// (Which will propably result in a crash)
+        /// </param>
+        public static void Deinitialize(int workerThreadTimeout = 10000)
+        {
+            FrameReady = delegate { };
+            bool success = true;
+
+            foreach (var instance in decoders)
+                if (!instance.Wait(workerThreadTimeout))
+                    success = false;
+
+            if (!success)
+                Debug.LogWarning($"Some threads are not responding. Deallocating memory anyways, this might result in a crash.");
+
+            releaseDecoder?.Invoke();
+            FreeLibrary(dllPtr);
+        }
 
         /// <summary>
         /// Loads an instance of the given delegate from the library

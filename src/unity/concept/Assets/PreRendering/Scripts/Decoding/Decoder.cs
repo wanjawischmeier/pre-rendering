@@ -1,4 +1,3 @@
-using System.Threading;
 using System.Diagnostics;
 using System.Threading.Tasks;
 
@@ -16,6 +15,7 @@ namespace PreRendering
 
         private int threadIdx;
         private bool playing = true;
+        private long seekRequest = -1;
         private Task workerThread;
 
         public Decoder(int threadIdx, bool startPlaying = true)
@@ -24,60 +24,59 @@ namespace PreRendering
             if (startPlaying) Play();
         }
 
-        /// <summary>
-        /// Adds a frame to the decoding queue
-        /// </summary>
-        /// <param name="frameIdx">The frame to be added</param>
-        /// <param name="threadIdx">On which thread it should be decoded</param>
-        public void Decode(long frameIdx)
+        public void Play()
         {
-            pendingFrames.Add(new DecodingFrame()
+            if (playing) return;
+            workerThread = Task.Run(DecodingThread);
+        }
+
+        public void Pause()
+        {
+            Task.Run(() =>
             {
-                frameIdx = frameIdx,
-                threadIdx = threadIdx
+                Wait();
+                playing = false;
             });
         }
 
-        public bool Wait(int workerThreadTimeout = 10000)
+        private void DecodingThread()
         {
-            workerThread.Wait(workerThreadTimeout);
+            playing = true;
+            var s = new Stopwatch();
 
-            if (workerThread.Status == TaskStatus.Running)
+            while (playing)
+            {
+                if (seekRequest != -1)
+                {
+                    s.Restart();
+                    seekFrame(seekRequest, threadIdx);
+                    
+                    s.Stop();
+                    Debug.Log($"Seeking to {seekRequest} took {s.ElapsedMilliseconds}ms");
+                    seekRequest = -1;
+                }
+                else
+                {
+                    s.Restart();
+                    readFrame(Frame +1, threadIdx);
+                    s.Stop();
+                    Debug.Log($"Reading next frame took {s.ElapsedMilliseconds}ms");
+                }
+            }
+        }
+
+        private bool Wait(int workerThreadTimeout = 10000)
+        {
+            playing = false;
+            workerThread?.Wait(workerThreadTimeout);
+
+            if (workerThread?.Status == TaskStatus.Running)
             {
                 Debug.LogWarning($"Worker thread {threadIdx} not responding (waited {workerThreadTimeout}ms).");
                 return false;
             }
 
             return true;
-        }
-
-        public void Play() => workerThread = Task.Run(Worker);
-
-        public void Pause() => playing = false;
-
-        private void Worker()
-        {
-            playing = true;
-
-            var s = new Stopwatch();
-
-            while (playing)
-            {
-                if (pendingFrames.Count > 0)
-                {
-                    DecodingFrame frame = pendingFrames[0];
-                    pendingFrames.RemoveAt(0);
-                    s.Restart();
-                    readFrame(frame.frameIdx, frame.threadIdx);
-                }
-                else if (reading)
-                {
-                    reading = false;
-                    s.Stop();
-                    Debug.Log($"Reading frame took {s.ElapsedMilliseconds}ms");
-                }
-                else Thread.Sleep(100);
-            }
         }
     }
 }

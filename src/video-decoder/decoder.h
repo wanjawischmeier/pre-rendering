@@ -26,11 +26,11 @@ size_t image_size;		// The total size of an image
 int instances;
 
 
-extern "C" DECODER uchar** InitializeBuffer(
+extern "C" DECODER uchar** InitializeDecoder(
 	char* videoPath, int threads,
 	FrameCallback frameCallback, ErrorMessage errorCallback,
 	VideoInfo &rInfo);
 extern "C" DECODER size_t CurrentFrame(int threadIdx);
 extern "C" DECODER bool Seek(size_t frameIdx, int threadIdx);
 extern "C" DECODER bool Read(size_t frameIdx, int threadIdx);
-extern "C" DECODER void ReleaseBuffer();
+extern "C" DECODER void ReleaseDecoder();

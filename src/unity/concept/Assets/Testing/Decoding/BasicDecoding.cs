@@ -22,7 +22,7 @@ public class BasicDecoding : MonoBehaviour
 
         // DecoderOld.Initialize(sampleImagePath, depth, resolution.x, resolution.y);
         // buffer = new RawTexture.NativeBuffer(Decoder.bufferPointer, resolution.x, resolution.y, depth, RawTexture.Format.RGBA64);
-        decoder = new DecodingManager(sampleImagePath, 1, depth);
+        decoder = new DecodingManager(sampleImagePath, 1);
 
         material = new Material(shader);
         material.SetBuffer("RawTexture", buffer.compute);

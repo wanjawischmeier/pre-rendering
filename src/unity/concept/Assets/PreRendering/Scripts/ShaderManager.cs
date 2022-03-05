@@ -1,3 +1,4 @@
+using PreRendering;
 using System;
 using UnityEngine;
 
@@ -64,8 +65,24 @@ public class ShaderManager : MonoBehaviour
         material.SetVector("ROTATION", transform.eulerAngles * Mathf.Deg2Rad);
     }
 
-    public void BlitWithIndex(int imageIdx, ref RenderTexture destination)
+    private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
+        int imageIdx = 0;
+
+        foreach (var offset in ChunkIndexing.circularOffsets)
+        {
+            var clamped = (transform.position + offset.Expand()).ClampToChunkGrid();
+            var chunkIndex = clamped.Chunk.Global;
+            var localIndex = clamped.Grid.Local.Local;
+
+            // The point is in the buffer
+            if (ChunkIndexing.chunkIndicies[localIndex] == chunkIndex)
+            {
+                imageIdx = localIndex;
+                break;
+            }
+        }
+
         material.SetInt("IMG_IDX", imageIdx);
         Graphics.Blit(null, destination, material);
         // Graphics.Blit(chunk, destination, available, 0);
