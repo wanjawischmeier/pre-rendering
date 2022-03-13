@@ -123,7 +123,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &645520135
+--- !u!1 &97250846
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -131,8 +131,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 645520137}
-  - component: {fileID: 645520136}
+  - component: {fileID: 97250848}
+  - component: {fileID: 97250847}
   m_Layer: 0
   m_Name: Directional Light
   m_TagString: Untagged
@@ -140,13 +140,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!108 &645520136
+--- !u!108 &97250847
 Light:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 645520135}
+  m_GameObject: {fileID: 97250846}
   m_Enabled: 1
   serializedVersion: 10
   m_Type: 1
@@ -202,13 +202,13 @@ Light:
   m_UseViewFrustumForShadowCasterCull: 1
   m_ShadowRadius: 0
   m_ShadowAngle: 0
---- !u!4 &645520137
+--- !u!4 &97250848
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 645520135}
+  m_GameObject: {fileID: 97250846}
   m_LocalRotation: {x: 0.40821788, y: -0.23456968, z: 0.10938163, w: 0.8754261}
   m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
@@ -217,7 +217,7 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
---- !u!1 &1692882524
+--- !u!1 &345313642
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -225,10 +225,10 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1692882527}
-  - component: {fileID: 1692882526}
-  - component: {fileID: 1692882525}
-  - component: {fileID: 1692882528}
+  - component: {fileID: 345313645}
+  - component: {fileID: 345313644}
+  - component: {fileID: 345313643}
+  - component: {fileID: 345313646}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -236,21 +236,21 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!81 &1692882525
+--- !u!81 &345313643
 AudioListener:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1692882524}
+  m_GameObject: {fileID: 345313642}
   m_Enabled: 1
---- !u!20 &1692882526
+--- !u!20 &345313644
 Camera:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1692882524}
+  m_GameObject: {fileID: 345313642}
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 1
@@ -287,36 +287,34 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!4 &1692882527
+--- !u!4 &345313645
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1692882524}
+  m_GameObject: {fileID: 345313642}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 1, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1692882528
+--- !u!114 &345313646
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1692882524}
+  m_GameObject: {fileID: 345313642}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 40a2a1e809fb9aa4db5428e091986b52, type: 3}
+  m_Script: {fileID: 11500000, guid: 5fccd75c757248e4b90486314463d595, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  videoPath: branches\master\src\unity\concept\Assets\PreRendering\4000px_30fps_lowestq0001-0210.mp4
-  threads: 2
-  iters: 2
-  cacheSize: 2
-  imgIdx: 0
-  shader: {fileID: 4800000, guid: 7ce1fa92956a5704a83b80c5a004bbd0, type: 3}
+  material: {fileID: 2100000, guid: f85080f270030874ca8d2b8048a69c60, type: 2}
+  pos: {x: 100, y: 100}
+  scl: {x: 100, y: 100}
+  col: {r: 0, g: 0, b: 0, a: 0}

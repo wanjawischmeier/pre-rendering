@@ -1,8 +1,8 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace PreRendering
@@ -42,6 +42,7 @@ namespace PreRendering
             }
 
             config.Validate();
+
             nclip = config.nclip;
             fclip = config.fclip;
             blockWidth = config.blockWidth;
