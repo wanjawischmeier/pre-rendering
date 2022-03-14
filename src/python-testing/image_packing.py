@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+from os import getcwd
 
 def addCaption(mat, txt):
     WHITE = (0xFFFF, 0xFFFF, 0xFFFF)
@@ -11,10 +12,13 @@ def addCaption(mat, txt):
     mat = cv2.rectangle(mat, (5,5), (x+110,y+10), BLACK, -1)
     mat = cv2.putText(mat, txt, (x,y), font, font_size, WHITE, font_thickness, cv2.LINE_AA)
 
-path = "C:\\Users\\wanja\\Documents\\dev\\pre-rendering\\renders\\cycles\\row_system\\room_simple_v2_270p\\"
-path = "C:\\Users\\wanja\\Documents\\dev\\pre-rendering\\renders\\cycles\\row_system\\desert_new_540p\\"
+seperator = "pre-rendering\\"
+root = getcwd().split(seperator)[0] + seperator
+path = "renders\\cycles\\row_system\\room_simple_v2_270p\\"
+path = "renders\\cycles\\row_system\\desert_new_540p\\"
 file = "0222.png"
 file = "0071.png"
+full_path = root + path + file
 sbit = 8
 sfac = 2**sbit-1
 i_start = 240
@@ -24,7 +28,7 @@ t_end = 0xFF
 slope = (t_end - t_start) / (i_end - i_start)
 mfac = round(0xFFFF / 0xFF)
 
-img = cv2.imread(path + file, cv2.IMREAD_UNCHANGED)
+img = cv2.imread(full_path, cv2.IMREAD_UNCHANGED)
 # img = img[650:800, 450:650]
 img = img[500:900, 400:700]
 # img = cv2.resize(img, (160, 90))
@@ -48,9 +52,14 @@ for y in range(dph.shape[0]):
         dp1[y, x] = a
         dp2[y, x] = b
 
+dpm = cv2.merge([dp1, dp2, np.zeros(dp1.shape, dp1.dtype)])
+dpc = cv2.cvtColor(dpm, cv2.COLOR_BGR2YCrCb)
+
 cv2.imwrite("ref.png", ref)
 cv2.imwrite("dp1.png", dp1)
 cv2.imwrite("dp2.png", dp2)
+cv2.imwrite("dpm_bgr.png", dpm)
+cv2.imwrite("dpm_ycrcb.png", dpc)
 
 ref = cv2.imread("ref.png", cv2.IMREAD_GRAYSCALE)
 dp1 = cv2.imread("dp1.png", cv2.IMREAD_GRAYSCALE)
@@ -72,7 +81,6 @@ cv2.imwrite("ref.png", ref)
 ref = np.uint16(ref) * mfac
 dp1 = np.uint16(dp1) * mfac
 dp2 = np.uint16(dp2) * mfac
-dpm = cv2.merge([dp1, dp2, np.zeros(dp1.shape, dp1.dtype)])
 
 img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
 dph = cv2.cvtColor(dph, cv2.COLOR_GRAY2BGR)
@@ -80,6 +88,7 @@ ref = cv2.cvtColor(ref, cv2.COLOR_GRAY2BGR)
 dp1 = cv2.cvtColor(dp1, cv2.COLOR_GRAY2BGR)
 dp2 = cv2.cvtColor(dp2, cv2.COLOR_GRAY2BGR)
 dp3 = cv2.cvtColor(dp3, cv2.COLOR_GRAY2BGR)
+
 
 addCaption(dph, "16-bit")
 addCaption(ref, "8-bit")

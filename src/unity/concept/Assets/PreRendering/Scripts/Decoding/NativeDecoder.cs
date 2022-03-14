@@ -119,7 +119,7 @@ namespace PreRendering
                 .Replace(": error:", "\nerror:")
                 .Replace(") ", ")\n");
 
-            Debug.LogError($"VideoPlayerNativePlugin: {message}\n{openCvInfo} {2}");
+            Debug.LogError($"VideoPlayerNativePlugin: {message}\n{openCvInfo}\n{errorMessage}");
         }
 
         #endregion

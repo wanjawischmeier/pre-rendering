@@ -24,7 +24,7 @@ uchar** InitializeDecoder(
     }
     catch (const Exception& ex)
     {
-        error_callback("Error while opening Video Capture", ex.what());
+        error_callback("Error while opening Video Capture ", ex.what());
         return nullptr;
     }
 
