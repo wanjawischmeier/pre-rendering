@@ -70,6 +70,8 @@ DECODER bool Seek(size_t frameIdx, int threadIdx)
 
     VideoCapture cap = pCaps[threadIdx];
     cap.set(CAP_PROP_POS_FRAMES, (double)frameIdx);
+
+    return true;
 }
 
 extern "C" DECODER bool Read(size_t frameIdx, int threadIdx)
