@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Threading.Tasks;
-
 using Debug = UnityEngine.Debug;
 
 namespace PreRendering
@@ -30,42 +29,38 @@ namespace PreRendering
             workerThread = Task.Run(DecodingThread);
         }
 
-        public void Pause()
-        {
-            Task.Run(() =>
-            {
-                Wait();
-                playing = false;
-            });
-        }
+        public void Pause() => Task.Run(Wait);
 
-        private void DecodingThread()
+        public bool Decode(long frameIdx)
         {
-            playing = true;
-            var s = new Stopwatch();
+            var stopwatch = new Stopwatch();
 
-            while (playing)
+            stopwatch.Start();
+            bool success = seekFrame(frameIdx, threadIdx);
+            stopwatch.Stop();
+
+            if (!success)
             {
-                if (seekRequest != -1)
-                {
-                    s.Restart();
-                    seekFrame(seekRequest, threadIdx);
-                    
-                    s.Stop();
-                    Debug.Log($"Seeking to {seekRequest} took {s.ElapsedMilliseconds}ms");
-                    seekRequest = -1;
-                }
-                else
-                {
-                    s.Restart();
-                    readFrame(Frame +1, threadIdx);
-                    s.Stop();
-                    Debug.Log($"Reading next frame took {s.ElapsedMilliseconds}ms");
-                }
+                Debug.LogError($"Failed to seek to frame {frameIdx}");
+                return false;
             }
+            Debug.Log($"Seeking to {frameIdx} took {stopwatch.ElapsedMilliseconds}ms");
+
+            stopwatch.Restart();
+            success = readFrame(frameIdx, threadIdx);
+            stopwatch.Stop();
+
+            if (!success)
+            {
+                Debug.LogError($"Failed to seek to frame {frameIdx}");
+                return false;
+            }
+            Debug.Log($"Reading frame {frameIdx} took {stopwatch.ElapsedMilliseconds}ms");
+
+            return true;
         }
 
-        private bool Wait(int workerThreadTimeout = 10000)
+        private bool Wait()
         {
             playing = false;
             workerThread?.Wait(workerThreadTimeout);

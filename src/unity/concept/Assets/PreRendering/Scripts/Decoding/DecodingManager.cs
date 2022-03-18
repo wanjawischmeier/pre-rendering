@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Debug = UnityEngine.Debug;
-using ThreadPriority = System.Threading.ThreadPriority;
 
 namespace PreRendering
 {
@@ -21,6 +20,7 @@ namespace PreRendering
         public ThreadPriority priority;
         public readonly DecodingBuffer buffer;
 
+        private readonly Decoder[] decoders;
         private readonly List<long> lowPriority, highPriority, decoding;
         private readonly Dictionary<long, int> decoded;
         private readonly int decodingThreads;
@@ -46,16 +46,23 @@ namespace PreRendering
         {
             this.decodingThreads = decodingThreads;
 
-            priority = ThreadPriority.Lowest;
-
             lowPriority = new List<long>();
             highPriority = new List<long>();
             decoding = new List<long>();
             decoded = new Dictionary<long, int>();
 
-            Decoder.Initialize(relativeVideoPath, decodingThreads, out IntPtr[] dataPointers);
+            decoders = Decoder.Initialize(relativeVideoPath, decodingThreads, out IntPtr[] dataPointers);
             buffer = new DecodingBuffer(dataPointers, Decoder.info, decodingThreads, DecodingBuffer.BufferFormat.RGB24);
+
+            Decoder.FrameReady += OnFrameReady;
+            Decoder.invokeFrameReadyEvents = true;
         }
+
+        public bool Decode(long frameIdx)
+        {
+            return false;
+        }
+
         /*
         public bool DecodeToBufferAsync(long frameIdx, bool allowPending = true)
         {
@@ -123,6 +130,12 @@ namespace PreRendering
 
             buffer.Release();
             Decoder.Deinitialize();
+        }
+
+        private void OnFrameReady(long frameIdx, int threadIdx)
+        {
+            Debug.Log($"FrameReady callback for frame {frameIdx} from thread {threadIdx} invoked");
+            buffer.Add(frameIdx, threadIdx);
         }
     }
 }

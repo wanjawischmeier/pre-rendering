@@ -315,8 +315,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   videoPath: cycles\chunk_system\chunk_debugger\quality_sets\4000px_30fps_lowestq0001-0210.mp4
-  threads: 2
-  iters: 2
-  cacheSize: 2
+  threads: 5
+  iters: 5
+  cacheSize: 10
   imgIdx: 0
   shader: {fileID: 4800000, guid: 7ce1fa92956a5704a83b80c5a004bbd0, type: 3}

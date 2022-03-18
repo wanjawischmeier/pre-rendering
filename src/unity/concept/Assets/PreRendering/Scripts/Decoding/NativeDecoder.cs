@@ -1,8 +1,5 @@
 using System;
 using System.IO;
-using System.Threading;
-using System.Diagnostics;
-using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
@@ -86,6 +83,12 @@ namespace PreRendering
 
         private const string relativeDllPath = "branches\\master\\src\\video-decoder\\x64\\Debug\\video-decoder.dll";
 
+        /// <summary>
+        /// How long to wait for decoding threads to cancel before deallocating memory anyways
+        /// (Which will propably result in a crash)
+        /// </summary>
+        private const int workerThreadTimeout = 10000;
+
         public static int ImageSize => info.width * info.height * 3;
 
         #endregion
@@ -130,7 +133,7 @@ namespace PreRendering
         /// <param name="relativeVideoPath">The video path relative to the repo root directory</param>
         /// <param name="threads">How many instances should be prepared</param>
         /// <param name="dataPointers">Pointers to the data field of each instance</param>
-        public static void Initialize(string relativeVideoPath, int threads, out IntPtr[] dataPointers)
+        public static Decoder[] Initialize(string relativeVideoPath, int threads, out IntPtr[] dataPointers)
         {
             string[] seperator = new string[] { "pre-rendering" };
             string[] split = Application.dataPath.Split(seperator, StringSplitOptions.None);
@@ -143,7 +146,7 @@ namespace PreRendering
             {
                 Debug.LogError($"Failed to load video decoding library at {dllPath}");
                 dataPointers = null;
-                return;
+                return null;
             }
 
             initializeDecoder = LoadFromLibrary<InitializationHandler>("InitializeDecoder");
@@ -154,10 +157,6 @@ namespace PreRendering
 
             pendingFrames = new List<DecodingFrame>();
 
-            decoders = new Decoder[threads];
-            for (int i = 0; i < threads; i++)
-                decoders[i] = new Decoder(i);
-
             bufferPtr = initializeDecoder(
                 videoPath, threads,
                 OnFrameReady, OnError,
@@ -166,23 +165,25 @@ namespace PreRendering
             dataPtr = new IntPtr[threads];
             Marshal.Copy(bufferPtr, dataPtr, 0, dataPtr.Length);
             dataPointers = dataPtr;
+
+            decoders = new Decoder[threads];
+            for (int i = 0; i < threads; i++)
+                decoders[i] = new Decoder(i);
+
+            return decoders;
         }
 
         /// <summary>
         /// Stops all currently decoding threads, releases memory allocated by them and frees the plugin
         /// (To be called in MonoBehaviour.OnDestroy)
         /// </summary>
-        /// <param name="workerThreadTimeout">
-        /// How long to wait for decoding threads to cancel before deallocating memory anyways
-        /// (Which will propably result in a crash)
-        /// </param>
-        public static void Deinitialize(int workerThreadTimeout = 10000)
+        public static void Deinitialize()
         {
             FrameReady = delegate { };
             bool success = true;
 
-            foreach (var instance in decoders)
-                if (!instance.Wait(workerThreadTimeout))
+            foreach (var decoder in decoders)
+                if (!decoder.Wait())
                     success = false;
 
             if (!success)

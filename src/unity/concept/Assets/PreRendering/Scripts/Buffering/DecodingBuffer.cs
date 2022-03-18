@@ -54,9 +54,7 @@ namespace PreRendering
 
         public void Release() => compute.Release();
 
-        public override void SetData(int nativeIdx, int bufferIdx)
-        {
+        public override void SetData(int nativeIdx, int bufferIdx) =>
             compute.SetData(native[nativeIdx], 0, imageSize * bufferIdx, imageSize);
-        }
     }
 }

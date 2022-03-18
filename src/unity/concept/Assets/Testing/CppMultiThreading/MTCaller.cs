@@ -11,6 +11,7 @@ public class MTCaller : MonoBehaviour
     public Shader shader;
 
     private DecodingBuffer buffer;
+    private Decoder[] decoders;
     private Material material;
 
     private void Start()
@@ -18,7 +19,7 @@ public class MTCaller : MonoBehaviour
         Screen.SetResolution(1280, 720, false);
         Application.targetFrameRate = Screen.currentResolution.refreshRate;
 
-        Decoder.Initialize(videoPath, threads, out IntPtr[] dataPointers);
+        decoders = Decoder.Initialize(videoPath, threads, out IntPtr[] dataPointers);
         Decoder.FrameReady += OnFrameReady;
         Decoder.invokeFrameReadyEvents = true;
 
@@ -53,7 +54,7 @@ public class MTCaller : MonoBehaviour
 
             // Can only be called on the main thread!
             int frame = Random.Range(0, (int)Decoder.info.frame_count - 1);
-            // Decoder.Decode(i, i);
+            decoders[i].Decode(frame);
         }
     }
 
