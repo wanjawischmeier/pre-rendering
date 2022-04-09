@@ -9,9 +9,10 @@ public class MTCaller : MonoBehaviour
     public string videoPath;
     public int threads, iters, cacheSize, imgIdx;
     public Shader shader;
+    public MapConfig config;
+    public int searchCircleRadius = 3;
 
-    private DecodingBuffer buffer;
-    private Decoder[] decoders;
+    private DecodingManager manager;
     private Material material;
 
     private void Start()
@@ -19,15 +20,12 @@ public class MTCaller : MonoBehaviour
         Screen.SetResolution(1280, 720, false);
         Application.targetFrameRate = Screen.currentResolution.refreshRate;
 
-        decoders = Decoder.Initialize(videoPath, threads, out IntPtr[] dataPointers);
-        Decoder.FrameReady += OnFrameReady;
-        Decoder.invokeFrameReadyEvents = true;
-
-        buffer = new DecodingBuffer(dataPointers, Decoder.info, cacheSize, DecodingBuffer.BufferFormat.RGB24);
-
+        ChunkIndexing.CalculateConstants(config, searchCircleRadius);
+        manager = new DecodingManager(videoPath, threads);
+        
         material = new Material(shader);
         material.SetVector("Resolution", new Vector2(Decoder.info.width, Decoder.info.height));
-        material.SetBuffer("InputBuffer", buffer.compute);
+        material.SetBuffer("InputBuffer", manager.buffer.compute);
         material.SetInt("ImgIdx", -1);
 
         StartCoroutine(TestSeeks());
@@ -35,15 +33,13 @@ public class MTCaller : MonoBehaviour
 
     private void Update()
     {
-        buffer.Refresh();
+        manager.Refresh();
         material.SetInt("ImgIdx", imgIdx);
     }
 
     private void OnDestroy()
     {
-        Decoder.FrameReady -= OnFrameReady;
-        Decoder.Deinitialize();
-        buffer.Release();
+        manager.Release();
     }
 
     private IEnumerator TestSeeks()
@@ -54,14 +50,8 @@ public class MTCaller : MonoBehaviour
 
             // Can only be called on the main thread!
             int frame = Random.Range(0, (int)Decoder.info.frame_count - 1);
-            decoders[i].Decode(frame);
+            manager.Decode(frame, i);
         }
-    }
-
-    private void OnFrameReady(long frameIdx, int threadIdx)
-    {
-        Debug.Log($"FrameReady callback for frame {frameIdx} from thread {threadIdx} invoked");
-        buffer.Add(frameIdx, threadIdx);
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)

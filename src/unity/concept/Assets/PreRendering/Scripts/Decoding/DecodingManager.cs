@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Debug = UnityEngine.Debug;
+using UnityEngine;
 
 namespace PreRendering
 {
@@ -17,13 +18,15 @@ namespace PreRendering
     {
         #region Variables
 
-        public ThreadPriority priority;
         public readonly DecodingBuffer buffer;
 
         private readonly Decoder[] decoders;
         private readonly List<long> lowPriority, highPriority, decoding;
         private readonly Dictionary<long, int> decoded;
         private readonly int decodingThreads;
+        private ChunkIndexing.ChunkIndex chunkIndex;
+        private ChunkIndexing.GlobalIndex globalIndex;
+        private bool correctChunkIndex;
 
         #endregion
 
@@ -39,6 +42,11 @@ namespace PreRendering
         public bool IsDecoded(long frameIdx) => false; // buffer.Contains(index);
 
         public bool IsProcessing(long frameIdx) => IsPending(frameIdx) || IsDecoding(frameIdx);
+
+        public Vector3 Position
+        {
+            set => correctChunkIndex = ChunkIndexing.CorrectChunkIndex(globalIndex, value, out chunkIndex, out globalIndex);
+        }
 
         #endregion
 
@@ -58,9 +66,9 @@ namespace PreRendering
             Decoder.invokeFrameReadyEvents = true;
         }
 
-        public bool Decode(long frameIdx)
+        public bool Decode(long frameIdx, int bufferIdx)
         {
-            return false;
+            return decoders[bufferIdx].Decode(frameIdx);
         }
 
         /*
@@ -104,7 +112,8 @@ namespace PreRendering
         */
         public void Refresh()
         {
-            var currentlyDecoded = decoded.ToArray();
+            buffer.Refresh();
+            // var currentlyDecoded = decoded.ToArray();
             /*
             if (!cancelRequest && decoding.Count < decodingThreads && lowPriority.Count > 0 && lowPriority.Count < maxPending)
                 Debug.Log($"{cancelRequest} {decoding.Count} {lowPriority.Count}");
@@ -114,6 +123,8 @@ namespace PreRendering
 
         public void Release()
         {
+            Decoder.FrameReady -= OnFrameReady;
+
             Stopwatch timeWaiting = Stopwatch.StartNew();
             for (int i = 0; i < 20; i++)
             {
@@ -136,6 +147,30 @@ namespace PreRendering
         {
             Debug.Log($"FrameReady callback for frame {frameIdx} from thread {threadIdx} invoked");
             buffer.Add(frameIdx, threadIdx);
+
+            var globalIndex = frameIdx.GetGlobalIndex(out int channelBlock);
+            int localIndex = globalIndex.Local;
+
+            var decoder = Decoder.decoders[threadIdx];
+
+            // Graphics.CopyTexture(source.texture, 0, chunk, localIndex);
+            ChunkIndexing.chunkIndicies[localIndex] = chunkIndex;
+            // buffer.SetData(ChunkIndexing.chunkIndicies, localIndex, localIndex, 1);
+
+            // Finished decoding channel block of chunk
+            if ((frameIdx + 1) % ChunkIndexing.chunkSize == 0 && (frameIdx + 1) - channelBlock * ChunkIndexing.totalSize != 0)
+            {
+                ChunkIndexing.chunkIndicies[localIndex] = chunkIndex;
+                // buffer.SetData(ChunkIndexing.chunkIndicies, localIndex, localIndex, 1);
+
+                Debug.LogFormat("Finished decoding channel block {0} of chunk {1}.", channelBlock, (int)chunkIndex);
+                decoder.Pause();
+                return;
+            }
+
+            // Player is loading the wrong chunk
+            if (!correctChunkIndex)
+                decoder.Frame = globalIndex;
         }
     }
 }

@@ -2,7 +2,7 @@ float PI, PI2, NegativeInfinity, PositiveInfinity;
 
 struct circularSamples
 {
-    float4 s0, s1, s2, s3, s4, s5, s6, s7, s8;
+    half4 s0, s1, s2, s3, s4, s5, s6, s7, s8;
 };
 
 struct cRay
@@ -14,6 +14,14 @@ struct boundingBox
 {
     float3 min, max;
 };
+
+float magnitude(float2 vec)
+{
+    return sqrt(
+        vec.x * vec.x +
+        vec.y * vec.y
+    );
+}
 
 float magnitude(float3 vec)
 {
@@ -113,4 +121,32 @@ float4 blur(circularSamples s, float amount)
 {
     float4 averaged = (s.s0 + s.s1 + s.s2 + s.s3 + s.s4 + s.s5 + s.s6 + s.s7 + s.s8) / 9;
     return averaged * amount + s.s4 * (1 - amount);
+}
+
+// Ported from https://www.shadertoy.com/view/3lycWz, NOT WORKING!!!
+float3 yuv2rgb(float3 yuv)
+{
+    float y = yuv.x;
+    float u = yuv.y;
+    float v = yuv.z;
+    
+    return float3(
+        y + 1.0 / 0.877 * v,
+        y - 0.39393 * u - 0.58081 * v,
+        y + 1.0 / 0.493 * u
+    );
+}
+
+half unpackDepth(fixed3 packed)
+{
+    int a = packed.b * 0xFF;
+    int b = packed.g * 0xFF;
+    int c = (a << 8) | b;
+    return (half)c / 0xFFFF;
+}
+
+// Based on https://stackoverflow.com/a/3027595
+float3 contrast(float3 col, float amount)
+{
+    return ((col.rgb - 0.5f) * max(amount, 0)) + 0.5f;
 }
