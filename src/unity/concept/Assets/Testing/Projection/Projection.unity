@@ -316,18 +316,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cd29e12c847cfd1428b9c1679ec72883, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  path: C:\Users\wanja\Documents\dev\pre-rendering\renders\cycles\row_system\room_simple_v2_270p\maps0072
-  files:
-  - col_rgb.png
-  - dph_rgb.png
-  - dph_ycrcb.png
+  path: C:\Users\wanja\Documents\dev\pre-rendering\renders\cycles\single\single_cube
   img: 0
-  chn: 0
   lm: 1
   shader: {fileID: 4800000, guid: 73c549cc703570c48a640a58a94eb33b, type: 3}
   config:
-    nclip: 0.1
-    fclip: 20
+    nclip: 2
+    fclip: 4
     blockWidth: 0
     blockHeight: 0
     chunkWidth: 0
@@ -341,7 +336,7 @@ MonoBehaviour:
   mistFalloff: 0.1
   mistColor: {r: 1, g: 1, b: 1, a: 1}
   pIcon: 0.05
-  texture: {fileID: 0}
+  textures: {fileID: 0}
 --- !u!114 &1195245962
 MonoBehaviour:
   m_ObjectHideFlags: 0

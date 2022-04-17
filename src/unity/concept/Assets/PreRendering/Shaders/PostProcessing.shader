@@ -29,20 +29,20 @@ Shader "PreRendering/PostProcessing"
 
 			UNITY_DECLARE_TEX2DARRAY(_InputBuffer);
             StructuredBuffer<int> ChunkIndicies;
-			float FOV, NCLIP, FCLIP, CUTOFF, DOF_INTENSITY, MIST_FALLOFF, MIST_OFFSET, PLAYER_ICON, LM;
+			float FOV, NCLIP, FCLIP, CUTOFF, DOF_INTENSITY, MIST_FALLOFF, MIST_OFFSET, PLAYER_ICON;
 			float2 ROTATION, InputBufferResolution;
 			float3 POSITION, POSITION_OFFSET, MIST_COL;
-			int DEBUG, IMG_IDX, CHANNEL;
+			int DEBUG, IMG_IDX;
 
 			half sampleDepthChannel(float2 tc, int idx)
 			{
-				fixed3 dpm = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, float3(tc, idx + 1));
+				fixed3 dpm = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, float3(tc, idx * 2 + 1));
 				return unpackDepth(dpm);
 			}
 
 			half4 samplePackedArray(float2 tc, float idx)
 			{
-				fixed3 col = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, float3(tc, idx));
+				fixed3 col = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, float3(tc, idx * 2));
 				return half4(col, sampleDepthChannel(tc, idx));
 			}
 
@@ -77,8 +77,8 @@ Shader "PreRendering/PostProcessing"
 			{
 				float2 ll1 = normalizedToLatLon(tc.yx);
 
-				fixed3 dpm = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, float3(tc, idx));
-				half CP = sampleDepthChannel(tc, idx);
+				// half CP = sampleDepthChannel(tc, idx);
+				half CP = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, float3(tc, idx)).a;
 				CP *= (FCLIP - NCLIP) + NCLIP;
 
 				float2 ll2 = translateLatLon(ll1, offset, CP);
@@ -98,6 +98,31 @@ Shader "PreRendering/PostProcessing"
 				// Projection
 				float2 tc = gnomonicProjection(i.uv, FOV, ROTATION.x, ROTATION.y);
 				float2 pc = project(tc, IMG_IDX, POSITION - POSITION_OFFSET);
+				/*
+				float2 pc0 = project(tc, IMG_IDX, POSITION);
+				float2 pc1 = project(tc, IMG_IDX + 4, POSITION - float3(0, 0, 4));
+				float2 avg = (pc0 + pc1) / 2;
+				*/
+
+				fixed4 col = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, float3(pc, IMG_IDX));
+
+				// Debug
+				switch (DEBUG)
+				{
+				case 1:
+					return fixed4(tc, 0, 1);
+				case 2:
+					return fixed4(pc.xy, 0, 1);
+				case 5:
+					return fixed4(col.aaa, 1);
+				}
+
+				return col;
+				/*
+				if (magnitude(avg - pc0) < magnitude(avg - pc1))
+					return samplePackedArray(pc0, IMG_IDX);
+				else
+					return samplePackedArray(pc1, IMG_IDX + 4);
 				
 				// Sampling
 				float2 texelSize = 1 / InputBufferResolution;
@@ -135,6 +160,7 @@ Shader "PreRendering/PostProcessing"
 				col = MIST_COL.rgbb * eDist + col * (1 - eDist);
 				
 				return col;
+				*/
 				// fixed4 col = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, float3(pc, IMG_IDX));
 				// fixed4 col = UNITY_SAMPLE_TEX2DARRAY(_InputBuffer, float3(i.uv, IMG_IDX));
 				/*

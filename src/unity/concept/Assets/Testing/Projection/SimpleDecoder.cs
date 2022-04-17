@@ -6,9 +6,7 @@ using static ShaderManager;
 public class SimpleDecoder : MonoBehaviour
 {
     public string path;
-    public string[] files;
-    [Range(0, 2)]
-    public int img, chn;
+    public int img;
     public float lm;
     public Shader shader;
     public MapConfig config;
@@ -19,8 +17,8 @@ public class SimpleDecoder : MonoBehaviour
     public float mistFalloff = 0.1f;
     public Color mistColor = Color.white;
     public float pIcon = 0.05f;
-    public Texture2D texture;
-    Texture2DArray textures;
+    public Texture2DArray textures;
+    Texture2D texture;
     Material material;
     Camera mainCamera;
 
@@ -28,10 +26,11 @@ public class SimpleDecoder : MonoBehaviour
     {
         texture = new Texture2D(0, 0, TextureFormat.RGB24, false);
 
+        string[] files = Directory.GetFiles(path, "*.png");
         string sampleFile = Path.Combine(path, files[0]);
         byte[] data = File.ReadAllBytes(sampleFile);
         texture.LoadImage(data);
-
+        
         textures = new Texture2DArray(texture.width, texture.height, files.Length, texture.format, false);
 
         for (int i = 0; i < files.Length; i++)
@@ -61,7 +60,6 @@ public class SimpleDecoder : MonoBehaviour
     {
         material.SetInt("DEBUG", (int)shaderDebugging);
         material.SetInt("IMG_IDX", img);
-        material.SetInt("CHANNEL", chn);
         material.SetFloat("FOV", mainCamera.fieldOfView * Mathf.Deg2Rad);
         material.SetFloat("LM", lm);
         material.SetFloat("PLAYER_ICON", pIcon);
