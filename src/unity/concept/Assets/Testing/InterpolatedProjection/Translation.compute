@@ -1,0 +1,106 @@
+#pragma kernel Translation
+#pragma kernel Interpolation
+
+int MAX_INTERP_ITERS;
+float PI, PI2, FOV, NCLIP, FCLIP;
+float2 INPUT_RESOLUTION;
+float3 POSITION;
+float IMG_IDX;
+float MULTIPLIERS[8];
+
+StructuredBuffer<float3> OffsetBuffer;
+Texture2DArray<float4> InputBuffer;
+RWTexture2D<float4> Translated;
+Texture2D<float4> InputTranslated;
+RWTexture2D<float4> Result;
+bool Debug;
+
+[numthreads(8, 8, 1)]
+void Translation(uint3 id : SV_DispatchThreadID)
+{   
+    float2 ll1 = id.yx / INPUT_RESOLUTION.yx * float2(PI, PI2);
+    ll1.y += PI;
+    
+    float CP = InputBuffer[id.xyz].a * (FCLIP - NCLIP) + NCLIP;
+    
+    float3 P = float3(
+        CP * sin(ll1.y) * sin(ll1.x),
+        CP * cos(ll1.x),
+        CP * cos(ll1.y) * sin(ll1.x)
+    );
+    
+    P += POSITION;
+    P += OffsetBuffer[id.z];
+    
+    float d = sqrt(P.x * P.x + P.y * P.y + P.z * P.z);
+    
+    float2 ll2 = float2(
+        acos(P.y / d),
+        atan2(P.x, P.z)
+    );
+    
+    float2 a = float2(
+        ll2.y / PI2,
+        ll2.x / PI
+    );
+    a.x += 0.5;
+    
+    float2 idx = round(a * INPUT_RESOLUTION);
+    
+    if (Debug)
+    {
+        Translated[idx] = float4(
+            id.z == 0 ? 1 : 0,
+            id.z == 1 || id.z == 3 ? 1 : 0,
+            id.z == 2 || id.z == 3 ? 1 : 0,
+            1);
+    }
+    else if (all(Translated[idx] == 0) || InputBuffer[id.xyz].a < Translated[idx].a)
+    {
+        Translated[idx] = InputBuffer[id.xyz];
+    }
+    
+}
+
+
+[numthreads(8, 8, 1)]
+void Interpolation(uint3 id : SV_DispatchThreadID)
+{
+    float4 col = InputTranslated[id.xy];
+    
+    if (col.a == 0)
+    {
+        float4 nbs[4];
+        float4 avg = float4(0, 0, 0, 0);
+        float found = 4;
+        
+        for (int i = 0; i < 4; i++)
+        {
+            for (int j = 0; j < MAX_INTERP_ITERS; j++)
+            {
+                uint2 mlt = uint2(MULTIPLIERS[i * 2], MULTIPLIERS[i * 2 + 1]);
+                uint2 ttc = id.xy + j * mlt;
+                float4 tcl = InputTranslated[ttc];
+                
+                if (tcl.a != 0)
+                {
+                    nbs[i] = tcl;
+                    avg += tcl;
+                    // found += 1;
+                    break;
+                }
+            }
+        }
+        
+        if (found == 0)
+        {
+            Result[id.xy] = float4(1, 0, 1, 1);
+        }
+        
+        Result[id.xy] = avg / found;
+    }
+    else
+    {
+        Result[id.xy] = col;
+    }
+}
