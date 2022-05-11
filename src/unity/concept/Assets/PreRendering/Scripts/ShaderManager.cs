@@ -30,7 +30,8 @@ public class ShaderManager : MonoBehaviour
         ProjectedCoordinates,
         Normals,
         DepthOfField,
-        DepthBuffer
+        DepthBuffer,
+        Interpolation
     }
 
     #endregion

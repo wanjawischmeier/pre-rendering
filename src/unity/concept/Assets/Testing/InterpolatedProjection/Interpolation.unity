@@ -123,7 +123,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &645520135
+--- !u!1 &1861332973
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -131,8 +131,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 645520137}
-  - component: {fileID: 645520136}
+  - component: {fileID: 1861332975}
+  - component: {fileID: 1861332974}
   m_Layer: 0
   m_Name: Directional Light
   m_TagString: Untagged
@@ -140,13 +140,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!108 &645520136
+--- !u!108 &1861332974
 Light:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 645520135}
+  m_GameObject: {fileID: 1861332973}
   m_Enabled: 1
   serializedVersion: 10
   m_Type: 1
@@ -202,13 +202,13 @@ Light:
   m_UseViewFrustumForShadowCasterCull: 1
   m_ShadowRadius: 0
   m_ShadowAngle: 0
---- !u!4 &645520137
+--- !u!4 &1861332975
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 645520135}
+  m_GameObject: {fileID: 1861332973}
   m_LocalRotation: {x: 0.40821788, y: -0.23456968, z: 0.10938163, w: 0.8754261}
   m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
@@ -217,7 +217,7 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
---- !u!1 &1692882524
+--- !u!1 &2083363978
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -225,10 +225,10 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1692882527}
-  - component: {fileID: 1692882526}
-  - component: {fileID: 1692882525}
-  - component: {fileID: 1692882528}
+  - component: {fileID: 2083363981}
+  - component: {fileID: 2083363980}
+  - component: {fileID: 2083363979}
+  - component: {fileID: 2083363982}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -236,21 +236,21 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!81 &1692882525
+--- !u!81 &2083363979
 AudioListener:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1692882524}
+  m_GameObject: {fileID: 2083363978}
   m_Enabled: 1
---- !u!20 &1692882526
+--- !u!20 &2083363980
 Camera:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1692882524}
+  m_GameObject: {fileID: 2083363978}
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 1
@@ -287,13 +287,13 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!4 &1692882527
+--- !u!4 &2083363981
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1692882524}
+  m_GameObject: {fileID: 2083363978}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
@@ -302,31 +302,32 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1692882528
+--- !u!114 &2083363982
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1692882524}
+  m_GameObject: {fileID: 2083363978}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 40a2a1e809fb9aa4db5428e091986b52, type: 3}
+  m_Script: {fileID: 11500000, guid: 2ba65e993a5eb3b42add68b289c6efa4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  videoPath: cycles\chunk_system\chunk_debugger\quality_sets\4000px_30fps_lowestq0001-0210.mp4
-  threads: 5
-  iters: 5
-  cacheSize: 10
-  imgIdx: 0
-  shader: {fileID: 4800000, guid: 7ce1fa92956a5704a83b80c5a004bbd0, type: 3}
+  path: C:\Users\wanja\Documents\dev\pre-rendering\renders\cycles\single\single_cube
+  img: 0
+  maxInterpolationIters: 10
+  computeShader: {fileID: 7200000, guid: c3025310a30340343ae8aa0a7a98674a, type: 3}
+  shader: {fileID: 4800000, guid: d7ed42da57ae4ae41afc34afef1e02d1, type: 3}
   config:
-    nclip: 0
-    fclip: 0
-    blockWidth: 1
-    blockHeight: 1
-    chunkWidth: 4
-    chunkColumns: 5
-    chunkRows: 5
-    channelBlocks: 1
-  searchCircleRadius: 3
+    nclip: 2
+    fclip: 4
+    blockWidth: 0
+    blockHeight: 0
+    chunkWidth: 0
+    chunkColumns: 0
+    chunkRows: 0
+    channelBlocks: 0
+  textures: {fileID: 0}
+  offsets:
+  - {x: 0, y: 0, z: -1}

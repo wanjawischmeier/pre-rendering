@@ -210,6 +210,11 @@ namespace PreRendering
         {
             Type type = typeof(T);
             IntPtr dllAddr = GetProcAddress(dllPtr, name);
+            if (dllAddr == IntPtr.Zero)
+            {
+                Debug.LogError($"Failed to get process address for {name}");
+                return default(T);
+            }
             Delegate @delegate = Marshal.GetDelegateForFunctionPointer(dllAddr, type);
             return (T)(object)@delegate;
         }
