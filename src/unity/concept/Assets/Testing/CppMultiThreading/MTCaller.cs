@@ -19,13 +19,13 @@ public class MTCaller : MonoBehaviour
     {
         Screen.SetResolution(1280, 720, false);
         Application.targetFrameRate = Screen.currentResolution.refreshRate;
-
+        /*
         decoders = Decoder.Initialize(videoPath, threads, out IntPtr[] dataPointers);
         Decoder.FrameReady += OnFrameReady;
         Decoder.invokeFrameReadyEvents = true;
 
         buffer = new DecodingBuffer(dataPointers, Decoder.info, DecodingBuffer.BufferFormat.RGB24);
-
+        */
         ChunkIndexing.CalculateConstants(config, searchCircleRadius);
         manager = new DecodingManager(videoPath, threads);
         

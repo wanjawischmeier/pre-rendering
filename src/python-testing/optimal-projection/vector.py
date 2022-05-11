@@ -1,5 +1,4 @@
-from xml.dom.expatbuilder import Rejecter
-from cv2 import sqrt
+from math import sqrt
 
 
 class Vector2:
@@ -8,25 +7,18 @@ class Vector2:
         self.y = y
 
     @property
-    def magnitude(self) -> float:
-        return sqrt(
-            self.x**2 +
-            self.y**2
-        )
-
-    @property
     def yx(self):
         return Vector2(self.y, self.x)
 
     @staticmethod
     def multiply(a, b):
-        return (
+        return Vector2(
             a.x * b.x,
             a.y * b.y
         )
 
     def divide(a, b):
-        return (
+        return Vector2(
             a.x / b.x,
             a.y / b.y
         )
@@ -34,6 +26,13 @@ class Vector2:
     @staticmethod
     def round(vec):
         return Vector2(round(vec.x), round(vec.y))
+
+    @staticmethod
+    def magnitude(a) -> float:
+        return sqrt(
+            a.x**2 +
+            a.y**2
+        )
         
 
 class Vector3:
@@ -41,6 +40,14 @@ class Vector3:
         self.x = x
         self.y = y
         self.z = z
+
+    @staticmethod
+    def add(a, b):
+        return Vector3(
+            a.x + b.x,
+            a.y + b.y,
+            a.z + b.z
+        )
 
     @staticmethod
     def multiply(a, b):

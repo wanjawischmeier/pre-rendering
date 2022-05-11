@@ -25,6 +25,7 @@ public class Importance : MonoBehaviour
     {
         result = new RenderTexture(texture.width, texture.height, 0);
         result.enableRandomWrite = true;
+        result.filterMode = FilterMode.Point;
 
         kernel = computeShader.FindKernel("Importance");
         computeShader.SetTexture(kernel, "Input", texture);
