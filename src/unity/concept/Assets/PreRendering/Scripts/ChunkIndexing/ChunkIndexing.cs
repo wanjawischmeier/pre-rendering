@@ -14,10 +14,10 @@ namespace PreRendering
 
         #endregion
 
-        public static void CalculateConstants(MapConfig config, int searchCircleRadius)
+        public static void CalculateConstants(MapConfig config, int searchDistance, bool absoluteDistance = false)
         {
             ChunkIndexing.config = config;
-            circleRadius = searchCircleRadius;
+            circleRadius = searchDistance;
 
             chunkSize = Mathf.RoundToInt(Mathf.Pow(config.chunkWidth, 2));
             totalSize = chunkSize * config.chunkColumns * config.chunkRows;
@@ -25,7 +25,7 @@ namespace PreRendering
             // Based on https://stackoverflow.com/a/31864777/13215204
             int x = 0;
             int y = 0;
-            int numPoints = Mathf.RoundToInt(Mathf.Pow(2 * circleRadius - 1, 2));
+            int numPoints = absoluteDistance ? searchDistance : Mathf.RoundToInt(Mathf.Pow(2 * circleRadius - 1, 2));
             circularOffsets = new Vector2[numPoints];
             chunkIndicies = new int[chunkSize * config.channelBlocks];
 
@@ -47,7 +47,12 @@ namespace PreRendering
         /// <summary>
         /// Clamp the position vector to the grid bounds to avoid errors
         /// </summary>
-        public static ClampedPosition ClampToChunkGrid(this Vector3 position, int channelBlock = 0) => new ClampedPosition(position.Flatten(), channelBlock);
+        public static ClampedPosition ClampToChunkGrid(this Vector2 position, int channelBlock = 0) => new ClampedPosition(position, channelBlock);
+
+        /// <summary>
+        /// Clamp the position vector to the grid bounds to avoid errors
+        /// </summary>
+        public static ClampedPosition ClampToChunkGrid(this Vector3 position, int channelBlock = 0) => ClampToChunkGrid(position.Flatten(), channelBlock);
 
         public static GlobalIndex GetGlobalIndex(this long frameIndex, out int channelBlock) => new GlobalIndex(frameIndex, out channelBlock);
 

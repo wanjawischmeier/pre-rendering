@@ -31,6 +31,9 @@ namespace PreRendering
 
         public void Pause() => Task.Run(Wait);
 
+        /// <summary>
+        /// Synchronously decode a single frame
+        /// </summary>
         public bool Decode(long frameIdx)
         {
             var stopwatch = new Stopwatch();
@@ -56,6 +59,29 @@ namespace PreRendering
                 return false;
             }
             Debug.Log($"Reading frame {frameIdx} took {stopwatch.ElapsedMilliseconds}ms");
+
+            return true;
+        }
+
+        /// <summary>
+        /// Synchronously decode a single image
+        /// </summary>
+        public bool Decode(string path)
+        {
+            var stopwatch = new Stopwatch();
+
+            stopwatch.Start();
+            bool success = readImage(path, threadIdx);
+            stopwatch.Stop();
+
+            if (!success)
+            {
+                Debug.LogError($"Failed to read image at {path}");
+                return false;
+            }
+            Debug.Log($"Reading image at {path} took {stopwatch.ElapsedMilliseconds}ms");
+
+
 
             return true;
         }

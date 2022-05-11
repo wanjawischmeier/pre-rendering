@@ -52,7 +52,7 @@ namespace PreRendering
             decoded = new Dictionary<long, int>();
 
             decoders = Decoder.Initialize(relativeVideoPath, decodingThreads, out IntPtr[] dataPointers);
-            buffer = new DecodingBuffer(dataPointers, Decoder.info, decodingThreads, DecodingBuffer.BufferFormat.RGB24);
+            buffer = new DecodingBuffer(dataPointers, Decoder.info, DecodingBuffer.BufferFormat.RGB24);
 
             Decoder.FrameReady += OnFrameReady;
             Decoder.invokeFrameReadyEvents = true;

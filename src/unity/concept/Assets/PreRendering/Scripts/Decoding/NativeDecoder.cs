@@ -38,6 +38,9 @@ namespace PreRendering
         private delegate bool FrameHandler(long frameIdx, int threadIdx);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate bool ImageHandler(string path, int threadIdx);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate long CurrentFrameHandler(int threadIdx);
 
         /// <param name="message">A custom message by the plugin</param>
@@ -75,6 +78,7 @@ namespace PreRendering
         private static InitializationHandler initializeDecoder;
         private static EmptyCallHandler releaseDecoder;
         private static FrameHandler seekFrame, readFrame;
+        private static ImageHandler readImage;
         private static CurrentFrameHandler currentFrame;
         private static IntPtr dllPtr, bufferPtr;
         private static IntPtr[] dataPtr;
@@ -90,6 +94,8 @@ namespace PreRendering
         private const int workerThreadTimeout = 10000;
 
         public static int ImageSize => info.width * info.height * 3;
+
+        public static Vector2 Resolution => new Vector2(info.width, info.height);
 
         #endregion
 
@@ -153,6 +159,7 @@ namespace PreRendering
             releaseDecoder = LoadFromLibrary<EmptyCallHandler>("ReleaseDecoder");
             seekFrame = LoadFromLibrary<FrameHandler>("Seek");
             readFrame = LoadFromLibrary<FrameHandler>("Read");
+            readImage = LoadFromLibrary<ImageHandler>("ReadImage");
             currentFrame = LoadFromLibrary<CurrentFrameHandler>("CurrentFrame");
 
             pendingFrames = new List<DecodingFrame>();

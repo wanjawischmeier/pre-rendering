@@ -2,16 +2,18 @@ using System;
 using System.Collections;
 using UnityEngine;
 using PreRendering;
-using Random = UnityEngine.Random;
 
-public class MTCaller : MonoBehaviour
+public class PreLoader : MonoBehaviour
 {
-    public string videoPath;
-    public int threads, iters, cacheSize, imgIdx;
+    public string videoPath, imagePath;
+    public MapConfig mapConfig;
+    public int cacheSize, imgIdx;
     public Shader shader;
+    public Vector2 res;
+    public Vector2[] off;
 
     private DecodingBuffer buffer;
-    private Decoder[] decoders;
+    private Decoder decoder;
     private Material material;
 
     private void Start()
@@ -19,18 +21,25 @@ public class MTCaller : MonoBehaviour
         Screen.SetResolution(1280, 720, false);
         Application.targetFrameRate = Screen.currentResolution.refreshRate;
 
-        decoders = Decoder.Initialize(videoPath, threads, out IntPtr[] dataPointers);
+        decoder = Decoder.Initialize(videoPath, 1, out IntPtr[] dataPointers)[0];
         Decoder.FrameReady += OnFrameReady;
         Decoder.invokeFrameReadyEvents = true;
 
         buffer = new DecodingBuffer(dataPointers, Decoder.info, DecodingBuffer.BufferFormat.RGB24);
 
         material = new Material(shader);
-        material.SetVector("Resolution", new Vector2(Decoder.info.width, Decoder.info.height));
+        material.SetVector("Resolution", Decoder.Resolution);
+        // material.SetVector("Resolution", res);
         material.SetBuffer("InputBuffer", buffer.compute);
         material.SetInt("ImgIdx", -1);
 
+        decoder.Decode(imagePath);
+
+        /*
+        off = new Vector2[cacheSize];
+
         StartCoroutine(TestSeeks());
+        */
     }
 
     private void Update()
@@ -48,13 +57,16 @@ public class MTCaller : MonoBehaviour
 
     private IEnumerator TestSeeks()
     {
-        for (int i = 0; i < iters; i++)
+        ChunkIndexing.CalculateConstants(mapConfig, cacheSize, true);
+
+        for (int i = 0; i < cacheSize; i++)
         {
             yield return new WaitForSeconds(1);
 
-            // Can only be called on the main thread!
-            int frame = Random.Range(0, (int)Decoder.info.frame_count - 1);
-            decoders[i].Decode(frame);
+            Vector2 offset = ChunkIndexing.circularOffsets[i];
+            long globalIndex = offset.ClampToChunkGrid().Grid.Global;
+            off[i] = offset;
+            
         }
     }
 

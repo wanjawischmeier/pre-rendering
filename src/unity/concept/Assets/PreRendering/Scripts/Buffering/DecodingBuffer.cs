@@ -23,10 +23,10 @@ namespace PreRendering
 
         #endregion
 
-        public DecodingBuffer(IntPtr[] bufferPointers, Decoder.VideoInfo info, int depth, BufferFormat format) : base(depth)
+        public DecodingBuffer(IntPtr[] bufferPointers, Decoder.VideoInfo info, BufferFormat format) : base(bufferPointers.Length)
         {
             imageSize = info.width * info.height * (int)format;
-            native = new NativeArray<byte>[depth];
+            native = new NativeArray<byte>[bufferPointers.Length];
 
             for (int i = 0; i < bufferPointers.Length; i++)
             {
@@ -49,7 +49,7 @@ namespace PreRendering
 #endif
             }
 
-            compute = new ComputeBuffer(imageSize * depth / sizeof(uint), sizeof(uint));
+            compute = new ComputeBuffer(imageSize * bufferPointers.Length / sizeof(uint), sizeof(uint));
         }
 
         public void Release() => compute.Release();

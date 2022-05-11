@@ -89,6 +89,21 @@ extern "C" DECODER bool Read(size_t frameIdx, int threadIdx)
     return true;
 }
 
+extern "C" DECODER bool ReadImage(char* path, int threadIdx)
+{
+    try
+    {
+        pMats[threadIdx] = imread(path, cv::IMREAD_COLOR);
+    }
+    catch (const Exception& ex)
+    {
+        error_callback("Failed to grab frame", ex.what());
+        return false;
+    }
+
+    return true;
+}
+
 DECODER void ReleaseDecoder()
 {
     if (instances == 0) return;

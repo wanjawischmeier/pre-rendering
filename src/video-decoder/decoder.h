@@ -33,4 +33,5 @@ extern "C" DECODER uchar** InitializeDecoder(
 extern "C" DECODER size_t CurrentFrame(int threadIdx);
 extern "C" DECODER bool Seek(size_t frameIdx, int threadIdx);
 extern "C" DECODER bool Read(size_t frameIdx, int threadIdx);
+extern "C" DECODER bool ReadImage(char* path, int threadIdx);
 extern "C" DECODER void ReleaseDecoder();
