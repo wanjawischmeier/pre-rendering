@@ -35,6 +35,7 @@ public class Importance : MonoBehaviour
         computeShader.SetFloat("NCLIP", nclip);
         computeShader.SetFloat("FCLIP", fclip);
         computeShader.SetVector("INPUT_RESOLUTION", new Vector2(texture.width, texture.height));
+        Debug.Log(new Vector2(texture.width, texture.height));
     }
 
     private void Update()
