@@ -3,23 +3,61 @@ import numpy as np
 from time import time
 from math import *
 
+
+
+
+pi2 = pi * 2
+
 class float2:
     def __init__(self, x: float, y: float):
-        self.x = x
-        self.y = y
+        self.x = float(x)
+        self.y = float(y)
+
+    @property
+    def yx(self):
+        return float2(
+            self.y,
+            self.x
+        )
+
+    @property
+    def round(self):
+        return float2(
+            round(self.x),
+            round(self.y)
+        )
+
+    def __mul__(self, other):
+        return float2(
+            self.x * other.x,
+            self.y * other.y
+        )
+
+    def __truediv__(self, other):
+        return float2(
+            self.x / other.x,
+            self.y / other.y
+        )
 
 class float3:
     def __init__(self, x: float, y: float, z: float):
-        self.x = x
-        self.y = y
-        self.z = z
+        self.x = float(x)
+        self.y = float(y)
+        self.z = float(z)
+
+    def __add__(self, other):
+        return float3(
+            self.x + other.x,
+            self.y + other.y,
+            self.z + other.z
+        )
 
 class float4:
     def __init__(self, x: float, y: float, z: float, w: float):
-        self.x = x
-        self.y = y
-        self.z = z
-        self.w = w
+        self.x = float(x)
+        self.y = float(y)
+        self.z = float(z)
+        self.w = float(w)
 
     @property
     def as_tuple(self) -> tuple[float, float, float, float]:
@@ -90,9 +128,9 @@ def show_texture(name: str, wait=True, resolution=(-1, -1)) -> bool:
 
     return cv2.waitKey(int(not wait)) != -1 # most readable line of code ever
 
-def sample_texture(name: str, tc: tuple[int, int]) -> float4:
+def sample_texture(name: str, tc: float2) -> float4:
     height = _textures[name].mat.shape[0]
-    col = _textures[name].mat[height - 1 - tc[1]][tc[0]]
+    col = _textures[name].mat[height - 1 - tc.y][tc.x]
     packed = float4(col[0], col[1], col[2], col[3]).rgb2bgr
     return packed.normalize(_textures[name].max_value)
 
@@ -106,12 +144,13 @@ def dispatch(kernel, dimensions: tuple[int, int], debug_fps=30, log=False) -> No
     update_intervall = 1000 / float(debug_fps)
     last_update = round(time() * 1000)
     width, height = dimensions
+    resolution = float2(width, height)
     total_pixels = width * height
 
     for y in range(height):
         for x in range(width):
             id = float2(x, height - 1 - y)
-            kernel(id, width, height)
+            kernel(id, resolution)
             
             current_time = round(time() * 1000)
             if current_time < last_update + update_intervall:
