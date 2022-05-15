@@ -1,11 +1,15 @@
-from shader_emulator import *
+from shader_emulator.shader_emulator import *
 from os.path import join
 
-def uv_test(id: float2, resolution: float2):
-    write_texture("result", id, float4(id.x / resolution.x, id.y / resolution.y, 0, 1))
+def uv_test(id: float2, resolution: int2):
+    write_texture("result", id, float4(
+        id.x / float(resolution.x),
+        id.y / float(resolution.y),
+        0, 1
+    ))
 
-def projection(id: float2, resolution: float2) -> None:
-    ll1 = id.yx / resolution.yx * float2(pi, pi2)
+def projection(id: int2, resolution: int2) -> None:
+    ll1 = float2(id.y, id.x) / float2(resolution.y, resolution.x) * float2(pi, pi2)
     ll1.y += pi
 
     cp = sample_texture("input", id).w * (fclip - nclip) + nclip
@@ -36,15 +40,16 @@ def projection(id: float2, resolution: float2) -> None:
     col = sample_texture("input", id)
     write_texture("result", idx, col)
 
-resolution = (100, 100)
+resolution = int2(178, 50)
+upscaled = int2(1000, 1000)
 nclip = 2
 fclip = 4
-position = (-1, 0, -1)
+position = float3(-1, 0, -1)
 path = "src\\python-testing\\optimal-projection"
 image_file = "left_50p.png"
 full_path = join(path, image_file)
 
 load_texture("input", full_path)
 create_texture("result", resolution, debug=True)
-dispatch(projection, resolution, log=True)
-show_texture("result", resolution=(1000, 1000))
+dispatch(uv_test, resolution, log=True)
+show_texture("result", resolution=upscaled)
