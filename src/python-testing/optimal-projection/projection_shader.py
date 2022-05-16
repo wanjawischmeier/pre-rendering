@@ -40,16 +40,16 @@ def projection(id: int2, resolution: int2) -> None:
     col = sample_texture("input", id)
     write_texture("result", idx, col)
 
-resolution = int2(178, 50)
-upscaled = int2(1000, 1000)
+upscaled = int2(1780, 500)
 nclip = 2
 fclip = 4
-position = float3(-1, 0, -1)
+position = float3(-0.2, 0, 1)
 path = "src\\python-testing\\optimal-projection"
 image_file = "left_50p.png"
 full_path = join(path, image_file)
 
-load_texture("input", full_path)
+resolution = load_texture("input", full_path)
+# resolution = int2(5, 5)
 create_texture("result", resolution, debug=True)
-dispatch(uv_test, resolution, log=True)
+dispatch(projection, resolution, log=True)
 show_texture("result", resolution=upscaled)

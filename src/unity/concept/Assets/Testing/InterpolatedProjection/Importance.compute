@@ -44,10 +44,10 @@ void Importance(uint3 id : SV_DispatchThreadID)
         case 0:
             float4 col = Input[id.xy];
             float4 tgt = Result[idx];
-
+            /*
             if (!all(col.rgb) && !all(tgt.rgb))
                 col = float4(id.xy / INPUT_RESOLUTION, 0, 1);
-
+            */
             if (id.x <= INPUT_RESOLUTION.x && id.y <= INPUT_RESOLUTION.y)
                 Result[idx] = col;
             break;

@@ -28,15 +28,18 @@ def create_texture(name: str, resolution: int2, texture_format = TextureFormat.u
 
 def load_texture(name: str, path: str, debug = False) -> None:
     img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+    height, width, _ = img.shape
     _textures[name] = Texture(img)
 
     if debug: _debug_textures.append(name)
+
+    return int2(width, height)
 
 
 def show_texture(name: str, wait=True, resolution=int2(-1, -1)) -> bool:
     tex = _textures[name].mat
     if resolution.x > 0 and resolution.y > 0:
-        tex = cv2.resize(tex, resolution.as_tuple, cv2.INTER_NEAREST)
+        tex = cv2.resize(tex, resolution.as_tuple, interpolation=cv2.INTER_NEAREST)
     cv2.imshow(name, tex)
 
     return cv2.waitKey(int(not wait)) != -1 # most readable line of code ever
