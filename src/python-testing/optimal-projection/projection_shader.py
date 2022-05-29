@@ -9,7 +9,8 @@ def uv_test(id: float2, resolution: int2):
     ))
 
 def projection(id: int2, resolution: int2) -> None:
-    ll1 = float2(id.y, id.x) / float2(resolution.y, resolution.x) * float2(pi, pi2)
+    uv = float2(id.y, id.x) / float2(resolution.y, resolution.x)
+    ll1 = uv * float2(pi, pi2)
     ll1.y += pi
 
     cp = sample_texture("input", id).w * (fclip - nclip) + nclip
@@ -38,12 +39,18 @@ def projection(id: int2, resolution: int2) -> None:
     idx = (a * resolution).round
 
     col = sample_texture("input", id)
+    if col.w < 0.01:
+        return
+
+    if col.x == 0:
+        col = float4(uv.x, uv.y, 0, 1)
+
     write_texture("result", idx, col)
 
 upscaled = int2(1780, 500)
 nclip = 2
 fclip = 4
-position = float3(-0.2, 0, 1)
+position = float3(-1, 0, 2)
 path = "src\\python-testing\\optimal-projection"
 image_file = "left_50p.png"
 full_path = join(path, image_file)
@@ -51,5 +58,5 @@ full_path = join(path, image_file)
 resolution = load_texture("input", full_path)
 # resolution = int2(5, 5)
 create_texture("result", resolution, debug=True)
-dispatch(projection, resolution, log=True)
+dispatch(projection, resolution, debug_fps=4, log=True)
 show_texture("result", resolution=upscaled)
