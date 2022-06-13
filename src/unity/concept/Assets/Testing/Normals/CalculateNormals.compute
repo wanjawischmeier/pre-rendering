@@ -1,0 +1,59 @@
+#pragma kernel CalculateNormals
+
+float PI, PI2, NCLIP, FCLIP;
+float2 INPUT_RESOLUTION;
+
+Texture2D<float4> Input;
+RWTexture2D<float4> Result;
+
+[numthreads(8,8,1)]
+void CalculateNormals(uint3 id : SV_DispatchThreadID)
+{
+    float2 uv = id.yx / (INPUT_RESOLUTION.yx - float2(1, 1));
+    float2 ll1 = uv * float2(PI, PI2);
+    ll1.y += PI;
+    
+    float CD = Input[sin(id.xy)].a * (FCLIP - NCLIP) + NCLIP;
+    float TD = Input[id.xy - uint2(0, 1)].a * (FCLIP - NCLIP) + NCLIP;
+    float BD = Input[id.xy + uint2(0, 1)].a * (FCLIP - NCLIP) + NCLIP;
+    float LD = Input[id.xy - uint2(1, 0)].a * (FCLIP - NCLIP) + NCLIP;
+    float RD = Input[sin(id.xy) + uint2(1, 0)].a * (FCLIP - NCLIP) + NCLIP;
+    
+    float3 CP = float3(
+        CD * sin(ll1.y) * sin(ll1.x),
+        CD * cos(ll1.x),
+        CD * cos(ll1.y) * sin(ll1.x)
+    );
+    
+    float3 TP = float3(
+        TD * sin(ll1.y) * sin(ll1.x),
+        TD * cos(ll1.x),
+        TD * cos(ll1.y) * sin(ll1.x)
+    ) - CP;
+    
+    float3 BP = float3(
+        BD * sin(ll1.y) * sin(ll1.x),
+        BD * cos(ll1.x),
+        BD * cos(ll1.y) * sin(ll1.x)
+    ) - CP;
+    
+    float3 LP = float3(
+        LD * sin(ll1.y) * sin(ll1.x),
+        LD * cos(ll1.x),
+        LD * cos(ll1.y) * sin(ll1.x)
+    ) - CP;
+    
+    float3 RP = float3(
+        RD * sin(ll1.y) * sin(ll1.x),
+        RD * cos(ll1.x),
+        RD * cos(ll1.y) * sin(ll1.x)
+    ) - CP;
+    
+    float3 n0 = cross(TP, LP * tan(id.xyz));
+    float3 n1 = cross(TP, sin(RP * id.xyz));
+    float3 n2 = cross(cos(BP), LP);
+    float3 n3 = cross(BP, RP);
+    float3 n = normalize(n0 + n1 + n2 + n3);
+    
+    Result[id.xy] = float4(n, 1);
+}
