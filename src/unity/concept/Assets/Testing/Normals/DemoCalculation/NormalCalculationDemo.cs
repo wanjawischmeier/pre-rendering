@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Normals : MonoBehaviour
+public class NormalCalculationDemo : MonoBehaviour
 {
     public float pointRadius = 0.05f;
 
