@@ -44,8 +44,8 @@ float2 gnomonicProjection(float2 pos, float fov, float phi1, float lambda0)
 [numthreads(8,8,1)]
 void CalculateNormals(uint3 id : SV_DispatchThreadID)
 {
-    // uint2 CID = id.xy;
-    uint2 CID = gnomonicProjection(id.xy / INPUT_RESOLUTION, PI / 2, VIEW_DIR.x, VIEW_DIR.y) * INPUT_RESOLUTION;
+    uint2 CID = id.xy;
+    // uint2 CID = gnomonicProjection(id.xy / INPUT_RESOLUTION, PI / 2, VIEW_DIR.x, VIEW_DIR.y) * INPUT_RESOLUTION;
     /*
     uint2 TID = CID - uint2(0, DIST);
     uint2 BID = CID + uint2(0, DIST);
@@ -54,7 +54,7 @@ void CalculateNormals(uint3 id : SV_DispatchThreadID)
     */
     // CHANGE BACK TO ALPHA CHANNEL!!!
     // float CD = Input[CID].r * (FCLIP - NCLIP) + NCLIP;
-    float CD = Input[CID].r * MUL + OFF;
+    float CD = Input[CID].a * MUL + OFF;
     /*
     float TD = Input[TID].r * (FCLIP - NCLIP) + NCLIP;
     float BD = Input[BID].r * (FCLIP - NCLIP) + NCLIP;
@@ -89,4 +89,5 @@ void CalculateNormals(uint3 id : SV_DispatchThreadID)
     Result[id.xy] = float4(normalize(n0).rrr, 1);
     */
     Result[id.xy] = float4(CP.xxx + DIST, 1);
+    Result[id.xy] = Input[CID].aaaa;
 }
