@@ -219,11 +219,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81b80b216bc116d439c93436853c7c9a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  texture: {fileID: 2800000, guid: 6093435cf14850c4a94d1fd8f7b15742, type: 3}
+  texture: {fileID: 2800000, guid: 3beb61103c224e94fb52a1a26587be40, type: 3}
   computeShader: {fileID: 7200000, guid: 983f38217b45a3745973e0506a8f4df1, type: 3}
   nclip: 1
   fclip: 2
-  dist: 0
+  dist: 1
   off: 1
   mul: 1
   viewDirection: {x: 0, y: 0}
