@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Unlit-Standart
-  m_Shader: {fileID: 4800000, guid: 9c5edb680de9b444faf6f0678cd14e64, type: 3}
+  m_Name: BilinearDemo
+  m_Shader: {fileID: 4800000, guid: 211a327f1c56e664ba035f6fc1260aaa, type: 3}
   m_ShaderKeywords: 
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
@@ -73,6 +73,14 @@ Material:
     - _UVSec: 0
     - _ZWrite: 1
     m_Colors:
-    - _Color: {r: 0.7169812, g: 0.6797793, b: 0.6797793, a: 1}
+    - _C00: {r: 0, g: 0, b: 0, a: 1}
+    - _C01: {r: 0, g: 1, b: 0, a: 1}
+    - _C10: {r: 1, g: 0, b: 0, a: 1}
+    - _C11: {r: 1, g: 0, b: 0.92280006, a: 1}
+    - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
+    - _Q00: {r: 0, g: 0, b: 0, a: 0}
+    - _Q01: {r: 0.014, g: 0.966, b: 0, a: 0}
+    - _Q10: {r: 1.083, g: 0.006, b: 0, a: 0}
+    - _Q11: {r: 0.964, g: 0.835, b: 0, a: 0}
   m_BuildTextureStacks: []

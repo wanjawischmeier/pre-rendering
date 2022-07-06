@@ -1,0 +1,63 @@
+#pragma kernel TriangleRasterization
+
+float2 V0, V1, V2;
+
+RWTexture2D<float4> Result;
+
+
+void DrawLine(uint startx, uint starty, uint endx)
+{
+    uint length = endx - startx;
+
+    for (uint i = startx; i <= endx; i++)
+    {
+        Result[uint2(i, starty)] = float4(0, 0, 0, 1);
+    }
+}
+
+// Based on: http://www.sunshine2k.de/coding/java/TriangleRasterization/TriangleRasterization.html
+void FillTopFlatTriangle(uint2 v0, uint2 v1, uint2 v2)
+{
+    float invslope1 = (v2.x - v0.x) / (v2.y - v0.y);
+    float invslope2 = (v2.x - v1.x) / (v2.y - v1.y);
+
+    float curx1 = v2.x;
+    float curx2 = v2.x;
+
+    for (uint scanlineY = v2.y; scanlineY > v0.y; scanlineY--)
+    {
+        DrawLine(curx1, scanlineY, curx2);
+
+        curx1 -= invslope1;
+        curx2 -= invslope2;
+    }
+}
+
+void FillBottomFlatTriangle(uint2 v0, uint2 v1, uint2 v2)
+{
+    float invslope1 = (v1.x - v0.x) / (v1.y - v0.y);
+    float invslope2 = (v2.x - v0.x) / (v2.y - v0.y);
+
+    float curx1 = v0.x;
+    float curx2 = v0.x;
+
+    for (uint scanlineY = v0.y; scanlineY <= v1.y; scanlineY++)
+    {
+        DrawLine(curx1, scanlineY, curx2);
+
+        curx1 += invslope1;
+        curx2 += invslope2;
+    }
+}
+
+[numthreads(8, 8, 1)]
+void TriangleRasterization(uint3 id : SV_DispatchThreadID)
+{
+    Result[id.xy] = float4(id.x & id.y, (id.x & 15) / 15.0, (id.y & 15) / 15.0, 0.0);
+
+    uint2 v0 = V0 * 100;
+    uint2 v1 = V1 * 100;
+    uint2 v2 = V2 * 100;
+
+    FillTopFlatTriangle(v1.x, v1.y, v2.x);
+}
