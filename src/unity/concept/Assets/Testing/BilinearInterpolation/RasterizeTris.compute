@@ -1,7 +1,7 @@
-#pragma kernel TriangleRasterization
+#pragma kernel RasterizeTris
 #pragma multi_compile __ WIREFRAME
 
-float2 RESOLUTION, V0, V1, V2;
+float2 RESOLUTION, INTERVALL, DISTANCE;
 
 RWTexture2D<float4> Result;
 
@@ -104,7 +104,7 @@ void DrawLine(int2 p0, int2 p1)
                 {
                     x = x - 1;
                 }
-                
+
                 py = py + 2 * (dx1 - dy1);
             }
 
@@ -117,12 +117,8 @@ void DrawLine(int2 p0, int2 p1)
 #endif
 
 
-float3 InterpolateTriangle(int x, int y)
+float3 InterpolateTriangle(int x, int y, int2 v0, int2 v1, int2 v2)
 {
-    int2 v0 = V0 * RESOLUTION;
-    int2 v1 = V1 * RESOLUTION;
-    int2 v2 = V2 * RESOLUTION;
-
     float dv = (v1.y - v2.y) * (v0.x - v2.x) + (v2.x - v1.x) * (v0.y - v2.y);
     float w0 = ((v1.y - v2.y) * (x - v2.x) + (v2.x - v1.x) * (y - v2.y)) / dv;
     float w1 = ((v2.y - v0.y) * (x - v2.x) + (v0.x - v2.x) * (y - v2.y)) / dv;
@@ -132,7 +128,7 @@ float3 InterpolateTriangle(int x, int y)
 }
 
 
-void DrawRow(int x0, int y0, int x1)
+void DrawRow(int x0, int y0, int x1, int2 v0, int2 v1, int2 v2)
 {
     int sx, ex;
 
@@ -151,14 +147,14 @@ void DrawRow(int x0, int y0, int x1)
 
     for (int i = sx; i <= ex; i++)
     {
-        float3 w = InterpolateTriangle(i, y0);
+        float3 w = InterpolateTriangle(i, y0, v0, v1, v2);
 
         Result[uint2(i, y0)] = float4(w, 1);
     }
 }
 
 // Based on: http://www.sunshine2k.de/coding/java/TriangleRasterization/TriangleRasterization.html
-void FillTopFlatTriangle(int2 v0, int2 v1, int2 v3)
+void FillTopFlatTriangle(int2 v0, int2 v1, int2 v3, int2 p0, int2 p1, int2 p2)
 {
     if (v0.y > v1.y) return;
 
@@ -170,14 +166,14 @@ void FillTopFlatTriangle(int2 v0, int2 v1, int2 v3)
 
     for (int scanlineY = v0.y; scanlineY <= v1.y; scanlineY++)
     {
-        DrawRow(curx1, scanlineY, curx2);
+        DrawRow(curx1, scanlineY, curx2, p0, p1, p2);
 
         curx1 += invslope1;
         curx2 += invslope2;
     }
 }
 
-void FillBottomFlatTriangle(int2 v1, int2 v2, int2 v3)
+void FillBottomFlatTriangle(int2 v1, int2 v2, int2 v3, int2 p0, int2 p1, int2 p2)
 {
     if (v2.y < v1.y) return;
 
@@ -189,21 +185,18 @@ void FillBottomFlatTriangle(int2 v1, int2 v2, int2 v3)
 
     for (int scanlineY = v2.y; scanlineY > v1.y; scanlineY--)
     {
-        DrawRow(curx1, scanlineY, curx2);
+        DrawRow(curx1, scanlineY, curx2, p0, p1, p2);
 
         curx1 -= invslope1;
         curx2 -= invslope2;
     }
 }
 
-[numthreads(8, 8, 1)]
-void TriangleRasterization(int3 id : SV_DispatchThreadID)
+void RasterizeTriangle(int2 p0, int2 p1, int2 p2)
 {
-    Result[id.xy] = float4(id.xy / RESOLUTION, 0, 1);
-
-    int2 v0 = V0 * RESOLUTION;
-    int2 v1 = V1 * RESOLUTION;
-    int2 v2 = V2 * RESOLUTION;
+    int2 v0 = p0;
+    int2 v1 = p1;
+    int2 v2 = p2;
     int2 tmp;
 
     // Sort by height (ascending)
@@ -228,8 +221,8 @@ void TriangleRasterization(int3 id : SV_DispatchThreadID)
 
     int2 v3 = int2(v0.x + ((float)(v1.y - v0.y) / (float)(v2.y - v0.y)) * (v2.x - v0.x), v1.y);
 
-    FillTopFlatTriangle(v0, v1, v3);
-    FillBottomFlatTriangle(v1, v2, v3);
+    FillTopFlatTriangle(v0, v1, v3, p0, p1, p2);
+    FillBottomFlatTriangle(v1, v2, v3, p0, p1, p2);
 
 #if WIREFRAME
     DrawLine(v0, v1);
@@ -237,4 +230,12 @@ void TriangleRasterization(int3 id : SV_DispatchThreadID)
     DrawLine(v1, v2);
     DrawLine(v1, v3);
 #endif
+}
+
+[numthreads(8, 8, 1)]
+void RasterizeTris(int3 id : SV_DispatchThreadID)
+{
+    Result[id.xy * INTERVALL] = float4(id.xy, 0, 1);
+
+    
 }
