@@ -1,15 +1,17 @@
-#pragma kernel Translate
+#pragma kernel Transform
 #pragma multi_compile __ WIREFRAME
+#define TOLERANCE 4
 
 
 
 
 float PI, PI2, NCLIP, FCLIP, CAM_NCLIP, CAM_FCLIP;
-float2 RESOLUTION;
+float2 INPUT_RESOLUTION, GEOMETRY_RESOLUTION;
 float4x4 TR;
 
 Texture2D<float4> Input;
-RWTexture2D<float4> Result;
+RWTexture2D<float> DepthBuffer;
+RWTexture2D<float2> Result;
 
 
 
@@ -162,13 +164,14 @@ void DrawRow(int x0, int y0, int x1, int2 v0, int2 v1, int2 v2, int2 i0, int2 i1
     for (int i = sx; i <= ex; i++)
     {
         float3 w = InterpolateTriangle(i, y0, v0, v1, v2);
-        float2 uv = (i0 * w.x + i1 * w.y + i2 * w.z) / (float2) RESOLUTION;
-        float dn = (d0 * w.x + d1 * w.y + d2 * w.z) / (FCLIP - NCLIP) - NCLIP;
-        float dp = Result[uint2(i, y0)].a;
+        float2 uv = (i0 * w.x + i1 * w.y + i2 * w.z) / (float2)GEOMETRY_RESOLUTION;
+        float d = d0 * w.x + d1 * w.y + d2 * w.z;
+        uint2 tc = uint2(i, y0);
         
-        if (dn < dp)
+        if (d < DepthBuffer[tc])
         {
-            Result[uint2(i, y0)] = float4(uv, 0, dn);
+            DepthBuffer[tc] = d;
+            Result[tc] = float2(uv);
         }
     }
 }
@@ -259,12 +262,13 @@ void FillTriangle(int2 p0, int2 p1, int2 p2, int2 i0, int2 i1, int2 i2, float d0
 
 int2 project(uint2 tc, out float2 d)
 {
-    float2 ll1 = tc.yx / RESOLUTION.yx;
+    float2 uv = tc / GEOMETRY_RESOLUTION;
+    float2 ll1 = uv.yx;
     ll1.x *= PI;
     ll1.y *= PI2;
     ll1.y += PI;
 
-    float CP = Input[tc].a * (FCLIP - NCLIP) + NCLIP;
+    float CP = Input[uv * INPUT_RESOLUTION].a * (FCLIP - NCLIP) + NCLIP;
 
     float4 P = float4(
         CP * sin(ll1.y) * sin(ll1.x),
@@ -288,7 +292,7 @@ int2 project(uint2 tc, out float2 d)
     );
     a.x += 0.5;
     
-    return (int2)round(a * RESOLUTION);
+    return (int2)round(a * GEOMETRY_RESOLUTION);
 }
 
 bool clip(float d)
@@ -299,7 +303,7 @@ bool clip(float d)
 
 
 [numthreads(8, 8, 1)]
-void Translate(uint3 id : SV_DispatchThreadID)
+void Transform(uint3 id : SV_DispatchThreadID)
 {
     float2 dc, dt, db, dl, dr;
     
@@ -317,18 +321,17 @@ void Translate(uint3 id : SV_DispatchThreadID)
     int2 ltr = project(lid, dl);
     int2 rtr = project(rid, dr);
 
-    if (dr.x != FCLIP && dt.x != FCLIP && clip(dc.y) && clip(dr.y) && clip(dt.y))
+    if (abs(dc.x - dr.x) < TOLERANCE && abs(dc.x - dt.x) < TOLERANCE && clip(dc.y) && clip(dr.y) && clip(dt.y))
     {
         FillTriangle(ctr, rtr, ttr, id.xy, rid, tid, dc.y, dr.y, dt.y);
     }
     
-    if (db.x != FCLIP && dl.x != FCLIP && clip(db.y) && clip(dl.y) && clip(dc.y))
+    if (abs(dc.x - db.x) < TOLERANCE && abs(dc.x - dl.x) < TOLERANCE && clip(db.y) && clip(dl.y) && clip(dc.y))
     {
         FillTriangle(btr, ltr, ctr, bid, lid, id.xy, db.y, dl.y, dc.y);
     }
     
-    /*
-    float2 uv = id.xy / (float2)RESOLUTION;
+    
+    float2 uv = id.xy / (float2)GEOMETRY_RESOLUTION;
     Result[ctr] = float4(uv.xy, 0, 1);
-    */
 }

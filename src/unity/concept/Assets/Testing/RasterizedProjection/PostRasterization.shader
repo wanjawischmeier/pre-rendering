@@ -39,8 +39,9 @@ Shader "Hidden/PostRasterization"
             }
 
             sampler2D _MainTex, _ProjTex;
-            float PI, PI2, FOV;
+            float PI, PI2, FOV, NCLIP, FCLIP;
             int DEBUG;
+            float4x4 TR;
 
             fixed4 frag (v2f i) : SV_Target
             {
@@ -60,6 +61,37 @@ Shader "Hidden/PostRasterization"
                 tc = tc < 0 ? 1 - abs(tc) % 1 : tc % 1;
 
                 fixed4 pc = tex2D(_ProjTex, tc);
+                /*
+                if (!any(pc.xy) || true)
+                {
+                    float2 ll1 = tc.yx;
+                    ll1.x *= PI;
+                    ll1.y *= PI2;
+                    ll1.y += PI;
+
+                    float4 P = float4(
+                        sin(ll1.y) * sin(ll1.x),
+                        cos(ll1.x),
+                        cos(ll1.y) * sin(ll1.x),
+                        1
+                    );
+
+                    P = mul(TR, P);
+
+                    float2 ll2 = float2(
+                        acos(P.y),
+                        atan2(P.x, P.z)
+                    );
+
+                    pc = fixed4(
+                        ll2.y / PI2,
+                        ll2.x / PI,
+                        0, 1
+                    );
+                    pc.x += 0.5;
+                }
+                */
+
                 fixed4 col = tex2D(_MainTex, pc.xy);
                 return DEBUG ? pc : col;
             }
