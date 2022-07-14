@@ -1,13 +1,13 @@
 #pragma kernel Translate
-#pragma kernel Rasterize
 #pragma multi_compile __ WIREFRAME
 
 
 
 
-float PI, PI2, NCLIP, FCLIP;
+float PI, PI2, NCLIP, FCLIP, CAM_NCLIP, CAM_FCLIP;
 float2 RESOLUTION;
 float3 POSITION;
+// float4x4 TR;
 
 Texture2D<float4> Input;
 RWTexture2D<float4> Result;
@@ -93,7 +93,11 @@ void DrawLine(int2 p0, int2 p1)
         }
 
         // Result[uint2(x, y)] = float4(1, 1, 1, 1); // Draw first pixel
-
+        
+        // Prevent unrolling of loop
+        if (y == ye)
+            return;
+        
         // Rasterize the line
         for (int i = 0; y < ye; i++)
         {
@@ -136,7 +140,7 @@ float3 InterpolateTriangle(int x, int y, int2 v0, int2 v1, int2 v2)
     return float3(w0, w1, w2);
 }
 
-void DrawRow(int x0, int y0, int x1, int2 v0, int2 v1, int2 v2)
+void DrawRow(int x0, int y0, int x1, int2 v0, int2 v1, int2 v2, int2 i0, int2 i1, int2 i2, float d0, float d1, float d2)
 {
     int sx, ex;
 
@@ -152,20 +156,26 @@ void DrawRow(int x0, int y0, int x1, int2 v0, int2 v1, int2 v2)
     }
 
     int length = ex - sx;
+    
+    if (length <= 0)
+        return;
 
     for (int i = sx; i <= ex; i++)
     {
-        float2 uv0 = v0 / (float2)RESOLUTION;
-        float2 uv1 = v1 / (float2)RESOLUTION;
-        float2 uv2 = v2 / (float2)RESOLUTION;
-
         float3 w = InterpolateTriangle(i, y0, v0, v1, v2);
-        Result[uint2(i, y0)] = float4(w, 1);
+        float2 uv = (i0 * w.x + i1 * w.y + i2 * w.z) / (float2) RESOLUTION;
+        float dn = (d0 * w.x + d1 * w.y + d2 * w.z) / (FCLIP - NCLIP) - NCLIP;
+        float dp = Result[uint2(i, y0)].a;
+        
+        if (dn < dp)
+        {
+            Result[uint2(i, y0)] = float4(uv, 0, dn);
+        }
     }
 }
 
 // Based on: http://www.sunshine2k.de/coding/java/TriangleRasterization/TriangleRasterization.html
-void FillTopFlatTriangle(int2 v0, int2 v1, int2 v3, int2 p0, int2 p1, int2 p2)
+void FillTopFlatTriangle(int2 v0, int2 v1, int2 v3, int2 p0, int2 p1, int2 p2, int2 i0, int2 i1, int2 i2, float d0, float d1, float d2)
 {
     if (v0.y > v1.y) return;
 
@@ -177,14 +187,15 @@ void FillTopFlatTriangle(int2 v0, int2 v1, int2 v3, int2 p0, int2 p1, int2 p2)
 
     for (int scanlineY = v0.y; scanlineY <= v1.y; scanlineY++)
     {
-        DrawRow(curx1, scanlineY, curx2, p0, p1, p2);
+        DrawRow(curx1, scanlineY, curx2, p0, p1, p2, i0, i1, i2, d0, d1, d2);
 
         curx1 += invslope1;
         curx2 += invslope2;
     }
 }
 
-void FillBottomFlatTriangle(int2 v1, int2 v2, int2 v3, int2 p0, int2 p1, int2 p2)
+// See comment above
+void FillBottomFlatTriangle(int2 v1, int2 v2, int2 v3, int2 p0, int2 p1, int2 p2, int2 i0, int2 i1, int2 i2, float d0, float d1, float d2)
 {
     if (v2.y < v1.y) return;
 
@@ -196,14 +207,14 @@ void FillBottomFlatTriangle(int2 v1, int2 v2, int2 v3, int2 p0, int2 p1, int2 p2
 
     for (int scanlineY = v2.y; scanlineY > v1.y; scanlineY--)
     {
-        DrawRow(curx1, scanlineY, curx2, p0, p1, p2);
+        DrawRow(curx1, scanlineY, curx2, p0, p1, p2, i0, i1, i2, d0, d1, d2);
 
         curx1 -= invslope1;
         curx2 -= invslope2;
     }
 }
 
-void FillTriangle(int2 p0, int2 p1, int2 p2)
+void FillTriangle(int2 p0, int2 p1, int2 p2, int2 i0, int2 i1, int2 i2, float d0, float d1, float d2)
 {
     int2 v0 = p0;
     int2 v1 = p1;
@@ -231,9 +242,10 @@ void FillTriangle(int2 p0, int2 p1, int2 p2)
     }
 
     int2 v3 = int2(v0.x + ((float)(v1.y - v0.y) / (float)(v2.y - v0.y)) * (v2.x - v0.x), v1.y);
-
-    FillTopFlatTriangle(v0, v1, v3, p0, p1, p2);
-    FillBottomFlatTriangle(v1, v2, v3, p0, p1, p2);
+    float d3 = d0 / 3 + d1 / 3 + d2 / 3; // for now
+    
+    FillTopFlatTriangle(v0, v1, v3, p0, p1, p2, i0, i1, i2, d0, d1, d3);
+    FillBottomFlatTriangle(v1, v2, v3, p0, p1, p2, i0, i1, i2, d1, d2, d3);
 
 #if WIREFRAME
     if (v0.y != v1.y || v0.y != v2.y)
@@ -246,7 +258,7 @@ void FillTriangle(int2 p0, int2 p1, int2 p2)
 #endif
 }
 
-int2 project(uint2 tc)
+int2 project(uint2 tc, out float2 d)
 {
     float2 ll1 = tc.yx / RESOLUTION.yx;
     ll1.x *= PI;
@@ -255,19 +267,20 @@ int2 project(uint2 tc)
 
     float CP = Input[tc].a * (FCLIP - NCLIP) + NCLIP;
 
-    float3 P = float3(
+    float4 P = float4(
         CP * sin(ll1.y) * sin(ll1.x),
         CP * cos(ll1.x),
-        CP * cos(ll1.y) * sin(ll1.x)
+        CP * cos(ll1.y) * sin(ll1.x),
+        1
     );
 
-    P += POSITION;
-    // P += OffsetBuffer[id.z];
+    P -= POSITION.xyzz;
+    // P = mul(TR, P);
 
-    float d = sqrt(P.x * P.x + P.y * P.y + P.z * P.z);
+    d = float2(CP, sqrt(P.x * P.x + P.y * P.y + P.z * P.z));
 
     float2 ll2 = float2(
-        acos(P.y / d),
+        acos(P.y / d.y),
         atan2(P.x, P.z)
     );
 
@@ -276,8 +289,13 @@ int2 project(uint2 tc)
         ll2.x / PI
     );
     a.x += 0.5;
-
+    
     return (int2)round(a * RESOLUTION);
+}
+
+bool clip(float d)
+{
+    return d > CAM_NCLIP && d < CAM_FCLIP;
 }
 
 
@@ -285,69 +303,34 @@ int2 project(uint2 tc)
 [numthreads(8, 8, 1)]
 void Translate(uint3 id : SV_DispatchThreadID)
 {
-    int2 ctr = project(id.xy);
-    int2 ttr = project(id.xy + uint2(0, 1));
-    int2 btr = project(id.xy - uint2(0, 1));
-    int2 ltr = project(id.xy - uint2(1, 0));
-    int2 rtr = project(id.xy + uint2(1, 0));
+    float2 dc, dt, db, dl, dr;
+    
+    uint2 tid = id.xy + uint2(0, 1);
+    uint2 bid = id.xy - uint2(0, 1);
+    uint2 lid = id.xy - uint2(1, 0);
+    uint2 rid = id.xy + uint2(1, 0);
+    
+    int2 ctr = project(id.xy, dc);
+    if (dc.x == FCLIP)
+        return;
+    
+    int2 ttr = project(tid, dt);
+    int2 btr = project(bid, db);
+    int2 ltr = project(lid, dl);
+    int2 rtr = project(rid, dr);
 
-    // FillTriangle(ctr, rtr, ttr);
-    // FillTriangle(btr, ltr, ctr);
-
+    if (dr.x != FCLIP && dt.x != FCLIP && clip(dc.y) && clip(dr.y) && clip(dt.y))
+    {
+        FillTriangle(ctr, rtr, ttr, id.xy, rid, tid, dc.y, dr.y, dt.y);
+    }
+    
+    if (db.x != FCLIP && dl.x != FCLIP && clip(db.y) && clip(dl.y) && clip(dc.y))
+    {
+        FillTriangle(btr, ltr, ctr, bid, lid, id.xy, db.y, dl.y, dc.y);
+    }
+    
+    /*
     float2 uv = id.xy / (float2)RESOLUTION;
-    Result[ctr] = float4(uv, 0, 1);
-
-    /*
-    if (!all(Translated[idx]) || Input[id.xy].a < Translated[idx].a)
-    {
-        Translated[idx] = Input[id.xy];
-    }
-    */
-}
-
-[numthreads(8, 8, 1)]
-void Rasterize(int3 id : SV_DispatchThreadID)
-{
-    // Result[id.xy] = float4(id.xy / RESOLUTION, 0, 1);
-    /*
-    int2 v0 = V0 * RESOLUTION;
-    int2 v1 = V1 * RESOLUTION;
-    int2 v2 = V2 * RESOLUTION;
-    int2 tmp;
-
-    // Sort by height (ascending)
-    if (v0.y > v1.y)
-    {
-        tmp = v0;
-        v0 = v1;
-        v1 = tmp;
-    }
-    if (v1.y > v2.y)
-    {
-        tmp = v1;
-        v1 = v2;
-        v2 = tmp;
-    }
-    if (v0.y > v1.y)
-    {
-        tmp = v0;
-        v0 = v1;
-        v1 = tmp;
-    }
-
-    int2 v3 = int2(v0.x + ((float)(v1.y - v0.y) / (float)(v2.y - v0.y)) * (v2.x - v0.x), v1.y);
-
-    FillTopFlatTriangle(v0, v1, v3);
-    FillBottomFlatTriangle(v1, v2, v3);
-
-#if WIREFRAME
-    if (v0.y != v1.y || v0.y != v2.y)
-    {
-        DrawLine(v0, v1);
-        DrawLine(v0, v2);
-        DrawLine(v1, v2);
-        DrawLine(v1, v3);
-    }
-#endif
+    Result[ctr] = float4(uv.xy, 0, 1);
     */
 }
