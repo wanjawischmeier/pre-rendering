@@ -61,12 +61,11 @@ public class RasterizedProjection : MonoBehaviour
 
         computeShader.SetFloat("CAM_NCLIP", mainCamera.nearClipPlane);
         computeShader.SetFloat("CAM_FCLIP", mainCamera.farClipPlane);
-        computeShader.SetVector("POSITION", transform.position);
-        // computeShader.SetMatrix("TR", (t * r).inverse);
+        computeShader.SetMatrix("TR", (t * r).inverse);
         computeShader.Dispatch(translationKernel, (int)(input.width / threadGroupsX), (int)(input.height / threadGroupsY), 1);
 
-        material.SetFloat("FOV", mainCamera.fieldOfView * Mathf.Deg2Rad);
-        material.SetVector("ROTATION", transform.rotation.eulerAngles * Mathf.Deg2Rad);
+        material.SetInteger("DEBUG", wireframe ? 1 : 0);
+        material.SetFloat("FOV", (180 - mainCamera.fieldOfView) * Mathf.Deg2Rad);
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)

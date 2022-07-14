@@ -6,8 +6,7 @@
 
 float PI, PI2, NCLIP, FCLIP, CAM_NCLIP, CAM_FCLIP;
 float2 RESOLUTION;
-float3 POSITION;
-// float4x4 TR;
+float4x4 TR;
 
 Texture2D<float4> Input;
 RWTexture2D<float4> Result;
@@ -274,8 +273,7 @@ int2 project(uint2 tc, out float2 d)
         1
     );
 
-    P -= POSITION.xyzz;
-    // P = mul(TR, P);
+    P = mul(TR, P);
 
     d = float2(CP, sqrt(P.x * P.x + P.y * P.y + P.z * P.z));
 

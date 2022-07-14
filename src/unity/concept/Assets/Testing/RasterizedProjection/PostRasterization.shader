@@ -40,7 +40,7 @@ Shader "Hidden/PostRasterization"
 
             sampler2D _MainTex, _ProjTex;
             float PI, PI2, FOV;
-            float2 ROTATION;
+            int DEBUG;
 
             fixed4 frag (v2f i) : SV_Target
             {
@@ -51,19 +51,17 @@ Shader "Hidden/PostRasterization"
                 float c = atan2(p, FOV);
 
                 float sinC = sin(c);
-                float cosC = cos(c);
-                float sinPhi1 = sin(ROTATION.x);
-                float cosPhi1 = cos(ROTATION.x);
 
-                float phi = asin(cosC * sinPhi1 + y * sinC * cosPhi1 / p);
-                float lambda = ROTATION.y + atan2(x * sinC, (p * cosPhi1 * cosC - y * sinPhi1 * sinC));
+                // simplified gnomonic projection
+                float phi = asin(y * sinC / p);
+                float lambda = atan2(x * sinC, p * cos(c));
 
-                float2 tc = float2(lambda / (PI * 2.0) + 0.5, phi / PI + 0.5);
+                float2 tc = float2(lambda / PI2 + 0.5, phi / PI + 0.5);
                 tc = tc < 0 ? 1 - abs(tc) % 1 : tc % 1;
 
-                float2 pc = tex2D(_ProjTex, tc).xy;
-                fixed4 col = tex2D(_MainTex, pc);
-                return col;
+                fixed4 pc = tex2D(_ProjTex, tc);
+                fixed4 col = tex2D(_MainTex, pc.xy);
+                return DEBUG ? pc : col;
             }
             ENDCG
         }
