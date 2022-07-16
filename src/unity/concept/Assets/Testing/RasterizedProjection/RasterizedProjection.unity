@@ -223,7 +223,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rootDirectory: C:\Users\wanja\Documents\dev\pre-rendering\renders\
-  path: cycles\row_system\room_simple_v2_540p\0138.png
+  path: cycles\row_system\room_simple_v2_540p\
+  file1: 0132.png
+  file2: 0136.png
   config:
     nclip: 0.1
     fclip: 30
@@ -236,7 +238,13 @@ MonoBehaviour:
   computeShader: {fileID: 7200000, guid: 246ad02dfe988c74abeffabdaa2951dd, type: 3}
   shader: {fileID: 4800000, guid: eb0f129f1b1ba2d40a9e59781fc1ae15, type: 3}
   geometryResolution: {x: 1200, y: 600}
+  offset1: {x: 0, y: 0, z: 4}
+  offset2: {x: 0, y: 0, z: -2}
   wireframe: 0
+  depthBuffer1: {fileID: 0}
+  depthBuffer2: {fileID: 0}
+  result1: {fileID: 0}
+  result2: {fileID: 0}
 --- !u!114 &1581279360
 MonoBehaviour:
   m_ObjectHideFlags: 0

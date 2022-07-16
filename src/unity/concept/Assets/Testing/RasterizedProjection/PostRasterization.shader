@@ -2,8 +2,14 @@ Shader "Hidden/PostRasterization"
 {
     Properties
     {
-        _MainTex ("Texture", 2D) = "white" {}
-        _ProjTex ("Projection", 2D) = "white" {}
+        _MainTex1 ("Texture1", 2D) = "white" {}
+        _MainTex2 ("Texture2", 2D) = "white" {}
+        _DepthTex1 ("Depth1", 2D) = "white" {}
+        _DepthTex2 ("Depth2", 2D) = "white" {}
+        _InterpTex1 ("Interpolation1", 2D) = "white" {}
+        _InterpTex2 ("Interpolation2", 2D) = "white" {}
+        _ProjTex1 ("Projection1", 2D) = "white" {}
+        _ProjTex2 ("Projection2", 2D) = "white" {}
     }
     SubShader
     {
@@ -15,6 +21,7 @@ Shader "Hidden/PostRasterization"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
+            #define TOLERANCE 1
 
             #include "UnityCG.cginc"
 
@@ -38,7 +45,7 @@ Shader "Hidden/PostRasterization"
                 return o;
             }
 
-            sampler2D _MainTex, _ProjTex;
+            sampler2D _MainTex1, _MainTex2, _DepthTex1, _DepthTex2, _InterpTex1, _InterpTex2, _ProjTex1, _ProjTex2;
             float PI, PI2, FOV, NCLIP, FCLIP;
             int DEBUG;
             float4x4 TR;
@@ -50,17 +57,18 @@ Shader "Hidden/PostRasterization"
 
                 float p = sqrt(x * x + y * y);
                 float c = atan2(p, FOV);
-
+                
                 float sinC = sin(c);
 
                 // simplified gnomonic projection
                 float phi = asin(y * sinC / p);
                 float lambda = atan2(x * sinC, p * cos(c));
-
+                
                 float2 tc = float2(lambda / PI2 + 0.5, phi / PI + 0.5);
-                tc = tc < 0 ? 1 - abs(tc) % 1 : tc % 1;
+                // tc = tc < 0 ? 1 - abs(tc) % 1 : tc % 1;
 
-                fixed4 pc = tex2D(_ProjTex, tc);
+                fixed4 pc1 = tex2D(_ProjTex1, tc);
+                fixed4 pc2 = tex2D(_ProjTex2, tc);
                 /*
                 if (!any(pc.xy) || true)
                 {
@@ -92,8 +100,35 @@ Shader "Hidden/PostRasterization"
                 }
                 */
 
-                fixed4 col = tex2D(_MainTex, pc.xy);
-                return DEBUG ? pc : col;
+
+                fixed4 col, db;
+
+                if (!any(pc1.xy))
+                {
+                    col = tex2D(_MainTex2, pc2.xy);
+                    db = fixed4(1, 0, 0, 1);
+                }
+                else if (!any(pc2.xy))
+                {
+                    col = tex2D(_MainTex1, pc1.xy);
+                    db = fixed4(0, 1, 0, 1);
+                }
+                
+                float d1 = tex2D(_DepthTex1, tc).x;
+                float d2 = tex2D(_DepthTex2, tc).x;
+
+                if (d1 < d2 + TOLERANCE)
+                {
+                    col = tex2D(_MainTex1, pc1.xy);
+                    db = fixed4(1, 1, 0, 1);
+                }
+                else
+                {
+                    col = tex2D(_MainTex2, pc2.xy);
+                    db = fixed4(1, 0, 1, 1);
+                }
+
+                return DEBUG ? db : col;
             }
             ENDCG
         }
