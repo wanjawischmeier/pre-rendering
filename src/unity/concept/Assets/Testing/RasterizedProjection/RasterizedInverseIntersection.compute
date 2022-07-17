@@ -1,16 +1,18 @@
 #pragma kernel Transform
 #pragma multi_compile __ WIREFRAME
-#define TOLERANCE 4
+#define TOLERANCE 0.2
 
 
 
 
 float PI, PI2, NCLIP, FCLIP, CAM_NCLIP, CAM_FCLIP;
 float2 INPUT_RESOLUTION, GEOMETRY_RESOLUTION;
+float4 OFFSET;
 float4x4 TR;
 
 Texture2D<float4> Input;
 RWTexture2D<float> DepthBuffer;
+RWTexture2D<float> InterpolationBuffer;
 RWTexture2D<float2> Result;
 
 
@@ -49,7 +51,7 @@ void DrawLine(int2 p0, int2 p1)
             x = p1.x; y = p1.y; xe = p0.x;
         }
 
-        // Result[uint2(x, y)] = float4(1, 1, 1, 1); // Draw first pixel
+        // Result[uint2(x, y)] = float2(1, 1); // Draw first pixel
 
         // Rasterize the line
         for (int i = 0; x < xe; i++) {
@@ -76,7 +78,7 @@ void DrawLine(int2 p0, int2 p1)
 
             // Draw pixel from line span at
             // currently rasterized position
-            Result[uint2(x, y)] = float4(1, 1, 1, 1);
+            Result[uint2(x, y)] = float2(1, 1);
         }
     }
     else
@@ -93,7 +95,7 @@ void DrawLine(int2 p0, int2 p1)
             x = p1.x; y = p1.y; ye = p0.y;
         }
 
-        // Result[uint2(x, y)] = float4(1, 1, 1, 1); // Draw first pixel
+        // Result[uint2(x, y)] = float2(1, 1); // Draw first pixel
         
         // Prevent unrolling of loop
         if (y == ye)
@@ -125,7 +127,7 @@ void DrawLine(int2 p0, int2 p1)
 
             // Draw pixel from line span at
             // currently rasterized position
-            Result[uint2(x, y)] = float4(1, 1, 1, 1);
+            Result[uint2(x, y)] = float2(1, 1);
         }
     }
 }
@@ -155,10 +157,8 @@ void DrawRow(int x0, int y0, int x1, int2 v0, int2 v1, int2 v2, int2 i0, int2 i1
         sx = x1;
         ex = x0;
     }
-
-    int length = ex - sx;
     
-    if (length <= 0)
+    if (ex - sx <= 0)
         return;
 
     for (int i = sx; i <= ex; i++)
@@ -170,6 +170,7 @@ void DrawRow(int x0, int y0, int x1, int2 v0, int2 v1, int2 v2, int2 i0, int2 i1
         
         if (d < DepthBuffer[tc])
         {
+            InterpolationBuffer[tc] = length(v0 - v1) + length(v0 - v2) + length(v1 - v2);
             DepthBuffer[tc] = d;
             Result[tc] = float2(uv);
         }
@@ -250,7 +251,7 @@ void FillTriangle(int2 p0, int2 p1, int2 p2, int2 i0, int2 i1, int2 i2, float d0
     FillBottomFlatTriangle(v1, v2, v3, p0, p1, p2, i0, i1, i2, d1, d2, d3);
 
 #if WIREFRAME
-    if (v0.y != v1.y || v0.y != v2.y)
+    if ((v0.y != v1.y || v0.y != v2.y) && d0 + d1 + d2 < 10)
     {
         DrawLine(v0, v1);
         DrawLine(v0, v2);
@@ -260,7 +261,7 @@ void FillTriangle(int2 p0, int2 p1, int2 p2, int2 i0, int2 i1, int2 i2, float d0
 #endif
 }
 
-int2 project(uint2 tc, out float2 d)
+int2 project(int2 tc, out float2 d)
 {
     float2 uv = tc / GEOMETRY_RESOLUTION;
     float2 ll1 = uv.yx;
@@ -276,7 +277,8 @@ int2 project(uint2 tc, out float2 d)
         CP * cos(ll1.y) * sin(ll1.x),
         1
     );
-
+    
+    P -= OFFSET;
     P = mul(TR, P);
 
     d = float2(CP, sqrt(P.x * P.x + P.y * P.y + P.z * P.z));
@@ -307,10 +309,11 @@ void Transform(uint3 id : SV_DispatchThreadID)
 {
     float2 dc, dt, db, dl, dr;
     
-    uint2 tid = id.xy + uint2(0, 1);
-    uint2 bid = id.xy - uint2(0, 1);
-    uint2 lid = id.xy - uint2(1, 0);
-    uint2 rid = id.xy + uint2(1, 0);
+    int2 cid = (int2)id.xy;
+    int2 tid = cid + int2(0, 1);
+    int2 bid = cid - int2(0, 1);
+    int2 lid = cid - int2(1, 0);
+    int2 rid = cid + int2(1, 0);
     
     int2 ctr = project(id.xy, dc);
     if (dc.x == FCLIP)
@@ -323,15 +326,22 @@ void Transform(uint3 id : SV_DispatchThreadID)
 
     if (abs(dc.x - dr.x) < TOLERANCE && abs(dc.x - dt.x) < TOLERANCE && clip(dc.y) && clip(dr.y) && clip(dt.y))
     {
-        FillTriangle(ctr, rtr, ttr, id.xy, rid, tid, dc.y, dr.y, dt.y);
+        FillTriangle(ctr, rtr, ttr, cid, rid, tid, dc.y, dr.y, dt.y);
     }
     
     if (abs(dc.x - db.x) < TOLERANCE && abs(dc.x - dl.x) < TOLERANCE && clip(db.y) && clip(dl.y) && clip(dc.y))
     {
-        FillTriangle(btr, ltr, ctr, bid, lid, id.xy, db.y, dl.y, dc.y);
+        FillTriangle(btr, ltr, ctr, bid, lid, cid, db.y, dl.y, dc.y);
     }
     
     
-    float2 uv = id.xy / (float2)GEOMETRY_RESOLUTION;
-    Result[ctr] = float4(uv.xy, 0, 1);
+    if (clip(dc.y))
+    {
+        float2 uv = id.xy / (float2) GEOMETRY_RESOLUTION;
+        float it = length(ctr - ttr) + length(ctr - rtr) + length(ttr - rtr);
+        float ib = length(ctr - btr) + length(ctr - ltr) + length(btr - ltr);
+        InterpolationBuffer[ctr] = (it + ib) / 2.0;
+        DepthBuffer[ctr] = dc.y;
+        Result[ctr] = uv;
+    }
 }

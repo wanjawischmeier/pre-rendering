@@ -12,6 +12,7 @@ public class RasterizedProjection : MonoBehaviour
     public ComputeShader computeShader;
     public Shader shader;
     public Vector2Int geometryResolution;
+    public Color backgroundColor;
     public Vector3 offset1, offset2;
     public bool wireframe;
 
@@ -98,8 +99,10 @@ public class RasterizedProjection : MonoBehaviour
         computeShader.Dispatch(translationKernel, resolution.x, resolution.y, 1);
 
         material.SetInteger("DEBUG", wireframe ? 1 : 0);
-        material.SetMatrix("TR", transormationMatrix);
         material.SetFloat("FOV", (180 - mainCamera.fieldOfView) * Mathf.Deg2Rad);
+        material.SetFloat("CAM_FCLIP", mainCamera.farClipPlane);
+        material.SetColor("BACK_COL", backgroundColor);
+        material.SetMatrix("TR", transormationMatrix);
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)

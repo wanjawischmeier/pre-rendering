@@ -21,7 +21,7 @@ Shader "Hidden/PostRasterization"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #define TOLERANCE 1
+            #define TOLERANCE 0.1
 
             #include "UnityCG.cginc"
 
@@ -46,7 +46,8 @@ Shader "Hidden/PostRasterization"
             }
 
             sampler2D _MainTex1, _MainTex2, _DepthTex1, _DepthTex2, _InterpTex1, _InterpTex2, _ProjTex1, _ProjTex2;
-            float PI, PI2, FOV, NCLIP, FCLIP;
+            float PI, PI2, FOV, NCLIP, FCLIP, CAM_FCLIP;
+            float4 BACK_COL;
             int DEBUG;
             float4x4 TR;
 
@@ -120,13 +121,18 @@ Shader "Hidden/PostRasterization"
                 if (d1 < d2 + TOLERANCE)
                 {
                     col = tex2D(_MainTex1, pc1.xy);
-                    db = fixed4(1, 1, 0, 1);
+                    db = (pc1.x > 0.9 && pc1.y > 0.9 && d1 < 6) ? fixed4(1, 1, 1, 1) : fixed4(pc1.xy, 0, 1);
                 }
+                // else if (d2 != CAM_FCLIP)
                 else
                 {
                     col = tex2D(_MainTex2, pc2.xy);
-                    db = fixed4(1, 0, 1, 1);
-                }
+                    db = (pc2.x > 0.9 && pc2.y > 0.9 && d2 < 6) ? fixed4(1, 1, 1, 1) : pc2;
+                }/*
+                else
+                {
+                    col = BACK_COL;
+                }*/
 
                 return DEBUG ? db : col;
             }
