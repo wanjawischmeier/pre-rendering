@@ -36,13 +36,13 @@ def debug_step(xn: float2, col: tuple[float, float, float]) -> None:
     # cv2.imshow("cost", tmp)
     # cv2.waitKey()
 
-def nelder_mead(x0: float2, x1: float2, x2: float2, alpha: float=1, beta: float=0.5, gamma: float=2, maxiter: int=10):
+def nelder_mead(x0: float2, x1: float2, x2: float2, alpha: float=1, beta: float=0.5, gamma: float=2, max_iterations: int=10):
     # initialization
     b = float3.expand_float2(x0, f(x0))
     g = float3.expand_float2(x1, f(x1))
     w = float3.expand_float2(x2, f(x2))
     
-    for i in range(maxiter):
+    for i in range(max_iterations):
         # sort
         if b.z > g.z:
             t = g
@@ -59,7 +59,7 @@ def nelder_mead(x0: float2, x1: float2, x2: float2, alpha: float=1, beta: float=
                 g = b
                 b = t
 
-        debug_triangle(b, g, w, i, maxiter, b.z)
+        debug_triangle(b, g, w, i, max_iterations, b.z)
         
         # midpoint
         m = float3.round((g + b) / 2)
@@ -124,6 +124,8 @@ def nelder_mead(x0: float2, x1: float2, x2: float2, alpha: float=1, beta: float=
 width = 1200
 heigth = 600
 res = width + heigth
+objective.optimum = float2(0.4 * width, 0.6 * heigth)
+
 x0 = float2.round(float2(0.8 * width, 0.45 * heigth))
 x1 = float2.round(float2(0.85 * width, 0.35 * heigth))
 x2 = float2.round(float2(0.9 * width, 0.5 * heigth))
@@ -138,6 +140,6 @@ for y in range(heigth):
     for x in range(width):
         cost[y, x] = f(float2(x, y), False) / res
 
-nelder_mead(x0, x1, x2, maxiter=20)
+nelder_mead(x0, x1, x2, max_iterations=20)
 
 

@@ -7,7 +7,10 @@ class float2:
         self.y = y
 
     def __add__(self, other):
-        return float2(self.x + other.x, self.y + other.y)
+        if type(other) == float2:
+            return float2(self.x + other.x, self.y + other.y)
+        else:
+            return float2(self.x + other, self.y + other)
 
     def __sub__(self, other):
         return float2(self.x - other.x, self.y - other.y)
