@@ -2,14 +2,14 @@ Shader "Hidden/PostRasterization"
 {
     Properties
     {
-        _MainTex1 ("Texture1", 2D) = "white" {}
-        _MainTex2 ("Texture2", 2D) = "white" {}
-        _DepthTex1 ("Depth1", 2D) = "white" {}
-        _DepthTex2 ("Depth2", 2D) = "white" {}
-        _InterpTex1 ("Interpolation1", 2D) = "white" {}
-        _InterpTex2 ("Interpolation2", 2D) = "white" {}
-        _ProjTex1 ("Projection1", 2D) = "white" {}
-        _ProjTex2 ("Projection2", 2D) = "white" {}
+        _MainTex0 ("Texture1", 2D) = "white" {}
+        _MainTex1 ("Texture2", 2D) = "white" {}
+        _DepthTex0 ("Depth1", 2D) = "white" {}
+        _DepthTex1 ("Depth2", 2D) = "white" {}
+        _InterpTex0 ("Interpolation1", 2D) = "white" {}
+        _InterpTex1 ("Interpolation2", 2D) = "white" {}
+        _ProjTex0 ("Projection1", 2D) = "white" {}
+        _ProjTex1 ("Projection2", 2D) = "white" {}
     }
     SubShader
     {
@@ -45,7 +45,7 @@ Shader "Hidden/PostRasterization"
                 return o;
             }
 
-            sampler2D _MainTex1, _MainTex2, _DepthTex1, _DepthTex2, _InterpTex1, _InterpTex2, _ProjTex1, _ProjTex2;
+            sampler2D _MainTex0, _MainTex1, _DepthTex0, _DepthTex1, _InterpTex0, _InterpTex1, _ProjTex0, _ProjTex1;
             float PI, PI2, FOV, NCLIP, FCLIP, CAM_FCLIP;
             float4 BACK_COL;
             int DEBUG;
@@ -68,8 +68,8 @@ Shader "Hidden/PostRasterization"
                 float2 tc = float2(lambda / PI2 + 0.5, phi / PI + 0.5);
                 // tc = tc < 0 ? 1 - abs(tc) % 1 : tc % 1;
 
+                fixed4 pc0 = tex2D(_ProjTex0, tc);
                 fixed4 pc1 = tex2D(_ProjTex1, tc);
-                fixed4 pc2 = tex2D(_ProjTex2, tc);
                 /*
                 if (!any(pc.xy) || true)
                 {
@@ -104,35 +104,62 @@ Shader "Hidden/PostRasterization"
 
                 fixed4 col, db;
 
-                if (!any(pc1.xy))
-                {
-                    col = tex2D(_MainTex2, pc2.xy);
-                    db = fixed4(1, 0, 0, 1);
-                }
-                else if (!any(pc2.xy))
+                // no tex 0 coords
+                if (!any(pc0.xy))
                 {
                     col = tex2D(_MainTex1, pc1.xy);
+                    db = fixed4(1, 0, 0, 1);
+                }
+
+                // no tex 1 coords
+                else if (!any(pc1.xy))
+                {
+                    col = tex2D(_MainTex0, pc0.xy);
                     db = fixed4(0, 1, 0, 1);
                 }
                 
-                float d1 = tex2D(_DepthTex1, tc).x;
-                float d2 = tex2D(_DepthTex2, tc).x;
+                // both coords available
+                else
+                {
+                    float d0 = tex2D(_DepthTex0, tc).x;
+                    float d1 = tex2D(_DepthTex1, tc).x;
+                    float d = d0 - TOLERANCE - d1;
 
-                if (d1 < d2 + TOLERANCE)
-                {
-                    col = tex2D(_MainTex1, pc1.xy);
-                    db = (pc1.x > 0.9 && pc1.y > 0.9 && d1 < 6) ? fixed4(1, 1, 1, 1) : fixed4(pc1.xy, 0, 1);
+                    // d0 closer
+                    if (d < 0)
+                    {
+                        float r = abs(d) / TOLERANCE;
+                        col = r * tex2D(_MainTex0, pc0.xy) + (1 - r) * tex2D(_MainTex1, pc1.xy);
+                        db = fixed4(r, r, r, 1);
+                    }
+
+                    // d1 closer
+                    else
+                    {
+                        float r = d / TOLERANCE;
+                        col = (1 - r) * tex2D(_MainTex0, pc0.xy) + r * tex2D(_MainTex1, pc1.xy);
+                        db = fixed4(r, r, r, 1);
+                    }
+
+                    /*
+                    if (d1 < d2 + TOLERANCE)
+                    {
+                        // return fixed4(0, pc1.ba, 1);
+                        col = tex2D(_MainTex1, pc1.xy);
+                        db = (pc1.x > 0.9 && pc1.y > 0.9 && d1 < 6) ? fixed4(1, 1, 1, 1) : fixed4(pc1.xy, 0, 1);
+                    }
+                    // else if (d2 != CAM_FCLIP)
+                    else
+                    {
+                        // return fixed4(0, pc2.ba, 1);
+                        col = tex2D(_MainTex2, pc2.xy);
+                        db = (pc2.x > 0.9 && pc2.y > 0.9 && d2 < 6) ? fixed4(1, 1, 1, 1) : pc2;
+                    }
+                    else
+                    {
+                        col = BACK_COL;
+                    }*/
                 }
-                // else if (d2 != CAM_FCLIP)
-                else
-                {
-                    col = tex2D(_MainTex2, pc2.xy);
-                    db = (pc2.x > 0.9 && pc2.y > 0.9 && d2 < 6) ? fixed4(1, 1, 1, 1) : pc2;
-                }/*
-                else
-                {
-                    col = BACK_COL;
-                }*/
 
                 return DEBUG ? db : col;
             }

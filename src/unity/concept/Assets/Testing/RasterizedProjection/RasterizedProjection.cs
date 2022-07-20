@@ -6,18 +6,18 @@ public class RasterizedProjection : MonoBehaviour
 {
     // RasterizedInverseProjection (RIP, haha)
 
-    public string rootDirectory, path, file1, file2;
+    public string rootDirectory, path, file0, file1;
 
     public MapConfig config;
     public ComputeShader computeShader;
     public Shader shader;
     public Vector2Int geometryResolution;
     public Color backgroundColor;
-    public Vector3 offset1, offset2;
+    public Vector3 offset0, offset1;
     public bool wireframe;
 
-    private Texture2D input1, input2;
-    public RenderTexture depthBuffer1, depthBuffer2, interpolationBuffer1, interpolationBuffer2, result1, result2;
+    private Texture2D input0, input1;
+    public RenderTexture depthBuffer0, depthBuffer1, interpolationBuffer0, interpolationBuffer1, result0, result1;
     private Material material;
     private Camera mainCamera;
     private Vector2Int resolution;
@@ -30,24 +30,24 @@ public class RasterizedProjection : MonoBehaviour
         translationKernel = computeShader.FindKernel("Transform");
         computeShader.GetKernelThreadGroupSizes(translationKernel, out threadGroupsX, out threadGroupsY, out _);
 
+        string path0 = Path.Combine(rootDirectory, path, file0);
         string path1 = Path.Combine(rootDirectory, path, file1);
-        string path2 = Path.Combine(rootDirectory, path, file2);
+        byte[] rawInput0 = File.ReadAllBytes(path0);
         byte[] rawInput1 = File.ReadAllBytes(path1);
-        byte[] rawInput2 = File.ReadAllBytes(path2);
+        input0 = new Texture2D(0, 0, TextureFormat.RGBA64, false);
         input1 = new Texture2D(0, 0, TextureFormat.RGBA64, false);
-        input2 = new Texture2D(0, 0, TextureFormat.RGBA64, false);
+        input0.LoadImage(rawInput0);
         input1.LoadImage(rawInput1);
-        input2.LoadImage(rawInput2);
 
         resolution = new Vector2Int(Mathf.CeilToInt(geometryResolution.x / (float)threadGroupsX), Mathf.CeilToInt(geometryResolution.y / (float)threadGroupsY));
-        depthBuffer1 = new RenderTexture(geometryResolution.x, geometryResolution.y, 1, RenderTextureFormat.RFloat);
-        depthBuffer1.enableRandomWrite = true;
-        depthBuffer2 = new RenderTexture(depthBuffer1);
-        interpolationBuffer1 = new RenderTexture(depthBuffer1);
-        interpolationBuffer2 = new RenderTexture(depthBuffer1);
-        result1 = new RenderTexture(depthBuffer1);
-        result1.format = RenderTextureFormat.ARGB64;
-        result2 = new RenderTexture(result1);
+        depthBuffer0 = new RenderTexture(geometryResolution.x, geometryResolution.y, 1, RenderTextureFormat.RFloat);
+        depthBuffer0.enableRandomWrite = true;
+        depthBuffer1 = new RenderTexture(depthBuffer0);
+        interpolationBuffer0 = new RenderTexture(depthBuffer0);
+        interpolationBuffer1 = new RenderTexture(depthBuffer0);
+        result0 = new RenderTexture(depthBuffer0);
+        result0.format = RenderTextureFormat.ARGB64;
+        result1 = new RenderTexture(result0);
         // result.filterMode = FilterMode.Point; // JUST FOR TESTING!!!
 
         computeShader.SetFloat("PI", Mathf.PI);
@@ -55,18 +55,19 @@ public class RasterizedProjection : MonoBehaviour
         computeShader.SetFloat("NCLIP", config.nclip);
         computeShader.SetFloat("FCLIP", config.fclip);
         computeShader.SetVector("GEOMETRY_RESOLUTION", (Vector2)geometryResolution);
+        // computeShader.DisableKeyword("WIREFRAME");
 
         material = new Material(shader);
         material.SetFloat("PI", Mathf.PI);
         material.SetFloat("PI2", Mathf.PI * 2);
+        material.SetTexture("_MainTex0", input0);
         material.SetTexture("_MainTex1", input1);
-        material.SetTexture("_MainTex2", input2);
+        material.SetTexture("_DepthTex0", depthBuffer0);
         material.SetTexture("_DepthTex1", depthBuffer1);
-        material.SetTexture("_DepthTex2", depthBuffer2);
+        material.SetTexture("_InterpTex0", interpolationBuffer0);
         material.SetTexture("_InterpTex1", interpolationBuffer1);
-        material.SetTexture("_InterpTex2", interpolationBuffer2);
+        material.SetTexture("_ProjTex0", result0);
         material.SetTexture("_ProjTex1", result1);
-        material.SetTexture("_ProjTex2", result2);
     }
 
     private void Update()
@@ -82,20 +83,20 @@ public class RasterizedProjection : MonoBehaviour
         computeShader.SetFloat("CAM_FCLIP", mainCamera.farClipPlane);
         computeShader.SetMatrix("TR", transormationMatrix);
 
+        computeShader.SetVector("OFFSET", offset0);
+        computeShader.SetVector("INPUT_RESOLUTION", new Vector2(input0.width, input0.height));
+        computeShader.SetTexture(translationKernel, "Input", input0);
+        computeShader.SetTexture(translationKernel, "InterpolationBuffer", interpolationBuffer0);
+        computeShader.SetTexture(translationKernel, "DepthBuffer", depthBuffer0);
+        computeShader.SetTexture(translationKernel, "Result", result0);
+        computeShader.Dispatch(translationKernel, resolution.x, resolution.y, 1);
+
         computeShader.SetVector("OFFSET", offset1);
         computeShader.SetVector("INPUT_RESOLUTION", new Vector2(input1.width, input1.height));
         computeShader.SetTexture(translationKernel, "Input", input1);
-        computeShader.SetTexture(translationKernel, "InterpolationBuffer", interpolationBuffer1);
         computeShader.SetTexture(translationKernel, "DepthBuffer", depthBuffer1);
+        computeShader.SetTexture(translationKernel, "InterpolationBuffer", interpolationBuffer1);
         computeShader.SetTexture(translationKernel, "Result", result1);
-        computeShader.Dispatch(translationKernel, resolution.x, resolution.y, 1);
-
-        computeShader.SetVector("OFFSET", offset2);
-        computeShader.SetVector("INPUT_RESOLUTION", new Vector2(input2.width, input2.height));
-        computeShader.SetTexture(translationKernel, "Input", input2);
-        computeShader.SetTexture(translationKernel, "DepthBuffer", depthBuffer2);
-        computeShader.SetTexture(translationKernel, "InterpolationBuffer", interpolationBuffer2);
-        computeShader.SetTexture(translationKernel, "Result", result2);
         computeShader.Dispatch(translationKernel, resolution.x, resolution.y, 1);
 
         material.SetInteger("DEBUG", wireframe ? 1 : 0);
@@ -113,13 +114,13 @@ public class RasterizedProjection : MonoBehaviour
             return;
         
         RenderTexture rt = RenderTexture.active;
+        RenderTexture.active = depthBuffer0;
+        GL.Clear(false, true, new Color(mainCamera.farClipPlane, 0, 0, 0));
         RenderTexture.active = depthBuffer1;
         GL.Clear(false, true, new Color(mainCamera.farClipPlane, 0, 0, 0));
-        RenderTexture.active = depthBuffer2;
-        GL.Clear(false, true, new Color(mainCamera.farClipPlane, 0, 0, 0));
-        RenderTexture.active = result1;
+        RenderTexture.active = result0;
         GL.Clear(false, true, Color.black);
-        RenderTexture.active = result2;
+        RenderTexture.active = result1;
         GL.Clear(false, true, Color.black);
         RenderTexture.active = rt;
     }
