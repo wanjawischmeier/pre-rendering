@@ -1,9 +1,6 @@
-Shader "Hidden/DownhillSimplexDemo"
+Shader "Hidden/DownhillSimplexAbstract"
 {
-    Properties
-    {
-        _MainTex ("Texture", 2D) = "white" {}
-    }
+    Properties { }
     SubShader
     {
         // No culling or depth
@@ -42,7 +39,6 @@ Shader "Hidden/DownhillSimplexDemo"
                 return o;
             }
 
-            sampler2D _MainTex;
             float PI, PI2, FAC, OFF;
             float2 X0, X1, X2, TGT;
             float3 OFFSET;
