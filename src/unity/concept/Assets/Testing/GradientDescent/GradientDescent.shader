@@ -14,7 +14,7 @@ Shader "Hidden/GradientDescent"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #define ITERATIONS 1
+            #define ITERATIONS 10
             #define LEARNING_RATE 0.01
 
             #include "UnityCG.cginc"
@@ -40,21 +40,22 @@ Shader "Hidden/GradientDescent"
             }
 
             sampler2D _MainTex;
-            float PI, PI2, F;
-            float3 POSITION;
+            float PI, PI2, FAC, OFF;
+            float2 TGT;
+            float3 OFFSET;
 
             float2 uv2ll(float2 uv)
             {
                 return float2(
                     uv.y * PI,
-                    uv.x * PI2 + PI
+                    uv.x * PI2
                 );
             }
 
             float2 ll2uv(float2 ll)
             {
                 return float2(
-                    ll.y / PI2 + 0.5,
+                    ll.y / PI2,
                     ll.x / PI
                 );
             }
@@ -78,33 +79,51 @@ Shader "Hidden/GradientDescent"
             fixed4 frag(v2f i) : SV_Target
             {
                 float2 ll0 = uv2ll(i.uv);
-                float2 initial_guess = translateLatLon(ll0, -POSITION);
+                /*
+                float2 initial_guess = translateLatLon(ll0, OFFSET);
                 float d = tex2D(_MainTex, ll2uv(initial_guess)).a;
-                float2 reprojection = translateLatLon(initial_guess, POSITION, d);
-                float err = length(abs(initial_guess - reprojection));
+                float2 reprojection = translateLatLon(initial_guess, -OFFSET, d);
+                float err = length(initial_guess - reprojection);
                 float prev_err = err;
-
+                
                 float2 idx = initial_guess;
-
+                */
+                /*
                 [unroll(ITERATIONS)] for (int i = 0; i < ITERATIONS; i++)
                 {
-                    float2 ll1 = translateLatLon(ll0, -POSITION);
+                    float2 ll1 = translateLatLon(ll0, OFFSET);
                     float d1 = tex2D(_MainTex, ll2uv(ll1)).a;
-                    float2 ll2 = translateLatLon(ll1, POSITION, d1);
+                    float2 ll2 = translateLatLon(ll1, -OFFSET, d1);
                     err = length(abs(ll0 - ll2));
                     float slope = err - prev_err;
                     idx -= slope * LEARNING_RATE;
                 }
+                */
 
+                float d = tex2D(_MainTex, i.uv).a;
+                float2 llt = uv2ll(TGT);
+                float2 ll1 = translateLatLon(ll0, OFFSET, d);
+                float err = length(ll1 - llt);
 
-                
+                if (err < 0.2)
+                    return fixed4(1, 0, 1, 1);
+
                 // fixed4 col = tex2D(_MainTex, ll2uv(ll1));
-                // fixed4 col = fixed4(ll2uv(ll2), 0, 1);
-                fixed4 col = fixed4(err, err, err, 1);
+                // fixed4 col = fixed4(length(initial_guess - reprojection).xxx, 1);
+                fixed4 col = fixed4(err.xxx, 1);
                 
+                col *= FAC;
+                col += OFF;
                 
-                
-                return col;
+                float t = 0;
+
+                [unroll(ITERATIONS)] for (int i = 0; i < ITERATIONS; i++)
+                {
+                    t += tex2D(_MainTex, ll2uv(ll0) + float2(i / (float)2, 0)).a;
+                    t -= tex2D(_MainTex, ll2uv(ll0) + float2(i / (float)2, t)).a;
+                }
+
+                return fixed4(col.rgb, t);
             }
             ENDCG
         }

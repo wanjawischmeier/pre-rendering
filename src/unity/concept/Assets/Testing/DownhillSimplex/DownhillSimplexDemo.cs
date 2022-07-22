@@ -1,11 +1,11 @@
 using UnityEngine;
 
-public class GradientDescent : MonoBehaviour
+public class DownhillSimplexDemo : MonoBehaviour
 {
     public Shader shader;
     public Texture2D input;
     public float fac, off;
-    public Vector2 tgt;
+    public Vector2 x0, x1, x2, tgt;
 
     private Material material;
 
@@ -21,6 +21,9 @@ public class GradientDescent : MonoBehaviour
     {
         material.SetFloat("FAC", fac);
         material.SetFloat("OFF", off);
+        material.SetVector("X0", x0);
+        material.SetVector("X1", x1);
+        material.SetVector("X2", x2);
         material.SetVector("TGT", tgt);
         material.SetVector("OFFSET", -transform.position);
     }

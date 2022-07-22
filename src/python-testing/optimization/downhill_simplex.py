@@ -7,9 +7,9 @@ from objective import objective as f
 
 
 def debug_triangle(x0: float2, x1: float2, x2: float2, iteration: int, max_iterations, error: float) -> None:
-    global cost, res
+    global res, circumference, cost
 
-    thickness = round(res / 400)
+    thickness = round(circumference / 400)
     relative_iterations = iteration / float(max_iterations)
     cost = cv2.line(cost, float2.as_tuple(x0), float2.as_tuple(x1), (relative_iterations, relative_iterations, relative_iterations), thickness)
     cost = cv2.line(cost, float2.as_tuple(x0), float2.as_tuple(x2), (relative_iterations, relative_iterations, relative_iterations), thickness)
@@ -22,17 +22,17 @@ def debug_triangle(x0: float2, x1: float2, x2: float2, iteration: int, max_itera
     # cost = cv2.putText(cost, f"samples:{objective.samples}", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (1, 1, 1))
     print(f"iteration:{iteration}\tsamples:{objective.samples}\terror:{error}")
 
-    tmp = resize(cost, (1600, 800))
+    tmp = resize(cost, float2.as_tuple(res))
     cv2.imshow("cost", tmp)
     cv2.waitKey()
 
 def debug_step(xn: float2, col: tuple[float, float, float]) -> None:
-    global cost, res
+    global cost, circumference
 
     tmp = cost
-    tmp = cv2.circle(tmp, float2.as_tuple(xn), round(res / 300), col, cv2.FILLED)
+    tmp = cv2.circle(tmp, float2.as_tuple(xn), round(circumference / 300), col, cv2.FILLED)
     
-    tmp = resize(tmp, (1600, 800))
+    tmp = resize(tmp, float2.as_tuple(res))
     # cv2.imshow("cost", tmp)
     # cv2.waitKey()
 
@@ -63,7 +63,6 @@ def nelder_mead(x0: float2, x1: float2, x2: float2, alpha: float=1, beta: float=
         
         # midpoint
         m = float3.round((g + b) / 2)
-        fm = f(m)
 
         debug_step(m, (0.2, 0.2, 0.2)) # gray
 
@@ -121,10 +120,15 @@ def nelder_mead(x0: float2, x1: float2, x2: float2, alpha: float=1, beta: float=
 
 
 
-width = 1200
-heigth = 600
-res = width + heigth
-objective.optimum = float2(0.4 * width, 0.6 * heigth)
+# path = "C:\\Users\\wanja\\Documents\\dev\\pre-rendering\\renders\\cycles\\single\\single_cube\\540p\\left.png"
+path = "C:\\Users\\wanja\\Documents\\dev\\pre-rendering\\renders\\cycles\\row_system\\room_simple_v2_540p\\0094.png"
+width = 600
+heigth = 300
+res = float2(width, heigth)
+circumference = width + heigth
+opt = float2(0.4, 0.6)
+
+objective.init(path, res, opt)
 
 x0 = float2.round(float2(0.8 * width, 0.45 * heigth))
 x1 = float2.round(float2(0.85 * width, 0.35 * heigth))
@@ -138,8 +142,6 @@ cost = np.zeros((heigth, width, 3))
 
 for y in range(heigth):
     for x in range(width):
-        cost[y, x] = f(float2(x, y), False) / res
+        cost[y, x] = f(float2(x, y), False)
 
 nelder_mead(x0, x1, x2, max_iterations=20)
-
-
