@@ -65,6 +65,9 @@ public class DownhillSimplexAbstract : MonoBehaviour
         
         if (Input.GetMouseButtonUp(0))
             StartCoroutine(enumerator());
+
+        if (Input.GetKeyDown(KeyCode.Escape))
+            Application.Quit();
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)

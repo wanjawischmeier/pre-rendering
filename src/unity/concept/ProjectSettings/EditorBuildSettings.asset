@@ -5,10 +5,13 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 1
+  - enabled: 0
     path: Assets/Testing/CppMultiThreading/CppMT.unity
     guid: 63953ccb290ddfc48a0bf7c3cedb5596
   - enabled: 0
     path: Assets/Scenes/Demo2.unity
     guid: ba8bbbddfefcd0940ba0e98b8d8cff3f
+  - enabled: 1
+    path: Assets/DownhillSimplexAbstract/DownhillSimplexAbstract.unity
+    guid: 3f4a75bbbd9935c4a85341e23f2b73ac
   m_configObjects: {}
