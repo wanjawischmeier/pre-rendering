@@ -243,7 +243,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1287300586618684401, guid: 7e4415cc1b5598f4c8773d10d778ffea, type: 3}
       propertyPath: m_text
-      value: 'X3: 0,00000000'
+      value: 'X3: 0,0'
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 7e4415cc1b5598f4c8773d10d778ffea, type: 3}
@@ -293,6 +293,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4f231c4fb786f3946a6b90b886c48677, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  m_SendPointerHoverToParent: 1
   m_HorizontalAxis: Horizontal
   m_VerticalAxis: Vertical
   m_SubmitButton: Submit
@@ -533,8 +534,8 @@ MonoBehaviour:
   ty2: {fileID: 1794796803}
   tx3: {fileID: 104950192}
   ty3: {fileID: 54226419}
-  sensitivity: 100
-  digits: 9
+  sensitivity: 50
+  digits: 2
 --- !u!1001 &478334756
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -644,7 +645,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1287300586618684401, guid: 7e4415cc1b5598f4c8773d10d778ffea, type: 3}
       propertyPath: m_text
-      value: 'X2: 0,00000000'
+      value: 'X2: 0,0'
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 7e4415cc1b5598f4c8773d10d778ffea, type: 3}
@@ -1066,7 +1067,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1287300586618684401, guid: 7e4415cc1b5598f4c8773d10d778ffea, type: 3}
       propertyPath: m_text
-      value: 'Y2: 0,00000000'
+      value: 'Y2: 0,0'
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 7e4415cc1b5598f4c8773d10d778ffea, type: 3}
@@ -1322,7 +1323,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1287300586618684401, guid: 7e4415cc1b5598f4c8773d10d778ffea, type: 3}
       propertyPath: m_text
-      value: 'Y3: 0,00000000'
+      value: 'Y3: 0,0'
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 7e4415cc1b5598f4c8773d10d778ffea, type: 3}
@@ -1517,7 +1518,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1287300586618684401, guid: 7e4415cc1b5598f4c8773d10d778ffea, type: 3}
       propertyPath: m_text
-      value: 'Y1: 0,00000000'
+      value: 'Y1: 0,0'
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 7e4415cc1b5598f4c8773d10d778ffea, type: 3}
@@ -1639,7 +1640,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1287300586618684401, guid: 7e4415cc1b5598f4c8773d10d778ffea, type: 3}
       propertyPath: m_text
-      value: 'X1: 0,00000000'
+      value: 'X1: 0,0'
       objectReference: {fileID: 0}
     - target: {fileID: 1287300587831152953, guid: 7e4415cc1b5598f4c8773d10d778ffea, type: 3}
       propertyPath: m_IsActive

@@ -22,7 +22,7 @@ public class DownhillSimplexAbstract : MonoBehaviour
         material = new Material(shader);
         material.SetFloat("PI", Mathf.PI);
         material.SetFloat("PI2", Mathf.PI * 2);
-
+        
         panel = GameObject.Find("Panel");
 
         rfac = Mathf.Pow(10, digits -1);
@@ -65,9 +65,6 @@ public class DownhillSimplexAbstract : MonoBehaviour
         
         if (Input.GetMouseButtonUp(0))
             StartCoroutine(enumerator());
-
-        if (Input.GetKeyDown(KeyCode.Escape))
-            Application.Quit();
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
