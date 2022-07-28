@@ -4,7 +4,7 @@ public class GradientDescent : MonoBehaviour
 {
     public Shader shader;
     public Texture2D input;
-    public float fac, off;
+    public float fac, off, learningRate, adaptiveLearning;
     public Vector2 tgt;
 
     private Material material;
@@ -21,6 +21,8 @@ public class GradientDescent : MonoBehaviour
     {
         material.SetFloat("FAC", fac);
         material.SetFloat("OFF", off);
+        material.SetFloat("LEARNING_RATE", learningRate);
+        material.SetFloat("ADAPTIVE_LEARNING", adaptiveLearning);
         material.SetVector("TGT", tgt);
         material.SetVector("OFFSET", -transform.position);
     }

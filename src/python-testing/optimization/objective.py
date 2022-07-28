@@ -16,8 +16,9 @@ offset = float3(0.5, 0, 0)
 def init(path: str, res: float2, opt: float2):
     global width, height, circumference, optimum, img
 
-    img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
-    img = cv2.resize(img, float2.as_tuple(res))
+    if path:
+        img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+        img = cv2.resize(img, float2.as_tuple(res))
     
     width, height = float2.as_tuple(res)
     circumference = width + height

@@ -64,7 +64,10 @@ def gradient_descent(x0: float2, learning_rate=2, max_iterations=200):
 width = 400
 heigth = 200
 res = width + heigth
-objective.optimum = float2(0.5 * width, 0.5 * heigth)
+objective.init(None,
+    float2(width, heigth),
+    float2(0.5 * width, 0.5 * heigth)
+)
 
 cost = np.zeros((heigth, width, 3))
 
