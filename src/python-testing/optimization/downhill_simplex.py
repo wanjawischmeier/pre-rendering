@@ -1,3 +1,5 @@
+from os import getcwd
+from pathlib import Path
 from cv2 import resize
 import numpy as np
 import cv2
@@ -120,15 +122,15 @@ def nelder_mead(x0: float2, x1: float2, x2: float2, alpha: float=1, beta: float=
 
 
 
-# path = "C:\\Users\\wanja\\Documents\\dev\\pre-rendering\\renders\\cycles\\single\\single_cube\\540p\\left.png"
-path = "C:\\Users\\wanja\\Documents\\dev\\pre-rendering\\renders\\cycles\\row_system\\room_simple_v2_540p\\0094.png"
+file = "cycles\\row_system\\room_simple_v2_540p\\0094.png"
+path = Path(getcwd()).parents[1].joinpath("renders", file)
 width = 600
 heigth = 300
 res = float2(width, heigth)
 circumference = width + heigth
 opt = float2(0.4, 0.6)
 
-objective.init(path, res, opt)
+objective.init(str(path), res, opt)
 
 x0 = float2.round(float2(0.8 * width, 0.45 * heigth))
 x1 = float2.round(float2(0.85 * width, 0.35 * heigth))
