@@ -1,7 +1,6 @@
 from cv2 import resize
 import numpy as np
 import cv2
-import gradient_descent
 from gradient_descent import gradient_descent as objective
 from vector import *
 

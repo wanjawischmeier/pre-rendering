@@ -7,6 +7,7 @@ from random import random
 from vector import *
 
 pi2 = pi * 2
+KEYCODE_ESC = 27
 
 def uv2ll(uv: float2) -> float2:
     return float2(
@@ -41,15 +42,6 @@ def translate_uv(uv: float2, translation: float3, dist=1) -> float2:
     ll1 = translate_ll(ll0, translation, dist)
     return ll2uv(ll1)
 
-"""
-def objective(x: float2) -> float:
-    d = x - optimum
-    return float2.magnitude(d)
-
-def derrivative(x: float2) -> float2:
-    return optimum - x
-"""
-
 def derrivative(x: float2, i: float2) -> float2:
     d = img[round(x.y * resolution.y), round(x.x * resolution.x), 3] / float(0xFFFF)
     uv = translate_uv(x, translation.__rmul__(-1), d)
@@ -58,57 +50,14 @@ def derrivative(x: float2, i: float2) -> float2:
 
 
 
-def gradient_descent(x0: float2, learning_rate=0.3733, momentum=0.3, iterations=20, debugging=False):
-    global samples
+def gradient_descent(x0: float2, learning_rate=0.3733, momentum=0.3, iterations=20, max_error=0, debugging=False):
+    global samples, debug
 
-    """
-    xt = x0 + float2(0, learning_rate)
-    xb = x0 - float2(0, learning_rate)
-    xl = x0 + float2(learning_rate, 0)
-    xr = x0 - float2(learning_rate, 0)
-
-    f0 = f(x0)
-    
-    ft = f(xt)
-    fb = f(xb)
-    fl = f(xl)
-    fr = f(xr)
-    
-    if ft < f0:
-        x1 = xt
-    elif fb < f0:
-        x1 = xb
-    elif fl < f0:
-        x1 = xl
-    elif fr < f0:
-        x1 = xr
-    
-    x1 = x0 + learning_rate
-    """
-    
     samples += 1
     x = x0
     adaptive_rate = float2(0, 0)
 
     for i in range(iterations):
-        """
-        f0 = f(x0)
-        f1 = f(x1)
-        
-        gradient = float2(
-            (f0 - f(float2(x1.x, x0.y))) / (x0.x - x1.x),
-            (f0 - f(float2(x0.x, x1.y))) / (x0.y - x1.y)
-        )
-        
-        gradient = float2(
-            f1 / (x0.x - x1.x),
-            f1 / (x0.y - x1.y)
-        )
-        
-        x0 = x1
-        x1 -= learning_rate * gradient
-        """
-
         d = img[round(x.y * (resolution.y -1)), round(x.x * (resolution.x -1)), 3] / float(0xFFFF)
         uv = translate_uv(x, translation.__rmul__(-1), d)
         gradient = x0 - uv
@@ -124,7 +73,10 @@ def gradient_descent(x0: float2, learning_rate=0.3733, momentum=0.3, iterations=
 
         f0 = float2.magnitude(gradient)
 
-        if not debugging:
+        if f0 < max_error:
+            return f0
+
+        if not debugging or not cv2.getWindowProperty('cost', cv2.WND_PROP_VISIBLE):
             continue
 
         print(f"iteration:{i}\terror:{rounding % f0}\tx:({rounding % x.x}, {rounding % x.y})\tgradient:({rounding % gradient.x}, {rounding % gradient.y})")
@@ -137,12 +89,16 @@ def gradient_descent(x0: float2, learning_rate=0.3733, momentum=0.3, iterations=
         )
 
         cv2.imshow("cost", debug)
-        cv2.waitKey()
+        
+        if cv2.waitKey() == KEYCODE_ESC:
+            return -1.0
 
     return f0
 
 
 def sample_error(event, x, y, flags, param):
+    global debug
+
     if not event == cv2.EVENT_LBUTTONDOWN:
         return
     
@@ -174,21 +130,18 @@ def init(_resolution: float2, _debug_resolution: float2, _start: float2, _transl
     rounding = f"%.{_rounding}f"
     samples = 0
 
-    """
-    objective.init(None,
-        float2(width, heigth),
-        float2(0.5 * width, 0.5 * heigth)
-    )
-    """
-
     path = Path(getcwd()).parents[1].joinpath("renders", _file)
     img = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
     img = cv2.resize(img, float2.as_tuple(resolution))
 
 if __name__ == "__main__":
+    resolution = float2(400, 200)
+    debug_resolution = float2(1000, 500)
+    required_error = 1 / max(resolution.x, resolution.y)
+
     init(
-        float2(400, 200),
-        float2(1000, 500),
+        resolution,
+        debug_resolution,
         float2(0.4, 0.75),
         float3(0.1, 0, 0),
         "cycles\\row_system\\room_simple_v2_270p\\0094.png"
@@ -198,9 +151,7 @@ if __name__ == "__main__":
 
     for y in range(resolution.y):
         for x in range(resolution.x):
-            # c = f(float2(x, y), False) / float(circumference)
             uv = float2(x, y) / resolution
-            # c = objective(uv)
             d, _ = derrivative(uv, start)
             r = abs(d.x)
             g = abs(d.y)
@@ -209,24 +160,13 @@ if __name__ == "__main__":
             if d.x < 0 or d.y < 0:
                 b = 1
 
-            # cost[y, x] = (c, c, c)
             cost[y, x] = (b, g, r)
 
     debug = cv2.resize(cost, float2.as_tuple(debug_resolution))
-
-    """
-    cv2.imshow("cost", cost)
-    cv2.waitKey()
-    cv2.imwrite("src\\python-testing\\downhill-simplex\\simple_dst_gradient.png", cost)
-
-    cost = cv2.imread("src\\python-testing\\downhill-simplex\\simple_dst_gradient.png")
-    cv2.imshow("cost", cost)
-    cv2.waitKey()
-    """
 
     debug = cv2.circle(debug, float2.as_tuple(float2.round(start.__rmul__(debug_resolution))), 8, 1, cv2.FILLED)
 
     cv2.imshow("cost", debug)
     cv2.setMouseCallback("cost", sample_error)
     cv2.waitKey()
-    gradient_descent(start, iterations=200, debugging=True)
+    gradient_descent(start, iterations=200, max_error=required_error, debugging=True)
