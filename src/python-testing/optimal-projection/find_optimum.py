@@ -10,6 +10,12 @@ KEYCODE_ESC = 27
 KEYCODE_SPC = 32
 NCLIP = 0.1
 FCLIP = 30
+COLOR_BLUE =    (0xFFFF, 0, 0, 0xFFFF)
+COLOR_GREEN =   (0, 0xFFFF, 0, 0xFFFF)
+COLOR_RED =     (0, 0, 0xFFFF, 0xFFFF)
+COLOR_TURQ =    (0xFFFF, 0xFFFF, 0, 0xFFFF)
+COLOR_MAGENTA = (0, 0xFFFF, 0xFFFF, 0xFFFF)
+
 
 def add_vec3(vector0: tuple[float, float, float], vector1: tuple[float, float, float]) -> tuple[float, float, float]:
     return (
@@ -24,7 +30,7 @@ def sub_vec2(vector0: tuple[float, float], vector1: tuple[float, float]) -> tupl
         vector0[1] - vector1[1]
     )
 
-def mag_vec2(vector: tuple[float, float]) -> tuple[float, float]:
+def mag_vec2(vector: tuple[float, float]) -> float:
     return sqrt(
         vector[0] * vector[0] +
         vector[1] * vector[1]
@@ -38,10 +44,16 @@ def mag_vec3(vector: tuple[float, float, float]) -> tuple[float, float, float]:
     )
 
 def inv_vec3(vector: tuple[float, float, float]) -> tuple[float, float, float]:
-    return sqrt(
+    return (
         -vector[0],
         -vector[1],
-        -vector[2],
+        -vector[2]
+    )
+
+def swp_vec2(vector: tuple[float, float]) -> tuple[float, float]:
+    return (
+        vector[1],
+        vector[0],
     )
 
 def uv2ll(uv: tuple[float, float]) -> tuple[float, float]:
@@ -83,10 +95,11 @@ def translate_uv(uv: tuple[float, float], translation: tuple[float, float, float
     ll1 = translate_ll(ll0, translation, dist)
     return ll2uv(ll1)
 
-geometry_resolution = (80, 45)
+base_resolution_multiplier = 10
+geometry_resolution = (16 * base_resolution_multiplier, 9 * base_resolution_multiplier)
 debug_resolution = (640, 360)
-translation = (-0.05, 0, 0)
-pxl = (42, 24)
+translation = (20, 0, 10)
+pxl = (4 * base_resolution_multiplier, 6 * base_resolution_multiplier)
 file = r"cycles\row_system\room_simple_v2_270p\0094.png"
 path = str(Path(getcwd()).parents[1].joinpath("renders", file))
 
@@ -105,23 +118,51 @@ for y in range(geometry_resolution[1]):
         v = y / geometry_resolution[1]
         
         uv0 = (u, v)
-        uv1 = translate_uv(uv0, translation)
+        uv1 = translate_uv(uv0, translation, d)
         tc1 = uv2tc(uv1, geometry_resolution)
 
-        val = uv0
-        dbg[tc1[1], tc1[0]] = (0, val[1] * 0xFFFF, val[0] * 0xFFFF, 0xFFFF)
+        col = (0, uv0[1] * 0xFFFF, uv0[0] * 0xFFFF, 0xFFFF)
+        dbg[swp_vec2(tc1)] = col
+        if not any(dbg[swp_vec2(tc0)]):
+            dbg[swp_vec2(tc0)] = col
 
 
 
 
-dbg[pxl[1], pxl[0]] = (0xFFFF, 0, 0xFFFF, 0xFFFF)
-d = img[pxl[1], pxl[0], 3] / 0xFFFF * (FCLIP - NCLIP) + NCLIP
+# cv2.circle(dbg, swp_vec2(pxl), 2, (0xFFFF, 0, 0xFFFF, 0xFFFF), cv2.FILLED)
+x, y = pxl
+d = img[y, x, 3] / 0xFFFF * (FCLIP - NCLIP) + NCLIP
 u = x / geometry_resolution[0]
 v = y / geometry_resolution[1]
-        
+
 uv0 = (u, v)
 uv1 = translate_uv(uv0, translation)
 tc1 = uv2tc(uv1, geometry_resolution)
+
+cv2.line(dbg, pxl, tc1, COLOR_BLUE, 1)
+cv2.circle(dbg, pxl, 2, COLOR_BLUE, cv2.FILLED)
+cv2.circle(dbg, tc1, 2, COLOR_TURQ, cv2.FILLED)
+
+x, y = tc1
+d = img[y, x, 3] / 0xFFFF * (FCLIP - NCLIP) + NCLIP
+u = x / geometry_resolution[0]
+v = y / geometry_resolution[1]
+        
+uv2 = (u, v)
+uv3 = translate_uv(uv2, inv_vec3(translation))
+tc3 = uv2tc(uv3, geometry_resolution)
+
+odt = mag_vec2(sub_vec2(tc3, pxl))
+# cv2.circle(dbg, tc1, round(odt), COLOR_TURQ, cv2.FILLED)
+
+cv2.line(dbg, tc1, tc3, COLOR_RED, 1)
+cv2.circle(dbg, tc3, 2, COLOR_RED, cv2.FILLED)
+
+
+
+
+dst = 1000000000
+opt = pxl
 
 for y in range(geometry_resolution[1]):
     for x in range(geometry_resolution[0]):
@@ -131,14 +172,18 @@ for y in range(geometry_resolution[1]):
         v = y / geometry_resolution[1]
         
         uv0 = (u, v)
-        uv1 = translate_uv(uv0, inv_vec3(translation))
+        uv1 = translate_uv(uv0, inv_vec3(translation), d)
         tc1 = uv2tc(uv1, geometry_resolution)
 
-        # dst = mag_vec2(sub_vec2(tc1, ))
+        tmp = mag_vec2(sub_vec2(tc1, pxl))
+        if tmp < dst:
+            opt = tc0
+            dst = tmp
 
 val = uv0
-img[pxl[1], pxl[0]] = (0, val[1] * 0xFFFF, val[0] * 0xFFFF, 0xFFFF)
-dbg[tc1[1], tc1[0]] = (0xFFFF, 0, 0, 0xFFFF)
+# (0, val[1] * 0xFFFF, val[0] * 0xFFFF, 0xFFFF)
+# cv2.circle(dbg, opt, round(dst), COLOR_GREEN, cv2.FILLED)
+cv2.circle(dbg, opt, 1, COLOR_GREEN, cv2.FILLED)
 
 
 
