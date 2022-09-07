@@ -112,9 +112,9 @@ def translate_uv(uv: tuple[float, float], translation: tuple[float, float, float
 
 
 
-debug_fps = 14
-debug_hz = 1 / debug_fps
-geometry_resolution_multiplier = 4
+debug_fps = 0
+if debug_fps > 0: debug_hz = 1 / debug_fps
+geometry_resolution_multiplier = 10
 debug_resolution_multiplier = 40
 geometry_width = 16 * geometry_resolution_multiplier
 geometry_height = 9 * geometry_resolution_multiplier
@@ -122,10 +122,16 @@ debug_width = 16 * debug_resolution_multiplier
 debug_height = 9 * debug_resolution_multiplier
 geometry_resolution = (geometry_width, geometry_height)
 debug_resolution = (debug_width, debug_height)
-translation = (1, 0, 1)
+translation = (2, 0, 0)
 pxl = (4 * geometry_resolution_multiplier, 6 * geometry_resolution_multiplier)
-file = r"cycles\row_system\room_simple_v2_270p\0094.png"
-path = str(Path(getcwd()).parents[1].joinpath("renders", file))
+file = r"cycles\row_system\room_simple_v2_270p\0094"
+cache_dir = r"src\python-testing\optimal-projection"
+file_format = ".png"
+iteration = 2
+ending = f"_{iteration}{file_format}"
+cwd = Path(getcwd())
+path = str(cwd.parents[1].joinpath("renders", file + file_format))
+cache = cwd.joinpath(cache_dir)
 
 img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
 img = cv2.resize(img, geometry_resolution)
@@ -212,67 +218,82 @@ cv2.circle(dbg, opt, 1, COLOR_GREEN, cv2.FILLED)
 
 
 
+try:
+    for y0 in range(geometry_height):
+        if y0 < geometry_height / 3:
+            continue
+        start = time()
 
-for y0 in range(geometry_height):
-    start = time()
+        for x0 in range(geometry_width):
+            if x0 > geometry_width / 2:
+                continue
+            # print(f"column: {x0}")
+            dst = geometry_width * geometry_height
+            tgt = (x0, y0)
+            key = 0
+            last_update = time()
 
-    for x0 in range(geometry_width):
-        # print(f"column: {x0}")
-        dst = geometry_width * geometry_height
-        tgt = (x0, y0)
-        last_update = time()
+            for y1 in range(geometry_height):
+                for x1 in range(geometry_width):
+                    tc0 = (x1, y1)
+                    d = img[y1, x1, 3] / 0xFFFF * (FCLIP - NCLIP) + NCLIP
+                    u = x1 / geometry_width
+                    v = y1 / geometry_height
+                    
+                    uv0 = (u, v)
+                    uv1, _ = translate_uv(uv0, inv_vec3(translation), d)
+                    tc1 = uv2tc(uv1, geometry_resolution)
 
-        for y1 in range(geometry_height):
-            for x1 in range(geometry_width):
-                tc0 = (x1, y1)
-                d = img[y1, x1, 3] / 0xFFFF * (FCLIP - NCLIP) + NCLIP
-                u = x1 / geometry_width
-                v = y1 / geometry_height
-                
-                uv0 = (u, v)
-                uv1, _ = translate_uv(uv0, inv_vec3(translation), d)
-                tc1 = uv2tc(uv1, geometry_resolution)
+                    tmp = mag_vec2(sub_vec2(tc1, tgt))
+                    if tmp < dst:
+                        opt = tc0
+                        lt1 = tc1
+                        dst = tmp
+            
+            dbo[swp_vec2(tgt)] = (0, opt[1] / geometry_height * 0xFFFF, opt[0] / geometry_width * 0xFFFF, 0xFFFF)
+            # d = img[swp_vec2(opt)][3]
+            # cbo[swp_vec2(tgt)] = (d, d, d, 0xFFFF)
+            cbo[swp_vec2(tgt)] = img[swp_vec2(opt)]
+            current_time = time()
+            if debug_fps == 0 or (debug_fps > 0 and current_time - last_update > debug_hz):
+                last_update = current_time
+                cuo = cv2.resize(cbo, debug_resolution, interpolation=cv2.INTER_NEAREST)
+                duo = cv2.resize(dbo, debug_resolution, interpolation=cv2.INTER_NEAREST)
+                cct = cv2.vconcat([cuo, duo])
+                cv2.imshow("progress", cct)
+                key = cv2.waitKey(1)
+                if key == KEYCODE_ESC:
+                    raise StopIteration
+                if key == KEYCODE_SPC:
+                    break
 
-                tmp = mag_vec2(sub_vec2(tc1, tgt))
-                if tmp < dst:
-                    opt = tc0
-                    lt1 = tc1
-                    dst = tmp
-        
-        dbo[swp_vec2(tgt)] = (0, opt[1] / geometry_height * 0xFFFF, opt[0] / geometry_width * 0xFFFF, 0xFFFF)
-        d = img[swp_vec2(opt)][3]
-        cbo[swp_vec2(tgt)] = (d, d, d, 0xFFFF)
-        current_time = time()
-        if current_time - last_update > debug_hz:
-            last_update = current_time
-            duo = cv2.resize(dbo, debug_resolution, interpolation=cv2.INTER_NEAREST)
-            cuo = cv2.resize(cbo, debug_resolution, interpolation=cv2.INTER_NEAREST)
-            cct = cv2.vconcat([duo, cuo])
-            cv2.imshow("progress", cct)
-            cv2.waitKey(1)
+        seconds = round(time() - start)
+        remaining = (geometry_height - y0) * seconds
+        if remaining < 60:
+            remaining = f"{str(remaining)}s"
+        else:
+            remaining = f"{str(round(remaining / 60))}m"
+        print(f"row: {y0}\t\t(took {seconds}s,\t~{remaining} remaining)")
 
-    seconds = round(time() - start)
-    remaining = (geometry_height - y0) * seconds
-    if remaining < 60:
-        remaining = f"{str(remaining)}s"
-    else:
-        remaining = f"{str(round(remaining / 60))}m"
-    print(f"row: {y0}\t\t(took {seconds}s,\t~{remaining} remaining)")
-
+except StopIteration:
+    print(f"terminated loop by user input (at iteration x0={x0},y0={y0})")
 cv2.destroyWindow("progress")
 
 
 
 
+cv2.imwrite(str(cache.joinpath("dbg" + ending)), dbg)
+cv2.imwrite(str(cache.joinpath("cbo" + ending)), cbo)
+cv2.imwrite(str(cache.joinpath("dbo" + ending)), dbo)
 img = cv2.resize(img, debug_resolution, interpolation=cv2.INTER_NEAREST)
 dbg = cv2.resize(dbg, debug_resolution, interpolation=cv2.INTER_NEAREST)
-duo = cv2.resize(dbo, debug_resolution, interpolation=cv2.INTER_NEAREST)
-cuo = cv2.resize(cbo, debug_resolution, interpolation=cv2.INTER_NEAREST)
+cbo = cv2.resize(cbo, debug_resolution, interpolation=cv2.INTER_NEAREST)
+dbo = cv2.resize(dbo, debug_resolution, interpolation=cv2.INTER_NEAREST)
 ccl = cv2.vconcat([img, dbg])
-ccr = cv2.vconcat([duo, cuo])
+ccr = cv2.vconcat([cbo, dbo])
 cct = cv2.hconcat([ccl, ccr])
+cv2.imwrite(str(cache.joinpath("cct" + ending)), cct)
 cv2.imshow("lol_cct", cct)
-
 
 key = cv2.waitKey()
 while key != KEYCODE_ESC and key != KEYCODE_SPC:
