@@ -14,7 +14,8 @@ COLOR_BLUE =    (0xFFFF, 0, 0, 0xFFFF)
 COLOR_GREEN =   (0, 0xFFFF, 0, 0xFFFF)
 COLOR_RED =     (0, 0, 0xFFFF, 0xFFFF)
 COLOR_TURQ =    (0xFFFF, 0xFFFF, 0, 0xFFFF)
-COLOR_MAGENTA = (0, 0xFFFF, 0xFFFF, 0xFFFF)
+COLOR_YELLOW =  (0, 0xFFFF, 0xFFFF, 0xFFFF)
+COLOR_MAGENTA = (0xFFFF, 0, 0xFFFF, 0xFFFF)
 
 
 def add_vec3(vector0: tuple[float, float, float], vector1: tuple[float, float, float]) -> tuple[float, float, float]:
@@ -68,13 +69,19 @@ def uv2tc(vector: tuple[float, float], resolution: tuple[float, float]) -> tuple
         floor(vector[1] * resolution[1])
     )
 
+def tc2uv(vector: tuple[float, float], resolution: tuple[float, float]) -> tuple[float, float]:
+    return (
+        vector[0] / resolution[0],
+        vector[1] / resolution[1]
+    )
+
 def ll2uv(latLon: tuple[float, float]) -> tuple[float, float]:
     return (
         latLon[1] / pi2,
         latLon[0] / pi
     )
 
-def translate_ll(latLon: tuple[float, float], translation: tuple[float, float, float], dist=1) -> tuple[float, float]:
+def translate_ll(latLon: tuple[float, float], translation: tuple[float, float, float], dist=1) -> tuple[tuple[float, float], float]:
     P = (
         dist * sin(latLon[1]) * sin(latLon[0]),
         dist * cos(latLon[0]),
@@ -88,14 +95,14 @@ def translate_ll(latLon: tuple[float, float], translation: tuple[float, float, f
     return (
         acos(P[1] / d),
         atan2(P[0], P[2])
-    )
+    ), d
 
-def translate_uv(uv: tuple[float, float], translation: tuple[float, float, float], dist=1) -> tuple[float, float]:
+def translate_uv(uv: tuple[float, float], translation: tuple[float, float, float], dist=1) -> tuple[tuple[float, float], float]:
     ll0 = uv2ll(uv)
-    ll1 = translate_ll(ll0, translation, dist)
-    return ll2uv(ll1)
+    ll1, d = translate_ll(ll0, translation, dist)
+    return ll2uv(ll1), d
 
-base_resolution_multiplier = 10
+base_resolution_multiplier = 20
 geometry_resolution = (16 * base_resolution_multiplier, 9 * base_resolution_multiplier)
 debug_resolution = (640, 360)
 translation = (20, 0, 10)
@@ -114,11 +121,9 @@ for y in range(geometry_resolution[1]):
     for x in range(geometry_resolution[0]):
         tc0 = (x, y)
         d = img[y, x, 3] / 0xFFFF * (FCLIP - NCLIP) + NCLIP
-        u = x / geometry_resolution[0]
-        v = y / geometry_resolution[1]
         
-        uv0 = (u, v)
-        uv1 = translate_uv(uv0, translation, d)
+        uv0 = tc2uv(tc0, geometry_resolution)
+        uv1, _ = translate_uv(uv0, translation, d)
         tc1 = uv2tc(uv1, geometry_resolution)
 
         col = (0, uv0[1] * 0xFFFF, uv0[0] * 0xFFFF, 0xFFFF)
@@ -135,26 +140,21 @@ d = img[y, x, 3] / 0xFFFF * (FCLIP - NCLIP) + NCLIP
 u = x / geometry_resolution[0]
 v = y / geometry_resolution[1]
 
-uv0 = (u, v)
-uv1 = translate_uv(uv0, translation)
+uv0 = tc2uv(pxl, geometry_resolution)
+uv1, d = translate_uv(uv0, translation, d)
 tc1 = uv2tc(uv1, geometry_resolution)
 
-cv2.line(dbg, pxl, tc1, COLOR_BLUE, 1)
-cv2.circle(dbg, pxl, 2, COLOR_BLUE, cv2.FILLED)
-cv2.circle(dbg, tc1, 2, COLOR_TURQ, cv2.FILLED)
-
 x, y = tc1
-d = img[y, x, 3] / 0xFFFF * (FCLIP - NCLIP) + NCLIP
-u = x / geometry_resolution[0]
-v = y / geometry_resolution[1]
-        
-uv2 = (u, v)
-uv3 = translate_uv(uv2, inv_vec3(translation))
+# d = img[y, x, 3] / 0xFFFF * (FCLIP - NCLIP) + NCLIP
+uv3, _ = translate_uv(uv1, inv_vec3(translation), d)
 tc3 = uv2tc(uv3, geometry_resolution)
 
 odt = mag_vec2(sub_vec2(tc3, pxl))
 # cv2.circle(dbg, tc1, round(odt), COLOR_TURQ, cv2.FILLED)
 
+cv2.line(dbg, pxl, tc1, COLOR_BLUE, 1)
+cv2.circle(dbg, pxl, 2, COLOR_BLUE, cv2.FILLED)
+cv2.circle(dbg, tc1, 2, COLOR_TURQ, cv2.FILLED)
 cv2.line(dbg, tc1, tc3, COLOR_RED, 1)
 cv2.circle(dbg, tc3, 2, COLOR_RED, cv2.FILLED)
 
@@ -172,18 +172,21 @@ for y in range(geometry_resolution[1]):
         v = y / geometry_resolution[1]
         
         uv0 = (u, v)
-        uv1 = translate_uv(uv0, inv_vec3(translation), d)
+        uv1, _ = translate_uv(uv0, inv_vec3(translation), d)
         tc1 = uv2tc(uv1, geometry_resolution)
 
         tmp = mag_vec2(sub_vec2(tc1, pxl))
         if tmp < dst:
             opt = tc0
+            lt1 = tc1
             dst = tmp
 
 val = uv0
 # (0, val[1] * 0xFFFF, val[0] * 0xFFFF, 0xFFFF)
 # cv2.circle(dbg, opt, round(dst), COLOR_GREEN, cv2.FILLED)
+cv2.line(dbg, opt, lt1, COLOR_MAGENTA, 1)
 cv2.circle(dbg, opt, 1, COLOR_GREEN, cv2.FILLED)
+cv2.circle(dbg, lt1, 1, COLOR_GREEN, cv2.FILLED)
 
 
 
