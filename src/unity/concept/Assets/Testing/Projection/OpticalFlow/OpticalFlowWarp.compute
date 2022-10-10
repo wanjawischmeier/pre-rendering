@@ -1,0 +1,68 @@
+#pragma kernel CSMain
+#define PI 3.141592653589793238462
+#define PI2 6.283185307179586476924
+
+float2 RESOLUTION;
+float3 POSITION;
+
+Texture2D<float4> Input;
+RWTexture2D<float4> Result;
+
+
+float2 uv2ll(float2 uv)
+{
+    return float2(
+        uv.y * PI,
+        uv.x * PI2 + PI
+    );
+}
+
+float2 ll2uv(float2 ll)
+{
+    return float2(
+        ll.y / PI2 + 0.5,
+        ll.x / PI
+    );
+}
+
+float3 ll2vec(float2 ll, float dist = 1)
+{
+    return float3(
+        dist * sin(ll.y) * sin(ll.x),
+        dist * cos(ll.x),
+        dist * cos(ll.y) * sin(ll.x)
+    );
+}
+            
+float2 vec2ll(float3 vec, float dist = 1)
+{
+    return float2(
+        acos(vec.y / dist),
+        atan2(vec.x, vec.z)
+    );
+}
+
+float2 translateLatLon(float2 ll, float3 vec, float dist = 1)
+{
+    float3 P = ll2vec(ll, dist);
+    P += vec;
+
+    float d = length(P);
+    return vec2ll(P, d);
+}
+
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    float2 uv0 = id.xy / RESOLUTION;
+    float2 ll0 = uv2ll(uv0);
+    float d = Input[id.xy].a;
+    float2 ll1 = translateLatLon(ll0, POSITION, d);
+    float2 uv1 = ll2uv(ll1);
+    uint2 tc1 = uv1 * RESOLUTION;
+
+
+
+    Result[tc1] = float4(uv0 - uv1, 0, 1);
+}
