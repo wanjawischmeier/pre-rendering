@@ -6,22 +6,27 @@ public class ApplyWarp : MonoBehaviour
     public Shader warpShader;
     public Texture2D input;
 
-    private RenderTexture result;
+    private RenderTexture projected, result;
     private Material warpMaterial;
-    private int kernelIndex, threadGroupsX, threadGroupsY;
+    private int projectKernel, interpolateKernel, threadGroupsX, threadGroupsY;
 
     private void Start()
     {
-        result = new RenderTexture(input.width, input.height, 0, RenderTextureFormat.ARGBFloat);
-        result.enableRandomWrite = true;
-
+        projected = new RenderTexture(input.width, input.height, 0, RenderTextureFormat.ARGBFloat);
+        projected.enableRandomWrite = true;
+        result = new RenderTexture(projected);
         warpMaterial = new Material(warpShader);
 
-        kernelIndex = computeShader.FindKernel("CSMain");
+        projectKernel = computeShader.FindKernel("Project");
+        interpolateKernel = computeShader.FindKernel("Interpolate");
+        
         computeShader.SetVector("RESOLUTION", new Vector2(input.width, input.height));
-        computeShader.SetTexture(kernelIndex, "Input", input);
-        computeShader.SetTexture(kernelIndex, "Result", result);
-        computeShader.GetKernelThreadGroupSizes(kernelIndex, out uint threadGroupSizeX, out uint threadGroupSizeY, out _);
+        computeShader.SetTexture(projectKernel, "Input", input);
+        computeShader.SetTexture(interpolateKernel, "Input", input);
+        computeShader.SetTexture(projectKernel, "Projected", projected);
+        computeShader.SetTexture(interpolateKernel, "ProjectedInput", projected);
+        computeShader.SetTexture(interpolateKernel, "Result", result);
+        computeShader.GetKernelThreadGroupSizes(projectKernel, out uint threadGroupSizeX, out uint threadGroupSizeY, out _);
         threadGroupsX = input.width / (int)threadGroupSizeX;
         threadGroupsY = input.height / (int)threadGroupSizeY;
     }
@@ -34,11 +39,12 @@ public class ApplyWarp : MonoBehaviour
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         RenderTexture rt = RenderTexture.active;
-        RenderTexture.active = result;
+        RenderTexture.active = projected;
         GL.Clear(false, true, Color.clear);
         RenderTexture.active = rt;
 
-        computeShader.Dispatch(kernelIndex, threadGroupsX, threadGroupsY, 1);
-        Graphics.Blit(result, destination, warpMaterial);
+        computeShader.Dispatch(projectKernel, threadGroupsX, threadGroupsY, 1);
+        computeShader.Dispatch(interpolateKernel, threadGroupsX, threadGroupsY, 1);
+        Graphics.Blit(result, destination);
     }
 }

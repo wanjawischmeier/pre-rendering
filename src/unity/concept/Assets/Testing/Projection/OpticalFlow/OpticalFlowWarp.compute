@@ -1,12 +1,13 @@
-#pragma kernel CSMain
+#pragma kernel Project
+#pragma kernel Interpolate
 #define PI 3.141592653589793238462
 #define PI2 6.283185307179586476924
 
 float2 RESOLUTION;
 float3 POSITION;
 
-Texture2D<float4> Input;
-RWTexture2D<float4> Result;
+Texture2D<float4> Input, ProjectedInput;
+RWTexture2D<float4> Projected, Result;
 
 
 float2 uv2ll(float2 uv)
@@ -53,7 +54,7 @@ float2 translateLatLon(float2 ll, float3 vec, float dist = 1)
 
 
 [numthreads(8,8,1)]
-void CSMain (uint3 id : SV_DispatchThreadID)
+void Project(uint3 id : SV_DispatchThreadID)
 {
     float2 uv0 = id.xy / RESOLUTION;
     float2 ll0 = uv2ll(uv0);
@@ -62,7 +63,173 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     float2 uv1 = ll2uv(ll1);
     uint2 tc1 = uv1 * RESOLUTION;
 
+    Projected[tc1] = float4(uv0, 0, 1);
+}
 
+[numthreads(8, 8, 1)]
+void Interpolate(uint3 id : SV_DispatchThreadID)
+{
+    uint2 fac = uint2(2, 1);
 
-    Result[tc1] = float4(uv0 - uv1, 0, 1);
+    float2 uv0 = ProjectedInput[id.xy].xy;
+    /*
+    float dl = 0;
+    float dr = 0;
+    float2 uvl, uvr;
+
+    if (!any(uv0))
+    {
+        for (uint i = 0; i < 100; i++)
+        {
+            if (dl == 0)
+            {
+                uint2 tcl = id.xy - uint2(i, 0);
+                uvl = ProjectedInput[tcl].xy;
+
+                if (uvl.x > 0.1)
+                {
+                    dl = -i;
+                }
+            }
+
+            if (dr == 0)
+            {
+                uint2 tcr = id.xy + uint2(i, 0);
+                uvr = ProjectedInput[tcr].xy;
+
+                if (uvr.x > 0.1)
+                {
+                    dr = i;
+                }
+            }
+            uint2 tcr = id.xy + uint2(i, 0);
+
+            uvr = ProjectedInput[tcr].xy;
+
+        }
+
+        if (dl == 0 || dr == 0)
+        {
+            uv0 = float2(1.0, 0.5);
+        }
+        else
+        {
+            // lerp
+            uv0 = uvl + abs(0 - dl) * ((uvr - uvl) / (dr - dl));
+            // uv0 = uvl;
+        }
+    }
+
+    uint2 tc;
+    float2 uv;
+
+    if (!any(uv0))
+    {
+        for (uint i = 0; i < 2000; i++)
+        {
+            tc = id.xy - uint2(i, 0);
+            uv = ProjectedInput[tc].xy;
+
+            if (any(uv))
+            {
+                uv0 = uv;
+                break;
+            }
+
+            tc = id.xy + uint2(i, 0);
+            uv = ProjectedInput[tc].xy;
+
+            if (any(uv))
+            {
+                uv0 = uv;
+                break;
+            }
+
+            tc = id.xy - uint2(0, i);
+            uv = ProjectedInput[tc].xy;
+
+            if (any(uv))
+            {
+                uv0 = uv;
+                break;
+            }
+
+            tc = id.xy + uint2(0, i);
+            uv = ProjectedInput[tc].xy;
+
+            if (any(uv))
+            {
+                uv0 = uv;
+                break;
+            }
+        }
+    }
+    */
+
+    if (any(uv0))
+    {
+        Result[id.xy] = float4(uv0, 0, 1);
+        // Result[id.xy] = Input[uv0 * RESOLUTION];
+        return;
+    }
+
+    uv0 = float2(0.5, 1);
+    float dl, dr, dt, db;
+    float2 uvl, uvr, uvt, uvb;
+
+    for (uint i = 1; i < 2000; i++)
+    {
+        // tc1 = uint2((id.x - i) % RESOLUTION.x, id.y);
+
+        // left pixel
+        if (dl == 0)
+        {
+            uvl = ProjectedInput[(id.xy - uint2(i, 0)) % RESOLUTION].xy;
+
+            if (any(uvl))
+                dl = i;
+        }
+
+        // right pixel
+        if (dr == 0)
+        {
+            uvr = ProjectedInput[(id.xy + uint2(i, 0)) % RESOLUTION].xy;
+
+            if (any(uvr))
+                dr = i;
+        }
+
+        // top pixel
+        if (dt == 0)
+        {
+            uvt = ProjectedInput[(id.xy - uint2(0, i)) % RESOLUTION].xy;
+
+            if (any(uvt))
+                dt = i;
+        }
+
+        // bottom pixel
+        if (db == 0)
+        {
+            uvb = ProjectedInput[(id.xy + uint2(0, i)) % RESOLUTION].xy;
+
+            if (any(uvb))
+                db = i;
+        }
+
+        if (all(float4(dl, dr, dt, db)))
+            break;
+    }
+
+    uv0 = uvr;
+    // lerp
+    float x = id.x;
+    float y = id.y;
+
+    wl = ()
+
+    uv0 = uvl + abs(0 - dl) * ((uvr - uvl) / (dr - dl));
+
+    Result[id.xy] = float4(uv0, 0, 1);
+    // Result[id.xy] = Input[uv0 * RESOLUTION];
 }

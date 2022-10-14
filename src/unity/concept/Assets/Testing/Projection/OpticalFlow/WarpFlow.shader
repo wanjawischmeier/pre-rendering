@@ -45,8 +45,8 @@ Shader "Hidden/WarpFlow"
                 float2 warped = i.uv + warp;
 
 
-                // return fixed4(warp, 0, 1);
-                return tex2D(_Input, warped);
+                return fixed4(warp, 0, 1);
+                return tex2D(_Input, warp);
             }
             ENDCG
         }
