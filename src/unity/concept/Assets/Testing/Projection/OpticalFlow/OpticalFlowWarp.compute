@@ -53,14 +53,9 @@ float2 translateLatLon(float2 ll, float3 vec, float dist = 1)
     return vec2ll(P, d);
 }
 
-uint2 wrapHorizontal(uint2 tc, uint offset = 0)
+uint2 wrap(uint2 tc, uint x, uint y)
 {
-    return uint2((tc.x + offset) % uint(RESOLUTION.x), tc.y);
-}
-
-uint2 wrapVertical(uint2 tc, uint offset = 0)
-{
-    return uint2(tc.x, (tc.y + offset) % uint(RESOLUTION.y));
+    return (tc + uint2(x, y)) % uint2(RESOLUTION);
 }
 
 
@@ -82,168 +77,67 @@ void Interpolate(uint3 id : SV_DispatchThreadID)
 {
     uint2 fac = uint2(2, 1);
 
-    float2 uv0 = ProjectedInput[id.xy].xy;
-    /*
-    float dl = 0;
-    float dr = 0;
-    float2 uvl, uvr;
+    float2 uv = ProjectedInput[id.xy].xy;
 
-    if (!any(uv0))
+    if (any(uv))
     {
-        for (uint i = 0; i < 100; i++)
-        {
-            if (dl == 0)
-            {
-                uint2 tcl = id.xy - uint2(i, 0);
-                uvl = ProjectedInput[tcl].xy;
-
-                if (uvl.x > 0.1)
-                {
-                    dl = -i;
-                }
-            }
-
-            if (dr == 0)
-            {
-                uint2 tcr = id.xy + uint2(i, 0);
-                uvr = ProjectedInput[tcr].xy;
-
-                if (uvr.x > 0.1)
-                {
-                    dr = i;
-                }
-            }
-            uint2 tcr = id.xy + uint2(i, 0);
-
-            uvr = ProjectedInput[tcr].xy;
-
-        }
-
-        if (dl == 0 || dr == 0)
-        {
-            uv0 = float2(1.0, 0.5);
-        }
-        else
-        {
-            // lerp
-            uv0 = uvl + abs(0 - dl) * ((uvr - uvl) / (dr - dl));
-            // uv0 = uvl;
-        }
-    }
-
-    uint2 tc;
-    float2 uv;
-
-    if (!any(uv0))
-    {
-        for (uint i = 0; i < 2000; i++)
-        {
-            tc = id.xy - uint2(i, 0);
-            uv = ProjectedInput[tc].xy;
-
-            if (any(uv))
-            {
-                uv0 = uv;
-                break;
-            }
-
-            tc = id.xy + uint2(i, 0);
-            uv = ProjectedInput[tc].xy;
-
-            if (any(uv))
-            {
-                uv0 = uv;
-                break;
-            }
-
-            tc = id.xy - uint2(0, i);
-            uv = ProjectedInput[tc].xy;
-
-            if (any(uv))
-            {
-                uv0 = uv;
-                break;
-            }
-
-            tc = id.xy + uint2(0, i);
-            uv = ProjectedInput[tc].xy;
-
-            if (any(uv))
-            {
-                uv0 = uv;
-                break;
-            }
-        }
-    }
-    */
-
-    if (any(uv0))
-    {
-        Result[id.xy] = float4(uv0, 0, 1);
+        Result[id.xy] = float4(uv, 0, 1);
         return;
     }
 
-    uv0 = float2(0.5, 1);
-    float dl, dr, dt, db;
-    float2 uvl, uvr, uvt, uvb;
+    uv = float2(0.5, 1);
+    float d00, d10, d01, d11;
+    float2 uv00, uv10, uv01, uv11;
 
     for (uint i = 1; i < 2000; i++)
     {
-        // left pixel
-        if (dl == 0)
+        // bottom left pixel
+        if (d00 == 0)
         {
-            uvl = ProjectedInput[wrapHorizontal(id.xy, -i)].xy;
+            uv00 = ProjectedInput[wrap(id.xy, -i, -i)].xy;
 
-            if (any(uvl))
-                dl = i;
+            if (any(uv00))
+                d00 = i;
         }
 
-        // right pixel
-        if (dr == 0)
+        // bottom right pixel
+        if (d10 == 0)
         {
-            uvr = ProjectedInput[wrapHorizontal(id.xy, i)].xy;
+            uv10 = ProjectedInput[wrap(id.xy, i, -i)].xy;
 
-            if (any(uvr))
-                dr = i;
+            if (any(uv10))
+                d10 = i;
         }
 
-        // top pixel
-        if (dt == 0)
+        // top left pixel
+        if (d01 == 0)
         {
-            uvt = ProjectedInput[wrapVertical(id.xy, -i)].xy;
+            uv01 = ProjectedInput[wrap(id.xy, -i, i)].xy;
 
-            if (any(uvt))
-                dt = i;
+            if (any(uv01))
+                d01 = i;
         }
 
-        // bottom pixel
-        if (db == 0)
+        // top right pixel
+        if (d11 == 0)
         {
-            uvb = ProjectedInput[wrapVertical(id.xy, i)].xy;
+            uv11 = ProjectedInput[wrap(id.xy, i, i)].xy;
 
-            if (any(uvb))
-                db = i;
+            if (any(uv11))
+                d11 = i;
         }
 
-        if (all(float4(dl, dr, dt, db)))
+        if (all(float4(d00, d10, d01, d11)))
             break;
     }
 
-    uv0 = uvl;
+    // just an estimation, not exact uv values
+    float u = d00 / (d00 + d10);
+
     // lerp
-    float x = id.x;
-    float y = id.y;
-    float u = (dr - id.x) / (id.x - dl);
-    float v = (dt - id.y) / (id.y - db);
+    float2 uvh = lerp(uv00, uv10, u);
+    float2 uvv = lerp(uv10, uv11, u);
+    uv = lerp(uvh, uvv, u);
 
-    float2 uvh = lerp(uvr, uvl, u);
-    float2 uvv = lerp(uvt, uvb, u);
-    uv0 = lerp(uvh, uvv, v);
-    // 0: uvl, 1; uvr
-    // uv0 = lerp(uvl, uvr, UV.x);
-
-    // uv0 = uvl + abs(0 - dl) * ((uvr - uvl) / (dr - dl));
-
-    Result[id.xy] = float4(uv0, 0, 1);
-    // Result[id.xy] = Input[uv0 * RESOLUTION];
+    Result[id.xy] = float4(uv, 0, 1);
 }
