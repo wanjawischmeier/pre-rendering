@@ -223,6 +223,11 @@ MonoBehaviour:
   computeShader: {fileID: 7200000, guid: fb3da429e96aaac4ab07dab007a46dec, type: 3}
   warpShader: {fileID: 4800000, guid: 24031162b4f31424e91d295295cc89a1, type: 3}
   input: {fileID: 2800000, guid: 3beb61103c224e94fb52a1a26587be40, type: 3}
+  uv: {x: 0, y: 0}
+  PL: {x: 600, y: 250}
+  PR: {x: 1400, y: 250}
+  PT: {x: 1000, y: 400}
+  PB: {x: 1000, y: 100}
 --- !u!1 &2061885961
 GameObject:
   m_ObjectHideFlags: 0

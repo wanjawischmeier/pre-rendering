@@ -3,7 +3,7 @@
 #define PI 3.141592653589793238462
 #define PI2 6.283185307179586476924
 
-float2 UV;
+float2 UV, PL, PR, PT, PB;
 float2 RESOLUTION;
 float3 POSITION;
 
@@ -63,6 +63,29 @@ uint2 wrap(uint2 tc, uint x, uint y)
 void Project(uint3 id : SV_DispatchThreadID)
 {
     float2 uv0 = id.xy / RESOLUTION;
+
+    if (length(id.xy - PL) < 10)
+    {
+        Projected[id.xy] = float4(uv0, 0, 1);
+    }
+
+    if (length(id.xy - PR) < 10)
+    {
+        Projected[id.xy] = float4(uv0, 0, 1);
+    }
+
+    if (length(id.xy - PT) < 10)
+    {
+        Projected[id.xy] = float4(uv0, 0, 1);
+    }
+
+    if (length(id.xy - PB) < 10)
+    {
+        Projected[id.xy] = float4(uv0, 0, 1);
+    }
+
+    return;
+
     float2 ll0 = uv2ll(uv0);
     float d = Input[id.xy].a;
     float2 ll1 = translateLatLon(ll0, POSITION, d);
@@ -89,7 +112,7 @@ void Interpolate(uint3 id : SV_DispatchThreadID)
     float d00, d10, d01, d11;
     float2 uv00, uv10, uv01, uv11;
 
-    for (uint i = 1; i < 2000; i++)
+    for (uint i = 1; i < 200; i++)
     {
         // bottom left pixel
         if (d00 == 0)

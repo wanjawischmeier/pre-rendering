@@ -6,6 +6,7 @@ public class ApplyWarp : MonoBehaviour
     public Shader warpShader;
     public Texture2D input;
     public Vector2 uv;
+    public Vector2Int PL, PR, PT, PB;
 
     private RenderTexture projected, result;
     private Material warpMaterial;
@@ -36,6 +37,10 @@ public class ApplyWarp : MonoBehaviour
     {
         computeShader.SetVector("POSITION", transform.position);
         computeShader.SetVector("UV", uv);
+        computeShader.SetVector("PL", new Vector2(PL.x, PL.y));
+        computeShader.SetVector("PR", new Vector2(PR.x, PR.y));
+        computeShader.SetVector("PT", new Vector2(PT.x, PT.y));
+        computeShader.SetVector("PB", new Vector2(PB.x, PB.y));
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
