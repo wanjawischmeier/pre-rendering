@@ -3,10 +3,12 @@
 #define PI 3.141592653589793238462
 #define PI2 6.283185307179586476924
 #define DW 20
+#define NCLIP 0.1
+#define FCLIP 20
 
 float2 UV, PL, PR, PT, PB;
 float2 RESOLUTION;
-float3 POSITION;
+float3 POSITION, OFFSET;
 
 Texture2D<float4> Input, ProjectedInput;
 RWTexture2D<float4> Projected, Result;
@@ -59,12 +61,6 @@ uint2 wrapHorizontal(uint2 tc, uint offset = 0)
     return uint2((tc.x + offset) % uint(RESOLUTION.x), tc.y);
 }
 
-uint2 wrapVertical(uint2 tc, uint offset = 0)
-{
-    return uint2(tc.x, (tc.y + offset) % uint(RESOLUTION.y));
-}
-
-
 [numthreads(8,8,1)]
 void Project(uint3 id : SV_DispatchThreadID)
 {
@@ -96,8 +92,8 @@ void Project(uint3 id : SV_DispatchThreadID)
 
     float2 uv0 = id.xy / RESOLUTION;
     float2 ll0 = uv2ll(uv0);
-    float d = Input[id.xy].a;
-    float2 ll1 = translateLatLon(ll0, POSITION, d);
+    float d = Input[id.xy].a * (FCLIP - NCLIP) + NCLIP;
+    float2 ll1 = translateLatLon(ll0, POSITION + OFFSET, d);
     float2 uv1 = ll2uv(ll1);
     uint2 tc1 = uv1 * RESOLUTION;
 
@@ -111,15 +107,15 @@ void Interpolate(uint3 id : SV_DispatchThreadID)
 
     float2 uv = ProjectedInput[id.xy].xy;
 
-    if (false)
+    if (true)
     {
         Result[id.xy] = float4(uv, 0, 1);
         return;
     }
 
     uv = float2(0.5, 1);
-    float dl, dr, dt, db;
-    float2 uvl, uvr, uvt, uvb;
+    float dl, dr;
+    float2 uvl, uvr;
 
     for (uint i = 1; i < RESOLUTION.x; i++)
     {
@@ -141,36 +137,15 @@ void Interpolate(uint3 id : SV_DispatchThreadID)
                 dr = i;
         }
 
-        // top pixel
-        if (dt == 0)
-        {
-            uvt = ProjectedInput[wrapVertical(id.xy, -i)].xy;
-
-            if (any(uvt))
-                dt = i;
-        }
-
-        // bottom pixel
-        if (db == 0)
-        {
-            uvb = ProjectedInput[wrapVertical(id.xy, i)].xy;
-
-            if (any(uvb))
-                db = i;
-        }
-
-        if (all(float4(dl, dr, dt, db)))
+        if (dl != 0 && dr != 0)
             break;
     }
 
-    float d = dl + dr + dt + db;
-
+    float d = dl + dr;
     float wl = dr / d;
     float wr = dl / d;
-    float wt = db / d;
-    float wb = dt / d;
 
-    uv = uvl * wl + uvr * wr + uvt * wt + uvb * wb;
+    uv = uvl * wl + uvr * wr;
 
     Result[id.xy] = float4(uv, 0, 1);
 }

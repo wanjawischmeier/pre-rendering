@@ -4,9 +4,10 @@ public class ApplyWarp : MonoBehaviour
 {
     public ComputeShader computeShader;
     public Shader warpShader;
-    public Texture2D input;
+    public Texture2D input0, input1;
     public Vector2 uv;
     public Vector2Int PL, PR, PT, PB;
+    public Vector3 offset0, offset1;
 
     private RenderTexture projected, result;
     private Material warpMaterial;
@@ -14,7 +15,7 @@ public class ApplyWarp : MonoBehaviour
 
     private void Start()
     {
-        projected = new RenderTexture(input.width, input.height, 0, RenderTextureFormat.ARGBFloat);
+        projected = new RenderTexture(input0.width, input0.height, 0, RenderTextureFormat.ARGBFloat);
         projected.enableRandomWrite = true;
         result = new RenderTexture(projected);
         warpMaterial = new Material(warpShader);
@@ -22,15 +23,13 @@ public class ApplyWarp : MonoBehaviour
         projectKernel = computeShader.FindKernel("Project");
         interpolateKernel = computeShader.FindKernel("Interpolate");
         
-        computeShader.SetVector("RESOLUTION", new Vector2(input.width, input.height));
-        computeShader.SetTexture(projectKernel, "Input", input);
-        computeShader.SetTexture(interpolateKernel, "Input", input);
+        computeShader.SetVector("RESOLUTION", new Vector2(input0.width, input0.height));
         computeShader.SetTexture(projectKernel, "Projected", projected);
         computeShader.SetTexture(interpolateKernel, "ProjectedInput", projected);
         computeShader.SetTexture(interpolateKernel, "Result", result);
         computeShader.GetKernelThreadGroupSizes(projectKernel, out uint threadGroupSizeX, out uint threadGroupSizeY, out _);
-        threadGroupsX = input.width / (int)threadGroupSizeX;
-        threadGroupsY = input.height / (int)threadGroupSizeY;
+        threadGroupsX = input0.width / (int)threadGroupSizeX;
+        threadGroupsY = input0.height / (int)threadGroupSizeY;
     }
     
     private void Update()
@@ -50,6 +49,11 @@ public class ApplyWarp : MonoBehaviour
         GL.Clear(false, true, Color.clear);
         RenderTexture.active = rt;
 
+        computeShader.SetVector("OFFSET", offset0);
+        computeShader.SetTexture(projectKernel, "Input", input0);
+        computeShader.Dispatch(projectKernel, threadGroupsX, threadGroupsY, 1);
+        computeShader.SetVector("OFFSET", offset1);
+        computeShader.SetTexture(projectKernel, "Input", input1);
         computeShader.Dispatch(projectKernel, threadGroupsX, threadGroupsY, 1);
         computeShader.Dispatch(interpolateKernel, threadGroupsX, threadGroupsY, 1);
         Graphics.Blit(result, destination, warpMaterial);
