@@ -56,6 +56,6 @@ public class ApplyWarp : MonoBehaviour
         computeShader.SetTexture(projectKernel, "Input", input1);
         computeShader.Dispatch(projectKernel, threadGroupsX, threadGroupsY, 1);
         computeShader.Dispatch(interpolateKernel, threadGroupsX, threadGroupsY, 1);
-        Graphics.Blit(result, destination, warpMaterial);
+        Graphics.Blit(result, destination);
     }
 }

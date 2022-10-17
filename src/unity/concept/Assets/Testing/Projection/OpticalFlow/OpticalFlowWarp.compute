@@ -47,12 +47,12 @@ float2 vec2ll(float3 vec, float dist = 1)
     );
 }
 
-float2 translateLatLon(float2 ll, float3 vec, float dist = 1)
+float2 translateLatLon(float2 ll, float3 vec, float dist, out float d)
 {
     float3 P = ll2vec(ll, dist);
     P += vec;
 
-    float d = length(P);
+    d = length(P);
     return vec2ll(P, d);
 }
 
@@ -90,14 +90,20 @@ void Project(uint3 id : SV_DispatchThreadID)
     }
     */
 
+    float4 col = Input[id.xy];
+    float nd;
+
     float2 uv0 = id.xy / RESOLUTION;
     float2 ll0 = uv2ll(uv0);
-    float d = Input[id.xy].a * (FCLIP - NCLIP) + NCLIP;
-    float2 ll1 = translateLatLon(ll0, POSITION + OFFSET, d);
+    float d = col.a * (FCLIP - NCLIP) + NCLIP;
+    float2 ll1 = translateLatLon(ll0, POSITION + OFFSET, d, nd);
     float2 uv1 = ll2uv(ll1);
     uint2 tc1 = uv1 * RESOLUTION;
 
-    Projected[tc1] = float4(uv0, 0, 1);
+    // Projected[tc1] = float4(uv0, 0, 1);
+    float od = Projected[tc1].a;
+    if (length(col.rgb) > 0 && (od == 0 || nd < od))
+        Projected[tc1] = float4(col.rgb, od);
 }
 
 [numthreads(8, 8, 1)]
@@ -105,24 +111,24 @@ void Interpolate(uint3 id : SV_DispatchThreadID)
 {
     uint2 fac = uint2(2, 1);
 
-    float2 uv = ProjectedInput[id.xy].xy;
+    float4 col = ProjectedInput[id.xy];
 
-    if (true)
+    if (false)
     {
-        Result[id.xy] = float4(uv, 0, 1);
+        Result[id.xy] = col;
         return;
     }
 
-    uv = float2(0.5, 1);
+    col = float4(0.5, 1, 0, 1);
     float dl, dr;
-    float2 uvl, uvr;
+    float4 uvl, uvr;
 
     for (uint i = 1; i < RESOLUTION.x; i++)
     {
         // left pixel
         if (dl == 0)
         {
-            uvl = ProjectedInput[wrapHorizontal(id.xy, -i)].xy;
+            uvl = ProjectedInput[wrapHorizontal(id.xy, -i)];
 
             if (any(uvl))
                 dl = i;
@@ -131,7 +137,7 @@ void Interpolate(uint3 id : SV_DispatchThreadID)
         // right pixel
         if (dr == 0)
         {
-            uvr = ProjectedInput[wrapHorizontal(id.xy, i)].xy;
+            uvr = ProjectedInput[wrapHorizontal(id.xy, i)];
 
             if (any(uvr))
                 dr = i;
@@ -145,7 +151,7 @@ void Interpolate(uint3 id : SV_DispatchThreadID)
     float wl = dr / d;
     float wr = dl / d;
 
-    uv = uvl * wl + uvr * wr;
+    col = uvl * wl + uvr * wr;
 
-    Result[id.xy] = float4(uv, 0, 1);
+    Result[id.xy] = col;
 }
