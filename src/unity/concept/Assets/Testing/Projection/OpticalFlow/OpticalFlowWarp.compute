@@ -2,6 +2,7 @@
 #pragma kernel Interpolate
 #define PI 3.141592653589793238462
 #define PI2 6.283185307179586476924
+#define DW 20
 
 float2 UV, PL, PR, PT, PB;
 float2 RESOLUTION;
@@ -53,39 +54,47 @@ float2 translateLatLon(float2 ll, float3 vec, float dist = 1)
     return vec2ll(P, d);
 }
 
-uint2 wrap(uint2 tc, uint x, uint y)
+uint2 wrapHorizontal(uint2 tc, uint offset = 0)
 {
-    return (tc + uint2(x, y)) % uint2(RESOLUTION);
+    return uint2((tc.x + offset) % uint(RESOLUTION.x), tc.y);
+}
+
+uint2 wrapVertical(uint2 tc, uint offset = 0)
+{
+    return uint2(tc.x, (tc.y + offset) % uint(RESOLUTION.y));
 }
 
 
 [numthreads(8,8,1)]
 void Project(uint3 id : SV_DispatchThreadID)
 {
+    /*
+    if (length(id.xy - PL) < DW)
+    {
+        // PL: red
+        Projected[id.xy] = float4(1, 0, 0, 1);
+    }
+
+    if (length(id.xy - PR) < DW)
+    {
+        // PR: green
+        Projected[id.xy] = float4(0, 1, 0, 1);
+    }
+
+    if (length(id.xy - PT) < DW)
+    {
+        // PT: yellow
+        Projected[id.xy] = float4(1, 1, 0, 1);
+    }
+
+    if (length(id.xy - PB) < DW)
+    {
+        // PB: orange
+        Projected[id.xy] = float4(1, 0.5, 0, 1);
+    }
+    */
+
     float2 uv0 = id.xy / RESOLUTION;
-
-    if (length(id.xy - PL) < 10)
-    {
-        Projected[id.xy] = float4(uv0, 0, 1);
-    }
-
-    if (length(id.xy - PR) < 10)
-    {
-        Projected[id.xy] = float4(uv0, 0, 1);
-    }
-
-    if (length(id.xy - PT) < 10)
-    {
-        Projected[id.xy] = float4(uv0, 0, 1);
-    }
-
-    if (length(id.xy - PB) < 10)
-    {
-        Projected[id.xy] = float4(uv0, 0, 1);
-    }
-
-    return;
-
     float2 ll0 = uv2ll(uv0);
     float d = Input[id.xy].a;
     float2 ll1 = translateLatLon(ll0, POSITION, d);
@@ -102,65 +111,66 @@ void Interpolate(uint3 id : SV_DispatchThreadID)
 
     float2 uv = ProjectedInput[id.xy].xy;
 
-    if (any(uv))
+    if (false)
     {
         Result[id.xy] = float4(uv, 0, 1);
         return;
     }
 
     uv = float2(0.5, 1);
-    float d00, d10, d01, d11;
-    float2 uv00, uv10, uv01, uv11;
+    float dl, dr, dt, db;
+    float2 uvl, uvr, uvt, uvb;
 
-    for (uint i = 1; i < 200; i++)
+    for (uint i = 1; i < RESOLUTION.x; i++)
     {
-        // bottom left pixel
-        if (d00 == 0)
+        // left pixel
+        if (dl == 0)
         {
-            uv00 = ProjectedInput[wrap(id.xy, -i, -i)].xy;
+            uvl = ProjectedInput[wrapHorizontal(id.xy, -i)].xy;
 
-            if (any(uv00))
-                d00 = i;
+            if (any(uvl))
+                dl = i;
         }
 
-        // bottom right pixel
-        if (d10 == 0)
+        // right pixel
+        if (dr == 0)
         {
-            uv10 = ProjectedInput[wrap(id.xy, i, -i)].xy;
+            uvr = ProjectedInput[wrapHorizontal(id.xy, i)].xy;
 
-            if (any(uv10))
-                d10 = i;
+            if (any(uvr))
+                dr = i;
         }
 
-        // top left pixel
-        if (d01 == 0)
+        // top pixel
+        if (dt == 0)
         {
-            uv01 = ProjectedInput[wrap(id.xy, -i, i)].xy;
+            uvt = ProjectedInput[wrapVertical(id.xy, -i)].xy;
 
-            if (any(uv01))
-                d01 = i;
+            if (any(uvt))
+                dt = i;
         }
 
-        // top right pixel
-        if (d11 == 0)
+        // bottom pixel
+        if (db == 0)
         {
-            uv11 = ProjectedInput[wrap(id.xy, i, i)].xy;
+            uvb = ProjectedInput[wrapVertical(id.xy, i)].xy;
 
-            if (any(uv11))
-                d11 = i;
+            if (any(uvb))
+                db = i;
         }
 
-        if (all(float4(d00, d10, d01, d11)))
+        if (all(float4(dl, dr, dt, db)))
             break;
     }
 
-    // just an estimation, not exact uv values
-    float u = d00 / (d00 + d10);
+    float d = dl + dr + dt + db;
 
-    // lerp
-    float2 uvh = lerp(uv00, uv10, u);
-    float2 uvv = lerp(uv10, uv11, u);
-    uv = lerp(uvh, uvv, u);
+    float wl = dr / d;
+    float wr = dl / d;
+    float wt = db / d;
+    float wb = dt / d;
+
+    uv = uvl * wl + uvr * wr + uvt * wt + uvb * wb;
 
     Result[id.xy] = float4(uv, 0, 1);
 }
