@@ -1,0 +1,64 @@
+#pragma kernel CSMain
+
+#define NCLIP 1
+#define FCLIP 30
+
+Texture2D<float4> Input;
+RWTexture2D<float4> Result;
+
+float3 OFFSET;
+float2 RESOLUTION;
+float PI, PI2, MAG, OFF;
+
+int2 project(int2 tc, out float2 d, out float3 p)
+{
+    float2 uv = tc / RESOLUTION;
+    float2 ll1 = uv.yx;
+    ll1.x *= PI;
+    ll1.y *= PI2;
+    ll1.y += PI;
+
+    float CP = Input[uv * RESOLUTION].a * (FCLIP - NCLIP) + NCLIP;
+
+    float3 P = float3(
+        CP * sin(ll1.y) * sin(ll1.x),
+        CP * cos(ll1.x),
+        CP * cos(ll1.y) * sin(ll1.x)
+    );
+    
+    p = P;
+    P -= OFFSET;
+    // P = mul(TR, P);
+    
+    d = float2(CP, length(P));
+
+    float2 ll2 = float2(
+        acos(P.y / d.y),
+        atan2(P.x, P.z)
+    );
+
+    float2 a = float2(
+        ll2.y / PI2,
+        ll2.x / PI
+    );
+    a.x += 0.5;
+    
+    return (int2)round(a * RESOLUTION);
+}
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    float a = Input[id.xy].a;
+    float2 uv = id.xy / RESOLUTION;
+
+    uv *= (1 - a) * MAG + OFF;
+
+    int2 tc = round(uv * RESOLUTION);
+    float3 p;
+    float2 d;
+    tc = project(tc, d, p);
+
+    Result[tc] = float4(id.xy / RESOLUTION, 0, 1);
+    Result[tc] = Input[id.xy];
+}

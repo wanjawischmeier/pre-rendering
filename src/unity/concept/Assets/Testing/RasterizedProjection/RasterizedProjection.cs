@@ -90,7 +90,7 @@ public class RasterizedProjection : MonoBehaviour
         computeShader.SetTexture(translationKernel, "DepthBuffer", depthBuffer0);
         computeShader.SetTexture(translationKernel, "Result", result0);
         computeShader.Dispatch(translationKernel, resolution.x, resolution.y, 1);
-
+        /*
         computeShader.SetVector("OFFSET", offset1);
         computeShader.SetVector("INPUT_RESOLUTION", new Vector2(input1.width, input1.height));
         computeShader.SetTexture(translationKernel, "Input", input1);
@@ -98,7 +98,7 @@ public class RasterizedProjection : MonoBehaviour
         computeShader.SetTexture(translationKernel, "InterpolationBuffer", interpolationBuffer1);
         computeShader.SetTexture(translationKernel, "Result", result1);
         computeShader.Dispatch(translationKernel, resolution.x, resolution.y, 1);
-
+        */
         material.SetInteger("DEBUG", wireframe ? 1 : 0);
         material.SetFloat("FOV", (180 - mainCamera.fieldOfView) * Mathf.Deg2Rad);
         material.SetFloat("CAM_FCLIP", mainCamera.farClipPlane);
