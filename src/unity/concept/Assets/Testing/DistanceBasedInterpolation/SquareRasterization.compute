@@ -11,8 +11,8 @@ RWTexture2D<float> DepthBuffer;
 
 float3 OFFSET;
 float2 RESOLUTION;
-float PI, PI2, MAX_RANGE;
-int RANGE, FALLOFF;
+float PI, PI2, MAX_RANGE, MIN_FLOAT;
+int RANGE, FALLOFF, MAX, OFF;
 
 int2 Project(int2 tc, bool depthBased, out float d)
 {
@@ -58,19 +58,22 @@ int2 Project(int2 tc, bool depthBased, out float d)
 void Transform(uint3 id : SV_DispatchThreadID)
 {
     float4 val = Input[id.xy];
-    if (length(val.rgb) < 0.0)
-        return;
-
     float4 val1 = Input[id.xy + int2(1, 0)];
     float n = abs(val.a - val1.a);
-    if (n > 0.8)
-        return;
     float a = val.a;
     float d;
     int2 tc = Project(id.xy, true, d);
     int2 tc1 = Project(id.xy + int2(1, 1), true, d);
-    int dist = min(50, abs(tc.x - tc1.x));
-    int r = round(RANGE * dist / 10 + 10);
+    int dist = min(MAX, abs(tc.x - tc1.x));
+    int r = round(RANGE * pow(dist, 2) / 20 + OFF);
+
+    if (n > 0.8)
+        return;
+    if (length(val.rgb) < 0.0)
+        return;
+    if (val.a == 1)
+        Result[tc] = float4(val.rgb, 0.9);
+
 
     for (int x = tc.x - r; x < tc.x + r; x++)
     {
@@ -78,7 +81,7 @@ void Transform(uint3 id : SV_DispatchThreadID)
         {
             int2 id = int2(x, y);
             float d1 = DepthBuffer[id];
-            float i = pow(1 - min(1, length(id - tc) / r), FALLOFF);
+            float i = max(MIN_FLOAT, pow(1 - min(1, length(id - tc) / r), FALLOFF));
 
             // if (d1 == 0 || d < d1 - TOLERANCE)
             if (false)

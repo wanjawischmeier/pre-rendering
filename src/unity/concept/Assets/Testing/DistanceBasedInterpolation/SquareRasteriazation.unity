@@ -314,9 +314,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0cdf0b67cb00ae740b3aa9cd41265ea3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  input: {fileID: 2800000, guid: 3beb61103c224e94fb52a1a26587be40, type: 3}
+  input1: {fileID: 2800000, guid: 6020236fe5b7cc04bb883b7834174afc, type: 3}
+  input2: {fileID: 2800000, guid: a479d5d114f88b847b7d2a4d17efbbe8, type: 3}
   computeShader: {fileID: 7200000, guid: 2399ca8e89763d540967eaf7472a6436, type: 3}
-  range: 4
-  falloff: 30
+  offset: {x: 0, y: 0, z: -3.2}
+  range: 1
+  falloff: 24
+  max: 1
+  off: 2
   result: {fileID: 0}
   depthBuffer: {fileID: 0}
