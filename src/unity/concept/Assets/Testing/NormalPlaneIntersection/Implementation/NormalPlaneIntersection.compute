@@ -1,0 +1,79 @@
+#pragma kernel Transform
+
+#define NCLIP 1
+#define FCLIP 30
+
+Texture2D<float4> Input;
+RWTexture2D<float4> Result;
+
+float3 OFFSET;
+float2 RESOLUTION;
+float PI, PI2;
+int RANGE;
+
+int2 Project(int2 tc, out float3 p)
+{
+    float2 uv = tc / RESOLUTION;
+    float2 ll1 = uv.yx;
+    ll1.x *= PI;
+    ll1.y *= PI2;
+    ll1.y += PI;
+
+    float CP = Input[uv * RESOLUTION].a * (FCLIP - NCLIP) + NCLIP;
+
+    float3 P = float3(
+        CP * sin(ll1.y) * sin(ll1.x),
+        CP * cos(ll1.x),
+        CP * cos(ll1.y) * sin(ll1.x)
+    );
+
+    P -= OFFSET;
+    p = P;
+    // P = mul(TR, P);
+
+    float d = length(P);
+
+    float2 ll2 = float2(
+        acos(P.y / d),
+        atan2(P.x, P.z)
+    );
+
+    float2 a = float2(
+        ll2.y / PI2,
+        ll2.x / PI
+    );
+    a.x += 0.5;
+
+    return (int2)round(a * RESOLUTION);
+}
+
+float3 RayPlaneIntersection(float3 ro, float3 rd, float3 po, float3 pn)
+{
+    float rDotn = dot(rd, pn);
+    float s = dot(pn, (po - ro)) / rDotn;
+    return ro + s * rd;
+}
+
+[numthreads(8,8,1)]
+void Transform (uint3 id : SV_DispatchThreadID)
+{
+    float3 p0, pr, pb;
+    int2 tc = Project(id.xy, p0);
+    Project(id.xy + int2(RANGE, 0), pr);
+    Project(id.xy + int2(0, RANGE), pb);
+    float3 n = cross(pr - p0, pb - p0);
+    float3 i = RayPlaneIntersection(OFFSET, p0, p0, n);
+    float d = length(i);
+    float2 ll = float2(
+        acos(i.y / d),
+        atan2(i.x, i.z)
+    );
+    float2 a = float2(
+        ll.y / PI2,
+        ll.x / PI
+    );
+    a.x += 0.5;
+
+    // Result[tc] = Input[id.xy];
+    Result[id.xy] = Input[(int2)round(a * RESOLUTION)];
+}
