@@ -24,7 +24,7 @@ public class KDTree: MonoBehaviour
         threadGroupsY = input.height / (int)threadGroupSizeY;
 
         computeShader.SetTexture(kernel, "Input", input);
-        // computeShader.SetTexture(kernel, "Result", result);
+        computeShader.SetTexture(kernel, "Result", result);
         computeShader.SetTexture(kernel, "Tree", tree);
         computeShader.SetTexture(renderKernel, "Input", input);
         computeShader.SetTexture(renderKernel, "Result", result);
@@ -43,6 +43,8 @@ public class KDTree: MonoBehaviour
 
         RenderTexture rt = RenderTexture.active;
         RenderTexture.active = tree;
+        GL.Clear(true, true, Color.clear);
+        RenderTexture.active = result;
         GL.Clear(true, true, Color.clear);
         RenderTexture.active = rt;
         

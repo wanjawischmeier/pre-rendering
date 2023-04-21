@@ -3,7 +3,7 @@
 
 #define NCLIP 1
 #define FCLIP 30
-#define ITERATIONS 500
+#define ITERATIONS 1000
 
 Texture2D<float4> Input;
 RWTexture2D<float4> Result;
@@ -65,30 +65,35 @@ int2 ClosestNode(int2 p, int2 n0, int2 n1)
 }
 
 int2 AddNode(int2 node, int2 newNode) {
-    int2 next;
-    int4 nextBranch;
-    int coord;
+    uint coord;
 
-    for (int k = 0; k < ITERATIONS; k++)
+    for (uint k = 0; k < ITERATIONS; k++)
     {
         int4 branch = Tree[node];
         coord = k % 2;
 
         if (newNode[coord] < node[coord]) {
-            next = branch.xy;
-            nextBranch = int4(newNode, branch.zw);
+            if (any(branch.xy))
+            {
+                node = branch.xy;
+            }
+            else
+            {
+                Tree[node] = int4(newNode, branch.zw);
+                break;
+            }
         }
-        else {
-            next = branch.zw;
-            nextBranch = int4(branch.xy, newNode);
-        }
-
-        if (any(next)) {
-            node = next;
-        }
-        else {
-            Tree[node] = nextBranch;
-            return node;
+        else
+        {
+            if (any(branch.zw))
+            {
+                node = branch.zw;
+            }
+            else
+            {
+                Tree[node] = int4(branch.xy, newNode);
+                break;
+            }
         }
     }
 
@@ -101,7 +106,7 @@ int2 NearestNeighbor(int2 node, int2 p)
     int3 temp;
     int2 next, other;
     int2 best = node;
-    int k, coord;
+    uint k, coord;
     int3 stack[ITERATIONS];
     int ptr = -1;
 
@@ -127,8 +132,8 @@ int2 NearestNeighbor(int2 node, int2 p)
         }
 
         if (any(next)) {
-            stack[++ptr] = int3(next, k + 1);
             best = ClosestNode(p, best, next);
+            stack[++ptr] = int3(next, k + 1);
         }
 
         if (any(other)) {
@@ -137,10 +142,7 @@ int2 NearestNeighbor(int2 node, int2 p)
 
             if (radiusSq >= dist * dist) {
                 best = ClosestNode(p, best, other);
-
-                if (best.x == other.x && best.y == other.y) {
-                    stack[++ptr] = int3(other, k + 1);
-                }
+                stack[++ptr] = int3(other, k + 1);
             }
         }
     }
@@ -153,7 +155,10 @@ int2 NearestNeighbor(int2 node, int2 p)
 void Transform(uint3 id : SV_DispatchThreadID)
 {
     int2 tc = Project(id.xy);
-    // Result[tc] = Input[id.xy];
+    Result[tc] = Input[id.xy];
+
+    if (tc.x < 400 || tc.x > 800) return;
+    if (tc.y < 100 || tc.y > 200) return;
 
     int2 root = round(RESOLUTION / 2);
     int2 node = AddNode(root, tc);
@@ -164,9 +169,13 @@ void Transform(uint3 id : SV_DispatchThreadID)
 void RenderTree(uint3 id : SV_DispatchThreadID)
 {
     int2 root = round(RESOLUTION / 2);
-    int2 tc = NearestNeighbor(root, id.xy);
     // Result[id.xy] = float4(tc / RESOLUTION, 0, 1);
-    Result[id.xy] = Input[tc];
     // Result[id.xy] = float4(Tree[id.xy] / RESOLUTION.xyxy);
     // Result[id.xy] = any(Tree[id.xy]) ? (1).xxxx : (0).xxxx;
+
+    if (id.x < 400 || id.x > 800) return;
+    if (id.y < 100 || id.y > 200) return;
+
+    int2 tc = NearestNeighbor(root, id.xy);
+    Result[id.xy] = Input[tc];
 }

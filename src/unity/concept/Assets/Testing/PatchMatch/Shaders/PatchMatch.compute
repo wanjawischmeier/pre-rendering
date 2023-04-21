@@ -1,0 +1,217 @@
+﻿#pragma kernel InitializeAnnCS
+#pragma kernel PropagationCS
+#pragma kernel RandomSearchCS
+#pragma kernel ReconstructImageCS
+
+#define INT_MAX 2147483647
+
+Texture2D<float4> _SrcImageA;
+Texture2D<float4> _SrcImageB;
+
+RWTexture2D<uint2> _Ann; // ANN (Approximate Nearest Neighbor)
+RWTexture2D<float> _Annd;
+RWTexture2D<uint2> _AnnOut;
+RWTexture2D<float> _AnndOut;
+
+RWTexture2D<float4> _Flowmap;
+RWTexture2D<float4> _ReconstructedImage;
+
+cbuffer params
+{
+	int _a_height;
+	int _a_width;
+	int _b_height;
+	int _b_width;
+	int _patch_w;
+	int _pm_iters;
+	int _rs_max;
+	int _prop_jump;
+};
+
+
+float dist(int a_height, int a_width, int b_height, int b_width, int ax, int ay, int bx, int by, int patch_w, float cutoff = INT_MAX)
+{
+	// suppose patch_w is an odd number
+	float pixel_sum = 0, pixel_no = 0, pixel_dist=0;
+	for (int dy = -patch_w/2; dy <= patch_w/2; dy++)
+	{
+		for (int dx = -patch_w/2; dx <= patch_w/2; dx++)
+		{
+			if (
+				(ay + dy) < a_height && (ay + dy) >= 0 && (ax + dx) < a_width && (ax + dx) >= 0
+				&&
+				(by + dy) < b_height && (by + dy) >= 0 && (bx + dx) < b_width && (bx + dx) >= 0
+			   )
+			{
+				uint2 indexA = uint2(ax+dx, ay+dy);
+				uint2 indexB = uint2(bx+dx, by+dy);
+				float dr = (_SrcImageA[indexA].r - _SrcImageB[indexB].r);
+				float dg = (_SrcImageA[indexA].g - _SrcImageB[indexB].g);
+				float db = (_SrcImageA[indexA].b - _SrcImageB[indexB].b);
+				pixel_sum += (dr*dr + dg*dg + db*db);
+				pixel_no += 1;
+			}
+		}
+	}
+	pixel_dist = pixel_sum / pixel_no;
+	if (pixel_dist >= cutoff) { return cutoff; }
+	else {
+		return pixel_dist;
+	}
+}
+
+void improve_guess(int a_height, int a_width, int b_height, int b_width, int ax, int ay, inout int xbest, inout int ybest, inout float dbest, int bx, int by, int patch_w)
+{
+	float d = dist(a_height, a_width, b_height, b_width, ax, ay, bx, by, patch_w, dbest);
+	if (d < dbest)
+	{
+		xbest = bx;
+		ybest = by;
+		dbest = d;
+	}
+}
+
+float cs_random(float2 uv, int seed)
+{
+	return frac(sin(dot(uv, float2(12.9898, 78.233)) + seed) * 43758.5453);
+}
+
+[numthreads(8,8,1)]
+void InitializeAnnCS(uint3 id : SV_DispatchThreadID)
+{
+	// Initialize ann
+	int ax = id.x;
+	int ay = id.y;
+	
+	float2 uv = float2((float)ax/_a_width, (float)ay/_a_height);
+	int bx = (int)(cs_random(uv,0) * _b_width);
+	int by = (int)(cs_random(uv,1) * _b_height);
+
+	_Ann[uint2(ax,ay)] = uint2(bx, by);
+	_Annd[uint2(ax,ay)] = dist(_a_height, _a_width, _b_height, _b_width, ax, ay, bx, by, _patch_w);
+
+	// Visualize initial ann
+	uint2 v = _Ann[uint2(ax,ay)];
+	uint x = v.x;
+	uint y = v.y;
+	float blue = (float)x / _b_width;
+	float green = (float)y / _b_height;
+	_Flowmap[uint2(ax,ay)] = float4(0, green, blue, 1);
+}
+
+[numthreads(8,8,1)]
+void PropagationCS(uint3 id : SV_DispatchThreadID)
+{
+	int ax = id.x;
+	int ay = id.y;
+
+	/* Current (best) guess. */
+	uint2 v = _Ann[uint2(ax,ay)];
+	int xbest = v.x, ybest = v.y;
+	float dbest = _Annd[uint2(ax,ay)];
+
+	uint jump = _prop_jump;
+
+	/* Propagation: Improve current guess by trying instead correspondences from left, right, up and downs. */
+	{
+		/* Left (Propagete -x) */
+		if ((ax - jump) >= 0)
+		{
+			uint2 vp = _Ann[uint2(ax - jump, ay)]; // the pixel coordinates in image b
+			int xp = vp.x + jump, yp = vp.y; // the propagated match from vp
+			if (xp >= 0 && xp < _b_width)
+			{
+				improve_guess(_a_height, _a_width, _b_height, _b_width, ax, ay, xbest, ybest, dbest, xp, yp, _patch_w);
+			}
+		}
+
+		/* Right (Propagete +x) */
+		if ((ax + jump) < _a_width)
+		{
+			uint2 vp = _Ann[uint2(ax + jump, ay)]; // the pixel coordinates in image b
+			int xp = vp.x - jump, yp = vp.y; // the propagated match from vp
+			if (xp >= 0 && xp < _b_width)
+			{
+				improve_guess(_a_height, _a_width, _b_height, _b_width, ax, ay, xbest, ybest, dbest, xp, yp, _patch_w);
+			}
+		}
+
+		/* Up (Propagate -y) */
+		if ((ay - jump) >=0)
+		{
+			uint2 vp = _Ann[uint2(ax, ay - jump)]; // the pixel coordinates in image b
+			int xp = vp.x, yp = vp.y + jump; // the propagated match from vp
+			if (yp >= 0 && yp < _b_height)
+			{
+				improve_guess(_a_height, _a_width, _b_height, _b_width, ax, ay, xbest, ybest, dbest, xp, yp, _patch_w);
+			}
+		}
+
+		/* Down (Propagate +y) */
+		if ((ay + jump) < _a_height)
+		{
+			uint2 vp = _Ann[uint2(ax, ay + jump)]; // the pixel coordinates in image b
+			int xp = vp.x, yp = vp.y - jump; // the propagated match from vp
+			if (yp >= 0 && yp < _b_height)
+			{
+				improve_guess(_a_height, _a_width, _b_height, _b_width, ax, ay, xbest, ybest, dbest, xp, yp, _patch_w);
+			}
+		}
+
+		_AnnOut[uint2(ax, ay)] = uint2(xbest, ybest);
+		_AnndOut[uint2(ax, ay)] = dbest;
+	}
+}
+
+[numthreads(8,8,1)]
+void RandomSearchCS(uint3 id : SV_DispatchThreadID)
+{
+	int ax = id.x;
+	int ay = id.y;
+
+	/* Current (best) guess. */
+	uint2 v = _Ann[uint2(ax,ay)];
+	int xbest = v.x, ybest = v.y;
+	float dbest = _Annd[uint2(ax,ay)];
+
+	/* For random number generator */
+	uint seed = (uint)(ay*_a_width + ax);
+	float2 uv = float2((float)ax/_a_width, (float)ay/_a_height);
+
+	/* Random search: Improve current guess by searching in boxes of exponentially decreasing size around the current best guess. */
+	int rs_start = _rs_max;
+	if (rs_start > max(_b_width, _b_height))
+	{
+		rs_start = max(_b_width, _b_height);
+	}
+	for (int mag = rs_start; mag >= 1; mag /= 2)
+	{
+		/* Sampling window */
+		int xmin = max(xbest - mag, 0), xmax = min(xbest + mag + 1, _b_width);
+		int ymin = max(ybest - mag, 0), ymax = min(ybest + mag + 1, _b_height);
+		int xp = xmin + (int)(cs_random(uv, seed++)*(xmax - xmin)) % (xmax - xmin);
+		int yp = ymin + (int)(cs_random(uv, seed++)*(ymax - ymin)) % (ymax - ymin);
+
+		improve_guess(_a_height, _a_width, _b_height, _b_width, ax, ay, xbest, ybest, dbest, xp, yp, _patch_w);
+	}
+
+	_Ann[uint2(ax, ay)] = uint2(xbest, ybest);
+	_Annd[uint2(ax, ay)] = dbest;
+}
+
+[numthreads(8,8,1)]
+void ReconstructImageCS(uint3 id : SV_DispatchThreadID)
+{
+	int ax = id.x;
+	int ay = id.y;
+
+	uint2 v = _Ann[uint2(ax, ay)];
+	int xbest = v.x;
+	int ybest = v.y;
+
+	float blue = (float)xbest / _b_width;
+	float green = (float)ybest / _b_height;
+
+	_Flowmap[uint2(ax,ay)] = float4(0, green, blue, 1); // Visualize final ann
+	_ReconstructedImage[uint2(ax,ay)] = _SrcImageB[uint2(xbest,ybest)]; // Reconstruct image
+}
