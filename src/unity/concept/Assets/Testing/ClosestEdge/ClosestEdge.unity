@@ -316,6 +316,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   input: {fileID: 2800000, guid: 3beb61103c224e94fb52a1a26587be40, type: 3}
   computeShader: {fileID: 7200000, guid: 73c9ec5780c10df49a1e093df7d0004e, type: 3}
-  lineRasterizerClipRange: {x: 0, y: 100}
+  lineRasterizerClipRange: {x: 0.1, y: 100}
   maxSearchIterations: 0
   debug: 0

@@ -180,16 +180,25 @@ void Project(uint3 id : SV_DispatchThreadID)
     float d = Depth[v0];
     if (d == 0 || d0 < d)
     {
-        Result[v0] = Input[id.xy];
-        Depth[v0] = d0;
+        // Result[v0] = Input[id.xy];
+        // Depth[v0] = d0 * 100;
     }
 
+    float l0 = distance(v1, v2);
+    float l1 = distance(v2, v0);
+    float l2 = distance(v0, v1);
+    float s = (l0 + l1 + l2) / 2;
+    float a_sq = s * (s - l0) * (s - l1) * (s - l2);
+
     // skip triangulation if verticies intersect
+    // if (a_sq < LINE_CLIP.x || a_sq > LINE_CLIP.y)
+        // return;
+    /*
     if ((v0.x == v1.x && v0.y == v1.y) ||
         (v1.x == v2.x && v1.y == v2.y) ||
         (v2.x == v0.x && v2.y == v0.y))
         return;
-
+    */
     // store depth values
     Depth[v0] = d0;
     Depth[v1] = d1;
@@ -265,10 +274,20 @@ bool OverlayPoint(int2 p, int2 p0)
 
         // apply weighting / interpolation
         bc = GetBarycentricCoordinates(p0, v1, v2, v3);
+
+        // if (bc.x < 0 || bc.y < 0 || bc.z < 0 || bc.x > 1 || bc.y > 1 || bc.z > 1)
+            // return true;
+
         c = c1 * bc.x + c2 * bc.y + c3 * bc.z;
 
         if (DEBUG)
             c = float4(0.5, 0.25, 0, 1000);
+
+
+        if (distance(p0, v3) < distance(p0, v0))
+        {
+            c = float4(0.5, 0, 0.5, 1000);
+        }
     }
     else
     {
