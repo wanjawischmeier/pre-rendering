@@ -1,0 +1,202 @@
+#define NCLIP 1
+#define FCLIP 30
+
+Texture2D<float4> Input;
+RWTexture2D<float> Depth, DepthResult;
+RWTexture2D<float2> Transformed;
+RWTexture2D<float2> Upscaled;
+RWTexture2D<float4> Result;
+SamplerState sampler_linear_repeat;
+
+bool DEBUG;
+int SEARCH_RADIUS;
+float TIMESTEP;
+float2 RESOLUTION, GROUP_SIZE;
+float3 OFFSET;
+float PI, PI2;
+
+
+
+
+#pragma kernel Project
+
+int2 project(float2 uv, float d0, out float d)
+{
+    float2 ll1 = uv.yx;
+    ll1.x *= PI;
+    ll1.y *= PI2;
+    ll1.y += PI;
+
+    float CP = d0 * (FCLIP - NCLIP) + NCLIP;
+
+    float3 P = float3(
+        CP * sin(ll1.y) * sin(ll1.x),
+        CP * cos(ll1.x),
+        CP * cos(ll1.y) * sin(ll1.x));
+    
+    P.y += sin(TIMESTEP / 50) * sin(length(P)) * sin(P.x);
+    P -= OFFSET;
+    // P = mul(TR, P);
+    d = length(P);
+
+    float2 ll2 = float2(
+        acos(P.y / d),
+        atan2(P.x, P.z));
+
+    float2 a = float2(
+        ll2.y / PI2,
+        ll2.x / PI);
+    a.x += 0.5;
+
+    return (int2) round(a * RESOLUTION);
+}
+
+[numthreads(8, 8, 1)]
+void Project(uint3 id : SV_DispatchThreadID)
+{
+    float d0;
+    int2 v0 = project(id.xy / RESOLUTION, Input[id.xy].a, d0);
+    
+    int2 v1 = (v0 - (v0 % GROUP_SIZE)) / GROUP_SIZE;
+    
+    float d1 = Depth[v1];
+    if (d1 != 0 && d0 >= d1)
+    {
+        return;
+    }
+    
+    // store the transformed lookup
+    Transformed[v1] = id.xy / RESOLUTION;
+    Depth[v1] = d0;
+}
+
+
+
+
+#pragma kernel Interpolate
+
+[numthreads(8, 8, 1)]
+void Interpolate(uint3 id : SV_DispatchThreadID)
+{
+    int2 tc = id.xy;
+    float2 dc = Transformed[tc];
+    if (any(dc))
+    {
+        return;
+    }
+    
+    // loop in spiral to search neighbors
+    int x, y, dx, dy;
+    x = y = dx = 0;
+    dy = -1;
+    int tmp;
+    for (int i = 0; i < SEARCH_RADIUS; i++)
+    {
+        tc = (id.xy + int2(x, y)) % (RESOLUTION / GROUP_SIZE);
+        dc = Transformed[tc];
+        if (any(dc))
+        {
+            break;
+        }
+        
+        if ((x == y) || ((x < 0) && (x == -y)) || ((x > 0) && (x == 1 - y)))
+        {
+            tmp = dx;
+            dx = -dy;
+            dy = tmp;
+        }
+        x += dx;
+        y += dy;
+    }
+    
+    if (!any(dc))
+    {
+        return;
+    }
+    
+    Transformed[id.xy] = dc;
+}
+
+
+#pragma kernel Reproject
+
+[numthreads(8, 8, 1)]
+void Reproject(uint3 id : SV_DispatchThreadID)
+{
+    int2 bl = floor(id.xy / GROUP_SIZE);
+    int2 br = bl + int2(1, 0);
+    int2 tl = bl + int2(0, 1);
+    int2 tr = bl + int2(1, 1);
+    
+    float2 vbl = Transformed[bl];
+    float2 vbr = Transformed[br];
+    float2 vtl = Transformed[tl];
+    float2 vtr = Transformed[tr];
+    
+    // normalized local coords
+    float2 nc = id.xy / GROUP_SIZE - bl;
+    float wbl = (1 - nc.x) * (1 - nc.y);
+    float wbr = nc.x * (1 - nc.y);
+    float wtl = (1 - nc.x) * nc.y;
+    float wtr = nc.x * nc.y;
+    
+    float2 ic = vtl * wtl + vtr * wtr + vbl * wbl + vbr * wbr;
+    float dc = Input.SampleLevel(sampler_linear_repeat, ic, 0).a;
+    
+    float d0, d2;
+    int2 rp = project(ic, dc, d0);
+    
+    float d1 = DepthResult[rp];
+    if (d1 != 0 && d0 >= d1)
+    {
+        return;
+    }
+    
+    Result[rp] = Input[ic * RESOLUTION];
+    DepthResult[rp] = d0;
+}
+
+
+#pragma kernel Reinterpolate
+
+[numthreads(8, 8, 1)]
+void Reinterpolate(uint3 id : SV_DispatchThreadID)
+{
+    int2 tc = id.xy;
+    float4 dc = Result[tc];
+    if (any(dc))
+    {
+        return;
+    }
+    
+    // loop in spiral to search neighbors
+    int x, y, dx, dy;
+    x = y = dx = 0;
+    dy = -1;
+    int tmp;
+    for (int i = 0; i < SEARCH_RADIUS; i++)
+    {
+        tc = (id.xy + int2(x, y)) % RESOLUTION;
+        dc = Result[tc];
+        if (any(dc))
+        {
+            break;
+        }
+        
+        if ((x == y) || ((x < 0) && (x == -y)) || ((x > 0) && (x == 1 - y)))
+        {
+            tmp = dx;
+            dx = -dy;
+            dy = tmp;
+        }
+        x += dx;
+        y += dy;
+    }
+    
+    if (!any(dc))
+    {
+        return;
+    }
+    
+    Result[id.xy] = dc;
+}
