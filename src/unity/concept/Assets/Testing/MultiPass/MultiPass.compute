@@ -3,7 +3,7 @@
 
 Texture2D<float4> Input;
 RWTexture2D<float> Depth, DepthResult;
-RWTexture2D<float2> Transformed;
+RWTexture2D<float2> Transformed, InvTransformed;
 RWTexture2D<float2> Upscaled;
 RWTexture2D<float4> Result;
 SamplerState sampler_linear_repeat;
@@ -34,7 +34,7 @@ int2 project(float2 uv, float d0, out float d)
         CP * cos(ll1.x),
         CP * cos(ll1.y) * sin(ll1.x));
     
-    P.y += sin(TIMESTEP / 50) * sin(length(P)) * sin(P.x);
+    // P.y += sin(TIMESTEP / 50) * sin(length(P)) * sin(P.x);
     P -= OFFSET;
     // P = mul(TR, P);
     d = length(P);
@@ -120,6 +120,57 @@ void Interpolate(uint3 id : SV_DispatchThreadID)
 
 #pragma kernel Reproject
 
+float2 InterpolateCoords(float2 uv, float2 vbl, float2 vbr, float2 vtl, float2 vtr)
+{
+    float wbl = (1 - uv.x) * (1 - uv.y);
+    float wbr = uv.x * (1 - uv.y);
+    float wtl = (1 - uv.x) * uv.y;
+    float wtr = uv.x * uv.y;
+    
+    return vtl * wtl + vtr * wtr + vbl * wbl + vbr * wbr;
+}
+
+void RasterizeRightTriangle(float2 vertex0, float2 vertex1, float2 vertex2, float4 col)
+{
+    // Calculate the differences between the vertices
+    float2 vertexDelta = vertex2 - vertex1;
+    float2 vertexAbsDelta = abs(vertexDelta);
+
+    // Determine the direction of the hypotenuse (upwards or downwards)
+    float2 hypotenuseDirection = vertexDelta / vertexAbsDelta;
+
+    // Calculate the number of steps along the hypotenuse
+    float numSteps = max(vertexAbsDelta.x, vertexAbsDelta.y);
+
+    // Iterate over each step along the hypotenuse
+    for (float step = 0.0f; step < numSteps; step += 1.0f)
+    {
+        // Calculate the current t value along the hypotenuse
+        float t = step / numSteps;
+        
+        // Calculate the current point along the hypotenuse
+        float2 hypotenusePos = lerp(vertex1, vertex2, t);
+
+        // Iterate over the line from the center to the hypotenuse point
+        for (uint x = uint(vertex0.x); x <= uint(hypotenusePos.x); x++)
+        {
+            // Calculate the current position on the line
+            float2 position = float2(x, hypotenusePos.y);
+
+            // Perform interpolation calculations using position and neighboring pixel values
+            // ... perform the necessary interpolation calculations here ...
+
+            // Write the interpolated value to the output texture if the pixel is not filled
+            uint2 pixelPos = uint2(position);
+            if (!any(Result[pixelPos]))
+            {
+                Result[pixelPos] = col;
+            }
+        }
+    }
+}
+
+
 [numthreads(8, 8, 1)]
 void Reproject(uint3 id : SV_DispatchThreadID)
 {
@@ -134,34 +185,65 @@ void Reproject(uint3 id : SV_DispatchThreadID)
     float2 vtr = Transformed[tr];
     
     // normalized local coords
+    uint2 off = uint2(1, 0);
     float2 nc = id.xy / GROUP_SIZE - bl;
-    float wbl = (1 - nc.x) * (1 - nc.y);
-    float wbr = nc.x * (1 - nc.y);
-    float wtl = (1 - nc.x) * nc.y;
-    float wtr = nc.x * nc.y;
+    float2 nl = (id.xy + off) / GROUP_SIZE - bl;
+    float2 nr = (id.xy - off) / GROUP_SIZE - bl;
+    float2 nt = (id.xy + off.yx) / GROUP_SIZE - bl;
+    float2 nb = (id.xy - off.yx) / GROUP_SIZE - bl;
     
-    float2 ic = vtl * wtl + vtr * wtr + vbl * wbl + vbr * wbr;
+    float2 ic = InterpolateCoords(nc, vbl, vbr, vtl, vtr);
+    float2 il = InterpolateCoords(nl, vbl, vbr, vtl, vtr);
+    float2 ir = InterpolateCoords(nr, vbl, vbr, vtl, vtr);
+    float2 it = InterpolateCoords(nt, vbl, vbr, vtl, vtr);
+    float2 ib = InterpolateCoords(nb, vbl, vbr, vtl, vtr);
+    
     float dc = Input.SampleLevel(sampler_linear_repeat, ic, 0).a;
+    float dl = Input.SampleLevel(sampler_linear_repeat, il, 0).a;
+    float dr = Input.SampleLevel(sampler_linear_repeat, ir, 0).a;
+    float dt = Input.SampleLevel(sampler_linear_repeat, it, 0).a;
+    float db = Input.SampleLevel(sampler_linear_repeat, ib, 0).a;
     
     float d0, d2;
-    int2 rp = project(ic, dc, d0);
+    int2 rc = project(ic, dc, d0);
+    int2 rl = project(il, dc, d0);
+    int2 rr = project(ir, dc, d0);
+    int2 rt = project(it, dc, d0);
+    int2 rb = project(ib, dc, d0);
     
+    float4 col = Input[ic * RESOLUTION];
+    
+    RasterizeRightTriangle(rc, rl, rt, col);
+    // RasterizeRightTriangle(rc, rt, rr, col);
+    // RasterizeRightTriangle(rc, rr, rb, col);
+    // RasterizeRightTriangle(rc, rb, rt, col);
+    
+    
+    /*
     float d1 = DepthResult[rp];
     if (d1 != 0 && d0 >= d1)
     {
         return;
     }
-    
-    Result[rp] = Input[ic * RESOLUTION];
-    DepthResult[rp] = d0;
+    */
+    // Result[rp] = ic.xyxy;
+    // InvTransformed[rp] = ic * RESOLUTION;
+    // InvTransformed[ic * RESOLUTION] = rc;
+    // DepthResult[rp] = d0;
 }
 
 
 #pragma kernel Reinterpolate
 
+
 [numthreads(8, 8, 1)]
 void Reinterpolate(uint3 id : SV_DispatchThreadID)
 {
+    // float2 tc = InvTransformed[id.xy];
+    // Result[id.xy] = float4(tc / RESOLUTION, 0, 1);
+    // Result[id.xy] = Input[InvTransformed[id.xy].xy];
+    
+    /*
     int2 tc = id.xy;
     float4 dc = Result[tc];
     if (any(dc))
@@ -197,6 +279,6 @@ void Reinterpolate(uint3 id : SV_DispatchThreadID)
     {
         return;
     }
-    
-    Result[id.xy] = dc;
+    */
+    // Result[id.xy] = dc;
 }

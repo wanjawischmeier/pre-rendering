@@ -9,7 +9,7 @@ public class MultiPass : MonoBehaviour
     public int searchRadius = 10;
     public bool debug;
 
-    private RenderTexture transformed, depth, depthResult, result;
+    private RenderTexture transformed, invTransformed, depth, depthResult, result;
     private Material postProcessingMaterial;
     private Vector3 previousPosition = Vector3.one;
     private Camera mainCamera;
@@ -31,6 +31,8 @@ public class MultiPass : MonoBehaviour
         result.filterMode = FilterMode.Bilinear;
         depthResult = new RenderTexture(result);
         depthResult.format = RenderTextureFormat.RFloat;
+        invTransformed = new RenderTexture(result);
+        invTransformed.format = RenderTextureFormat.RGFloat;
         depth = new RenderTexture(input.width / groupSize.x, input.height / groupSize.y, 0);
         depth.enableRandomWrite = true;
         depth.format = RenderTextureFormat.RFloat;
@@ -52,6 +54,9 @@ public class MultiPass : MonoBehaviour
         computeShader.SetTexture(reproject, "Transformed", transformed);
         computeShader.SetTexture(reproject, "DepthResult", depthResult);
         computeShader.SetTexture(reproject, "Result", result);
+        computeShader.SetTexture(reproject, "InvTransformed", invTransformed);
+        computeShader.SetTexture(reinterpolate, "Input", input);
+        computeShader.SetTexture(reinterpolate, "InvTransformed", invTransformed);
         computeShader.SetTexture(reinterpolate, "Result", result);
 
         postProcessingMaterial = new Material(postProcessing);
@@ -76,6 +81,8 @@ public class MultiPass : MonoBehaviour
         RenderTexture.active = result;
         GL.Clear(false, true, Color.clear);
         RenderTexture.active = transformed;
+        GL.Clear(false, true, Color.clear);
+        RenderTexture.active = invTransformed;
         GL.Clear(false, true, Color.clear);
         RenderTexture.active = depth;
         GL.Clear(false, true, Color.clear);
