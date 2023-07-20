@@ -327,7 +327,7 @@ MonoBehaviour:
   input: {fileID: 2800000, guid: f9e82ff9a9af25540bb4edde2f933ede, type: 3}
   computeShader: {fileID: 7200000, guid: 2b34f280db5c98c45a9ba6a3c15bf555, type: 3}
   postProcessing: {fileID: 4800000, guid: aa2181da6aedd6c40a89c79585f57e74, type: 3}
-  groupSize: {x: 10, y: 5}
+  groupSize: {x: 20, y: 10}
   searchRadius: 100
   debug: 0
 --- !u!114 &1617010258

@@ -1,11 +1,12 @@
 #define NCLIP 1
 #define FCLIP 30
+#pragma multi_compile __ WIREFRAME
 
 Texture2D<float4> Input;
-RWTexture2D<float> Depth, DepthResult;
-RWTexture2D<float2> Transformed, InvTransformed;
+RWTexture2D<float> Depth, DepthReprojected, DepthResult;
+RWTexture2D<float2> Transformed;
 RWTexture2D<float2> Upscaled;
-RWTexture2D<float4> Result;
+RWTexture2D<float4> InvTransformed, Result;
 SamplerState sampler_linear_repeat;
 
 bool DEBUG;
@@ -34,7 +35,7 @@ int2 project(float2 uv, float d0, out float d)
         CP * cos(ll1.x),
         CP * cos(ll1.y) * sin(ll1.x));
     
-    // P.y += sin(TIMESTEP / 50) * sin(length(P)) * sin(P.x);
+    P.y += sin(TIMESTEP / 50) * sin(length(P)) * sin(P.x);
     P -= OFFSET;
     // P = mul(TR, P);
     d = length(P);
@@ -130,46 +131,6 @@ float2 InterpolateCoords(float2 uv, float2 vbl, float2 vbr, float2 vtl, float2 v
     return vtl * wtl + vtr * wtr + vbl * wbl + vbr * wbr;
 }
 
-void RasterizeRightTriangle(float2 vertex0, float2 vertex1, float2 vertex2, float4 col)
-{
-    // Calculate the differences between the vertices
-    float2 vertexDelta = vertex2 - vertex1;
-    float2 vertexAbsDelta = abs(vertexDelta);
-
-    // Determine the direction of the hypotenuse (upwards or downwards)
-    float2 hypotenuseDirection = vertexDelta / vertexAbsDelta;
-
-    // Calculate the number of steps along the hypotenuse
-    float numSteps = max(vertexAbsDelta.x, vertexAbsDelta.y);
-
-    // Iterate over each step along the hypotenuse
-    for (float step = 0.0f; step < numSteps; step += 1.0f)
-    {
-        // Calculate the current t value along the hypotenuse
-        float t = step / numSteps;
-        
-        // Calculate the current point along the hypotenuse
-        float2 hypotenusePos = lerp(vertex1, vertex2, t);
-
-        // Iterate over the line from the center to the hypotenuse point
-        for (uint x = uint(vertex0.x); x <= uint(hypotenusePos.x); x++)
-        {
-            // Calculate the current position on the line
-            float2 position = float2(x, hypotenusePos.y);
-
-            // Perform interpolation calculations using position and neighboring pixel values
-            // ... perform the necessary interpolation calculations here ...
-
-            // Write the interpolated value to the output texture if the pixel is not filled
-            uint2 pixelPos = uint2(position);
-            if (!any(Result[pixelPos]))
-            {
-                Result[pixelPos] = col;
-            }
-        }
-    }
-}
-
 
 [numthreads(8, 8, 1)]
 void Reproject(uint3 id : SV_DispatchThreadID)
@@ -204,16 +165,12 @@ void Reproject(uint3 id : SV_DispatchThreadID)
     float dt = Input.SampleLevel(sampler_linear_repeat, it, 0).a;
     float db = Input.SampleLevel(sampler_linear_repeat, ib, 0).a;
     
-    float d0, d2;
+    float d0;
     int2 rc = project(ic, dc, d0);
-    int2 rl = project(il, dc, d0);
-    int2 rr = project(ir, dc, d0);
-    int2 rt = project(it, dc, d0);
-    int2 rb = project(ib, dc, d0);
     
-    float4 col = Input[ic * RESOLUTION];
+    // float4 col = Input[ic * RESOLUTION];
     
-    RasterizeRightTriangle(rc, rl, rt, col);
+    // RasterizeRightTriangle(rc, rl, rt, col);
     // RasterizeRightTriangle(rc, rt, rr, col);
     // RasterizeRightTriangle(rc, rr, rb, col);
     // RasterizeRightTriangle(rc, rb, rt, col);
@@ -228,7 +185,8 @@ void Reproject(uint3 id : SV_DispatchThreadID)
     */
     // Result[rp] = ic.xyxy;
     // InvTransformed[rp] = ic * RESOLUTION;
-    // InvTransformed[ic * RESOLUTION] = rc;
+    InvTransformed[id.xy] = float4(ic * RESOLUTION, rc);
+    DepthReprojected[id.xy] = d0;
     // DepthResult[rp] = d0;
 }
 
@@ -236,10 +194,278 @@ void Reproject(uint3 id : SV_DispatchThreadID)
 #pragma kernel Reinterpolate
 
 
+#if WIREFRAME
+// Based on: https://jstutorial.medium.com/how-to-code-your-first-algorithm-rdaw-a-line-ca121f9a1395
+void DrawLine(int2 p0, int2 p1)
+{
+    float4 col = float4(1, 1, 1, 1);
+
+    // Iterators, counters required by algorithm
+    int x, y, dx, dy, dx1, dy1, px, py, xe, ye, i;
+
+    // Calculate line deltas
+    dx = p1.x - p0.x;
+    dy = p1.y - p0.y;
+
+    // Create a positive copy of deltas (makes iterating easier)
+    dx1 = abs(dx);
+    dy1 = abs(dy);
+
+    // Calculate error intervals for both axis
+    px = 2 * dy1 - dx1;
+    py = 2 * dx1 - dy1;
+
+    // The line is X-axis dominant
+    if (dy1 <= dx1)
+    {
+        // Line is rdawn left to right
+        if (dx >= 0)
+        {
+            x = p0.x; y = p0.y; xe = p1.x;
+        }
+        else
+        {
+            // Line is rdawn right to left (swap ends)
+            x = p1.x; y = p1.y; xe = p0.x;
+        }
+
+        // Result[uint2(x, y)] = col; // Draw first pixel
+
+        // Rasterize the line
+        for (int i = 0; x < xe; i++) {
+            x = x + 1;
+
+            // Deal with octants...
+            if (px < 0)
+            {
+                px = px + 2 * dy1;
+            }
+            else
+            {
+                if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0))
+                {
+                    y = y + 1;
+                }
+                else
+                {
+                    y = y - 1;
+                }
+
+                px = px + 2 * (dy1 - dx1);
+            }
+
+            // Draw pixel from line span at
+            // currently rasterized position
+            Result[uint2(x, y)] = col;
+        }
+    }
+    else
+    {
+        // The line is Y-axis dominant
+        // Line is rdawn bottom to top
+        if (dy >= 0)
+        {
+            x = p0.x; y = p0.y; ye = p1.y;
+        }
+        else
+        {
+            // Line is rdawn top to bottom
+            x = p1.x; y = p1.y; ye = p0.y;
+        }
+
+        // Result[uint2(x, y)] = col; // Draw first pixel
+        
+        // Prevent unrolling of loop
+        if (y == ye)
+            return;
+        
+        // Rasterize the line
+        for (int i = 0; y < ye; i++)
+        {
+            y = y + 1;
+
+            // Deal with octants...
+            if (py <= 0)
+            {
+                py = py + 2 * dx1;
+            }
+            else
+            {
+                if ((dx < 0 && dy < 0) || (dx > 0 && dy > 0))
+                {
+                    x = x + 1;
+                }
+                else
+                {
+                    x = x - 1;
+                }
+
+                py = py + 2 * (dx1 - dy1);
+            }
+
+            // Draw pixel from line span at
+            // currently rasterized position
+            Result[uint2(x, y)] = col;
+        }
+    }
+}
+#endif
+
+float3 InterpolateTriangle(int x, int y, int2 v0, int2 v1, int2 v2)
+{
+    float dv = (v1.y - v2.y) * (v0.x - v2.x) + (v2.x - v1.x) * (v0.y - v2.y);
+    float w0 = ((v1.y - v2.y) * (x - v2.x) + (v2.x - v1.x) * (y - v2.y)) / dv;
+    float w1 = ((v2.y - v0.y) * (x - v2.x) + (v0.x - v2.x) * (y - v2.y)) / dv;
+    float w2 = 1 - w0 - w1;
+
+    return float3(w0, w1, w2);
+}
+
+void DrawRow(int x0, int y0, int x1, int2 v0, int2 v1, int2 v2, int2 i0, int2 i1, int2 i2, float d0, float d1, float d2)
+{
+    int sx, ex;
+
+    if (x0 < x1)
+    {
+        sx = x0;
+        ex = x1;
+    }
+    else
+    {
+        sx = x1;
+        ex = x0;
+    }
+    
+    if (ex - sx <= 0)
+        return;
+
+    for (int i = sx; i <= ex; i++)
+    {
+        float3 w = InterpolateTriangle(i, y0, v0, v1, v2);
+        int2 pc = i0 * w.x + i1 * w.y + i2 * w.z;
+        float2 uv = pc / float2(RESOLUTION);
+        float d = d0 * w.x + d1 * w.y + d2 * w.z;
+        uint2 tc = uint2(i, y0);
+        float og = DepthResult[tc];
+        
+        if (d < og || og == 0)
+        {
+            DepthResult[tc] = d;
+            Result[tc] = Input[pc];
+        }
+    }
+}
+
+// Based on: http://www.sunshine2k.de/coding/java/TriangleRasterization/TriangleRasterization.html
+void FillTopFlatTriangle(int2 v0, int2 v1, int2 v3, int2 p0, int2 p1, int2 p2, int2 i0, int2 i1, int2 i2, float d0, float d1, float d2)
+{
+    if (v0.y > v1.y)
+        return;
+
+    float invslope1 = (v1.x - v0.x) / (float) (v1.y - v0.y);
+    float invslope2 = (v3.x - v0.x) / (float) (v3.y - v0.y);
+
+    float curx1 = v0.x;
+    float curx2 = v0.x;
+
+    for (int scanlineY = v0.y; scanlineY <= v1.y; scanlineY++)
+    {
+        DrawRow(curx1, scanlineY, curx2, p0, p1, p2, i0, i1, i2, d0, d1, d2);
+
+        curx1 += invslope1;
+        curx2 += invslope2;
+    }
+}
+
+// See comment above
+void FillBottomFlatTriangle(int2 v1, int2 v2, int2 v3, int2 p0, int2 p1, int2 p2, int2 i0, int2 i1, int2 i2, float d0, float d1, float d2)
+{
+    if (v2.y < v1.y)
+        return;
+
+    float invslope1 = (v2.x - v1.x) / (float) (v2.y - v1.y);
+    float invslope2 = (v2.x - v3.x) / (float) (v2.y - v3.y);
+
+    float curx1 = v2.x;
+    float curx2 = v2.x;
+
+    for (int scanlineY = v2.y; scanlineY > v1.y; scanlineY--)
+    {
+        DrawRow(curx1, scanlineY, curx2, p0, p1, p2, i0, i1, i2, d0, d1, d2);
+
+        curx1 -= invslope1;
+        curx2 -= invslope2;
+    }
+}
+
+void FillTriangle(int2 p0, int2 p1, int2 p2, int2 i0, int2 i1, int2 i2, float d0, float d1, float d2)
+{
+    int2 v0 = p0;
+    int2 v1 = p1;
+    int2 v2 = p2;
+    int2 tmp;
+
+    // Sort by height (ascending)
+    if (v0.y > v1.y)
+    {
+        tmp = v0;
+        v0 = v1;
+        v1 = tmp;
+    }
+    if (v1.y > v2.y)
+    {
+        tmp = v1;
+        v1 = v2;
+        v2 = tmp;
+    }
+    if (v0.y > v1.y)
+    {
+        tmp = v0;
+        v0 = v1;
+        v1 = tmp;
+    }
+    
+    int2 v3 = int2(v0.x + ((float) (v1.y - v0.y) / (float) (v2.y - v0.y)) * (v2.x - v0.x), v1.y);
+    
+    FillTopFlatTriangle(v0, v1, v3, p0, p1, p2, i0, i1, i2, d0, d1, d2);
+    FillBottomFlatTriangle(v1, v2, v3, p0, p1, p2, i0, i1, i2, d0, d1, d2);
+
+#if WIREFRAME
+    if (v0.y != v1.y || v0.y != v2.y)
+    {
+        DrawLine(v0, v1);
+        DrawLine(v0, v2);
+        DrawLine(v1, v2);
+        DrawLine(v1, v3);
+    }
+#endif
+}
+
 [numthreads(8, 8, 1)]
 void Reinterpolate(uint3 id : SV_DispatchThreadID)
 {
-    // float2 tc = InvTransformed[id.xy];
+    uint2 off = uint2(1, 0);
+    float4 rc = InvTransformed[id.xy];
+    float4 rl = InvTransformed[id.xy + off];
+    float4 rt = InvTransformed[id.xy + off.yx];
+    float4 rlt = InvTransformed[id.xy + off.xx];
+    
+    float dc = DepthReprojected[id.xy];
+    float dl = DepthReprojected[id.xy + off];
+    float dt = DepthReprojected[id.xy + off.yx];
+    float dlt = DepthReprojected[id.xy + off.xx];
+    
+    if (length(rc - rl) + length(rl - rt) + length(rt - rlt) + length(rlt - rc) > 100)
+    {
+        return;
+    }
+        
+    // RasterizeRightTriangle(rc, rl, rt, float4(id.xy / RESOLUTION, 0, 1));
+    FillTriangle(rc.zw, rl.zw, rt.zw, rc.xy, rl.xy, rt.xy, dc, dl, dt);
+    FillTriangle(rlt.zw, rl.zw, rt.zw, rlt.xy, rl.xy, rt.xy, dlt, dl, dt);
+    // Result[id.xy] = float4(rc / RESOLUTION, 0, 1);
+    // Result[id.xy] = float4((length(rc - rt) / 10).xxx, 1);
+    
     // Result[id.xy] = float4(tc / RESOLUTION, 0, 1);
     // Result[id.xy] = Input[InvTransformed[id.xy].xy];
     

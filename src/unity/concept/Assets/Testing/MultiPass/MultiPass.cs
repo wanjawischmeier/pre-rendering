@@ -7,14 +7,15 @@ public class MultiPass : MonoBehaviour
     public Shader postProcessing;
     public Vector2Int groupSize;
     public int searchRadius = 10;
-    public bool debug;
+    public bool debug = false;
 
-    private RenderTexture transformed, invTransformed, depth, depthResult, result;
+    private RenderTexture transformed, invTransformed, depth, depthReprojected, depthResult, result;
     private Material postProcessingMaterial;
     private Vector3 previousPosition = Vector3.one;
     private Camera mainCamera;
     private uint threadGroupSizeX, threadGroupSizeY;
     private int project, interpolate, reproject, reinterpolate;
+    private bool previousDebug = false;
 
     private void Start()
     {
@@ -31,8 +32,9 @@ public class MultiPass : MonoBehaviour
         result.filterMode = FilterMode.Bilinear;
         depthResult = new RenderTexture(result);
         depthResult.format = RenderTextureFormat.RFloat;
+        depthReprojected = new RenderTexture(depthResult);
         invTransformed = new RenderTexture(result);
-        invTransformed.format = RenderTextureFormat.RGFloat;
+        invTransformed.format = RenderTextureFormat.ARGBFloat;
         depth = new RenderTexture(input.width / groupSize.x, input.height / groupSize.y, 0);
         depth.enableRandomWrite = true;
         depth.format = RenderTextureFormat.RFloat;
@@ -52,11 +54,13 @@ public class MultiPass : MonoBehaviour
         computeShader.SetTexture(interpolate, "Depth", depth);
         computeShader.SetTexture(reproject, "Input", input);
         computeShader.SetTexture(reproject, "Transformed", transformed);
-        computeShader.SetTexture(reproject, "DepthResult", depthResult);
+        computeShader.SetTexture(reproject, "DepthReprojected", depthReprojected);
         computeShader.SetTexture(reproject, "Result", result);
         computeShader.SetTexture(reproject, "InvTransformed", invTransformed);
         computeShader.SetTexture(reinterpolate, "Input", input);
         computeShader.SetTexture(reinterpolate, "InvTransformed", invTransformed);
+        computeShader.SetTexture(reinterpolate, "DepthReprojected", depthReprojected);
+        computeShader.SetTexture(reinterpolate, "DepthResult", depthResult);
         computeShader.SetTexture(reinterpolate, "Result", result);
 
         postProcessingMaterial = new Material(postProcessing);
@@ -69,26 +73,31 @@ public class MultiPass : MonoBehaviour
     {
         postProcessingMaterial.SetFloat("FOV", mainCamera.fieldOfView * Mathf.Deg2Rad);
         postProcessingMaterial.SetVector("ROTATION", transform.eulerAngles * Mathf.Deg2Rad);
-        /*
-        if (transform.position == previousPosition)
-        {
-            return;
-        }
-        */
+        
         previousPosition = transform.position;
 
         RenderTexture rt = RenderTexture.active;
         RenderTexture.active = result;
-        GL.Clear(false, true, Color.clear);
-        RenderTexture.active = transformed;
-        GL.Clear(false, true, Color.clear);
-        RenderTexture.active = invTransformed;
         GL.Clear(false, true, Color.clear);
         RenderTexture.active = depth;
         GL.Clear(false, true, Color.clear);
         RenderTexture.active = depthResult;
         GL.Clear(false, true, Color.clear);
         RenderTexture.active = rt;
+
+        if (debug != previousDebug)
+        {
+            if (debug)
+            {
+                computeShader.EnableKeyword("WIREFRAME");
+            }
+            else
+            {
+                computeShader.DisableKeyword("WIREFRAME");
+            }
+
+            previousDebug = debug;
+        }
 
         computeShader.SetBool("DEBUG", debug);
         computeShader.SetFloat("TIMESTEP", Time.frameCount + Time.deltaTime);
