@@ -4,9 +4,9 @@
 
 Texture2D<float4> Input;
 RWTexture2D<float> Depth, DepthReprojected, DepthResult;
-RWTexture2D<float2> Transformed;
+RWTexture2D<float2> Transformed, TransformedResult;
 RWTexture2D<float2> Upscaled;
-RWTexture2D<float4> InvTransformed, Result;
+RWTexture2D<float4> MotionVectors, InvTransformed, Result;
 SamplerState sampler_linear_repeat;
 
 bool DEBUG;
@@ -18,11 +18,37 @@ float PI, PI2;
 
 
 
+#pragma kernel CalculateMotionVectors
+
+[numthreads(8, 8, 1)]
+void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
+{
+    float2 uv = id.xy / RESOLUTION;
+    float d = Input[id.xy].a;
+    
+    float2 ll1 = uv.yx;
+    ll1.x *= PI;
+    ll1.y *= PI2;
+    ll1.y += PI;
+
+    // float CP = d * (FCLIP - NCLIP) + NCLIP;
+    float CP = FCLIP;
+
+    float3 P = float3(
+        CP * sin(ll1.y) * sin(ll1.x),
+        CP * cos(ll1.x),
+        CP * cos(ll1.y) * sin(ll1.x));
+    
+    MotionVectors[id.xy] = float4(P, 0);
+}
+
+
 
 #pragma kernel Project
 
-int2 project(float2 uv, float d0, out float d)
+float3 project(float3 P)
 {
+    /*
     float2 ll1 = uv.yx;
     ll1.x *= PI;
     ll1.y *= PI2;
@@ -34,11 +60,11 @@ int2 project(float2 uv, float d0, out float d)
         CP * sin(ll1.y) * sin(ll1.x),
         CP * cos(ll1.x),
         CP * cos(ll1.y) * sin(ll1.x));
-    
-    P.y += sin(TIMESTEP / 50) * sin(length(P)) * sin(P.x);
+    */
+    // P.y += sin(TIMESTEP / 50) * sin(length(P)) * sin(P.x);
     P -= OFFSET;
     // P = mul(TR, P);
-    d = length(P);
+    float d = length(P);
 
     float2 ll2 = float2(
         acos(P.y / d),
@@ -49,29 +75,300 @@ int2 project(float2 uv, float d0, out float d)
         ll2.x / PI);
     a.x += 0.5;
 
-    return (int2) round(a * RESOLUTION);
+    return float3(a, d);
+}
+
+struct ProjectedPoint
+{
+    // projected uv coordinates
+    float2 uv;
+    
+    // absolute projected coordinates
+    int2 pc;
+    
+    // corresponding original coordinates
+    int2 oc;
+    
+    // projected dpeth value (non-normalized)
+    float d;
+};
+
+struct Triangle
+{
+    // vertex points ascending by height
+    ProjectedPoint v0, v1, v2;
+};
+
+float QuadCircumference(ProjectedPoint points[4])
+{
+    return length(points[0].pc - points[1].pc) +
+           length(points[1].pc - points[2].pc) +
+           length(points[2].pc - points[3].pc) +
+           length(points[3].pc - points[0].pc);
+}
+
+// only sort a quad's extremes (highest and lowest)
+void SortQuadExtremesVertically(inout ProjectedPoint points[4])
+{   
+    int y0 = points[0].pc.y;
+    int y1 = points[1].pc.y;
+    int y2 = points[2].pc.y;
+    int y3 = points[3].pc.y;
+    
+    // Find the highest and lowest y components
+    int lowestY = min(min(y0, y1), min(y2, y3));
+    int highestY = max(max(y0, y1), max(y2, y3));
+    
+    // Find the lowest vector
+    ProjectedPoint lowest;
+    if (y0 == lowestY)
+    {
+        lowest = points[0];
+    }
+    else if (y1 == lowestY)
+    {
+        lowest = points[1];
+    }
+    else if (y2 == lowestY)
+    {
+        lowest = points[2];
+    }
+    else
+    {
+        lowest = points[3];
+    }
+    
+    // Find the highest vector
+    ProjectedPoint highest;
+    if (y0 == highestY)
+    {
+        highest = points[0];
+    }
+    else if (y1 == highestY)
+    {
+        highest = points[1];
+    }
+    else if (y2 == highestY)
+    {
+        highest = points[2];
+    }
+    else
+    {
+        highest = points[3];
+    }
+
+    // Find the first middle vector
+    ProjectedPoint middle1;
+    if (y0 != highest.pc.y && y0 != lowest.pc.y)
+    {
+        middle1 = points[0];
+    }
+    else if (y1 != highest.pc.y && y1 != lowest.pc.y)
+    {
+        middle1 = points[1];
+    }
+    else if (y2 != highest.pc.y && y2 != lowest.pc.y)
+    {
+        middle1 = points[2];
+    }
+    else
+    {
+        middle1 = points[3];
+    }
+
+    // Find the second middle vector
+    ProjectedPoint middle2;
+    if (y0 != highest.pc.y && y0 != lowest.pc.y && y0 != middle1.pc.y)
+    {
+        middle2 = points[0];
+    }
+    else if (y1 != highest.pc.y && y1 != lowest.pc.y && y1 != middle1.pc.y)
+    {
+        middle2 = points[1];
+    }
+    else if (y2 != highest.pc.y && y2 != lowest.pc.y && y2 != middle1.pc.y)
+    {
+        middle2 = points[2];
+    }
+    else
+    {
+        middle2 = points[3];
+    }
+
+    // Assign the sorted vectors back to the input array
+    points[0] = lowest;
+    points[1] = middle1;
+    points[2] = middle2;
+    points[3] = highest;
+}
+
+float3 InterpolateTriangle(int x, int y, int2 v0, int2 v1, int2 v2)
+{
+    float dv = (v1.y - v2.y) * (v0.x - v2.x) + (v2.x - v1.x) * (v0.y - v2.y);
+    float w0 = ((v1.y - v2.y) * (x - v2.x) + (v2.x - v1.x) * (y - v2.y)) / dv;
+    float w1 = ((v2.y - v0.y) * (x - v2.x) + (v0.x - v2.x) * (y - v2.y)) / dv;
+    float w2 = 1 - w0 - w1;
+
+    return float3(w0, w1, w2);
+}
+
+void DrawRow(int x0, int y0, int x1, Triangle tri)
+{
+    int sx, ex;
+
+    if (x0 < x1)
+    {
+        sx = x0;
+        ex = x1;
+    }
+    else
+    {
+        sx = x1;
+        ex = x0;
+    }
+    
+    if (ex - sx <= 0)
+        return;
+    
+    for (int i = sx; i <= ex; i++)
+    {
+        float3 w = InterpolateTriangle(i, y0, tri.v0.pc, tri.v1.pc, tri.v2.pc);
+        int2 pc = tri.v0.oc * w.x + tri.v1.oc * w.y + tri.v2.oc * w.z;
+        float2 uv = pc / float2(RESOLUTION);
+        float d = tri.v0.d * w.x + tri.v1.d * w.y + tri.v2.d * w.z;
+        uint2 tc = uint2(i, y0);
+        float og = DepthResult[tc];
+        
+        if (d < og || og == 0)
+        {
+            DepthResult[tc] = d;
+            // Result[tc] = Input[pc];
+            Result[tc] = float4(Input[pc].xy, 0.2, 1);
+        }
+        
+        if (i - sx > 200)
+            break;
+    }
+}
+
+// Based on: http://www.sunshine2k.de/coding/java/TriangleRasterization/TriangleRasterization.html
+void FillTopFlatTriangle(Triangle tri)
+{
+    if (tri.v0.pc.y >= tri.v1.pc.y)
+        return;
+
+    float invslope1 = (tri.v1.pc.x - tri.v0.pc.x) / (float) (tri.v1.pc.y - tri.v0.pc.y);
+    float invslope2 = (tri.v2.pc.x - tri.v0.pc.x) / (float) (tri.v2.pc.y - tri.v0.pc.y);
+
+    float curx1 = tri.v0.pc.x;
+    float curx2 = tri.v0.pc.x;
+
+    for (int scanlineY = tri.v0.pc.y; scanlineY <= tri.v1.pc.y; scanlineY++)
+    {
+        DrawRow(curx1, scanlineY, curx2, tri);
+
+        curx1 += invslope1;
+        curx2 += invslope2;
+        
+        if (scanlineY - tri.v0.pc.y > 100)
+            break;
+    }
+}
+
+// See comment above
+void FillBottomFlatTriangle(Triangle tri)
+{
+    if (tri.v0.pc.y <= tri.v1.pc.y)
+        return;
+
+    float invslope1 = (tri.v0.pc.x - tri.v1.pc.x) / (float) (tri.v0.pc.y - tri.v1.pc.y);
+    float invslope2 = (tri.v0.pc.x - tri.v2.pc.x) / (float) (tri.v0.pc.y - tri.v2.pc.y);
+
+    float curx1 = tri.v0.pc.x;
+    float curx2 = tri.v0.pc.x;
+    
+    for (int scanlineY = tri.v0.pc.y; scanlineY > tri.v1.pc.y; scanlineY--)
+    {
+        DrawRow(curx1, scanlineY, curx2, tri);
+
+        curx1 -= invslope1;
+        curx2 -= invslope2;
+        
+        if (tri.v0.pc.y - scanlineY > 100)
+            break;
+    }
+}
+
+void FillTriangle(Triangle tri)
+{
+    // create a 4th vertex
+    ProjectedPoint v3;
+    v3.uv = int2(tri.v0.uv.x + ((tri.v1.uv.y - tri.v0.uv.y) / (tri.v2.uv.y - tri.v0.uv.y)) * (tri.v2.uv.x - tri.v0.uv.x), tri.v1.uv.y);
+    v3.pc = v3.uv * RESOLUTION;
+    
+    float l0 = length(tri.v0.uv - v3.uv);
+    float l2 = length(tri.v2.uv - v3.uv);
+    float w0 = l0 / (l0 + l2);
+    float w2 = 1 - w0;
+    
+    v3.oc = tri.v0.oc * w0 + tri.v2.oc * w2;
+    v3.d = tri.v0.d * w0 + tri.v2.d * w2;
+    
+    // split the triangle in 2
+    Triangle top, btm;
+    top.v0 = tri.v0;
+    btm.v0 = tri.v2;
+    top.v1 = btm.v1 = tri.v1;
+    top.v2 = btm.v2 = v3;
+    
+    FillTopFlatTriangle(top);
+    FillBottomFlatTriangle(btm);
+
+#if WIREFRAME
+    if (v0.y != v1.y || v0.y != v2.y)
+    {
+        DrawLine(v0, v1);
+        DrawLine(v0, v2);
+        DrawLine(v1, v2);
+        DrawLine(v1, v3);
+    }
+#endif
+}
+
+void PopulateWithTextures(int2 tc, inout ProjectedPoint points[4])
+{
+    uint2 off = uint2(1, 0);
+    points[0].oc = tc;
+    points[1].oc = tc + off;
+    points[2].oc = tc + off.yx;
+    points[3].oc = tc + off.xx;
+    
+    // TODO: define const size
+    [unroll(4)]
+    for (int i = 0; i < 4; i++)
+    {
+        points[i].uv = Transformed[points[i].oc];
+        points[i].pc = points[i].uv * RESOLUTION;
+        points[i].d = Depth[points[i].oc];
+    }
 }
 
 [numthreads(8, 8, 1)]
 void Project(uint3 id : SV_DispatchThreadID)
 {
-    float d0;
-    int2 v0 = project(id.xy / RESOLUTION, Input[id.xy].a, d0);
+    float3 i0 = project(MotionVectors[id.xy].xyz);
+    int2 v0 = i0.xy * RESOLUTION;
+    float d0 = i0.z;
+    // int2 v1 = (v0 - (v0 % GROUP_SIZE)) / GROUP_SIZE;
     
-    int2 v1 = (v0 - (v0 % GROUP_SIZE)) / GROUP_SIZE;
-    
-    float d1 = Depth[v1];
-    if (d1 != 0 && d0 >= d1)
+    float d1 = Depth[v0];
+    if (d1 == 0 || d0 < d1)
     {
-        return;
+        // store the transformed lookup
+        Transformed[id.xy] = i0.xy;
+        Depth[id.xy] = d0;
     }
-    
-    // store the transformed lookup
-    Transformed[v1] = id.xy / RESOLUTION;
-    Depth[v1] = d0;
 }
-
-
 
 
 #pragma kernel Interpolate
@@ -79,6 +376,29 @@ void Project(uint3 id : SV_DispatchThreadID)
 [numthreads(8, 8, 1)]
 void Interpolate(uint3 id : SV_DispatchThreadID)
 {
+    ProjectedPoint neighbors[4];
+    PopulateWithTextures(id.xy, neighbors);
+    
+    // skip too large triangles
+    if (QuadCircumference(neighbors) > 300)
+    {
+        return;
+    }
+    
+    SortQuadExtremesVertically(neighbors);
+    
+    Triangle t0, t1;
+    t0.v0 = t1.v0 = neighbors[0];
+    t0.v1 = neighbors[1];
+    t1.v1 = neighbors[2];
+    t0.v2 = t1.v2 = neighbors[3];
+    
+    FillTriangle(t0);
+    FillTriangle(t1);
+    
+    // Result[neighbors[0].pc] = Input[id.xy];
+    
+    /*
     int2 tc = id.xy;
     float2 dc = Transformed[tc];
     if (any(dc))
@@ -116,79 +436,10 @@ void Interpolate(uint3 id : SV_DispatchThreadID)
     }
     
     Transformed[id.xy] = dc;
-}
-
-
-#pragma kernel Reproject
-
-float2 InterpolateCoords(float2 uv, float2 vbl, float2 vbr, float2 vtl, float2 vtr)
-{
-    float wbl = (1 - uv.x) * (1 - uv.y);
-    float wbr = uv.x * (1 - uv.y);
-    float wtl = (1 - uv.x) * uv.y;
-    float wtr = uv.x * uv.y;
-    
-    return vtl * wtl + vtr * wtr + vbl * wbl + vbr * wbr;
-}
-
-
-[numthreads(8, 8, 1)]
-void Reproject(uint3 id : SV_DispatchThreadID)
-{
-    int2 bl = floor(id.xy / GROUP_SIZE);
-    int2 br = bl + int2(1, 0);
-    int2 tl = bl + int2(0, 1);
-    int2 tr = bl + int2(1, 1);
-    
-    float2 vbl = Transformed[bl];
-    float2 vbr = Transformed[br];
-    float2 vtl = Transformed[tl];
-    float2 vtr = Transformed[tr];
-    
-    // normalized local coords
-    uint2 off = uint2(1, 0);
-    float2 nc = id.xy / GROUP_SIZE - bl;
-    float2 nl = (id.xy + off) / GROUP_SIZE - bl;
-    float2 nr = (id.xy - off) / GROUP_SIZE - bl;
-    float2 nt = (id.xy + off.yx) / GROUP_SIZE - bl;
-    float2 nb = (id.xy - off.yx) / GROUP_SIZE - bl;
-    
-    float2 ic = InterpolateCoords(nc, vbl, vbr, vtl, vtr);
-    float2 il = InterpolateCoords(nl, vbl, vbr, vtl, vtr);
-    float2 ir = InterpolateCoords(nr, vbl, vbr, vtl, vtr);
-    float2 it = InterpolateCoords(nt, vbl, vbr, vtl, vtr);
-    float2 ib = InterpolateCoords(nb, vbl, vbr, vtl, vtr);
-    
-    float dc = Input.SampleLevel(sampler_linear_repeat, ic, 0).a;
-    float dl = Input.SampleLevel(sampler_linear_repeat, il, 0).a;
-    float dr = Input.SampleLevel(sampler_linear_repeat, ir, 0).a;
-    float dt = Input.SampleLevel(sampler_linear_repeat, it, 0).a;
-    float db = Input.SampleLevel(sampler_linear_repeat, ib, 0).a;
-    
-    float d0;
-    int2 rc = project(ic, dc, d0);
-    
-    // float4 col = Input[ic * RESOLUTION];
-    
-    // RasterizeRightTriangle(rc, rl, rt, col);
-    // RasterizeRightTriangle(rc, rt, rr, col);
-    // RasterizeRightTriangle(rc, rr, rb, col);
-    // RasterizeRightTriangle(rc, rb, rt, col);
-    
-    
-    /*
-    float d1 = DepthResult[rp];
-    if (d1 != 0 && d0 >= d1)
-    {
-        return;
-    }
     */
-    // Result[rp] = ic.xyxy;
-    // InvTransformed[rp] = ic * RESOLUTION;
-    InvTransformed[id.xy] = float4(ic * RESOLUTION, rc);
-    DepthReprojected[id.xy] = d0;
-    // DepthResult[rp] = d0;
 }
+
+
 
 
 #pragma kernel Reinterpolate
@@ -311,242 +562,11 @@ void DrawLine(int2 p0, int2 p1)
 }
 #endif
 
-struct ProjectedPoint
-{
-    // projected coordinates
-    int2 pc;
-    
-    // corresponding original coordinates
-    int2 oc;
-    
-    // projected dpeth value (non-normalized)
-    float d;
-};
-
-struct Triangle
-{
-    // vertex points ascending by height
-    ProjectedPoint v0, v1, v2;
-};
-
-float3 InterpolateTriangle(int x, int y, int2 v0, int2 v1, int2 v2)
-{
-    float dv = (v1.y - v2.y) * (v0.x - v2.x) + (v2.x - v1.x) * (v0.y - v2.y);
-    float w0 = ((v1.y - v2.y) * (x - v2.x) + (v2.x - v1.x) * (y - v2.y)) / dv;
-    float w1 = ((v2.y - v0.y) * (x - v2.x) + (v0.x - v2.x) * (y - v2.y)) / dv;
-    float w2 = 1 - w0 - w1;
-
-    return float3(w0, w1, w2);
-}
-
-void DrawRow(int x0, int y0, int x1, Triangle tri)
-{
-    int sx, ex;
-
-    if (x0 < x1)
-    {
-        sx = x0;
-        ex = x1;
-    }
-    else
-    {
-        sx = x1;
-        ex = x0;
-    }
-    
-    if (ex - sx <= 0)
-        return;
-
-    for (int i = sx; i <= ex; i++)
-    {
-        float3 w = InterpolateTriangle(i, y0, tri.v0.pc, tri.v1.pc, tri.v2.pc);
-        int2 pc = tri.v0.oc * w.x + tri.v1.oc * w.y + tri.v2.oc * w.z;
-        float2 uv = pc / float2(RESOLUTION);
-        float d = tri.v0.d * w.x + tri.v1.d * w.y + tri.v2.d * w.z;
-        uint2 tc = uint2(i, y0);
-        float og = DepthResult[tc];
-        
-        if (d < og || og == 0)
-        {
-            DepthResult[tc] = d;
-            Result[tc] = Input[pc];
-        }
-    }
-}
-
-// Based on: http://www.sunshine2k.de/coding/java/TriangleRasterization/TriangleRasterization.html
-void FillTopFlatTriangle(Triangle tri)
-{
-    if (tri.v0.pc.y >= tri.v1.pc.y)
-        return;
-
-    float invslope1 = (tri.v1.pc.x - tri.v0.pc.x) / (float) (tri.v1.pc.y - tri.v0.pc.y);
-    float invslope2 = (tri.v2.pc.x - tri.v0.pc.x) / (float) (tri.v2.pc.y - tri.v0.pc.y);
-
-    float curx1 = tri.v0.pc.x;
-    float curx2 = tri.v0.pc.x;
-
-    for (int scanlineY = tri.v0.pc.y; scanlineY <= tri.v1.pc.y; scanlineY++)
-    {
-        DrawRow(curx1, scanlineY, curx2, tri);
-
-        curx1 += invslope1;
-        curx2 += invslope2;
-    }
-}
-
-// See comment above
-void FillBottomFlatTriangle(Triangle tri)
-{
-    if (tri.v0.pc.y <= tri.v1.pc.y)
-        return;
-
-    float invslope1 = (tri.v0.pc.x - tri.v1.pc.x) / (float) (tri.v0.pc.y - tri.v1.pc.y);
-    float invslope2 = (tri.v0.pc.x - tri.v2.pc.x) / (float) (tri.v0.pc.y - tri.v2.pc.y);
-
-    float curx1 = tri.v0.pc.x;
-    float curx2 = tri.v0.pc.x;
-
-    for (int scanlineY = tri.v0.pc.y; scanlineY > tri.v1.pc.y; scanlineY--)
-    {
-        DrawRow(curx1, scanlineY, curx2, tri);
-
-        curx1 -= invslope1;
-        curx2 -= invslope2;
-    }
-}
-
-void FillTriangle(Triangle tri)
-{
-    // create a 4th vertex
-    ProjectedPoint v3;
-    v3.pc = int2(tri.v0.pc.x + ((float) (tri.v1.pc.y - tri.v0.pc.y) / (float) (tri.v2.pc.y - tri.v0.pc.y)) * (tri.v2.pc.x - tri.v0.pc.x), tri.v1.pc.y);
-    float l0 = length(tri.v0.pc - v3.pc);
-    float l2 = length(tri.v2.pc - v3.pc);
-    float w0 = l0 / (l0 + l2);
-    float w2 = 1 - w0;
-    v3.oc = tri.v0.oc * w0 + tri.v2.oc * w2;
-    v3.d = tri.v0.d * w0 + tri.v2.d * w2;
-    
-    // split the triangle in 2
-    Triangle top, btm;
-    top.v0 = tri.v0;
-    btm.v0 = tri.v2;
-    top.v1 = btm.v1 = tri.v1;
-    top.v2 = btm.v2 = v3;
-    
-    FillTopFlatTriangle(tri);
-    FillBottomFlatTriangle(tri);
-
-#if WIREFRAME
-    if (v0.y != v1.y || v0.y != v2.y)
-    {
-        DrawLine(v0, v1);
-        DrawLine(v0, v2);
-        DrawLine(v1, v2);
-        DrawLine(v1, v3);
-    }
-#endif
-}
-
-// only sort a quad's extremes (highest and lowest)
-void SortQuadExtremesVertically(inout ProjectedPoint points[4])
-{
-    int y0 = points[0].pc.y;
-    int y1 = points[1].pc.y;
-    int y2 = points[2].pc.y;
-    int y3 = points[3].pc.y;
-    
-    // Find the highest and lowest y components
-    int highestY = max(max(y0, y1), max(y2, y3));
-    int lowestY = min(min(y0, y1), min(y2, y3));
-    
-    // Find the lowest vector
-    ProjectedPoint lowest;
-    if (y0 == lowestY)
-    {
-        lowest = points[0];
-    }
-    else if (y1 == lowestY)
-    {
-        lowest = points[1];
-    }
-    else if (y2 == lowestY)
-    {
-        lowest = points[2];
-    }
-    else
-    {
-        lowest = points[3];
-    }
-    
-    // Find the highest vector
-    ProjectedPoint highest;
-    if (y0 == highestY)
-    {
-        highest = points[0];
-    }
-    else if (y1 == highestY)
-    {
-        highest = points[1];
-    }
-    else if (y2 == highestY)
-    {
-        highest = points[2];
-    }
-    else
-    {
-        highest = points[3];
-    }
-
-    // Find the first middle vector
-    ProjectedPoint middle1;
-    if (y0 != highest.pc.y && y0 != lowest.pc.y)
-    {
-        middle1 = points[0];
-    }
-    else if (y1 != highest.pc.y && y1 != lowest.pc.y)
-    {
-        middle1 = points[1];
-    }
-    else if (y2 != highest.pc.y && y2 != lowest.pc.y)
-    {
-        middle1 = points[2];
-    }
-    else
-    {
-        middle1 = points[3];
-    }
-
-    // Find the second middle vector
-    ProjectedPoint middle2;
-    if (y0 != highest.pc.y && y0 != lowest.pc.y && y0 != middle1.pc.y)
-    {
-        middle2 = points[0];
-    }
-    else if (y1 != highest.pc.y && y1 != lowest.pc.y && y1 != middle1.pc.y)
-    {
-        middle2 = points[1];
-    }
-    else if (y2 != highest.pc.y && y2 != lowest.pc.y && y2 != middle1.pc.y)
-    {
-        middle2 = points[2];
-    }
-    else
-    {
-        middle2 = points[3];
-    }
-
-    // Assign the sorted vectors back to the input array
-    points[0] = lowest;
-    points[1] = highest;
-    points[2] = middle1;
-    points[3] = middle2;
-}
 
 [numthreads(8, 8, 1)]
 void Reinterpolate(uint3 id : SV_DispatchThreadID)
 {
+    /*
     uint2 off = uint2(1, 0);
     float4 rc = InvTransformed[id.xy];
     float4 rl = InvTransformed[id.xy + off];
@@ -594,7 +614,7 @@ void Reinterpolate(uint3 id : SV_DispatchThreadID)
     
     FillTriangle(t0);
     FillTriangle(t1);
-        
+    */
     // RasterizeRightTriangle(rc, rl, rt, float4(id.xy / RESOLUTION, 0, 1));
     // FillTriangle(rc.zw, rl.zw, rt.zw, rc.xy, rl.xy, rt.xy, dc, dl, dt);
     // FillTriangle(rlt.zw, rl.zw, rt.zw, rlt.xy, rl.xy, rt.xy, dlt, dl, dt);
