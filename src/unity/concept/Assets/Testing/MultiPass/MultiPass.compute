@@ -252,7 +252,7 @@ void DrawRow(int x0, int y0, int x1, Triangle tri)
 }
 
 // Based on: http://www.sunshine2k.de/coding/java/TriangleRasterization/TriangleRasterization.html
-void FillTopFlatTriangle(Triangle tri)
+void RasterizeTopFlatTriangle(Triangle tri)
 {
     if (tri.v0.pc.y >= tri.v1.pc.y)
         return;
@@ -276,7 +276,7 @@ void FillTopFlatTriangle(Triangle tri)
 }
 
 // See comment above
-void FillBottomFlatTriangle(Triangle tri)
+void RasterizeBottomFlatTriangle(Triangle tri)
 {
     if (tri.v0.pc.y <= tri.v1.pc.y)
         return;
@@ -299,7 +299,7 @@ void FillBottomFlatTriangle(Triangle tri)
     }
 }
 
-void FillTriangle(Triangle tri)
+void RasterizeTriangle(Triangle tri)
 {
     // create a 4th vertex
     ProjectedPoint v3;
@@ -321,8 +321,8 @@ void FillTriangle(Triangle tri)
     top.v1 = btm.v1 = tri.v1;
     top.v2 = btm.v2 = v3;
     
-    FillTopFlatTriangle(top);
-    FillBottomFlatTriangle(btm);
+    RasterizeTopFlatTriangle(top);
+    RasterizeBottomFlatTriangle(btm);
 
 #if WIREFRAME
     if (v0.y != v1.y || v0.y != v2.y)
@@ -393,8 +393,8 @@ void Interpolate(uint3 id : SV_DispatchThreadID)
     t1.v1 = neighbors[2];
     t0.v2 = t1.v2 = neighbors[3];
     
-    FillTriangle(t0);
-    FillTriangle(t1);
+    RasterizeTriangle(t0);
+    RasterizeTriangle(t1);
     
     // Result[neighbors[0].pc] = Input[id.xy];
     
@@ -612,12 +612,12 @@ void Reinterpolate(uint3 id : SV_DispatchThreadID)
     t1.v1 = neighbors[2];
     t0.v2 = t1.v2 = neighbors[3];
     
-    FillTriangle(t0);
-    FillTriangle(t1);
+    RasterizeTriangle(t0);
+    RasterizeTriangle(t1);
     */
     // RasterizeRightTriangle(rc, rl, rt, float4(id.xy / RESOLUTION, 0, 1));
-    // FillTriangle(rc.zw, rl.zw, rt.zw, rc.xy, rl.xy, rt.xy, dc, dl, dt);
-    // FillTriangle(rlt.zw, rl.zw, rt.zw, rlt.xy, rl.xy, rt.xy, dlt, dl, dt);
+    // RasterizeTriangle(rc.zw, rl.zw, rt.zw, rc.xy, rl.xy, rt.xy, dc, dl, dt);
+    // RasterizeTriangle(rlt.zw, rl.zw, rt.zw, rlt.xy, rl.xy, rt.xy, dlt, dl, dt);
     // Result[id.xy] = float4(rc / RESOLUTION, 0, 1);
     // Result[id.xy] = float4((length(rc - rt) / 10).xxx, 1);
     
