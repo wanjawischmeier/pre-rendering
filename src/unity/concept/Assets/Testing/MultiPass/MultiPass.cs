@@ -2,12 +2,18 @@ using UnityEngine;
 
 public class MultiPass : MonoBehaviour
 {
+    public enum DebugChannel
+    {
+        none, transformed, depth, result, depthResult
+    }
+
     public Texture2D input;
     public ComputeShader computeShader;
     public Shader postProcessing;
     public Vector2Int groupSize, projectionResolution, rasterizationResolution;
     public int searchRadius = 10;
     public bool debug = false;
+    public DebugChannel debugChannel;
 
     public RenderTexture motionVectors, transformed, transformedResult, invTransformed, depth, depthReprojected, depthResult, result;
     private Material postProcessingMaterial;
@@ -145,6 +151,23 @@ public class MultiPass : MonoBehaviour
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
-        Graphics.Blit(null, destination, postProcessingMaterial);
+        switch (debugChannel)
+        {
+            case DebugChannel.transformed:
+                Graphics.Blit(transformed, destination);
+                break;
+            case DebugChannel.depth:
+                Graphics.Blit(depth, destination);
+                break;
+            case DebugChannel.result:
+                Graphics.Blit(result, destination);
+                break;
+            case DebugChannel.depthResult:
+                Graphics.Blit(depthResult, destination);
+                break;
+            default:
+                Graphics.Blit(null, destination, postProcessingMaterial);
+                break;
+        }
     }
 }

@@ -334,10 +334,6 @@ float3 InterpolateTriangle(int x, int y, int2 v0, int2 v1, int2 v2)
 
 void DrawRow(int x0, int y0, int x1, Triangle tri)
 {
-    if (!any(tri.v0.oc))
-        return;
-    if (tri.v0.oc.x == 0)
-        return;
     int sx, ex;
 
     if (x0 < x1)
@@ -453,16 +449,16 @@ void RasterizeTriangle(Triangle tri)
     if (!any(top.v0.oc))
         return;
     
-    RasterizeTopFlatTriangle(top);
-    RasterizeBottomFlatTriangle(btm);
+    // RasterizeTopFlatTriangle(top);
+    // RasterizeBottomFlatTriangle(btm);
 
 #if WIREFRAME
     if (tri.v0.pc.y != tri.v1.pc.y || tri.v0.pc.y != tri.v2.pc.y)
     {
         DrawLine(tri.v0.pc, tri.v1.pc);
-        DrawLine(tri.v0.pc, tri.v2.pc);
-        DrawLine(tri.v1.pc, tri.v2.pc);
-        DrawLine(tri.v1.pc, v3.pc);
+        // DrawLine(tri.v0.pc, tri.v2.pc);
+        // DrawLine(tri.v1.pc, tri.v2.pc);
+        // DrawLine(tri.v1.pc, v3.pc);
     }
 #endif
 }
@@ -493,12 +489,12 @@ void Project(uint3 id : SV_DispatchThreadID)
     float d0 = i0.z;
     // int2 v1 = (v0 - (v0 % GROUP_SIZE)) / GROUP_SIZE;
     
+    // store the transformed lookup
+    Transformed[id.xy] = i0.xy;
+    Depth[id.xy] = d0;
     float d1 = Depth[v0];
     if (d1 == 0 || d0 < d1)
     {
-        // store the transformed lookup
-        Transformed[id.xy] = i0.xy;
-        Depth[id.xy] = d0;
     }
 }
 
@@ -541,8 +537,12 @@ void Interpolate(uint3 id : SV_DispatchThreadID)
     // skip too large triangles
     if (QuadCircumference(neighbors) / 4 > DEBUG_MAX_LINE_LENGTH)
     {
-        return;
+        // return;
     }
+    
+#if WIREFRAME
+    DrawCircle(neighbors[0].pc);
+#endif
     
     SortQuadExtremesVertically(neighbors);
     
@@ -554,10 +554,6 @@ void Interpolate(uint3 id : SV_DispatchThreadID)
     
     RasterizeTriangle(t0);
     RasterizeTriangle(t1);
-    
-    #if WIREFRAME
-    DrawCircle(neighbors[0].pc);
-    #endif
     
     /*
     int2 tc = id.xy;
