@@ -1,5 +1,8 @@
 #define NCLIP 1
 #define FCLIP 30
+#define DEBUG_BLUE float4(0.2, 0.2, 1, 1)
+#define DEBUG_MAX_LINE_LENGTH 200
+
 #pragma multi_compile __ WIREFRAME
 
 Texture2D<float4> Input;
@@ -12,7 +15,7 @@ SamplerState sampler_linear_repeat;
 bool DEBUG;
 int SEARCH_RADIUS;
 float TIMESTEP;
-float2 RESOLUTION, GROUP_SIZE;
+float2 INPUT_RESOLUTION, PROJECTION_RESOLUTION, RASTERIZATION_RESOLUTION, GROUP_SIZE;
 float3 OFFSET;
 float PI, PI2;
 
@@ -23,7 +26,7 @@ float PI, PI2;
 [numthreads(8, 8, 1)]
 void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
 {
-    float2 uv = id.xy / RESOLUTION;
+    float2 uv = id.xy / INPUT_RESOLUTION;
     float d = Input[id.xy].a;
     
     float2 ll1 = uv.yx;
@@ -31,8 +34,8 @@ void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
     ll1.y *= PI2;
     ll1.y += PI;
 
-    // float CP = d * (FCLIP - NCLIP) + NCLIP;
-    float CP = FCLIP;
+    float CP = d * (FCLIP - NCLIP) + NCLIP;
+    CP = FCLIP;
 
     float3 P = float3(
         CP * sin(ll1.y) * sin(ll1.x),
@@ -331,6 +334,10 @@ float3 InterpolateTriangle(int x, int y, int2 v0, int2 v1, int2 v2)
 
 void DrawRow(int x0, int y0, int x1, Triangle tri)
 {
+    if (!any(tri.v0.oc))
+        return;
+    if (tri.v0.oc.x == 0)
+        return;
     int sx, ex;
 
     if (x0 < x1)
@@ -351,16 +358,17 @@ void DrawRow(int x0, int y0, int x1, Triangle tri)
     {
         float3 w = InterpolateTriangle(i, y0, tri.v0.pc, tri.v1.pc, tri.v2.pc);
         int2 pc = tri.v0.oc * w.x + tri.v1.oc * w.y + tri.v2.oc * w.z;
-        float2 uv = pc / float2(RESOLUTION);
+        float2 uv = pc / PROJECTION_RESOLUTION;
         float d = tri.v0.d * w.x + tri.v1.d * w.y + tri.v2.d * w.z;
         uint2 tc = uint2(i, y0);
         float og = DepthResult[tc];
         
         if (d < og || og == 0)
         {
-            DepthResult[tc] = d;
+            DepthResult[tc] = w.x;
             // Result[tc] = Input[pc];
-            Result[tc] = float4(Input[pc].xy, 0.2, 1);
+            Result[tc] = Input[uv * INPUT_RESOLUTION];
+            // Result[tc] = float4(tri.v0.oc / PROJECTION_RESOLUTION, 0, 1);
         }
         
         if (i - sx > 200)
@@ -372,6 +380,8 @@ void DrawRow(int x0, int y0, int x1, Triangle tri)
 void RasterizeTopFlatTriangle(Triangle tri)
 {
     if (tri.v0.pc.y >= tri.v1.pc.y)
+        return;
+    if (!any(tri.v0.oc))
         return;
 
     float invslope1 = (tri.v1.pc.x - tri.v0.pc.x) / (float) (tri.v1.pc.y - tri.v0.pc.y);
@@ -387,7 +397,7 @@ void RasterizeTopFlatTriangle(Triangle tri)
         curx1 += invslope1;
         curx2 += invslope2;
         
-        if (scanlineY - tri.v0.pc.y > 100)
+        if (scanlineY - tri.v0.pc.y > DEBUG_MAX_LINE_LENGTH)
             break;
     }
 }
@@ -396,6 +406,8 @@ void RasterizeTopFlatTriangle(Triangle tri)
 void RasterizeBottomFlatTriangle(Triangle tri)
 {
     if (tri.v0.pc.y <= tri.v1.pc.y)
+        return;
+    if (!any(tri.v0.oc))
         return;
 
     float invslope1 = (tri.v0.pc.x - tri.v1.pc.x) / (float) (tri.v0.pc.y - tri.v1.pc.y);
@@ -411,7 +423,7 @@ void RasterizeBottomFlatTriangle(Triangle tri)
         curx1 -= invslope1;
         curx2 -= invslope2;
         
-        if (tri.v0.pc.y - scanlineY > 100)
+        if (tri.v0.pc.y - scanlineY > DEBUG_MAX_LINE_LENGTH)
             break;
     }
 }
@@ -420,8 +432,8 @@ void RasterizeTriangle(Triangle tri)
 {
     // create a 4th vertex
     ProjectedPoint v3;
-    v3.uv = int2(tri.v0.uv.x + ((tri.v1.uv.y - tri.v0.uv.y) / (tri.v2.uv.y - tri.v0.uv.y)) * (tri.v2.uv.x - tri.v0.uv.x), tri.v1.uv.y);
-    v3.pc = v3.uv * RESOLUTION;
+    v3.uv = float2(tri.v0.uv.x + ((tri.v1.uv.y - tri.v0.uv.y) / (tri.v2.uv.y - tri.v0.uv.y)) * (tri.v2.uv.x - tri.v0.uv.x), tri.v1.uv.y);
+    v3.pc = v3.uv * RASTERIZATION_RESOLUTION;
     
     float l0 = length(tri.v0.uv - v3.uv);
     float l2 = length(tri.v2.uv - v3.uv);
@@ -438,8 +450,11 @@ void RasterizeTriangle(Triangle tri)
     top.v1 = btm.v1 = tri.v1;
     top.v2 = btm.v2 = v3;
     
+    if (!any(top.v0.oc))
+        return;
+    
     RasterizeTopFlatTriangle(top);
-    // RasterizeBottomFlatTriangle(btm);
+    RasterizeBottomFlatTriangle(btm);
 
 #if WIREFRAME
     if (tri.v0.pc.y != tri.v1.pc.y || tri.v0.pc.y != tri.v2.pc.y)
@@ -465,7 +480,7 @@ void PopulateWithTextures(int2 tc, inout ProjectedPoint points[4])
     for (int i = 0; i < 4; i++)
     {
         points[i].uv = Transformed[points[i].oc];
-        points[i].pc = points[i].uv * RESOLUTION;
+        points[i].pc = points[i].uv * RASTERIZATION_RESOLUTION;
         points[i].d = Depth[points[i].oc];
     }
 }
@@ -473,8 +488,8 @@ void PopulateWithTextures(int2 tc, inout ProjectedPoint points[4])
 [numthreads(8, 8, 1)]
 void Project(uint3 id : SV_DispatchThreadID)
 {
-    float3 i0 = project(MotionVectors[id.xy].xyz);
-    int2 v0 = i0.xy * RESOLUTION;
+    float3 i0 = project(MotionVectors[id.xy / PROJECTION_RESOLUTION * INPUT_RESOLUTION].xyz);
+    int2 v0 = i0.xy * PROJECTION_RESOLUTION;
     float d0 = i0.z;
     // int2 v1 = (v0 - (v0 % GROUP_SIZE)) / GROUP_SIZE;
     
@@ -490,6 +505,33 @@ void Project(uint3 id : SV_DispatchThreadID)
 
 #pragma kernel Interpolate
 
+#define DEBUG_CIRCLE_RADIUS 2
+#define DEBUG_CIRCLE_RAD_POW (DEBUG_CIRCLE_RADIUS * DEBUG_CIRCLE_RADIUS)
+
+#if WIREFRAME
+void DrawCircle(int2 p)
+{
+    int x, y, px, nx, py, ny, d;
+ 
+    for (x = 0; x <= DEBUG_CIRCLE_RADIUS; x++)
+    {
+        d = (int) ceil(sqrt(DEBUG_CIRCLE_RAD_POW - x * x));
+        for (y = 0; y <= d; y++)
+        {
+            px = p.x + x;
+            nx = p.x - x;
+            py = p.y + y;
+            ny = p.y - y;
+            
+            Result[int2(px, py)] = DEBUG_BLUE;
+            Result[int2(nx, py)] = DEBUG_BLUE;
+            Result[int2(px, ny)] = DEBUG_BLUE;
+            Result[int2(nx, ny)] = DEBUG_BLUE;
+        }
+    }
+}
+#endif
+
 [numthreads(8, 8, 1)]
 void Interpolate(uint3 id : SV_DispatchThreadID)
 {
@@ -497,7 +539,7 @@ void Interpolate(uint3 id : SV_DispatchThreadID)
     PopulateWithTextures(id.xy, neighbors);
     
     // skip too large triangles
-    if (QuadCircumference(neighbors) > 300)
+    if (QuadCircumference(neighbors) / 4 > DEBUG_MAX_LINE_LENGTH)
     {
         return;
     }
@@ -511,9 +553,11 @@ void Interpolate(uint3 id : SV_DispatchThreadID)
     t0.v2 = t1.v2 = neighbors[3];
     
     RasterizeTriangle(t0);
-    // RasterizeTriangle(t1);
+    RasterizeTriangle(t1);
     
-    Result[neighbors[0].pc] = Input[id.xy];
+    #if WIREFRAME
+    DrawCircle(neighbors[0].pc);
+    #endif
     
     /*
     int2 tc = id.xy;

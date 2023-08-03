@@ -304,14 +304,14 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1617010253}
-  m_LocalRotation: {x: -0.29789189, y: 0.35022792, z: 0.11854558, w: 0.8800839}
-  m_LocalPosition: {x: 19.66, y: 4.8122025, z: 21.173237}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: -37.4, y: 43.4, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1617010257
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -328,8 +328,10 @@ MonoBehaviour:
   computeShader: {fileID: 7200000, guid: 2b34f280db5c98c45a9ba6a3c15bf555, type: 3}
   postProcessing: {fileID: 4800000, guid: aa2181da6aedd6c40a89c79585f57e74, type: 3}
   groupSize: {x: 20, y: 10}
+  projectionResolution: {x: 640, y: 320}
+  rasterizationResolution: {x: 1600, y: 800}
   searchRadius: 100
-  debug: 0
+  debug: 1
   motionVectors: {fileID: 0}
   transformed: {fileID: 0}
   transformedResult: {fileID: 0}
@@ -345,12 +347,12 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1617010253}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1294e014c405bac4a86ffd9f1f87b9f2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  speed: 10
+  speed: 14
   lookSpeed: 2
   lookXLimit: 90
 --- !u!143 &1617010259

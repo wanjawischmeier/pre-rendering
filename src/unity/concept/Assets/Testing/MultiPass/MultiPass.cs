@@ -5,7 +5,7 @@ public class MultiPass : MonoBehaviour
     public Texture2D input;
     public ComputeShader computeShader;
     public Shader postProcessing;
-    public Vector2Int groupSize;
+    public Vector2Int groupSize, projectionResolution, rasterizationResolution;
     public int searchRadius = 10;
     public bool debug = false;
 
@@ -13,8 +13,8 @@ public class MultiPass : MonoBehaviour
     private Material postProcessingMaterial;
     private Vector3 previousPosition = Vector3.one;
     private Camera mainCamera;
-    private uint threadGroupSizeX, threadGroupSizeY;
-    private int calculateMotionVectors, project, interpolate, reproject, reinterpolate;
+    private int threadGroupSizeX, threadGroupSizeY;
+    private int calculateMotionVectors, project, interpolate, reproject, reinterpolate, calculateMotionVectorGroupsX, calculateMotionVectorGroupsY, projectGroupsX, projectGroupsY, interpolateGroupsX, interpolateGroupsY;
     private bool previousDebug = false;
 
     private void Start()
@@ -26,29 +26,48 @@ public class MultiPass : MonoBehaviour
         interpolate = computeShader.FindKernel("Interpolate");
         // reproject = computeShader.FindKernel("Reproject");
         reinterpolate = computeShader.FindKernel("Reinterpolate");
-        computeShader.GetKernelThreadGroupSizes(project, out threadGroupSizeX, out threadGroupSizeY, out _);
+        
+        computeShader.GetKernelThreadGroupSizes(project, out uint tmpX, out uint tmpY, out _);
+        threadGroupSizeX = (int)tmpX;
+        threadGroupSizeY = (int)tmpY;
+        calculateMotionVectorGroupsX = input.width / threadGroupSizeY;
+        calculateMotionVectorGroupsY = input.height / threadGroupSizeY;
+        projectGroupsX = projectionResolution.x / threadGroupSizeY;
+        projectGroupsY = projectionResolution.y / threadGroupSizeY;
+        interpolateGroupsX = rasterizationResolution.x / threadGroupSizeY;
+        interpolateGroupsY = rasterizationResolution.y / threadGroupSizeY;
 
-        result = new RenderTexture(input.width, input.height, 0);
-        result.enableRandomWrite = true;
-        result.filterMode = FilterMode.Bilinear;
-        invTransformed = new RenderTexture(result);
-        invTransformed.format = RenderTextureFormat.ARGBFloat;
-        motionVectors = new RenderTexture(result);
+        // input dimensions
+        motionVectors = new RenderTexture(input.width, input.height, 0);
+        motionVectors.enableRandomWrite = true;
         motionVectors.format = RenderTextureFormat.ARGBFloat;
-        // depth = new RenderTexture(input.width / groupSize.x, input.height / groupSize.y, 0);
-        depth = new RenderTexture(input.width, input.height, 0);
+
+        // projection dimensions
+        depth = new RenderTexture(projectionResolution.x, projectionResolution.y, 0);
         depth.enableRandomWrite = true;
         depth.format = RenderTextureFormat.RFloat;
-        depthResult = new RenderTexture(depth);
-        depthReprojected = new RenderTexture(depthResult);
         transformed = new RenderTexture(depth);
         transformed.format = RenderTextureFormat.RGFloat;
+
+        // result/rasterization dimensions
+        result = new RenderTexture(rasterizationResolution.x, rasterizationResolution.y, 0);
+        result.enableRandomWrite = true;
+        result.filterMode = FilterMode.Bilinear;
+        depthResult = new RenderTexture(depth);
+
+        // depth = new RenderTexture(input.width / groupSize.x, input.height / groupSize.y, 0);
+        depthReprojected = new RenderTexture(depthResult);
         transformedResult = new RenderTexture(transformed);
+
+        invTransformed = new RenderTexture(result);
+        invTransformed.format = RenderTextureFormat.ARGBFloat;
 
         computeShader.SetInt("SEARCH_RADIUS", searchRadius);
         computeShader.SetFloat("PI", Mathf.PI);
         computeShader.SetFloat("PI2", Mathf.PI * 2);
-        computeShader.SetVector("RESOLUTION", new Vector2(input.width, input.height));
+        computeShader.SetVector("INPUT_RESOLUTION", new Vector2(input.width, input.height));
+        computeShader.SetVector("PROJECTION_RESOLUTION", new Vector2(projectionResolution.x, projectionResolution.y));
+        computeShader.SetVector("RASTERIZATION_RESOLUTION", new Vector2(rasterizationResolution.x, rasterizationResolution.y));
         computeShader.SetVector("GROUP_SIZE", new Vector2(groupSize.x, groupSize.y));
         computeShader.SetTexture(calculateMotionVectors, "Input", input);
         computeShader.SetTexture(calculateMotionVectors, "MotionVectors", motionVectors);
@@ -80,7 +99,7 @@ public class MultiPass : MonoBehaviour
         postProcessingMaterial.SetFloat("PI2", Mathf.PI * 2);
         postProcessingMaterial.SetTexture("_MainTex", result);
 
-        computeShader.Dispatch(calculateMotionVectors, input.width / (int)threadGroupSizeX, input.height / (int)threadGroupSizeY, 1);
+        computeShader.Dispatch(calculateMotionVectors, input.width / threadGroupSizeY, input.height / threadGroupSizeY, 1);
     }
 
     private void Update()
@@ -118,8 +137,8 @@ public class MultiPass : MonoBehaviour
         computeShader.SetBool("DEBUG", debug);
         computeShader.SetFloat("TIMESTEP", Time.frameCount + Time.deltaTime);
         computeShader.SetVector("OFFSET", transform.position);
-        computeShader.Dispatch(project, input.width / (int)threadGroupSizeX, input.height / (int)threadGroupSizeY, 1);
-        computeShader.Dispatch(interpolate, input.width / (int)threadGroupSizeX, input.height / (int)threadGroupSizeY, 1);
+        computeShader.Dispatch(project, projectGroupsX, projectGroupsY, 1);
+        computeShader.Dispatch(interpolate, interpolateGroupsX, interpolateGroupsY, 1);
         // computeShader.Dispatch(reproject, input.width / (int)threadGroupSizeX, input.height / (int)threadGroupSizeY, 1);
         // computeShader.Dispatch(reinterpolate, input.width / (int)threadGroupSizeX, input.height / (int)threadGroupSizeY, 1);
     }
