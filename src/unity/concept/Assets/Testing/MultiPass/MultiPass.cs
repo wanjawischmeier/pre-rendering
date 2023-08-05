@@ -12,6 +12,7 @@ public class MultiPass : MonoBehaviour
     public Shader postProcessing;
     public Vector2Int groupSize, projectionResolution, rasterizationResolution;
     public int searchRadius = 10;
+    public int debugInt;
     public bool debug = false;
     public DebugChannel debugChannel;
 
@@ -140,11 +141,16 @@ public class MultiPass : MonoBehaviour
             previousDebug = debug;
         }
 
+        Matrix4x4 MVP = GL.GetGPUProjectionMatrix(mainCamera.projectionMatrix, true) * mainCamera.worldToCameraMatrix;
+        // Matrix4x4 MVP = mainCamera.nonJitteredProjectionMatrix * transform.worldToLocalMatrix;
+
         computeShader.SetBool("DEBUG", debug);
+        computeShader.SetInt("DEBUG_INT", debugInt);
         computeShader.SetFloat("TIMESTEP", Time.frameCount + Time.deltaTime);
         computeShader.SetVector("OFFSET", transform.position);
+        computeShader.SetMatrix("MVP", MVP);
         computeShader.Dispatch(project, projectGroupsX, projectGroupsY, 1);
-        computeShader.Dispatch(interpolate, interpolateGroupsX, interpolateGroupsY, 1);
+        // computeShader.Dispatch(interpolate, projectGroupsX, projectGroupsY, 1);
         // computeShader.Dispatch(reproject, input.width / (int)threadGroupSizeX, input.height / (int)threadGroupSizeY, 1);
         // computeShader.Dispatch(reinterpolate, input.width / (int)threadGroupSizeX, input.height / (int)threadGroupSizeY, 1);
     }
