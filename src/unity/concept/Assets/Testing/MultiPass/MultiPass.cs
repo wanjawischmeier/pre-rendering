@@ -1,4 +1,5 @@
 using UnityEngine;
+using static UnityEngine.Networking.UnityWebRequest;
 
 public class MultiPass : MonoBehaviour
 {
@@ -26,14 +27,14 @@ public class MultiPass : MonoBehaviour
 
     private void Start()
     {
-        mainCamera = GetComponent<Camera>();
+        mainCamera = Camera.main;
 
         calculateMotionVectors = computeShader.FindKernel("CalculateMotionVectors");
         project = computeShader.FindKernel("Project");
         interpolate = computeShader.FindKernel("Interpolate");
         // reproject = computeShader.FindKernel("Reproject");
         reinterpolate = computeShader.FindKernel("Reinterpolate");
-        
+
         computeShader.GetKernelThreadGroupSizes(project, out uint tmpX, out uint tmpY, out _);
         threadGroupSizeX = (int)tmpX;
         threadGroupSizeY = (int)tmpY;
@@ -69,19 +70,19 @@ public class MultiPass : MonoBehaviour
         invTransformed = new RenderTexture(result);
         invTransformed.format = RenderTextureFormat.ARGBFloat;
 
-        computeShader.SetInt("SEARCH_RADIUS", searchRadius);
+        // computeShader.SetInt("SEARCH_RADIUS", searchRadius);
         computeShader.SetFloat("PI", Mathf.PI);
         computeShader.SetFloat("PI2", Mathf.PI * 2);
         computeShader.SetVector("INPUT_RESOLUTION", new Vector2(input.width, input.height));
         computeShader.SetVector("PROJECTION_RESOLUTION", new Vector2(projectionResolution.x, projectionResolution.y));
         computeShader.SetVector("RASTERIZATION_RESOLUTION", new Vector2(rasterizationResolution.x, rasterizationResolution.y));
-        computeShader.SetVector("GROUP_SIZE", new Vector2(groupSize.x, groupSize.y));
-        computeShader.SetTexture(calculateMotionVectors, "Input", input);
-        computeShader.SetTexture(calculateMotionVectors, "MotionVectors", motionVectors);
+        // computeShader.SetVector("GROUP_SIZE", new Vector2(groupSize.x, groupSize.y));
+        // computeShader.SetTexture(calculateMotionVectors, "Input", input);
+        // computeShader.SetTexture(calculateMotionVectors, "MotionVectors", motionVectors);
         computeShader.SetTexture(project, "Input", input);
         computeShader.SetTexture(project, "Transformed", transformed);
-        computeShader.SetTexture(project, "MotionVectors", motionVectors);
-        computeShader.SetTexture(project, "Depth", depth);
+        // computeShader.SetTexture(project, "MotionVectors", motionVectors);
+        // computeShader.SetTexture(project, "Depth", depth);
         computeShader.SetTexture(interpolate, "Input", input);
         computeShader.SetTexture(interpolate, "Transformed", transformed);
         computeShader.SetTexture(interpolate, "Depth", depth);
@@ -94,28 +95,29 @@ public class MultiPass : MonoBehaviour
         computeShader.SetTexture(reproject, "DepthReprojected", depthReprojected);
         computeShader.SetTexture(reproject, "Result", result);
         computeShader.SetTexture(reproject, "InvTransformed", invTransformed);
-        */
         computeShader.SetTexture(reinterpolate, "Input", input);
         computeShader.SetTexture(reinterpolate, "InvTransformed", invTransformed);
         computeShader.SetTexture(reinterpolate, "DepthReprojected", depthReprojected);
         computeShader.SetTexture(reinterpolate, "DepthResult", depthResult);
         computeShader.SetTexture(reinterpolate, "Result", result);
-
+        
         postProcessingMaterial = new Material(postProcessing);
         postProcessingMaterial.SetFloat("PI", Mathf.PI);
         postProcessingMaterial.SetFloat("PI2", Mathf.PI * 2);
         postProcessingMaterial.SetTexture("_MainTex", result);
 
         computeShader.Dispatch(calculateMotionVectors, input.width / threadGroupSizeY, input.height / threadGroupSizeY, 1);
+        */
     }
 
     private void Update()
     {
+        /*
         postProcessingMaterial.SetFloat("FOV", mainCamera.fieldOfView * Mathf.Deg2Rad);
         postProcessingMaterial.SetVector("ROTATION", transform.eulerAngles * Mathf.Deg2Rad);
         
         previousPosition = transform.position;
-
+        */
         RenderTexture rt = RenderTexture.active;
         RenderTexture.active = result;
         GL.Clear(false, true, Color.clear);
@@ -126,7 +128,7 @@ public class MultiPass : MonoBehaviour
         RenderTexture.active = depthResult;
         GL.Clear(false, true, Color.clear);
         RenderTexture.active = rt;
-
+        
         if (debug != previousDebug)
         {
             if (debug)
@@ -140,17 +142,37 @@ public class MultiPass : MonoBehaviour
 
             previousDebug = debug;
         }
-
+        /*
+        bool d3d = SystemInfo.graphicsDeviceVersion.IndexOf("Direct3D") > -1;
+        Matrix4x4 M = transform.localToWorldMatrix;
+        Matrix4x4 V = mainCamera.worldToCameraMatrix;
+        Matrix4x4 P = mainCamera.projectionMatrix;
+        if (d3d)
+        {
+            // Invert Y for rendering to a render texture
+            for (int i = 0; i < 4; i++)
+            {
+                P[1, i] = -P[1, i];
+            }
+            // Scale and bias from OpenGL -> D3D depth range
+            for (int i = 0; i < 4; i++)
+            {
+                P[2, i] = P[2, i] * 0.5f + P[3, i] * 0.5f;
+            }
+        }
+        */
+        // Matrix4x4 MVP = P*V*M;
+        // MVP = GL.GetGPUProjectionMatrix(mainCamera.projectionMatrix, true) * mainCamera.worldToCameraMatrix * transform.localToWorldMatrix;
         Matrix4x4 MVP = GL.GetGPUProjectionMatrix(mainCamera.projectionMatrix, true) * mainCamera.worldToCameraMatrix;
         // Matrix4x4 MVP = mainCamera.nonJitteredProjectionMatrix * transform.worldToLocalMatrix;
 
-        computeShader.SetBool("DEBUG", debug);
-        computeShader.SetInt("DEBUG_INT", debugInt);
-        computeShader.SetFloat("TIMESTEP", Time.frameCount + Time.deltaTime);
-        computeShader.SetVector("OFFSET", transform.position);
+        // computeShader.SetBool("DEBUG", debug);
+        // computeShader.SetInt("DEBUG_INT", debugInt);
+        // computeShader.SetFloat("TIMESTEP", Time.frameCount + Time.deltaTime);
+        // computeShader.SetVector("OFFSET", transform.position);
         computeShader.SetMatrix("MVP", MVP);
         computeShader.Dispatch(project, projectGroupsX, projectGroupsY, 1);
-        // computeShader.Dispatch(interpolate, projectGroupsX, projectGroupsY, 1);
+        computeShader.Dispatch(interpolate, projectGroupsX, projectGroupsY, 1);
         // computeShader.Dispatch(reproject, input.width / (int)threadGroupSizeX, input.height / (int)threadGroupSizeY, 1);
         // computeShader.Dispatch(reinterpolate, input.width / (int)threadGroupSizeX, input.height / (int)threadGroupSizeY, 1);
     }
