@@ -13,6 +13,8 @@
     MAP_TO_RANGE(NORMALIZE_RANGE(tc, sourceRange), targetRange)
 #define SET_RESULT_PIXEL(x, y, col) \
     Result[uint2(x, y) % RASTERIZATION_RESOLUTION] = col;
+#define VALID_POINT(projectedPoint) \
+    !(projectedPoint.uv.x == -1 || projectedPoint.uv.y == -1)
 
 #pragma multi_compile __ WIREFRAME
 
@@ -63,16 +65,11 @@ void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
 
 #if WIREFRAME
 // Based on: https://jstutorial.medium.com/how-to-code-your-first-algorithm-rdaw-a-line-ca121f9a1395
-void DrawLine(int2 p0, int2 p1)
+void DrawLine(int2 p0, int2 p1, float4 col)
 {
-    float4 col = float4(1, 1, 1, 1);
-    if (!any(p0))
+    if (length(p0 - p1) > DEBUG_MAX_LINE_LENGTH)
     {
-        col.bg -= 0.5;
-    }
-    if (!any(p1))
-    {
-        col.rg -= 0.5;
+        return;
     }
 
     // Iterators, counters required by algorithm
@@ -535,6 +532,11 @@ void WrapProjectedPointsInRange(inout ProjectedPoint p0, inout ProjectedPoint p1
 
 void RasterizeTriangle(Triangle tri)
 {
+    if (tri.v0.pc.x < 0 || tri.v1.pc.y < 0)
+    {
+        return;
+    }
+    
     // create a 4th vertex
     ProjectedPoint v3;
     v3.uv = float2(tri.v0.uv.x + ((tri.v1.uv.y - tri.v0.uv.y) / (tri.v2.uv.y - tri.v0.uv.y)) * (tri.v2.uv.x - tri.v0.uv.x), tri.v1.uv.y);
@@ -562,7 +564,7 @@ void RasterizeTriangle(Triangle tri)
     }
 #endif
     
-    WrapProjectedPointsInRange(tri.v0, tri.v1);
+    // WrapProjectedPointsInRange(tri.v0, tri.v1);
     // WrapProjectedPointsInRange(tri.v0, tri.v2);
     // WrapProjectedPointsInRange(tri.v1, tri.v2);
     // WrapProjectedPointsInRange(tri.v1, v3);
@@ -588,13 +590,18 @@ void RasterizeTriangle(Triangle tri)
     // RasterizeTopFlatTriangle(top);
     // RasterizeBottomFlatTriangle(btm);
     
+    if (!(VALID_POINT(tri.v0) && VALID_POINT(tri.v1)))
+    {
+        return;
+    }
+    
 #if WIREFRAME
     if (tri.v0.pc.y != tri.v1.pc.y || tri.v0.pc.y != tri.v2.pc.y)
     {
-        // DrawLine(tri.v0.pc, tri.v1.pc);
-        // DrawLine(tri.v0.pc, tri.v2.pc);
-        // DrawLine(tri.v1.pc, tri.v2.pc);
-        // DrawLine(tri.v1.pc, v3.pc);
+        // DrawLine(tri.v0.pc, tri.v1.pc, DEBUG_BLUE.bbba);
+        // DrawLine(tri.v0.pc, tri.v2.pc, DEBUG_BLUE.bbba);
+        // DrawLine(tri.v1.pc, tri.v2.pc, DEBUG_BLUE.bbba);
+        // DrawLine(tri.v1.pc, v3.pc, DEBUG_BLUE.bbba);
     }
 #endif
 }
@@ -643,6 +650,7 @@ void Project(uint3 id : SV_DispatchThreadID)
         CP * cos(ll1.x),
         CP * cos(ll1.y) * sin(ll1.x));
     
+    P.y += sin(TIMESTEP / 50) * sin(length(P)) * sin(P.x);
     // for only transforming one point
     
     // if (!any(id.xy))
@@ -653,19 +661,17 @@ void Project(uint3 id : SV_DispatchThreadID)
     
     float4 pos4 = float4(P, 1);
     float4 transformedPosition = mul(MVP, pos4);
-    if (transformedPosition.w <= 0)
-    {
-        return;
-    }
-    
     float2 screenCoords = (transformedPosition.xy / transformedPosition.w) * 0.5 + 0.5;
-    if (screenCoords.x < 0 || screenCoords.y < 0)
+    if (transformedPosition.w <= 0 || screenCoords.x < 0 || screenCoords.y < 0)
     {
-        return;
+        Transformed[id.xy] = float2(-1, -1);
+    }
+    else
+    {
+        Transformed[id.xy] = screenCoords;
     }
     
     // screenCoords = MAP_TO_RANGE(screenCoords, PROJECTION_RESOLUTION);
-    Transformed[id.xy] = screenCoords;
     // screenCoords = MAP_TO_RANGE(screenCoords, PROJECTION_RESOLUTION);
     /*
     if (screenCoords.x < 0 || screenCoords.y < 0)
@@ -697,8 +703,10 @@ void Interpolate(uint3 id : SV_DispatchThreadID)
     PopulateWithTextures(id.xy, neighbors);
     
     // TODO: don't exclude (0, 0)
-    if (!all(neighbors[0].uv))
+    if (!VALID_POINT(neighbors[0]))
+    {
         return;
+    }
     
     // skip too large triangles
     if (QuadCircumference(neighbors) / QUAD_VERTEX_COUNT > DEBUG_MAX_LINE_LENGTH)
@@ -706,9 +714,9 @@ void Interpolate(uint3 id : SV_DispatchThreadID)
         // return;
     }
     
-    Result[id.xy] = float4(NORMALIZE_RANGE(neighbors[0].pc, RASTERIZATION_RESOLUTION), 0, 1);
+    // Result[id.xy] = float4(neighbors[0].uv, 0, 1);
 #if WIREFRAME
-    // DrawCircle(neighbors[0].pc, DEBUG_BLUE / 4);
+    DrawCircle(neighbors[1].pc, DEBUG_BLUE / 4);
     // Result[neighbors[0].pc] = DEBUG_BLUE;
 #endif
     
@@ -723,7 +731,10 @@ void Interpolate(uint3 id : SV_DispatchThreadID)
     if (!any(neighbors[0].pc))
         return;
     
-    RasterizeTriangle(t0);
+    if (VALID_POINT(t0.v0) + VALID_POINT(t0.v1) + VALID_POINT(t0.v2) > 1)
+    {
+        RasterizeTriangle(t0);
+    }
     // RasterizeTriangle(t1);
     
     /*

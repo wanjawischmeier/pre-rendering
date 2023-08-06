@@ -168,7 +168,7 @@ public class MultiPass : MonoBehaviour
 
         // computeShader.SetBool("DEBUG", debug);
         // computeShader.SetInt("DEBUG_INT", debugInt);
-        // computeShader.SetFloat("TIMESTEP", Time.frameCount + Time.deltaTime);
+        computeShader.SetFloat("TIMESTEP", Time.frameCount + Time.deltaTime);
         // computeShader.SetVector("OFFSET", transform.position);
         computeShader.SetMatrix("MVP", MVP);
         computeShader.Dispatch(project, projectGroupsX, projectGroupsY, 1);

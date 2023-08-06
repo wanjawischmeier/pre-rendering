@@ -332,8 +332,8 @@ MonoBehaviour:
   rasterizationResolution: {x: 1600, y: 1800}
   searchRadius: 10
   debugInt: 0
-  debug: 0
-  debugChannel: 1
+  debug: 1
+  debugChannel: 3
   motionVectors: {fileID: 0}
   transformed: {fileID: 0}
   transformedResult: {fileID: 0}
