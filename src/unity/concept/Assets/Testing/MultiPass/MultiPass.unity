@@ -229,8 +229,8 @@ GameObject:
   - component: {fileID: 1617010255}
   - component: {fileID: 1617010254}
   - component: {fileID: 1617010257}
-  - component: {fileID: 1617010259}
   - component: {fileID: 1617010258}
+  - component: {fileID: 1617010259}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -296,14 +296,14 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1617010253}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: -0.23746389, y: 0.3246195, z: 0.084557064, w: 0.91163766}
+  m_LocalPosition: {x: 0.2314656, y: 1.8450179, z: -0.38117}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: -29.2, y: 39.2, z: 0}
 --- !u!114 &1617010257
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -318,12 +318,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   input: {fileID: 2800000, guid: f9e82ff9a9af25540bb4edde2f933ede, type: 3}
   computeShader: {fileID: 7200000, guid: 2b34f280db5c98c45a9ba6a3c15bf555, type: 3}
-  projectionResolution: {x: 800, y: 400}
-  rasterizationResolution: {x: 800, y: 400}
-  debugInt: 0
+  projectionResolution: {x: 80, y: 40}
+  rasterizationResolution: {x: 1200, y: 600}
+  debugInt: 9
   debug: 1
-  debugChannel: 3
-  debugMode: 0
+  debugChannel: 4
+  debugMode: 3
 --- !u!114 &1617010258
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -331,7 +331,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1617010253}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1294e014c405bac4a86ffd9f1f87b9f2, type: 3}
   m_Name: 

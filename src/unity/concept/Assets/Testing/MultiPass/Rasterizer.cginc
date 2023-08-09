@@ -110,24 +110,17 @@ void RasterizeTriangle(Triangle tri)
     // initialize variables to pass as parameter
     v3.oc = int2(-1, -1);
     v3.d = -1;
-
-    /*
-    float d0 = Input[tri.v0.oc].a;
-    float d1 = Input[tri.v1.oc].a;
-    float3 P0 = uvToVector(NORMALIZE_RANGE(tri.v0.oc, PROJECTION_RESOLUTION), d0);
-    float3 P1 = uvToVector(NORMALIZE_RANGE(tri.v1.oc, PROJECTION_RESOLUTION), d1);
-    float3 relativeDirection = P1 - P0;
-    float2 textureDifference = tri.v1.pc - tri.v0.pc;
-    int2 diff0 = abs(REMAP_TO_RANGE(tri.v0.oc, PROJECTION_RESOLUTION, RASTERIZATION_RESOLUTION) - tri.v0.pc);
-    int2 diff1 = abs(REMAP_TO_RANGE(tri.v1.oc, PROJECTION_RESOLUTION, RASTERIZATION_RESOLUTION) - tri.v1.pc);
-    */
+    
 #if WIREFRAME
-    if (tri.v0.oc.x == DEBUG_INT && tri.v0.oc.y == 4)
+    if (DEBUG_MODE == 2 && tri.v0.oc.x == DEBUG_INT && tri.v0.oc.y == 4)
     {
         DrawCircle(tri.v0.pc, DEBUG_BLUE);
         // DrawCircle(tri.v1.pc, tri.v0.oc.x < tri.v1.oc.x ? DEBUG_BLUE.gbra : DEBUG_BLUE.bgra);
         // DrawCircle(tri.v1.pc, abs(diff0.x - diff1.x) < 300 ? DEBUG_BLUE.gbra : DEBUG_BLUE.bgra);
     }
+
+    // DrawCircle(tri.v0.pc, DEBUG_BLUE);
+    // DrawLine(tri.v0.pc, tri.v1.pc, DEBUG_BLUE.bbba);
 #endif
 
     // WrapProjectedPointsInRange(tri.v0, tri.v1);
@@ -164,10 +157,10 @@ void RasterizeTriangle(Triangle tri)
 #if WIREFRAME
     if (tri.v0.pc.y != tri.v1.pc.y || tri.v0.pc.y != tri.v2.pc.y)
     {
-        // DrawLine(tri.v0.pc, tri.v1.pc, DEBUG_BLUE.bbba);
-        // DrawLine(tri.v0.pc, tri.v2.pc, DEBUG_BLUE.bbba);
-        // DrawLine(tri.v1.pc, tri.v2.pc, DEBUG_BLUE.bbba);
-        // DrawLine(tri.v1.pc, v3.pc, DEBUG_BLUE.bbba);
+        DrawLine(tri.v0.pc, tri.v1.pc, DEBUG_BLUE.bbba);
+        DrawLine(tri.v0.pc, tri.v2.pc, DEBUG_BLUE.bbba);
+        DrawLine(tri.v1.pc, tri.v2.pc, DEBUG_BLUE.bbba);
+        DrawLine(tri.v1.pc, v3.pc, DEBUG_BLUE.bbba);
     }
 #endif
 }

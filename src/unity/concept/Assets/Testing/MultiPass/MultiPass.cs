@@ -9,7 +9,7 @@ public class MultiPass : MonoBehaviour
 
     public enum DebugMode
     {
-        none, zSine, highlightPoint
+        none, zSine, highlightPoint, highlighVertex
     }
 
     public Texture2D input;
@@ -115,6 +115,7 @@ public class MultiPass : MonoBehaviour
         Matrix4x4 MVP = GL.GetGPUProjectionMatrix(mainCamera.projectionMatrix, true) * mainCamera.worldToCameraMatrix;
 
         // set compute shader values
+        computeShader.SetInt("DEBUG_INT", debugInt);
         computeShader.SetInt("DEBUG_MODE", (int)debugMode);
         computeShader.SetFloat("TIMESTEP", Time.frameCount + Time.deltaTime);
         computeShader.SetMatrix("MVP", MVP);

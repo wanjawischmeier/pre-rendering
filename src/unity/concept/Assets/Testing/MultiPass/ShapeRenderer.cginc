@@ -63,7 +63,7 @@ void DrawLine(int2 p0, int2 p1, float4 col)
 
             // Draw pixel from line span at
             // currently rasterized position
-            SET_RESULT_PIXEL(x, y, col);
+            Rasterized[uint2(x, y)] = col;
         }
     }
     else
@@ -110,7 +110,7 @@ void DrawLine(int2 p0, int2 p1, float4 col)
 
             // Draw pixel from line span at
             // currently rasterized position
-            SET_RESULT_PIXEL(x, y, col);
+            Rasterized[uint2(x, y)] = col;
         }
     }
 }
