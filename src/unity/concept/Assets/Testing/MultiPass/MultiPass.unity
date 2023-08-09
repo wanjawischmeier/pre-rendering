@@ -318,22 +318,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   input: {fileID: 2800000, guid: f9e82ff9a9af25540bb4edde2f933ede, type: 3}
   computeShader: {fileID: 7200000, guid: 2b34f280db5c98c45a9ba6a3c15bf555, type: 3}
-  postProcessing: {fileID: 0}
-  groupSize: {x: 0, y: 0}
-  projectionResolution: {x: 160, y: 80}
-  rasterizationResolution: {x: 160, y: 80}
-  searchRadius: 10
+  projectionResolution: {x: 800, y: 400}
+  rasterizationResolution: {x: 800, y: 400}
   debugInt: 0
   debug: 1
   debugChannel: 3
-  motionVectors: {fileID: 0}
-  transformed: {fileID: 0}
-  transformedResult: {fileID: 0}
-  invTransformed: {fileID: 0}
-  depth: {fileID: 0}
-  depthReprojected: {fileID: 0}
-  depthResult: {fileID: 0}
-  result: {fileID: 0}
+  debugMode: 0
 --- !u!114 &1617010258
 MonoBehaviour:
   m_ObjectHideFlags: 0

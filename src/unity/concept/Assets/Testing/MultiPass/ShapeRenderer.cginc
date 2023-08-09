@@ -115,7 +115,6 @@ void DrawLine(int2 p0, int2 p1, float4 col)
     }
 }
 
-
 void DrawCircle(int2 p, float4 col)
 {
     int x, y, px, nx, py, ny, d;

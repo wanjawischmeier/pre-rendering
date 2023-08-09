@@ -4,7 +4,7 @@ public class MultiPass : MonoBehaviour
 {
     public enum DebugChannel
     {
-        none, projected, projectedDepth, rasterized, rasterizedDepth
+        none, motionVectors, projected, projectedDepth, rasterized, rasterizedDepth
     }
 
     public enum DebugMode
@@ -22,7 +22,7 @@ public class MultiPass : MonoBehaviour
 
     private RenderTexture motionVectors, projected, projectedDepth, rasterized, rasterizedDepth;
     private Camera mainCamera;
-    private int calculateMotionVectorGroupsX, calculateMotionVectorGroupsY, projectGroupsX, projectGroupsY, rasterizeGroupsX, rasterizeGroupsY;
+    private int calculateMotionVectorGroupsX, calculateMotionVectorGroupsY, projectGroupsX, projectGroupsY;
     private int calculateMotionVectorsKernel, projectKernel, rasterizeKernel;
     private bool previousDebug = false;
 
@@ -34,13 +34,12 @@ public class MultiPass : MonoBehaviour
         projectKernel = computeShader.FindKernel("Project");
         rasterizeKernel = computeShader.FindKernel("Rasterize");
 
+        // calculate group sizes
         computeShader.GetKernelThreadGroupSizes(projectKernel, out uint threadGroupSizeX, out uint threadGroupSizeY, out _);
         calculateMotionVectorGroupsX = input.width / (int)threadGroupSizeY;
         calculateMotionVectorGroupsY = input.height / (int)threadGroupSizeY;
         projectGroupsX = projectionResolution.x / (int)threadGroupSizeY;
         projectGroupsY = projectionResolution.y / (int)threadGroupSizeY;
-        rasterizeGroupsX = rasterizationResolution.x / (int)threadGroupSizeY;
-        rasterizeGroupsY = rasterizationResolution.y / (int)threadGroupSizeY;
 
         // input dimensions
         motionVectors = new RenderTexture(input.width, input.height, 0);
@@ -122,13 +121,16 @@ public class MultiPass : MonoBehaviour
 
         // project and rasterize
         computeShader.Dispatch(projectKernel, projectGroupsX, projectGroupsY, 1);
-        computeShader.Dispatch(rasterizeKernel, rasterizeGroupsX, rasterizeGroupsY, 1);
+        computeShader.Dispatch(rasterizeKernel, projectGroupsX, projectGroupsY, 1);
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         switch (debugChannel)
         {
+            case DebugChannel.motionVectors:
+                Graphics.Blit(motionVectors, destination);
+                break;
             case DebugChannel.projected:
                 Graphics.Blit(projected, destination);
                 break;

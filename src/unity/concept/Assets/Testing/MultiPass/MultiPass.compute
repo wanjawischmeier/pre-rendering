@@ -33,7 +33,6 @@ RWTexture2D<float4> MotionVectors, Rasterized;
 #include "Rasterizer.cginc"
 
 
-
 #pragma kernel CalculateMotionVectors
 
 [numthreads(8, 8, 1)]
@@ -48,7 +47,7 @@ void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
     ll1.y += PI;
 
     float CP = d * (FCLIP - NCLIP) + NCLIP;
-    CP = FCLIP;
+    // CP = FCLIP;
 
     float3 P = float3(
         CP * sin(ll1.y) * sin(ll1.x),
@@ -69,7 +68,7 @@ float3 project(float3 P)
     {
         P.y += sin(TIMESTEP / 50) * sin(length(P)) * sin(P.x);
     }
-#endif // WIREFRAME
+#endif
 
     float d = length(P);
 
@@ -156,10 +155,10 @@ void PopulateWithTextures(int2 tc, inout ProjectedPoint points[QUAD_VERTEX_COUNT
     for (int i = 0; i < QUAD_VERTEX_COUNT; i++)
     {
         points[i].oc %= PROJECTION_RESOLUTION;
-        points[i].uv = Projected[REMAP_TO_RANGE(points[i].oc, PROJECTION_RESOLUTION, RASTERIZATION_RESOLUTION)];
+        points[i].uv = Projected[points[i].oc];
         points[i].pc = MAP_TO_RANGE(points[i].uv, RASTERIZATION_RESOLUTION);
         
-        points[i].d = RasterizedDepth[points[i].oc];
+        points[i].d = ProjectedDepth[points[i].oc];
     }
 }
 
@@ -183,13 +182,15 @@ void Project(uint3 id : SV_DispatchThreadID)
         CP * sin(ll1.y) * sin(ll1.x),
         CP * cos(ll1.x),
         CP * cos(ll1.y) * sin(ll1.x));
+    
+    // float3 P = MotionVectors[REMAP_TO_RANGE(id.xy, PROJECTION_RESOLUTION, INPUT_RESOLUTION)]
 
 #if WIREFRAME
     if (DEBUG_MODE == 1)
     {
         P.y += sin(TIMESTEP / 50) * sin(length(P)) * sin(P.x);
     }
-#endif // WIREFRAME
+#endif
 
     /*
     for only transforming one point
@@ -221,23 +222,16 @@ void Rasterize(uint3 id : SV_DispatchThreadID)
     ProjectedPoint neighbors[QUAD_VERTEX_COUNT];
     PopulateWithTextures(id.xy, neighbors);
     
-    // TODO: don't exclude (0, 0)
     if (!VALID_POINT(neighbors[0]))
     {
         return;
-    }
-    
-    // skip too large triangles
-    if (QuadCircumference(neighbors) / QUAD_VERTEX_COUNT > DEBUG_MAX_LINE_LENGTH)
-    {
-        // return;
     }
     
     // Rasterized[id.xy] = float4(neighbors[0].uv, 0, 1);
 #if WIREFRAME
     DrawCircle(neighbors[0].pc, DEBUG_BLUE / 4);
     // Rasterized[neighbors[0].pc] = DEBUG_BLUE;
-#endif // WIREFRAME
+#endif
     
     // SortQuadExtremesVertically(neighbors);
     
