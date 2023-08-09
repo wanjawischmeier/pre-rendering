@@ -19,6 +19,7 @@ public class SinglePointProjection : MonoBehaviour
         p = MVP * p;
         p.x = (p.x / p.w) * 0.5f + 0.5f;
         p.y = (p.y / p.w) * 0.5f + 0.5f;
+        p.z = p.w;
 
         if (p.w > 0)
         {
