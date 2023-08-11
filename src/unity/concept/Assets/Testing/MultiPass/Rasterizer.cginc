@@ -3,6 +3,31 @@
 #endif
 
 
+void SortTriangleVerticiesByHeight(inout Triangle tri)
+{
+    ProjectedPoint tmp;
+
+    // Sort by height (ascending)
+    if (tri.v0.pc.y > tri.v1.pc.y)
+    {
+        tmp = tri.v0;
+        tri.v0 = tri.v1;
+        tri.v1 = tmp;
+    }
+    if (tri.v1.pc.y > tri.v2.pc.y)
+    {
+        tmp = tri.v1;
+        tri.v1 = tri.v2;
+        tri.v2 = tmp;
+    }
+    if (tri.v0.pc.y > tri.v1.pc.y)
+    {
+        tmp = tri.v0;
+        tri.v0 = tri.v1;
+        tri.v1 = tmp;
+    }
+}
+
 float3 InterpolateTriangle(int x, int y, int2 v0, int2 v1, int2 v2)
 {
     float dv = (v1.y - v2.y) * (v0.x - v2.x) + (v2.x - v1.x) * (v0.y - v2.y);
@@ -98,6 +123,9 @@ void RasterizeBottomFlatTriangle(Triangle tri)
 
 void RasterizeTriangle(Triangle tri)
 {
+    SortTriangleVerticiesByHeight(tri);
+
+    // TODO: check why???
     if (tri.v0.pc.x < 0 || tri.v1.pc.y < 0)
     {
         return;
@@ -155,12 +183,15 @@ void RasterizeTriangle(Triangle tri)
     }
 
 #ifdef DEBUG
-    if (tri.v0.pc.y != tri.v1.pc.y || tri.v0.pc.y != tri.v2.pc.y)
+    if (DEBUG_MODE == 3 || DEBUG_MODE == 5) // highlight vertex || wireframe
     {
-        DrawLine(tri.v0.pc, tri.v1.pc, DEBUG_BLUE.bbba);
-        DrawLine(tri.v0.pc, tri.v2.pc, DEBUG_BLUE.bbba);
-        DrawLine(tri.v1.pc, tri.v2.pc, DEBUG_BLUE.bbba);
-        DrawLine(tri.v1.pc, v3.pc, DEBUG_BLUE.bbba);
+        if (tri.v0.pc.y != tri.v1.pc.y || tri.v0.pc.y != tri.v2.pc.y)
+        {
+            DrawLine(tri.v0.pc, tri.v1.pc, DEBUG_BLUE.bbba);
+            DrawLine(tri.v0.pc, tri.v2.pc, DEBUG_BLUE.bbba);
+            DrawLine(tri.v1.pc, tri.v2.pc, DEBUG_BLUE.bbba);
+            DrawLine(tri.v1.pc, v3.pc, DEBUG_BLUE.bbba / 4); // debug middle line lighter
+        }
     }
 #endif
 }

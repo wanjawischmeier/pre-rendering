@@ -10,7 +10,7 @@ public class MultiPass : MonoBehaviour
 
     public enum DebugMode
     {
-        none, zSine, highlightPoint, highlighVertex
+        none, zSine, highlightPoint, highlighVertex, pointCloud, wireframe
     }
 
     const int MAX_PASSES = 4;

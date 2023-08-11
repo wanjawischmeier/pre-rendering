@@ -1,4 +1,5 @@
-#pragma multi_compile PASS_0 PASS_1
+// #pragma multi_compile PASS_0 PASS_1
+#define PASS_0
 // include/exclude debug code
 #define DEBUG
 
@@ -142,13 +143,9 @@ void Project(uint3 id : SV_DispatchThreadID)
 void Rasterize(uint3 id : SV_DispatchThreadID)
 {
 #ifdef DEBUG
-    if (DEBUG_MODE == 3)
+    if (DEBUG_MODE == 3) // highlight vertex
     {
-        if ((int)id.x == PROJECTION_RESOLUTION.x / 2 && (int)id.y == DEBUG_INT)
-        {
-            DrawCircle(REMAP_TO_RANGE(id.xy, PROJECTION_RESOLUTION, RASTERIZATION_RESOLUTION), DEBUG_BLUE / 4);
-        }
-        else
+        if ((int)id.x != PROJECTION_RESOLUTION.x / 2 || (int)id.y != DEBUG_INT)
         {
             return;
         }
@@ -164,17 +161,18 @@ void Rasterize(uint3 id : SV_DispatchThreadID)
     }
     
 #ifdef DEBUG
-    DrawCircle(neighbors[0].pc, DEBUG_BLUE / 4);
-    if (DEBUG_MODE == 3)
+    if (DEBUG_MODE == 3) // highlight vertex
     {
         DrawCircle(neighbors[1].pc, DEBUG_BLUE.bbga / 4);
         DrawCircle(neighbors[2].pc, DEBUG_BLUE.gbga / 4);
         DrawCircle(neighbors[3].pc, DEBUG_BLUE.bgga / 4);
     }
-    // Rasterized[neighbors[0].pc] = DEBUG_BLUE;
+    else if (DEBUG_MODE == 1 || DEBUG_MODE == 4) // z sine || point cloud
+    {
+        DrawCircle(neighbors[0].pc, DEBUG_BLUE / 4);
+    }
 #endif
     
-    SortQuadExtremesVertically(neighbors);
     
     // TODO: consider multiples of position
     Triangle t0, t1;
