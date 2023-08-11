@@ -38,9 +38,8 @@
 #define VALID_POINT(projectedPoint) \
     !(projectedPoint.uv.x == -1 || projectedPoint.uv.y == -1)
 
-// used to only render tris that are onscreen
-#define VALID_TRIANGLE(tri) \
-    VALID_POINT(tri.v0) || VALID_POINT(tri.v1) || VALID_POINT(tri.v2)
+#define VALID_TRIANGLE_POINTS(tri) \
+    VALID_POINT(tri.v0) + VALID_POINT(tri.v1) + VALID_POINT(tri.v2)
 
 
 // texture switching optimization

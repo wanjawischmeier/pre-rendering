@@ -54,10 +54,8 @@ void DrawRow(int x0, int y0, int x1, Triangle tri)
 
         if (d < og || og == 0)
         {
-            RasterizedDepth[tc] = w.x;
-            // Rasterized[tc] = Input[pc];
             Rasterized[tc] = Input[MAP_TO_RANGE(uv, INPUT_RESOLUTION)];
-            // Rasterized[tc] = float4(NORMALIZE_RANGE(tri.v0.oc, PROJECTION_RESOLUTION), 0, 1);
+            RasterizedDepth[tc] = w.x;
         }
 
         if (i - x0 > 200)
@@ -66,14 +64,8 @@ void DrawRow(int x0, int y0, int x1, Triangle tri)
 }
 
 // Based on: http://www.sunshine2k.de/coding/java/TriangleRasterization/TriangleRasterization.html
-void RasterizeTopFlatTriangle(Triangle tri)
+void RasterizeTopFlatTriangle(Triangle tri, bool fullyOnScreen = true)
 {
-    /*
-    if (tri.v0.pc.y >= tri.v1.pc.y)
-        return;
-    if (!any(tri.v0.oc))
-        return;
-    */
     float invslope0 = (tri.v1.pc.x - tri.v0.pc.x) / (float)(tri.v1.pc.y - tri.v0.pc.y);
     float invslope1 = (tri.v2.pc.x - tri.v0.pc.x) / (float)(tri.v2.pc.y - tri.v0.pc.y);
 
@@ -97,18 +89,15 @@ void RasterizeTopFlatTriangle(Triangle tri)
 
         if (scanlineY - tri.v0.pc.y > DEBUG_MAX_LINE_LENGTH)
             break;
+
+        if (!fullyOnScreen && scanlineY >= RASTERIZATION_RESOLUTION.y)
+            break;
     }
 }
 
 // See comment above
-void RasterizeBottomFlatTriangle(Triangle tri)
+void RasterizeBottomFlatTriangle(Triangle tri, bool fullyOnScreen = true)
 {
-    /*
-    if (tri.v0.pc.y <= tri.v1.pc.y)
-        return;
-    if (!any(tri.v0.oc))
-        return;
-    */
     float invslope0 = (tri.v0.pc.x - tri.v1.pc.x) / (float)(tri.v0.pc.y - tri.v1.pc.y);
     float invslope1 = (tri.v0.pc.x - tri.v2.pc.x) / (float)(tri.v0.pc.y - tri.v2.pc.y);
 
@@ -132,10 +121,13 @@ void RasterizeBottomFlatTriangle(Triangle tri)
 
         if (tri.v0.pc.y - scanlineY > DEBUG_MAX_LINE_LENGTH)
             break;
+
+        if (!fullyOnScreen && scanlineY < 0)
+            break;
     }
 }
 
-void RasterizeTriangle(Triangle tri)
+void RasterizeTriangle(Triangle tri, bool fullyOnScreen)
 {
     SortTriangleVerticiesByHeight(tri);
 
@@ -174,30 +166,29 @@ void RasterizeTriangle(Triangle tri)
 #ifdef DEBUG
     if (DEBUG_MODE == DEBUG_MODE_HIGHLIGHT_QUAD)
     {
-        if (VALID_TRIANGLE(top))
+#endif
+        if (fullyOnScreen)
         {
             RasterizeTopFlatTriangle(top);
-        }
-        if (VALID_TRIANGLE(btm))
-        {
             RasterizeBottomFlatTriangle(btm);
         }
-    }
-#else
-    if (VALID_TRIANGLE(top))
-    {
-        RasterizeTopFlatTriangle(top);
-    }
-    if (VALID_TRIANGLE(btm))
-    {
-        RasterizeBottomFlatTriangle(btm);
+        else
+        {
+            int validVerticies = VALID_TRIANGLE_POINTS(top);
+            if (validVerticies != 0)
+            {
+                RasterizeTopFlatTriangle(top, validVerticies == 3);
+            }
+
+            validVerticies = VALID_TRIANGLE_POINTS(btm);
+            if (validVerticies != 0)
+            {
+                RasterizeTopFlatTriangle(btm, validVerticies == 3);
+            }
+        }
+#ifdef DEBUG
     }
 #endif
-
-    if (!(VALID_POINT(tri.v0) && VALID_POINT(tri.v1)))
-    {
-        return;
-    }
 
 #ifdef DEBUG
     if (DEBUG_MODE == DEBUG_MODE_HIGHLIGHT_QUAD || DEBUG_MODE == DEBUG_MODE_WIREFRAME)
