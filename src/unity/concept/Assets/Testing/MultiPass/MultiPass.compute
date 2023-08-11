@@ -1,4 +1,6 @@
-#pragma multi_compile __ WIREFRAME
+#pragma multi_compile PASS_0 PASS_1
+// include/exclude debug code
+#define DEBUG
 
 int DEBUG_MODE, DEBUG_INT;
 float PI, PI2, TIMESTEP;
@@ -8,10 +10,11 @@ float4x4 MVP;
 
 Texture2D<float4> Input;
 RWTexture2D<float> ProjectedDepth, RasterizedDepth;
-RWTexture2D<float2> Projected;
+RWTexture2D<float2> Projected0, Projected1, Projected2, Projected3;
 RWTexture2D<float4> MotionVectors, Rasterized;
 
-#include "Macros.cginc"
+
+#include "PreprocessorDefines.cginc"
 #include "Geometry.cginc"
 #include "Rasterizer.cginc"
 
@@ -40,13 +43,11 @@ void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
     MotionVectors[id.xy] = float4(P, 1);
 }
 
-
-
 #pragma kernel Project
 
 float3 project(float3 P)
 {
-#if WIREFRAME
+#ifdef DEBUG
     if (DEBUG_MODE == 1)
     {
         P.y += sin(TIMESTEP / 50) * sin(length(P)) * sin(P.x);
@@ -81,51 +82,7 @@ float3 uvToVector(float2 uv, float d)
         CP * cos(ll1.x),
         CP * cos(ll1.y) * sin(ll1.x));
 }
-/*
-void WrapProjectedPointsInRange(inout ProjectedPoint p0, inout ProjectedPoint p1)
-{
-    // "solve" pole problem ambiguity
-    int2 diff0 = abs(REMAP_TO_RANGE(p0.oc, PROJECTION_RESOLUTION, RASTERIZATION_RESOLUTION) - p0.pc);
-    int2 diff1 = abs(REMAP_TO_RANGE(p1.oc, PROJECTION_RESOLUTION, RASTERIZATION_RESOLUTION) - p1.pc);
-    int2 diff = abs(diff0 - diff1);
-    
-    if (diff.x > 100)
-    {
-        if (p0.pc.x < p1.pc.x)
-        {
-            p0.pc.x += RASTERIZATION_RESOLUTION.x;
-        }
-        else
-        {
-            p1.pc.x += RASTERIZATION_RESOLUTION.x;
-        }
-    }
-    
-    int2 delta = abs(p0.pc - p1.pc);
-    if (delta.x > RASTERIZATION_RESOLUTION.x / 2)
-    {
-        if (p0.pc.x < p1.pc.x)
-        {
-            p0.pc.x += RASTERIZATION_RESOLUTION.x;
-        }
-        else
-        {
-            p1.pc.x += RASTERIZATION_RESOLUTION.x;
-        }
-    }
-    if (delta.y > RASTERIZATION_RESOLUTION.y / 2)
-    {
-        if (p0.pc.y < p1.pc.y)
-        {
-            p0.pc.y += RASTERIZATION_RESOLUTION.y;
-        }
-        else
-        {
-            p1.pc.y += RASTERIZATION_RESOLUTION.y;
-        }
-    }
-}
-*/
+
 void PopulateWithTextures(int2 tc, inout ProjectedPoint points[QUAD_VERTEX_COUNT])
 {
     uint2 off = uint2(1, 0);
@@ -150,7 +107,7 @@ void Project(uint3 id : SV_DispatchThreadID)
 {
     float3 P = MotionVectors[REMAP_TO_RANGE(id.xy, PROJECTION_RESOLUTION, INPUT_RESOLUTION)].xyz;
 
-#if WIREFRAME
+#ifdef DEBUG
     if (DEBUG_MODE == 1)
     {
         P.y += sin(TIMESTEP / 50) * sin(length(P)) * sin(P.x);
@@ -184,7 +141,7 @@ void Project(uint3 id : SV_DispatchThreadID)
 [numthreads(8, 8, 1)]
 void Rasterize(uint3 id : SV_DispatchThreadID)
 {
-#if WIREFRAME
+#ifdef DEBUG
     if (DEBUG_MODE == 3)
     {
         if ((int)id.x == PROJECTION_RESOLUTION.x / 2 && (int)id.y == DEBUG_INT)
@@ -206,7 +163,7 @@ void Rasterize(uint3 id : SV_DispatchThreadID)
         return;
     }
     
-#if WIREFRAME
+#ifdef DEBUG
     DrawCircle(neighbors[0].pc, DEBUG_BLUE / 4);
     if (DEBUG_MODE == 3)
     {

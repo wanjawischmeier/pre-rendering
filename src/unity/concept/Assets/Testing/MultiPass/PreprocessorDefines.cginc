@@ -16,3 +16,19 @@
     !(projectedPoint.uv.x == -1 || projectedPoint.uv.y == -1)
 #define VALID_TRIANGLE(tri) \
     VALID_POINT(tri.v0) + VALID_POINT(tri.v1) + VALID_POINT(tri.v2) > 1
+
+#ifdef PASS_0
+#define Projected Projected0
+#endif
+
+#ifdef PASS_1
+#define Projected Projected1
+#endif
+
+#ifdef PASS_2
+#define Projected Projected2
+#endif
+
+#ifdef PASS_3
+#define Projected Projected3
+#endif

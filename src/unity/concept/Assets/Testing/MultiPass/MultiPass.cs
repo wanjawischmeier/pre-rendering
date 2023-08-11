@@ -1,3 +1,4 @@
+using UnityEditor.Build;
 using UnityEngine;
 
 public class MultiPass : MonoBehaviour
@@ -12,24 +13,29 @@ public class MultiPass : MonoBehaviour
         none, zSine, highlightPoint, highlighVertex
     }
 
+    const int MAX_PASSES = 4;
+
     public Texture2D input;
     public ComputeShader computeShader;
     public Vector2Int projectionResolution, rasterizationResolution;
+    public Vector2Int[] projectionResolutions;
+    [Range(1, MAX_PASSES)]
+    public int passes = 1;
     public int debugInt;
-    public bool debug = false;
     public DebugChannel debugChannel = DebugChannel.rasterized;
     public DebugMode debugMode;
 
-    private RenderTexture motionVectors, projected, projectedDepth, rasterized, rasterizedDepth;
+    private RenderTexture motionVectors, projectedDepth, rasterized, rasterizedDepth;
+    private RenderTexture[] projected;
     private Camera mainCamera;
     private int calculateMotionVectorGroupsX, calculateMotionVectorGroupsY, projectGroupsX, projectGroupsY;
     private int calculateMotionVectorsKernel, projectKernel, rasterizeKernel;
-    private bool previousDebug = false;
 
     private void Start()
     {
         mainCamera = Camera.main;
 
+        computeShader.EnableKeyword("PASS_0");
         calculateMotionVectorsKernel = computeShader.FindKernel("CalculateMotionVectors");
         projectKernel = computeShader.FindKernel("Project");
         rasterizeKernel = computeShader.FindKernel("Rasterize");
@@ -47,11 +53,17 @@ public class MultiPass : MonoBehaviour
         motionVectors.format = RenderTextureFormat.ARGBFloat;
 
         // projection dimensions
-        projected = new RenderTexture(projectionResolution.x, projectionResolution.y, 0);
-        projected.enableRandomWrite = true;
-        projected.format = RenderTextureFormat.RGFloat;
-        projectedDepth = new RenderTexture(projected);
+        projected = new RenderTexture[passes];
+        for (int i = 0; i < passes; i++)
+        {
+            projected[i] = new RenderTexture(projectionResolutions[i].x, projectionResolutions[i].y, 0);
+            projected[i].enableRandomWrite = true;
+            projected[i].format = RenderTextureFormat.RGFloat;
+        }
+
+        projectedDepth = new RenderTexture(projected[0]);
         projectedDepth.format = RenderTextureFormat.RFloat;
+
 
         // result/rasterization dimensions
         rasterized = new RenderTexture(rasterizationResolution.x, rasterizationResolution.y, 0);
@@ -72,13 +84,19 @@ public class MultiPass : MonoBehaviour
         computeShader.SetTexture(calculateMotionVectorsKernel, "MotionVectors", motionVectors);
         computeShader.SetTexture(projectKernel, "Input", input);
         computeShader.SetTexture(projectKernel, "MotionVectors", motionVectors);
-        computeShader.SetTexture(projectKernel, "Projected", projected);
+        // computeShader.SetTexture(projectKernel, $"Projected{pass}", projected);
         computeShader.SetTexture(projectKernel, "ProjectedDepth", projectedDepth);
         computeShader.SetTexture(rasterizeKernel, "Input", input);
-        computeShader.SetTexture(rasterizeKernel, "Projected", projected);
+        // computeShader.SetTexture(rasterizeKernel, $"Projected{pass}", projected);
         computeShader.SetTexture(rasterizeKernel, "ProjectedDepth", projectedDepth);
         computeShader.SetTexture(rasterizeKernel, "Rasterized", rasterized);
         computeShader.SetTexture(rasterizeKernel, "RasterizedDepth", rasterizedDepth);
+
+        for (int pass = 0; pass < passes; pass++)
+        {
+            computeShader.SetTexture(projectKernel, $"Projected{pass}", projected[pass]);
+            computeShader.SetTexture(rasterizeKernel, $"Projected{pass}", projected[pass]);
+        }
         
         // calculate 
         computeShader.Dispatch(calculateMotionVectorsKernel, calculateMotionVectorGroupsX, calculateMotionVectorGroupsY, 1);
@@ -87,29 +105,20 @@ public class MultiPass : MonoBehaviour
     private void Update()
     {
         RenderTexture rt = RenderTexture.active;
-        RenderTexture.active = projected;
-        GL.Clear(false, true, Color.clear);
         RenderTexture.active = projectedDepth;
         GL.Clear(false, true, Color.clear);
         RenderTexture.active = rasterized;
         GL.Clear(false, true, Color.clear);
         RenderTexture.active = rasterizedDepth;
         GL.Clear(false, true, Color.clear);
-        RenderTexture.active = rt;
-        
-        if (debug != previousDebug)
-        {
-            if (debug)
-            {
-                computeShader.EnableKeyword("WIREFRAME");
-            }
-            else
-            {
-                computeShader.DisableKeyword("WIREFRAME");
-            }
 
-            previousDebug = debug;
+        for (int pass = 0; pass < passes; pass++)
+        {
+            RenderTexture.active = projected[pass];
+            GL.Clear(false, true, Color.clear);
         }
+
+        RenderTexture.active = rt;
 
         // calculate model-view-projection matrix (really just world-projection)
         Matrix4x4 MVP = GL.GetGPUProjectionMatrix(mainCamera.projectionMatrix, true) * mainCamera.worldToCameraMatrix;
@@ -133,7 +142,7 @@ public class MultiPass : MonoBehaviour
                 Graphics.Blit(motionVectors, destination);
                 break;
             case DebugChannel.projected:
-                Graphics.Blit(projected, destination);
+                Graphics.Blit(projected[passes -1], destination);
                 break;
             case DebugChannel.projectedDepth:
                 Graphics.Blit(projectedDepth, destination);

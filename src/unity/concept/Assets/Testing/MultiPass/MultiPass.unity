@@ -320,8 +320,10 @@ MonoBehaviour:
   computeShader: {fileID: 7200000, guid: 2b34f280db5c98c45a9ba6a3c15bf555, type: 3}
   projectionResolution: {x: 80, y: 40}
   rasterizationResolution: {x: 1200, y: 600}
+  projectionResolutions:
+  - {x: 80, y: 40}
+  passes: 1
   debugInt: 9
-  debug: 1
   debugChannel: 4
   debugMode: 3
 --- !u!114 &1617010258

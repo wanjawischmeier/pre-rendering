@@ -1,4 +1,4 @@
-#if WIREFRAME
+#ifdef DEBUG
 #include "ShapeRenderer.cginc"
 #endif
 
@@ -111,7 +111,7 @@ void RasterizeTriangle(Triangle tri)
     v3.oc = int2(-1, -1);
     v3.d = -1;
     
-#if WIREFRAME
+#ifdef DEBUG
     if (DEBUG_MODE == 2 && tri.v0.oc.x == DEBUG_INT && tri.v0.oc.y == 4)
     {
         DrawCircle(tri.v0.pc, DEBUG_BLUE);
@@ -154,7 +154,7 @@ void RasterizeTriangle(Triangle tri)
         return;
     }
 
-#if WIREFRAME
+#ifdef DEBUG
     if (tri.v0.pc.y != tri.v1.pc.y || tri.v0.pc.y != tri.v2.pc.y)
     {
         DrawLine(tri.v0.pc, tri.v1.pc, DEBUG_BLUE.bbba);
