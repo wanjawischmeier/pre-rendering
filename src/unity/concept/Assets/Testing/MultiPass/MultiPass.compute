@@ -34,7 +34,6 @@ void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
     ll1.y += PI;
 
     float CP = d * (FCLIP - NCLIP) + NCLIP;
-    // CP = FCLIP;
 
     float3 P = float3(
         CP * sin(ll1.y) * sin(ll1.x),
@@ -49,7 +48,7 @@ void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
 float3 project(float3 P)
 {
 #ifdef DEBUG
-    if (DEBUG_MODE == 1)
+    if (DEBUG_MODE == DEBUG_MODE_Z_SINE)
     {
         P.y += sin(TIMESTEP / 50) * sin(length(P)) * sin(P.x);
     }
@@ -109,17 +108,10 @@ void Project(uint3 id : SV_DispatchThreadID)
     float3 P = MotionVectors[REMAP_TO_RANGE(id.xy, PROJECTION_RESOLUTION, INPUT_RESOLUTION)].xyz;
 
 #ifdef DEBUG
-    if (DEBUG_MODE == 1)
+    if (DEBUG_MODE == DEBUG_MODE_Z_SINE)
     {
         P.y += sin(TIMESTEP / 50) * sin(length(P)) * sin(P.x);
     }
-    /*
-    // for only transforming one point
-    if (!any(id.xy))
-        P = float3(0, 0, 0);
-    else
-        return;
-    */
 #endif
     
 
@@ -143,7 +135,7 @@ void Project(uint3 id : SV_DispatchThreadID)
 void Rasterize(uint3 id : SV_DispatchThreadID)
 {
 #ifdef DEBUG
-    if (DEBUG_MODE == 3) // highlight vertex
+    if (DEBUG_MODE == DEBUG_MODE_HIGHLIGHT_QUAD)
     {
         if ((int)id.x != PROJECTION_RESOLUTION.x / 2 || (int)id.y != DEBUG_INT)
         {
@@ -161,20 +153,18 @@ void Rasterize(uint3 id : SV_DispatchThreadID)
     }
     
 #ifdef DEBUG
-    if (DEBUG_MODE == 3) // highlight vertex
+    if (DEBUG_MODE == DEBUG_MODE_HIGHLIGHT_QUAD)
     {
-        DrawCircle(neighbors[1].pc, DEBUG_BLUE.bbga / 4);
-        DrawCircle(neighbors[2].pc, DEBUG_BLUE.gbga / 4);
-        DrawCircle(neighbors[3].pc, DEBUG_BLUE.bgga / 4);
+        DrawCircle(neighbors[1].pc, DEBUG_COL_POINT_1 / 4);
+        DrawCircle(neighbors[2].pc, DEBUG_COL_POINT_2 / 4);
+        DrawCircle(neighbors[3].pc, DEBUG_COL_POINT_3 / 4);
     }
-    else if (DEBUG_MODE == 1 || DEBUG_MODE == 4) // z sine || point cloud
+    else if (DEBUG_MODE == DEBUG_MODE_Z_SINE || DEBUG_MODE == DEBUG_MODE_POINT_CLOUD)
     {
-        DrawCircle(neighbors[0].pc, DEBUG_BLUE / 4);
+        DrawCircle(neighbors[0].pc, DEBUG_COL_POINT_0 / 4);
     }
 #endif
     
-    
-    // TODO: consider multiples of position
     Triangle t0, t1;
     t0.v0 = t1.v0 = neighbors[0];
     t0.v1 = neighbors[1];

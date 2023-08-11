@@ -10,20 +10,22 @@ public class MultiPass : MonoBehaviour
 
     public enum DebugMode
     {
-        none, zSine, highlightPoint, highlighVertex, pointCloud, wireframe
+        none, zSine, highlightPoint, highlighQuad, pointCloud, wireframe
     }
 
     const int MAX_PASSES = 4;
 
     public Texture2D input;
     public ComputeShader computeShader;
-    public Vector2Int projectionResolution, rasterizationResolution;
-    public Vector2Int[] projectionResolutions;
     [Range(1, MAX_PASSES)]
     public int passes = 1;
-    public int debugInt;
+    public Vector2Int[] projectionResolutions;
+    public Vector2Int rasterizationResolution;
+
+    [Header("Debugging")]
     public DebugChannel debugChannel = DebugChannel.rasterized;
     public DebugMode debugMode;
+    public int debugInt;
 
     private RenderTexture motionVectors, projectedDepth, rasterized, rasterizedDepth;
     private RenderTexture[] projected;
@@ -44,8 +46,8 @@ public class MultiPass : MonoBehaviour
         computeShader.GetKernelThreadGroupSizes(projectKernel, out uint threadGroupSizeX, out uint threadGroupSizeY, out _);
         calculateMotionVectorGroupsX = input.width / (int)threadGroupSizeY;
         calculateMotionVectorGroupsY = input.height / (int)threadGroupSizeY;
-        projectGroupsX = projectionResolution.x / (int)threadGroupSizeY;
-        projectGroupsY = projectionResolution.y / (int)threadGroupSizeY;
+        projectGroupsX = projectionResolutions[0].x / (int)threadGroupSizeY;
+        projectGroupsY = projectionResolutions[0].y / (int)threadGroupSizeY;
 
         // input dimensions
         motionVectors = new RenderTexture(input.width, input.height, 0);
@@ -76,7 +78,7 @@ public class MultiPass : MonoBehaviour
         computeShader.SetFloat("PI", Mathf.PI);
         computeShader.SetFloat("PI2", Mathf.PI * 2);
         computeShader.SetVector("INPUT_RESOLUTION", new Vector2(input.width, input.height));
-        computeShader.SetVector("PROJECTION_RESOLUTION", new Vector2(projectionResolution.x, projectionResolution.y));
+        computeShader.SetVector("PROJECTION_RESOLUTION", new Vector2(projectionResolutions[0].x, projectionResolutions[0].y));
         computeShader.SetVector("RASTERIZATION_RESOLUTION", new Vector2(rasterizationResolution.x, rasterizationResolution.y));
 
         // set compute shader textures
