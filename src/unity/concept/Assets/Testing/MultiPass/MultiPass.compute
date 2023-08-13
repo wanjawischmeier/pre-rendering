@@ -175,14 +175,14 @@ void Rasterize(uint3 id : SV_DispatchThreadID)
         return;
 
     int validVerticies = VALID_TRIANGLE_POINTS(t0);
-    if (validVerticies != 0)
+    if (validVerticies == 3)
     {
-        RasterizeTriangle(t0, validVerticies == 3);
+        RasterizeTriangle(t0);
     }
 
     validVerticies = VALID_TRIANGLE_POINTS(t1);
-    if (validVerticies != 0)
+    if (validVerticies == 3)
     {
-        RasterizeTriangle(t1, validVerticies == 3);
+        RasterizeTriangle(t1);
     }
 }

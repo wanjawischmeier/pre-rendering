@@ -5,7 +5,7 @@ using PreRendering;
 [DisallowMultipleComponent]
 [RequireComponent(typeof(Camera))]
 [RequireComponent(typeof(ShaderManager))]
-[RequireComponent(typeof(MovementController))]
+[RequireComponent(typeof(FlyMovementController))]
 public class VideoClipDecoder : MonoBehaviour
 {
     #region Headers
