@@ -34,7 +34,12 @@ float3 InterpolateTriangle(int x, int y, int2 v0, int2 v1, int2 v2)
     float w0 = ((v1.y - v2.y) * (x - v2.x) + (v2.x - v1.x) * (y - v2.y)) / dv;
     float w1 = ((v2.y - v0.y) * (x - v2.x) + (v0.x - v2.x) * (y - v2.y)) / dv;
     float w2 = 1 - w0 - w1;
-
+    /*
+    int2 tc = int2(x, y);
+    w0 = length(tc - v0) < length(tc - v1) && length(tc - v0) < length(tc - v2);
+    w1 = length(tc - v1) < length(tc - v0) && length(tc - v1) < length(tc - v2);
+    w2 = 1 - w0 - w1;
+    */
     return float3(w0, w1, w2);
 }
 
@@ -46,19 +51,31 @@ void DrawRow(int x0, int y0, int x1, Triangle tri)
     for (int i = x0; i <= x1; i++)
     {
         float3 w = InterpolateTriangle(i, y0, tri.v0.pc, tri.v1.pc, tri.v2.pc);
-        int2 pc = tri.v0.oc * w.x + tri.v1.oc * w.y + tri.v2.oc * w.z;
+        float2 pc = tri.v0.oc * w.x + tri.v1.oc * w.y + tri.v2.oc * w.z;
+        
+        // int2 pc = tri.v0.oc;
         float2 uv = NORMALIZE_RANGE(pc, PROJECTION_RESOLUTION);
+        
+        float4 col = tri.v0.col * w.x + tri.v1.col * w.y + tri.v2.col * w.z;
         float d = tri.v0.d * w.x + tri.v1.d * w.y + tri.v2.d * w.z;
+        // float d = tri.v0.d;
+        
         uint2 tc = uint2(i, y0);
         float og = RasterizedDepth[tc];
-
+        
+        // Rasterized[tc] += Input[MAP_TO_RANGE(uv, INPUT_RESOLUTION)] / 4;
+        
         if (d < og || og == 0)
         {
-            Rasterized[tc] = Input[MAP_TO_RANGE(uv, INPUT_RESOLUTION)];
+            // Rasterized[tc] = Input.SampleLevel(sampler_linear_repeat, NORMALIZE_RANGE(pc, PROJECTION_RESOLUTION), 0);
+            // Rasterized[tc] = Input[REMAP_TO_RANGE(pc, PROJECTION_RESOLUTION, INPUT_RESOLUTION)];
+            Rasterized[tc] = col;
+            // Rasterized[tc] = float4(uv, 0, 1);
+            // Rasterized[tc] = float4(NORMALIZE_RANGE(tri.v0.oc, PROJECTION_RESOLUTION), 0, 1);
             RasterizedDepth[tc] = d;
         }
-
-        if (i - x0 > 200)
+        
+        if (i - x0 > MAX_SCANLINE_LENGTH)
             break;
     }
 }
@@ -131,9 +148,17 @@ void RasterizeTriangle(Triangle tri)
     ProjectedPoint v3;
     v3.uv = float2(tri.v0.uv.x + ((tri.v1.uv.y - tri.v0.uv.y) / (tri.v2.uv.y - tri.v0.uv.y)) * (tri.v2.uv.x - tri.v0.uv.x), tri.v1.uv.y);
     v3.pc = MAP_TO_RANGE(v3.uv, RASTERIZATION_RESOLUTION);
-    // initialize variables to pass as parameter
-    v3.oc = int2(-1, -1);
-    v3.d = -1;
+    
+    // calculate weight along line
+    float l0 = length(tri.v0.uv - v3.uv);
+    float l2 = length(tri.v0.uv - tri.v2.uv);
+    float w0 = 1 - l0 / l2;
+    float w2 = 1 - w0;
+
+    // extrapolate data for 4th vertex
+    v3.oc = tri.v0.oc * w0 + tri.v2.oc * w2;
+    v3.col = tri.v0.col * w0 + tri.v2.col * w2;
+    v3.d = tri.v0.d * w0 + tri.v2.d * w2;
     
 #ifdef DEBUG
     if (DEBUG_MODE == DEBUG_MODE_HIGHLIGHT_POINT && tri.v0.oc.x == DEBUG_INT && tri.v0.oc.y == 4)
@@ -141,14 +166,6 @@ void RasterizeTriangle(Triangle tri)
         DrawCircle(tri.v0.pc, DEBUG_COL_POINT_0);
     }
 #endif
-
-    float l0 = length(tri.v0.uv - v3.uv);
-    float l2 = length(tri.v2.uv - v3.uv);
-    float w0 = l0 / (l0 + l2);
-    float w2 = 1 - w0;
-
-    v3.oc = tri.v0.oc * w0 + tri.v2.oc * w2;
-    v3.d = tri.v0.d * w0 + tri.v2.d * w2;
 
     // split the triangle into 2
     Triangle top, btm;

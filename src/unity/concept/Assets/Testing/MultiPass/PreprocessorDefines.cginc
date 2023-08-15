@@ -2,6 +2,7 @@
 #define NCLIP 1
 #define FCLIP 30
 #define QUAD_VERTEX_COUNT 4
+#define MAX_SCANLINE_LENGTH 1000
 
 
 // debug constants
@@ -39,7 +40,7 @@
     !(projectedPoint.uv.x == -1 || projectedPoint.uv.y == -1)
 
 #define VALID_TRIANGLE_POINTS(tri) \
-    VALID_POINT(tri.v0) + VALID_POINT(tri.v1) + VALID_POINT(tri.v2)
+    tri.v0.valid + tri.v1.valid + tri.v2.valid
 
 
 // texture switching optimization

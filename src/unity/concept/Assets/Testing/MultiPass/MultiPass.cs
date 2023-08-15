@@ -1,4 +1,3 @@
-using UnityEditor.Build;
 using UnityEngine;
 
 public class MultiPass : MonoBehaviour
@@ -21,17 +20,19 @@ public class MultiPass : MonoBehaviour
     public int passes = 1;
     public Vector2Int[] projectionResolutions;
     public Vector2Int rasterizationResolution;
+    [Header("Only a temporary fix")]
+    public bool fillGaps = true;
 
     [Header("Debugging")]
     public DebugChannel debugChannel = DebugChannel.rasterized;
     public DebugMode debugMode;
     public int debugInt;
 
-    private RenderTexture motionVectors, projectedDepth, rasterized, rasterizedDepth;
+    public RenderTexture motionVectors, projectedDepth, rasterized, rasterizedDepth;
     private RenderTexture[] projected;
     private Camera mainCamera;
-    private int calculateMotionVectorGroupsX, calculateMotionVectorGroupsY, projectGroupsX, projectGroupsY;
-    private int calculateMotionVectorsKernel, projectKernel, rasterizeKernel;
+    private int calculateMotionVectorGroupsX, calculateMotionVectorGroupsY, projectGroupsX, projectGroupsY, rasterizeGroupsX, rasterizeGroupsY;
+    private int calculateMotionVectorsKernel, projectKernel, rasterizeKernel, interpolateKernel;
 
     private void Start()
     {
@@ -41,6 +42,7 @@ public class MultiPass : MonoBehaviour
         calculateMotionVectorsKernel = computeShader.FindKernel("CalculateMotionVectors");
         projectKernel = computeShader.FindKernel("Project");
         rasterizeKernel = computeShader.FindKernel("Rasterize");
+        interpolateKernel = computeShader.FindKernel("Interpolate");
 
         // calculate group sizes
         computeShader.GetKernelThreadGroupSizes(projectKernel, out uint threadGroupSizeX, out uint threadGroupSizeY, out _);
@@ -48,6 +50,8 @@ public class MultiPass : MonoBehaviour
         calculateMotionVectorGroupsY = input.height / (int)threadGroupSizeY;
         projectGroupsX = projectionResolutions[0].x / (int)threadGroupSizeY;
         projectGroupsY = projectionResolutions[0].y / (int)threadGroupSizeY;
+        rasterizeGroupsX = rasterizationResolution.x / (int)threadGroupSizeY;
+        rasterizeGroupsY = rasterizationResolution.y / (int)threadGroupSizeY;
 
         // input dimensions
         motionVectors = new RenderTexture(input.width, input.height, 0);
@@ -93,6 +97,7 @@ public class MultiPass : MonoBehaviour
         computeShader.SetTexture(rasterizeKernel, "ProjectedDepth", projectedDepth);
         computeShader.SetTexture(rasterizeKernel, "Rasterized", rasterized);
         computeShader.SetTexture(rasterizeKernel, "RasterizedDepth", rasterizedDepth);
+        computeShader.SetTexture(interpolateKernel, "Rasterized", rasterized);
 
         for (int pass = 0; pass < passes; pass++)
         {
@@ -134,6 +139,11 @@ public class MultiPass : MonoBehaviour
         // project and rasterize
         computeShader.Dispatch(projectKernel, projectGroupsX, projectGroupsY, 1);
         computeShader.Dispatch(rasterizeKernel, projectGroupsX, projectGroupsY, 1);
+        
+        if (fillGaps)
+        {
+            computeShader.Dispatch(interpolateKernel, rasterizeGroupsX, rasterizeGroupsY, 1);
+        }
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)

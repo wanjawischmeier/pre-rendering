@@ -31,9 +31,27 @@ public class FlyMovementController : MonoBehaviour
         cameraTransform.localRotation = Quaternion.Euler(verticalRotation, horizontalRotation, 0);
 
         // Calculate movement based on user input
-        float horizontalInput = Input.GetAxis("Horizontal");
-        float verticalInput = Input.GetAxis("Vertical");
+        float horizontalInput = 0f;
+        float verticalInput = 0f;
         float upDownInput = 0f;
+
+        if (Input.GetKey(KeyCode.A))
+        {
+            horizontalInput = -1f;
+        }
+        else if (Input.GetKey(KeyCode.D))
+        {
+            horizontalInput = 1f;
+        }
+
+        if (Input.GetKey(KeyCode.S))
+        {
+            verticalInput = -1f;
+        }
+        else if (Input.GetKey(KeyCode.W))
+        {
+            verticalInput = 1f;
+        }
 
         if (Input.GetKey(KeyCode.Q))
         {
