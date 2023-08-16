@@ -1,6 +1,4 @@
 // constants
-#define NCLIP 1
-#define FCLIP 30
 #define QUAD_VERTEX_COUNT 4
 #define MAX_SCANLINE_LENGTH 1000
 
@@ -14,11 +12,11 @@
 #define DEBUG_MODE_POINT_CLOUD 4
 #define DEBUG_MODE_WIREFRAME 5
 
-#define DEBUG_COL_LINE float4(1, 1, 1, 1)
-#define DEBUG_COL_POINT_0 float4(0.2, 0.2, 1, 1)
-#define DEBUG_COL_POINT_1 DEBUG_COL_POINT_0.bbga
-#define DEBUG_COL_POINT_2 DEBUG_COL_POINT_0.gbga
-#define DEBUG_COL_POINT_3 DEBUG_COL_POINT_0.bgga
+#define DEBUG_COL_LINE float2(1, 1)
+#define DEBUG_COL_POINT_0 float2(1, 0)
+#define DEBUG_COL_POINT_1 float2(1, 0.5)
+#define DEBUG_COL_POINT_2 float2(0, 1)
+#define DEBUG_COL_POINT_3 float2(0.5, 1)
 
 #define DEBUG_MAX_LINE_LENGTH 600
 #define DEBUG_CIRCLE_RADIUS 4
@@ -40,7 +38,13 @@
     !(projectedPoint.uv.x == -1 || projectedPoint.uv.y == -1)
 
 #define VALID_TRIANGLE_POINTS(tri) \
-    tri.v0.valid + tri.v1.valid + tri.v2.valid
+    VALID_POINT(tri.v0) + VALID_POINT(tri.v1) + VALID_POINT(tri.v2)
+
+// requires declaration of a tmp variable before invocation
+#define SWAP(a, b) \
+    tmp = a; \
+    a = b; \
+    b = tmp;
 
 
 // texture switching optimization

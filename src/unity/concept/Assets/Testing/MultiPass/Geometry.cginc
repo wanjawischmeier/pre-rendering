@@ -11,12 +11,6 @@ struct ProjectedPoint
 
     // projected depth value (non-normalized)
     float d;
-    
-    // color at the original point
-    float4 col;
-    
-    // whether that point is onscreen
-    bool valid;
 };
 
 struct Triangle

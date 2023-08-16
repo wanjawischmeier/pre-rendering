@@ -16,10 +16,12 @@ public class MultiPass : MonoBehaviour
 
     public Texture2D input;
     public ComputeShader computeShader;
+    public Shader postRasterization;
     [Range(1, MAX_PASSES)]
     public int passes = 1;
     public Vector2Int[] projectionResolutions;
     public Vector2Int rasterizationResolution;
+    public float nClip, fClip;
     [Header("Only a temporary fix")]
     public bool fillGaps = true;
 
@@ -31,12 +33,14 @@ public class MultiPass : MonoBehaviour
     public RenderTexture motionVectors, projectedDepth, rasterized, rasterizedDepth;
     private RenderTexture[] projected;
     private Camera mainCamera;
+    private Material postRasterizationMaterial;
     private int calculateMotionVectorGroupsX, calculateMotionVectorGroupsY, projectGroupsX, projectGroupsY, rasterizeGroupsX, rasterizeGroupsY;
     private int calculateMotionVectorsKernel, projectKernel, rasterizeKernel, interpolateKernel;
 
     private void Start()
     {
         mainCamera = Camera.main;
+        postRasterizationMaterial = new Material(postRasterization);
 
         computeShader.EnableKeyword("PASS_0");
         calculateMotionVectorsKernel = computeShader.FindKernel("CalculateMotionVectors");
@@ -75,12 +79,15 @@ public class MultiPass : MonoBehaviour
         rasterized = new RenderTexture(rasterizationResolution.x, rasterizationResolution.y, 0);
         rasterized.enableRandomWrite = true;
         rasterized.filterMode = FilterMode.Bilinear;
+        rasterized.format = RenderTextureFormat.RGFloat;
         rasterizedDepth = new RenderTexture(rasterized);
         rasterizedDepth.format = RenderTextureFormat.RFloat;
 
         // set compute shader constants
         computeShader.SetFloat("PI", Mathf.PI);
         computeShader.SetFloat("PI2", Mathf.PI * 2);
+        computeShader.SetFloat("NCLIP", nClip);
+        computeShader.SetFloat("FCLIP", fClip);
         computeShader.SetVector("INPUT_RESOLUTION", new Vector2(input.width, input.height));
         computeShader.SetVector("PROJECTION_RESOLUTION", new Vector2(projectionResolutions[0].x, projectionResolutions[0].y));
         computeShader.SetVector("RASTERIZATION_RESOLUTION", new Vector2(rasterizationResolution.x, rasterizationResolution.y));
@@ -104,8 +111,13 @@ public class MultiPass : MonoBehaviour
             computeShader.SetTexture(projectKernel, $"Projected{pass}", projected[pass]);
             computeShader.SetTexture(rasterizeKernel, $"Projected{pass}", projected[pass]);
         }
+
+        // set post rasterization material properties
+        postRasterizationMaterial.SetVector("RESOLUTION", new Vector2(rasterizationResolution.x, rasterizationResolution.y));
+        postRasterizationMaterial.SetTexture("_Input", input);
+        postRasterizationMaterial.SetTexture("_Coordinates", rasterized);
         
-        // calculate 
+        // calculate motion vectors
         computeShader.Dispatch(calculateMotionVectorsKernel, calculateMotionVectorGroupsX, calculateMotionVectorGroupsY, 1);
     }
 
@@ -134,6 +146,8 @@ public class MultiPass : MonoBehaviour
         computeShader.SetInt("DEBUG_INT", debugInt);
         computeShader.SetInt("DEBUG_MODE", (int)debugMode);
         computeShader.SetFloat("TIMESTEP", Time.frameCount + Time.deltaTime);
+        computeShader.SetFloat("CAM_NCLIP", mainCamera.nearClipPlane);
+        computeShader.SetFloat("CAM_FCLIP", mainCamera.farClipPlane);
         computeShader.SetMatrix("MVP", MVP);
 
         // project and rasterize
@@ -166,7 +180,7 @@ public class MultiPass : MonoBehaviour
                 Graphics.Blit(rasterizedDepth, destination);
                 break;
             default:
-                Graphics.Blit(source, destination);
+                Graphics.Blit(null, destination, postRasterizationMaterial);
                 break;
         }
     }

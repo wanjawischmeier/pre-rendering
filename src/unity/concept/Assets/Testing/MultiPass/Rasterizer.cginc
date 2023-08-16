@@ -10,21 +10,15 @@ void SortTriangleVerticiesByHeight(inout Triangle tri)
     // Sort by height (ascending)
     if (tri.v0.pc.y > tri.v1.pc.y)
     {
-        tmp = tri.v0;
-        tri.v0 = tri.v1;
-        tri.v1 = tmp;
+        SWAP(tri.v0, tri.v1);
     }
     if (tri.v1.pc.y > tri.v2.pc.y)
     {
-        tmp = tri.v1;
-        tri.v1 = tri.v2;
-        tri.v2 = tmp;
+        SWAP(tri.v1, tri.v2);
     }
     if (tri.v0.pc.y > tri.v1.pc.y)
     {
-        tmp = tri.v0;
-        tri.v0 = tri.v1;
-        tri.v1 = tmp;
+        SWAP(tri.v0, tri.v1);
     }
 }
 
@@ -43,35 +37,25 @@ float3 InterpolateTriangle(int x, int y, int2 v0, int2 v1, int2 v2)
     return float3(w0, w1, w2);
 }
 
-void DrawRow(int x0, int y0, int x1, Triangle tri)
+void DrawRow(int x0, int y0, int x1, Triangle tri, Triangle unsorted)
 {
     if (x1 - x0 <= 0)
         return;
 
     for (int i = x0; i <= x1; i++)
     {
-        float3 w = InterpolateTriangle(i, y0, tri.v0.pc, tri.v1.pc, tri.v2.pc);
-        float2 pc = tri.v0.oc * w.x + tri.v1.oc * w.y + tri.v2.oc * w.z;
-        
-        // int2 pc = tri.v0.oc;
-        float2 uv = NORMALIZE_RANGE(pc, PROJECTION_RESOLUTION);
-        
-        float4 col = tri.v0.col * w.x + tri.v1.col * w.y + tri.v2.col * w.z;
+        float3 w = InterpolateTriangle(i, y0, unsorted.v0.pc, unsorted.v1.pc, unsorted.v2.pc);
+        float2 pc = unsorted.v0.oc * w.x + unsorted.v1.oc * w.y + unsorted.v2.oc * w.z;
         float d = tri.v0.d * w.x + tri.v1.d * w.y + tri.v2.d * w.z;
-        // float d = tri.v0.d;
         
+        float2 uv = NORMALIZE_RANGE(pc, PROJECTION_RESOLUTION);
         uint2 tc = uint2(i, y0);
         float og = RasterizedDepth[tc];
-        
-        // Rasterized[tc] += Input[MAP_TO_RANGE(uv, INPUT_RESOLUTION)] / 4;
-        
+                
         if (d < og || og == 0)
         {
-            // Rasterized[tc] = Input.SampleLevel(sampler_linear_repeat, NORMALIZE_RANGE(pc, PROJECTION_RESOLUTION), 0);
-            // Rasterized[tc] = Input[REMAP_TO_RANGE(pc, PROJECTION_RESOLUTION, INPUT_RESOLUTION)];
-            Rasterized[tc] = col;
-            // Rasterized[tc] = float4(uv, 0, 1);
-            // Rasterized[tc] = float4(NORMALIZE_RANGE(tri.v0.oc, PROJECTION_RESOLUTION), 0, 1);
+            // offset by one to allow checking for unset pixels
+            Rasterized[tc] = uv + 1;
             RasterizedDepth[tc] = d;
         }
         
@@ -81,7 +65,7 @@ void DrawRow(int x0, int y0, int x1, Triangle tri)
 }
 
 // Based on: http://www.sunshine2k.de/coding/java/TriangleRasterization/TriangleRasterization.html
-void RasterizeTopFlatTriangle(Triangle tri)
+void RasterizeTopFlatTriangle(Triangle tri, Triangle unsorted)
 {
     float invslope0 = (tri.v1.pc.x - tri.v0.pc.x) / (float)(tri.v1.pc.y - tri.v0.pc.y);
     float invslope1 = (tri.v2.pc.x - tri.v0.pc.x) / (float)(tri.v2.pc.y - tri.v0.pc.y);
@@ -99,7 +83,7 @@ void RasterizeTopFlatTriangle(Triangle tri)
 
     for (int scanlineY = tri.v0.pc.y; scanlineY <= tri.v1.pc.y; scanlineY++)
     {
-        DrawRow(curx0, scanlineY, curx1, tri);
+        DrawRow(curx0, scanlineY, curx1, tri, unsorted);
 
         curx0 += invslope0;
         curx1 += invslope1;
@@ -110,7 +94,7 @@ void RasterizeTopFlatTriangle(Triangle tri)
 }
 
 // See comment above
-void RasterizeBottomFlatTriangle(Triangle tri)
+void RasterizeBottomFlatTriangle(Triangle tri, Triangle unsorted)
 {
     float invslope0 = (tri.v0.pc.x - tri.v1.pc.x) / (float)(tri.v0.pc.y - tri.v1.pc.y);
     float invslope1 = (tri.v0.pc.x - tri.v2.pc.x) / (float)(tri.v0.pc.y - tri.v2.pc.y);
@@ -128,7 +112,7 @@ void RasterizeBottomFlatTriangle(Triangle tri)
 
     for (int scanlineY = tri.v0.pc.y; scanlineY > tri.v1.pc.y; scanlineY--)
     {
-        DrawRow(curx0, scanlineY, curx1, tri);
+        DrawRow(curx0, scanlineY, curx1, tri, unsorted);
 
         curx0 -= invslope0;
         curx1 -= invslope1;
@@ -140,6 +124,7 @@ void RasterizeBottomFlatTriangle(Triangle tri)
 
 void RasterizeTriangle(Triangle tri)
 {
+    Triangle unsorted = tri;
     SortTriangleVerticiesByHeight(tri);
 
     // TODO: add screen border clipping
@@ -152,12 +137,11 @@ void RasterizeTriangle(Triangle tri)
     // calculate weight along line
     float l0 = length(tri.v0.uv - v3.uv);
     float l2 = length(tri.v0.uv - tri.v2.uv);
-    float w0 = 1 - l0 / l2;
+    float w0 = l0 / l2;
     float w2 = 1 - w0;
 
     // extrapolate data for 4th vertex
     v3.oc = tri.v0.oc * w0 + tri.v2.oc * w2;
-    v3.col = tri.v0.col * w0 + tri.v2.col * w2;
     v3.d = tri.v0.d * w0 + tri.v2.d * w2;
     
 #ifdef DEBUG
@@ -168,7 +152,7 @@ void RasterizeTriangle(Triangle tri)
 #endif
 
     // split the triangle into 2
-    Triangle top, btm;
+    Triangle top, btm; // top: (v0, v1, v3) | btm: (v2, v1, v3)
     top.v0 = tri.v0;
     btm.v0 = tri.v2;
     top.v1 = btm.v1 = tri.v1;
@@ -178,8 +162,8 @@ void RasterizeTriangle(Triangle tri)
     if (DEBUG_MODE == DEBUG_MODE_NONE || DEBUG_MODE == DEBUG_MODE_HIGHLIGHT_QUAD)
     {
 #endif
-        RasterizeTopFlatTriangle(top);
-        RasterizeBottomFlatTriangle(btm);
+        RasterizeTopFlatTriangle(top, unsorted);
+        RasterizeBottomFlatTriangle(btm, unsorted);
 #ifdef DEBUG
     }
 #endif

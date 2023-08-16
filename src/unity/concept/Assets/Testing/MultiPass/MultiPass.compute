@@ -4,15 +4,15 @@
 #define DEBUG
 
 int DEBUG_MODE, DEBUG_INT;
-float PI, PI2, TIMESTEP;
+float PI, PI2, TIMESTEP, NCLIP, FCLIP, CAM_NCLIP, CAM_FCLIP;
 float2 INPUT_RESOLUTION, PROJECTION_RESOLUTION, RASTERIZATION_RESOLUTION;
 float3 OFFSET;
 float4x4 MVP;
 
 Texture2D<float4> Input;
 RWTexture2D<float> ProjectedDepth, RasterizedDepth;
-RWTexture2D<float2> Projected0, Projected1, Projected2, Projected3;
-RWTexture2D<float4> MotionVectors, Rasterized;
+RWTexture2D<float2> Projected0, Projected1, Projected2, Projected3, Rasterized;
+RWTexture2D<float4> MotionVectors;
 SamplerState sampler_linear_repeat;
 
 
@@ -72,10 +72,11 @@ float3 project(float3 P)
 void PopulateWithTextures(int2 tc, inout ProjectedPoint points[QUAD_VERTEX_COUNT])
 {
     uint2 off = uint2(1, 0);
+    // counter-clockwise order
     points[0].oc = tc;          // (0, 0)
     points[1].oc = tc + off;    // (1, 0)
-    points[2].oc = tc + off.yx; // (0, 1)
-    points[3].oc = tc + off.xx; // (1, 1)
+    points[2].oc = tc + off.xx; // (1, 1)
+    points[3].oc = tc + off.yx; // (0, 1)
     
     [unroll(QUAD_VERTEX_COUNT)]
     for (int i = 0; i < QUAD_VERTEX_COUNT; i++)
@@ -83,9 +84,6 @@ void PopulateWithTextures(int2 tc, inout ProjectedPoint points[QUAD_VERTEX_COUNT
         points[i].oc %= PROJECTION_RESOLUTION;
         points[i].uv = Projected[points[i].oc];
         points[i].pc = MAP_TO_RANGE(points[i].uv, RASTERIZATION_RESOLUTION);
-        points[i].col = float4(1, 0, 1, 1);
-        points[i].valid = VALID_POINT(points[i]);
-        
         points[i].d = ProjectedDepth[points[i].oc];
     }
 }
@@ -94,11 +92,14 @@ void PopulateWithTextures(int2 tc, inout ProjectedPoint points[QUAD_VERTEX_COUNT
 void Project(uint3 id : SV_DispatchThreadID)
 {
     int2 tc = REMAP_TO_RANGE(id.xy, PROJECTION_RESOLUTION, INPUT_RESOLUTION);
+    
+    // skip skybox verticies
     if (Input[tc].a == 1)
     {
         Projected[id.xy] = float2(-1, -1);
         return;
     }
+
     float3 P = MotionVectors[tc].xyz;
 
 #ifdef DEBUG
@@ -112,7 +113,7 @@ void Project(uint3 id : SV_DispatchThreadID)
     float4 pos4 = float4(P, 1);
     float4 transformedPosition = mul(MVP, pos4);
     float2 screenCoords = (transformedPosition.xy / transformedPosition.w) * 0.5 + 0.5;
-    if (transformedPosition.w <= 0 || screenCoords.x < 0 || screenCoords.y < 0)
+    if (transformedPosition.w < CAM_NCLIP || transformedPosition.w > CAM_FCLIP || screenCoords.x < 0 || screenCoords.y < 0 || screenCoords.x > 1 || screenCoords.y > 1)
     {
         Projected[id.xy] = float2(-1, -1);
     }
@@ -168,13 +169,6 @@ bool CullTriangle(Triangle tri)
     return dotProduct <= 0.0;
 }
 
-void LoadTriangleColorData(inout Triangle tri)
-{
-    tri.v0.col = Input[REMAP_TO_RANGE(tri.v0.oc, PROJECTION_RESOLUTION, INPUT_RESOLUTION)];
-    tri.v1.col = Input[REMAP_TO_RANGE(tri.v1.oc, PROJECTION_RESOLUTION, INPUT_RESOLUTION)];
-    tri.v2.col = Input[REMAP_TO_RANGE(tri.v2.oc, PROJECTION_RESOLUTION, INPUT_RESOLUTION)];
-}
-
 [numthreads(8, 8, 1)]
 void Rasterize(uint3 id : SV_DispatchThreadID)
 {
@@ -210,24 +204,22 @@ void Rasterize(uint3 id : SV_DispatchThreadID)
 #endif
     
     
-    
+    // layout tris counter-clockwise as well
     Triangle t0, t1;
     t0.v0 = t1.v0 = neighbors[0];
     t0.v1 = neighbors[1];
-    t1.v1 = neighbors[2];
-    t0.v2 = t1.v2 = neighbors[3];
+    t0.v2 = t1.v1 = neighbors[2];
+    t1.v2 = neighbors[3];
 
     int validVerticies = VALID_TRIANGLE_POINTS(t0);
     if (validVerticies == 3)
     {
-        LoadTriangleColorData(t0);
         RasterizeTriangle(t0);
     }
 
     validVerticies = VALID_TRIANGLE_POINTS(t1);
     if (validVerticies == 3)
     {
-        LoadTriangleColorData(t1);
         RasterizeTriangle(t1);
     }
 }
@@ -235,19 +227,23 @@ void Rasterize(uint3 id : SV_DispatchThreadID)
 
 #pragma kernel Interpolate
 
+// this abomination merely exists to hide a bug I'm apparently not worthy of fixing yet
+// find it in your heart to forgive this crime
 [numthreads(8, 8, 1)]
 void Interpolate(uint3 id : SV_DispatchThreadID)
 {
-    if (Rasterized[id.xy].a == 0)
+    if (Rasterized[id.xy].x == 0)
     {
         uint2 off = uint2(1, 0);
+        float2 c0, c1;
+        
         [unroll(4)]
         for (int i = 0; i < 4; i++)
         {
-            float4 c0 = Rasterized[(id.xy - off * i) % RASTERIZATION_RESOLUTION];
-            float4 c1 = Rasterized[(id.xy + off * i) % RASTERIZATION_RESOLUTION];
+            c0 = Rasterized[(id.xy - off * i) % RASTERIZATION_RESOLUTION];
+            c1 = Rasterized[(id.xy + off * i) % RASTERIZATION_RESOLUTION];
         
-            if (c0.a != 0 && c1.a != 0)
+            if (c0.x != 0 && c1.x != 0)
             {
                 Rasterized[id.xy] = c0 / 2 + c1 / 2;
                 return;
@@ -258,10 +254,10 @@ void Interpolate(uint3 id : SV_DispatchThreadID)
         [unroll(4)]
         for (i = 0; i < 4; i++)
         {
-            float4 c0 = Rasterized[(id.xy - off.yx * i) % RASTERIZATION_RESOLUTION];
-            float4 c1 = Rasterized[(id.xy + off.yx * i) % RASTERIZATION_RESOLUTION];
+            c0 = Rasterized[(id.xy - off.yx * i) % RASTERIZATION_RESOLUTION];
+            c1 = Rasterized[(id.xy + off.yx * i) % RASTERIZATION_RESOLUTION];
         
-            if (c0.a != 0 && c1.a != 0)
+            if (c0.x != 0 && c1.x != 0)
             {
                 Rasterized[id.xy] = c0 / 2 + c1 / 2;
             }

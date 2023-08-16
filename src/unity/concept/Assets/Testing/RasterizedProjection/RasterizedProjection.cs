@@ -6,7 +6,7 @@ public class RasterizedProjection : MonoBehaviour
 {
     // RasterizedInverseProjection (RIP, haha)
 
-    public string rootDirectory, path, file0, file1;
+    public string rootDirectory, path, file0; //, file1;
 
     public MapConfig config;
     public ComputeShader computeShader;
@@ -16,7 +16,7 @@ public class RasterizedProjection : MonoBehaviour
     public Vector3 offset0, offset1;
     public bool wireframe;
 
-    private Texture2D input0, input1;
+    private Texture2D input0; // , input1;
     public RenderTexture depthBuffer0, depthBuffer1, interpolationBuffer0, interpolationBuffer1, result0, result1;
     private Material material;
     private Camera mainCamera;
@@ -31,13 +31,13 @@ public class RasterizedProjection : MonoBehaviour
         computeShader.GetKernelThreadGroupSizes(translationKernel, out threadGroupsX, out threadGroupsY, out _);
 
         string path0 = Path.Combine(rootDirectory, path, file0);
-        string path1 = Path.Combine(rootDirectory, path, file1);
+        // string path1 = Path.Combine(rootDirectory, path, file1);
         byte[] rawInput0 = File.ReadAllBytes(path0);
-        byte[] rawInput1 = File.ReadAllBytes(path1);
+        // byte[] rawInput1 = File.ReadAllBytes(path1);
         input0 = new Texture2D(0, 0, TextureFormat.RGBA64, false);
-        input1 = new Texture2D(0, 0, TextureFormat.RGBA64, false);
+        // input1 = new Texture2D(0, 0, TextureFormat.RGBA64, false);
         input0.LoadImage(rawInput0);
-        input1.LoadImage(rawInput1);
+        // input1.LoadImage(rawInput1);
 
         resolution = new Vector2Int(Mathf.CeilToInt(geometryResolution.x / (float)threadGroupsX), Mathf.CeilToInt(geometryResolution.y / (float)threadGroupsY));
         depthBuffer0 = new RenderTexture(geometryResolution.x, geometryResolution.y, 1, RenderTextureFormat.RFloat);
@@ -61,7 +61,7 @@ public class RasterizedProjection : MonoBehaviour
         material.SetFloat("PI", Mathf.PI);
         material.SetFloat("PI2", Mathf.PI * 2);
         material.SetTexture("_MainTex0", input0);
-        material.SetTexture("_MainTex1", input1);
+        // material.SetTexture("_MainTex1", input1);
         material.SetTexture("_DepthTex0", depthBuffer0);
         material.SetTexture("_DepthTex1", depthBuffer1);
         material.SetTexture("_InterpTex0", interpolationBuffer0);
