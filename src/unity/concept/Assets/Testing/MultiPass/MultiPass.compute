@@ -1,17 +1,18 @@
-// #pragma multi_compile PASS_0 PASS_1
-#define PASS_0
+#pragma multi_compile PASS_0 PASS_1
 // include/exclude debug code
 #define DEBUG
 
 int DEBUG_MODE, DEBUG_INT;
 float PI, PI2, TIMESTEP, NCLIP, FCLIP, CAM_NCLIP, CAM_FCLIP;
-float2 INPUT_RESOLUTION, PROJECTION_RESOLUTION, RASTERIZATION_RESOLUTION;
+float2 INPUT_RESOLUTION, PROJECTION_RESOLUTION, PREVIOUS_PROJECTION_RESOLUTION, RASTERIZATION_RESOLUTION;
 float3 OFFSET;
 float4x4 MVP;
 
 Texture2D<float4> Input;
-RWTexture2D<float> ProjectedDepth, RasterizedDepth;
-RWTexture2D<float2> Projected0, Projected1, Projected2, Projected3, Rasterized;
+RWTexture2D<float> ProjectedDepth0, ProjectedDepth1, ProjectedDepth2, ProjectedDepth3;
+RWTexture2D<float> RasterizedDepth0, RasterizedDepth1, RasterizedDepth2, RasterizedDepth3;
+RWTexture2D<float2> Projected0, Projected1, Projected2, Projected3;
+RWTexture2D<float2> Rasterized0, Rasterized1, Rasterized2, Rasterized3;
 RWTexture2D<float4> MotionVectors;
 SamplerState sampler_linear_repeat;
 
@@ -29,6 +30,13 @@ void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
     float2 uv = NORMALIZE_RANGE(id.xy, INPUT_RESOLUTION);
     float d = Input[id.xy].a;
     
+    // skip skybox verticies
+    if (d == 1)
+    {
+        MotionVectors[id.xy] = float4(0, 0, 0, 0);
+        return;
+    }
+        
     float2 ll1 = uv.yx;
     ll1.x *= PI;
     ll1.y *= PI2;
@@ -91,10 +99,18 @@ void PopulateWithTextures(int2 tc, inout ProjectedPoint points[QUAD_VERTEX_COUNT
 [numthreads(8, 8, 1)]
 void Project(uint3 id : SV_DispatchThreadID)
 {
-    int2 tc = REMAP_TO_RANGE(id.xy, PROJECTION_RESOLUTION, INPUT_RESOLUTION);
+#ifdef PreviousPass
+    // use previous pass as input if available
+    float2 uv = PreviousPass[REMAP_TO_RANGE(id.xy, PROJECTION_RESOLUTION, PREVIOUS_PROJECTION_RESOLUTION)];
+#else
+    // use dispatch thread id on first pass
+    float2 uv = NORMALIZE_RANGE(id.xy, PROJECTION_RESOLUTION);
+#endif
+    
+    int2 tc = MAP_TO_RANGE(uv, INPUT_RESOLUTION);
     
     // skip skybox verticies
-    if (Input[tc].a == 1)
+    if (!any(MotionVectors[tc]))
     {
         Projected[id.xy] = float2(-1, -1);
         return;
