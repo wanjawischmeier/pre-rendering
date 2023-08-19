@@ -28,12 +28,7 @@ float3 InterpolateTriangle(int x, int y, int2 v0, int2 v1, int2 v2)
     float w0 = ((v1.y - v2.y) * (x - v2.x) + (v2.x - v1.x) * (y - v2.y)) / dv;
     float w1 = ((v2.y - v0.y) * (x - v2.x) + (v0.x - v2.x) * (y - v2.y)) / dv;
     float w2 = 1 - w0 - w1;
-    /*
-    int2 tc = int2(x, y);
-    w0 = length(tc - v0) < length(tc - v1) && length(tc - v0) < length(tc - v2);
-    w1 = length(tc - v1) < length(tc - v0) && length(tc - v1) < length(tc - v2);
-    w2 = 1 - w0 - w1;
-    */
+    
     return float3(w0, w1, w2);
 }
 

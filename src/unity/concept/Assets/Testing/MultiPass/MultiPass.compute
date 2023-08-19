@@ -111,12 +111,12 @@ void Project(uint3 id : SV_DispatchThreadID)
 #ifdef PreviousPass
     // use previous pass as input if available, offet irrelevant due to linear repeat sampler
     float2 uv = PreviousPass[REMAP_TO_RANGE(id.xy, PROJECTION_RESOLUTION, PREVIOUS_RASTERIZATION_RESOLUTION)];
+    float3 P = MotionVectors.SampleLevel(sampler_linear_repeat, uv, 0).xyz;
 #else
     // use dispatch thread id on first pass
     float2 uv = NORMALIZE_RANGE(id.xy, PROJECTION_RESOLUTION);
+    float3 P = MotionVectors[id.xy].xyz;
 #endif
-    
-    float3 P = MotionVectors.SampleLevel(sampler_linear_repeat, uv, 0).xyz;
     
     // skip skybox verticies
     if (!any(P))
