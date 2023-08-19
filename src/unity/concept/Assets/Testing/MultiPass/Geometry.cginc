@@ -6,8 +6,8 @@ struct ProjectedPoint
     // absolute projected coordinates
     int2 pc;
 
-    // corresponding original coordinates
-    int2 oc;
+    // corresponding original uv coordinates
+    float2 oc;
 
     // projected depth value (non-normalized)
     float d;

@@ -45,10 +45,9 @@ void DrawRow(int x0, int y0, int x1, Triangle tri, Triangle unsorted)
     for (int i = x0; i <= x1; i++)
     {
         float3 w = InterpolateTriangle(i, y0, unsorted.v0.pc, unsorted.v1.pc, unsorted.v2.pc);
-        float2 pc = unsorted.v0.oc * w.x + unsorted.v1.oc * w.y + unsorted.v2.oc * w.z;
+        float2 uv = unsorted.v0.oc * w.x + unsorted.v1.oc * w.y + unsorted.v2.oc * w.z;
         float d = tri.v0.d * w.x + tri.v1.d * w.y + tri.v2.d * w.z;
         
-        float2 uv = NORMALIZE_RANGE(pc, PROJECTION_RESOLUTION);
         uint2 tc = uint2(i, y0);
         float og = RasterizedDepth[tc];
                 
@@ -145,7 +144,8 @@ void RasterizeTriangle(Triangle tri)
     v3.d = tri.v0.d * w0 + tri.v2.d * w2;
     
 #ifdef DEBUG
-    if (DEBUG_MODE == DEBUG_MODE_HIGHLIGHT_POINT && tri.v0.oc.x == DEBUG_INT && tri.v0.oc.y == 4)
+    // TODO: fix for normalized oc
+    if (CURRENT_PASS == DEBUG_PASSES - 1 && DEBUG_MODE == DEBUG_MODE_HIGHLIGHT_POINT && tri.v0.oc.x == DEBUG_INT && tri.v0.oc.y == 4)
     {
         DrawCircle(tri.v0.pc, DEBUG_COL_POINT_0);
     }
@@ -159,7 +159,11 @@ void RasterizeTriangle(Triangle tri)
     top.v2 = btm.v2 = v3;
 
 #ifdef DEBUG
-    if (DEBUG_MODE == DEBUG_MODE_NONE || DEBUG_MODE == DEBUG_MODE_HIGHLIGHT_QUAD)
+    if (CURRENT_PASS != DEBUG_PASSES - 1 || (
+        DEBUG_MODE != DEBUG_MODE_Z_SINE &&
+        DEBUG_MODE != DEBUG_MODE_HIGHLIGHT_POINT &&
+        DEBUG_MODE != DEBUG_MODE_POINT_CLOUD &&
+        DEBUG_MODE != DEBUG_MODE_WIREFRAME))
     {
 #endif
         RasterizeTopFlatTriangle(top, unsorted);
@@ -169,7 +173,7 @@ void RasterizeTriangle(Triangle tri)
 #endif
 
 #ifdef DEBUG
-    if (DEBUG_MODE == DEBUG_MODE_HIGHLIGHT_QUAD || DEBUG_MODE == DEBUG_MODE_WIREFRAME)
+    if (CURRENT_PASS == DEBUG_PASSES - 1 && (DEBUG_MODE == DEBUG_MODE_HIGHLIGHT_QUAD || DEBUG_MODE == DEBUG_MODE_WIREFRAME))
     {
         if (tri.v0.pc.y != tri.v1.pc.y || tri.v0.pc.y != tri.v2.pc.y)
         {

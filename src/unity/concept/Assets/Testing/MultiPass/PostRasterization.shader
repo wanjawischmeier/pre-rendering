@@ -40,13 +40,15 @@ Shader "PreRendering/PostRasterization"
             fixed4 frag (v2f i) : SV_Target
             {
                 // still not working properly :(
-                float2 uv = _Coordinates[i.uv * (RESOLUTION - 1)].xy - 1;
-                if (uv.x == -1)
+                float2 uv = _Coordinates[i.uv * (RESOLUTION - 1)].xy;
+                if (uv.x == 0)
                 {
                     // TODO: sample skybox
                     return fixed4(0, 0, 0, 1);
                 }
                 
+                // correct originally offset range
+                uv -= 1;
                 fixed4 col = tex2D(_Input, uv);
                 // return fixed4(uv % 0.05 * (1 / 0.05), 0, 1);
                 return col;

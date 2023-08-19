@@ -1,6 +1,7 @@
 // constants
 #define QUAD_VERTEX_COUNT 4
 #define MAX_SCANLINE_LENGTH 1000
+#define PROJECTED_EMPTY_POINT float4(-1, -1, -1, -1)
 
 
 // debug constants
@@ -11,6 +12,7 @@
 #define DEBUG_MODE_HIGHLIGHT_QUAD 3
 #define DEBUG_MODE_POINT_CLOUD 4
 #define DEBUG_MODE_WIREFRAME 5
+#define DEBUG_MODE_Z_SINE_FILLED 6
 
 #define DEBUG_COL_LINE float2(1, 1)
 #define DEBUG_COL_POINT_0 float2(1, 0)
@@ -35,7 +37,7 @@
     MAP_TO_RANGE(NORMALIZE_RANGE(tc, sourceRange), targetRange)
 
 #define VALID_POINT(projectedPoint) \
-    !(projectedPoint.uv.x == -1 || projectedPoint.uv.y == -1)
+    (projectedPoint.uv.x != -1)
 
 #define VALID_TRIANGLE_POINTS(tri) \
     VALID_POINT(tri.v0) + VALID_POINT(tri.v1) + VALID_POINT(tri.v2)
@@ -70,11 +72,11 @@
 // helper macro for concatenation
 #define CONCAT(a, b) a##b
 
-#define Projected CONCAT(Projected, CURRENT_PASS)
-#define ProjectedDepth CONCAT(ProjectedDepth, CURRENT_PASS)
-#define Rasterized CONCAT(Rasterized, CURRENT_PASS)
-#define RasterizedDepth CONCAT(RasterizedDepth, CURRENT_PASS)
+#define Projected CONCAT(Projected_, CURRENT_PASS)
+#define ProjectedDepth CONCAT(ProjectedDepth_, CURRENT_PASS)
+#define Rasterized CONCAT(Rasterized_, CURRENT_PASS)
+#define RasterizedDepth CONCAT(RasterizedDepth_, CURRENT_PASS)
 
 #ifdef LAST_PASS
-#define PreviousPass CONCAT(Rasterized, LAST_PASS)
+#define PreviousPass CONCAT(Rasterized_, LAST_PASS)
 #endif

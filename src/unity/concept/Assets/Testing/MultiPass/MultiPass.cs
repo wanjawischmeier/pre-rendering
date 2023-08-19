@@ -1,5 +1,4 @@
 using UnityEngine;
-using static UnityEditor.ShaderData;
 
 public class MultiPass : MonoBehaviour
 {
@@ -10,7 +9,7 @@ public class MultiPass : MonoBehaviour
 
     public enum DebugMode
     {
-        none, zSine, highlightPoint, highlighQuad, pointCloud, wireframe
+        none, zSine, highlightPoint, highlighQuad, pointCloud, wireframe, zSineFilled
     }
 
     const int MAX_PASSES = 4;
@@ -31,7 +30,7 @@ public class MultiPass : MonoBehaviour
     public int debugPass, debugInt;
 
     public RenderTexture motionVectors;
-    private RenderTexture[] projected, projectedDepth, rasterized, rasterizedDepth;
+    public RenderTexture[] projected, projectedDepth, rasterized, rasterizedDepth;
     private Camera mainCamera;
     private Material postRasterizationMaterial;
     private int calculateMotionVectorGroupsX, calculateMotionVectorGroupsY;
@@ -85,7 +84,7 @@ public class MultiPass : MonoBehaviour
             // projection dimensions
             projected[pass] = new RenderTexture(projectionResolutions[pass].x, projectionResolutions[pass].y, 0);
             projected[pass].enableRandomWrite = true;
-            projected[pass].format = RenderTextureFormat.RGFloat;
+            projected[pass].format = RenderTextureFormat.ARGBFloat;
             projectedDepth[pass] = new RenderTexture(projected[pass]);
             projectedDepth[pass].format = RenderTextureFormat.RFloat;
 
@@ -98,18 +97,19 @@ public class MultiPass : MonoBehaviour
             rasterizedDepth[pass].format = RenderTextureFormat.RFloat;
 
             // set compute shader texture array elements
-            computeShader.SetTexture(projectKernel, $"Projected{pass}", projected[pass]);
-            computeShader.SetTexture(projectKernel, $"ProjectedDepth{pass}", projectedDepth[pass]);
-            computeShader.SetTexture(projectKernel, $"Rasterized{pass}", rasterized[pass]);
-            computeShader.SetTexture(projectKernel, $"RasterizedDepth{pass}", rasterizedDepth[pass]);
-            computeShader.SetTexture(rasterizeKernel, $"Projected{pass}", projected[pass]);
-            computeShader.SetTexture(rasterizeKernel, $"ProjectedDepth{pass}", projectedDepth[pass]);
-            computeShader.SetTexture(rasterizeKernel, $"Rasterized{pass}", rasterized[pass]);
-            computeShader.SetTexture(rasterizeKernel, $"RasterizedDepth{pass}", rasterizedDepth[pass]);
-            computeShader.SetTexture(interpolateKernel, $"Rasterized{pass}", rasterized[pass]);
+            computeShader.SetTexture(projectKernel, $"Projected_{pass}", projected[pass]);
+            computeShader.SetTexture(projectKernel, $"ProjectedDepth_{pass}", projectedDepth[pass]);
+            computeShader.SetTexture(projectKernel, $"Rasterized_{pass}", rasterized[pass]);
+            computeShader.SetTexture(projectKernel, $"RasterizedDepth_{pass}", rasterizedDepth[pass]);
+            computeShader.SetTexture(rasterizeKernel, $"Projected_{pass}", projected[pass]);
+            computeShader.SetTexture(rasterizeKernel, $"ProjectedDepth_{pass}", projectedDepth[pass]);
+            computeShader.SetTexture(rasterizeKernel, $"Rasterized_{pass}", rasterized[pass]);
+            computeShader.SetTexture(rasterizeKernel, $"RasterizedDepth_{pass}", rasterizedDepth[pass]);
+            computeShader.SetTexture(interpolateKernel, $"Rasterized_{pass}", rasterized[pass]);
         }
 
         // set compute shader constants
+        computeShader.SetInt("DEBUG_PASSES", passes);
         computeShader.SetFloat("PI", Mathf.PI);
         computeShader.SetFloat("PI2", Mathf.PI * 2);
         computeShader.SetFloat("NCLIP", nClip);
@@ -118,7 +118,7 @@ public class MultiPass : MonoBehaviour
 
         // set compute shader textures
         computeShader.SetTexture(calculateMotionVectorsKernel, "Input", input);
-        computeShader.SetTexture(calculateMotionVectorsKernel, "MotionVectors", motionVectors);
+        computeShader.SetTexture(calculateMotionVectorsKernel, "MotionVectorsWrite", motionVectors);
         computeShader.SetTexture(projectKernel, "MotionVectors", motionVectors);
 
         // set post rasterization material properties
@@ -143,16 +143,11 @@ public class MultiPass : MonoBehaviour
         computeShader.SetFloat("CAM_FCLIP", mainCamera.farClipPlane);
         computeShader.SetMatrix("MVP", MVP);
 
-        // TODO: is it okay to change the active render texture for so long?
         RenderTexture rt = RenderTexture.active;
 
         for (int pass = 0; pass < passes; pass++)
         {
-            // TODO: check which textures actually need to be cleared
-            RenderTexture.active = projected[pass];
-            GL.Clear(false, true, Color.clear);
-            RenderTexture.active = projectedDepth[pass];
-            GL.Clear(false, true, Color.clear);
+            // only clear required textures
             RenderTexture.active = rasterized[pass];
             GL.Clear(false, true, Color.clear);
             RenderTexture.active = rasterizedDepth[pass];
@@ -162,7 +157,7 @@ public class MultiPass : MonoBehaviour
             if (pass != 0)
             {
                 computeShader.DisableKeyword($"PASS_{pass - 1}");
-                computeShader.SetVector("PREVIOUS_PROJECTION_RESOLUTION", new Vector2(projectionResolutions[pass - 1].x, projectionResolutions[pass - 1].y));
+                computeShader.SetVector("PREVIOUS_RASTERIZATION_RESOLUTION", new Vector2(rasterizationResolutions[pass - 1].x, rasterizationResolutions[pass - 1].y));
             }
             computeShader.EnableKeyword($"PASS_{pass}");
             computeShader.SetVector("PROJECTION_RESOLUTION", new Vector2(projectionResolutions[pass].x, projectionResolutions[pass].y));

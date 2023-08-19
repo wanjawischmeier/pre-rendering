@@ -2,18 +2,20 @@
 // include/exclude debug code
 #define DEBUG
 
-int DEBUG_MODE, DEBUG_INT;
+#ifdef DEBUG
+int DEBUG_MODE, DEBUG_INT, DEBUG_PASSES;
+#endif
 float PI, PI2, TIMESTEP, NCLIP, FCLIP, CAM_NCLIP, CAM_FCLIP;
-float2 INPUT_RESOLUTION, PROJECTION_RESOLUTION, PREVIOUS_PROJECTION_RESOLUTION, RASTERIZATION_RESOLUTION;
+float2 INPUT_RESOLUTION, PROJECTION_RESOLUTION, RASTERIZATION_RESOLUTION, PREVIOUS_RASTERIZATION_RESOLUTION;
 float3 OFFSET;
 float4x4 MVP;
 
-Texture2D<float4> Input;
-RWTexture2D<float> ProjectedDepth0, ProjectedDepth1, ProjectedDepth2, ProjectedDepth3;
-RWTexture2D<float> RasterizedDepth0, RasterizedDepth1, RasterizedDepth2, RasterizedDepth3;
-RWTexture2D<float2> Projected0, Projected1, Projected2, Projected3;
-RWTexture2D<float2> Rasterized0, Rasterized1, Rasterized2, Rasterized3;
-RWTexture2D<float4> MotionVectors;
+Texture2D<float4> Input, MotionVectors;
+RWTexture2D<float> ProjectedDepth_0, ProjectedDepth_1, ProjectedDepth_2, ProjectedDepth_3;
+RWTexture2D<float> RasterizedDepth_0, RasterizedDepth_1, RasterizedDepth_2, RasterizedDepth_3;
+RWTexture2D<float4> Projected_0, Projected_1, Projected_2, Projected_3;
+RWTexture2D<float2> Rasterized_0, Rasterized_1, Rasterized_2, Rasterized_3;
+RWTexture2D<float4> MotionVectorsWrite;
 SamplerState sampler_linear_repeat;
 
 
@@ -33,7 +35,7 @@ void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
     // skip skybox verticies
     if (d == 1)
     {
-        MotionVectors[id.xy] = float4(0, 0, 0, 0);
+        MotionVectorsWrite[id.xy] = float4(0, 0, 0, 0);
         return;
     }
         
@@ -49,19 +51,24 @@ void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
         CP * cos(ll1.x),
         CP * cos(ll1.y) * sin(ll1.x));
     
-    MotionVectors[id.xy] = float4(P, 1);
+    MotionVectorsWrite[id.xy] = float4(P, 1);
 }
 
 #pragma kernel Project
 
-float3 project(float3 P)
+void displace(inout float3 P)
 {
 #ifdef DEBUG
-    if (DEBUG_MODE == DEBUG_MODE_Z_SINE)
+    if (DEBUG_MODE == DEBUG_MODE_Z_SINE || DEBUG_MODE == DEBUG_MODE_Z_SINE_FILLED)
     {
         P.y += sin(TIMESTEP / 50) * sin(length(P)) * sin(P.x);
     }
 #endif
+}
+
+float3 project(float3 P)
+{
+    displace(P);
 
     float d = length(P);
 
@@ -90,9 +97,11 @@ void PopulateWithTextures(int2 tc, inout ProjectedPoint points[QUAD_VERTEX_COUNT
     for (int i = 0; i < QUAD_VERTEX_COUNT; i++)
     {
         points[i].oc %= PROJECTION_RESOLUTION;
-        points[i].uv = Projected[points[i].oc];
-        points[i].pc = MAP_TO_RANGE(points[i].uv, RASTERIZATION_RESOLUTION);
         points[i].d = ProjectedDepth[points[i].oc];
+        float4 so = Projected[points[i].oc];
+        points[i].uv = so.xy;
+        points[i].oc = so.zw;
+        points[i].pc = MAP_TO_RANGE(points[i].uv, RASTERIZATION_RESOLUTION);
     }
 }
 
@@ -100,42 +109,34 @@ void PopulateWithTextures(int2 tc, inout ProjectedPoint points[QUAD_VERTEX_COUNT
 void Project(uint3 id : SV_DispatchThreadID)
 {
 #ifdef PreviousPass
-    // use previous pass as input if available
-    float2 uv = PreviousPass[REMAP_TO_RANGE(id.xy, PROJECTION_RESOLUTION, PREVIOUS_PROJECTION_RESOLUTION)];
+    // use previous pass as input if available, offet irrelevant due to linear repeat sampler
+    float2 uv = PreviousPass[REMAP_TO_RANGE(id.xy, PROJECTION_RESOLUTION, PREVIOUS_RASTERIZATION_RESOLUTION)];
 #else
     // use dispatch thread id on first pass
     float2 uv = NORMALIZE_RANGE(id.xy, PROJECTION_RESOLUTION);
 #endif
     
-    int2 tc = MAP_TO_RANGE(uv, INPUT_RESOLUTION);
+    float3 P = MotionVectors.SampleLevel(sampler_linear_repeat, uv, 0).xyz;
     
     // skip skybox verticies
-    if (!any(MotionVectors[tc]))
+    if (!any(P))
     {
-        Projected[id.xy] = float2(-1, -1);
+        Projected[id.xy] = PROJECTED_EMPTY_POINT;
         return;
     }
 
-    float3 P = MotionVectors[tc].xyz;
-
-#ifdef DEBUG
-    if (DEBUG_MODE == DEBUG_MODE_Z_SINE)
-    {
-        P.y += sin(TIMESTEP / 50) * sin(length(P)) * sin(P.x);
-    }
-#endif
-    
+    displace(P);
 
     float4 pos4 = float4(P, 1);
     float4 transformedPosition = mul(MVP, pos4);
     float2 screenCoords = (transformedPosition.xy / transformedPosition.w) * 0.5 + 0.5;
     if (transformedPosition.w < CAM_NCLIP || transformedPosition.w > CAM_FCLIP || screenCoords.x < 0 || screenCoords.y < 0 || screenCoords.x > 1 || screenCoords.y > 1)
     {
-        Projected[id.xy] = float2(-1, -1);
+        Projected[id.xy] = PROJECTED_EMPTY_POINT;
     }
     else
     {
-        Projected[id.xy] = screenCoords;
+        Projected[id.xy] = float4(screenCoords, uv);
         ProjectedDepth[id.xy] = transformedPosition.w;
     }
 }
@@ -189,7 +190,7 @@ bool CullTriangle(Triangle tri)
 void Rasterize(uint3 id : SV_DispatchThreadID)
 {
 #ifdef DEBUG
-    if (DEBUG_MODE == DEBUG_MODE_HIGHLIGHT_QUAD)
+    if (CURRENT_PASS == DEBUG_PASSES - 1 && DEBUG_MODE == DEBUG_MODE_HIGHLIGHT_QUAD)
     {
         if ((int)id.x != PROJECTION_RESOLUTION.x / 2 || (int)id.y != DEBUG_INT)
         {
@@ -205,22 +206,24 @@ void Rasterize(uint3 id : SV_DispatchThreadID)
     {
         return;
     }
-        
+    
+    // might not be neccessary later, for now slightly helps with holes
+    Rasterized[neighbors[0].pc] = neighbors[0].oc + 1;
+    
 #ifdef DEBUG
-    if (DEBUG_MODE == DEBUG_MODE_HIGHLIGHT_QUAD)
+    if (CURRENT_PASS == DEBUG_PASSES - 1 && DEBUG_MODE == DEBUG_MODE_HIGHLIGHT_QUAD)
     {
         DrawCircle(neighbors[1].pc, DEBUG_COL_POINT_1 / 4);
         DrawCircle(neighbors[2].pc, DEBUG_COL_POINT_2 / 4);
         DrawCircle(neighbors[3].pc, DEBUG_COL_POINT_3 / 4);
     }
-    else if (DEBUG_MODE == DEBUG_MODE_Z_SINE || DEBUG_MODE == DEBUG_MODE_POINT_CLOUD)
+    else if (CURRENT_PASS == DEBUG_PASSES - 1 && (DEBUG_MODE == DEBUG_MODE_Z_SINE || DEBUG_MODE == DEBUG_MODE_POINT_CLOUD))
     {
         DrawCircle(neighbors[0].pc, DEBUG_COL_POINT_0 / 4);
     }
 #endif
     
-    
-    // layout tris counter-clockwise as well
+    // lay out tris counter-clockwise as well
     Triangle t0, t1;
     t0.v0 = t1.v0 = neighbors[0];
     t0.v1 = neighbors[1];
