@@ -40,12 +40,36 @@ Shader "PreRendering/PostRasterization"
             fixed4 frag (v2f i) : SV_Target
             {
                 // still not working properly :(
-                float2 uv = _Coordinates[i.uv * (RESOLUTION - 1)].xy;
+                float2 uv = _Coordinates[i.uv * (RESOLUTION - 1)];
+                float a = round(uv.x);
+                /*
                 if (uv.x == 0)
                 {
                     // TODO: sample skybox
-                    return fixed4(0, 0, 0, 1);
+                    return fixed4(1, 0, 0, 1);
                 }
+                
+                if (uv.x > 0)
+                {
+                    return fixed4(0, 1, 0, 1); // green
+                }
+                
+                if (uv.x > 0)
+                {
+                    // pass
+                }
+                else
+                {
+                    return fixed4(0, 0, 1, 1); // blue
+                }
+                */
+                const float epsilon = 1000;
+                if (a + 1000.0f >= 0.0f)
+                {
+                    return fixed4(0, 0, 1, 1); // blue
+                }
+                
+                // return fixed4(1, 0, 0, 1); // red
                 
                 // correct originally offset range
                 uv -= 1;

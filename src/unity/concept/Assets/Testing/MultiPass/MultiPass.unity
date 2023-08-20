@@ -67,9 +67,6 @@ LightmapSettings:
     m_LightmapParameters: {fileID: 0}
     m_LightmapsBakeMode: 1
     m_TextureCompression: 1
-    m_FinalGather: 0
-    m_FinalGatherFiltering: 1
-    m_FinalGatherRayCount: 256
     m_ReflectionCompression: 2
     m_MixedBakeMode: 2
     m_BakeBackend: 1
@@ -242,8 +239,8 @@ MonoBehaviour:
   - {x: 960, y: 540}
   nClip: 1
   fClip: 30
-  fillGaps: 0
-  debugChannel: 0
+  fillGaps: 1
+  debugChannel: 4
   debugMode: 0
   debugPass: 0
   debugInt: 9

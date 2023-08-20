@@ -251,18 +251,25 @@ void Rasterize(uint3 id : SV_DispatchThreadID)
 [numthreads(8, 8, 1)]
 void Interpolate(uint3 id : SV_DispatchThreadID)
 {
-    if (Rasterized[id.xy].x == 0)
+    if (Rasterized[id.xy].x > 0)
     {
+        
+    }
+    else
+    {
+        // Rasterized[id.xy] = float2(1, 0);
+        // return;
+        const int r = 32;
         uint2 off = uint2(1, 0);
         float2 c0, c1;
         
-        [unroll(4)]
-        for (int i = 0; i < 4; i++)
+        [unroll(r)]
+        for (int i = 0; i < r; i++)
         {
             c0 = Rasterized[(id.xy - off * i) % RASTERIZATION_RESOLUTION];
             c1 = Rasterized[(id.xy + off * i) % RASTERIZATION_RESOLUTION];
         
-            if (c0.x != 0 && c1.x != 0)
+            if (c0.x > 0 && c1.x > 0)
             {
                 Rasterized[id.xy] = c0 / 2 + c1 / 2;
                 return;
@@ -270,13 +277,13 @@ void Interpolate(uint3 id : SV_DispatchThreadID)
         }
         
         
-        [unroll(4)]
-        for (i = 0; i < 4; i++)
+        [unroll(r)]
+        for (i = 0; i < r; i++)
         {
             c0 = Rasterized[(id.xy - off.yx * i) % RASTERIZATION_RESOLUTION];
             c1 = Rasterized[(id.xy + off.yx * i) % RASTERIZATION_RESOLUTION];
         
-            if (c0.x != 0 && c1.x != 0)
+            if (c0.x > 0 && c1.x > 0)
             {
                 Rasterized[id.xy] = c0 / 2 + c1 / 2;
             }
