@@ -35,7 +35,6 @@ void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
     // skip skybox verticies
     if (d == 1)
     {
-        MotionVectorsWrite[id.xy] = float4(0, 0, 0, 0);
         return;
     }
         
@@ -101,6 +100,8 @@ void PopulateWithTextures(int2 tc, inout ProjectedPoint points[QUAD_VERTEX_COUNT
         float4 so = Projected[points[i].oc];
         points[i].uv = so.xy;
         points[i].oc = so.zw;
+        // points[i].oc = NORMALIZE_RANGE(tc, PROJECTION_RESOLUTION);
+        // points[i].oc = so.xy;
         points[i].pc = MAP_TO_RANGE(points[i].uv, RASTERIZATION_RESOLUTION);
     }
 }
@@ -111,6 +112,12 @@ void Project(uint3 id : SV_DispatchThreadID)
 #ifdef PreviousPass
     // use previous pass as input if available, offet irrelevant due to linear repeat sampler
     float2 uv = PreviousPass[REMAP_TO_RANGE(id.xy, PROJECTION_RESOLUTION, PREVIOUS_RASTERIZATION_RESOLUTION)];
+    if (uv.x == 0)
+    {
+        Projected[id.xy] = PROJECTED_EMPTY_POINT;
+        return;
+    }
+    
     float3 P = MotionVectors.SampleLevel(sampler_linear_repeat, uv, 0).xyz;
 #else
     // use dispatch thread id on first pass
@@ -208,7 +215,7 @@ void Rasterize(uint3 id : SV_DispatchThreadID)
     }
     
     // might not be neccessary later, for now slightly helps with holes
-    Rasterized[neighbors[0].pc] = neighbors[0].oc + 1;
+    // Rasterized[neighbors[0].pc] = neighbors[0].oc + 1;
     
 #ifdef DEBUG
     if (CURRENT_PASS == DEBUG_PASSES - 1 && DEBUG_MODE == DEBUG_MODE_HIGHLIGHT_QUAD)
@@ -251,20 +258,13 @@ void Rasterize(uint3 id : SV_DispatchThreadID)
 [numthreads(8, 8, 1)]
 void Interpolate(uint3 id : SV_DispatchThreadID)
 {
-    if (Rasterized[id.xy].x > 0)
+    if (Rasterized[id.xy].x == 0)
     {
-        
-    }
-    else
-    {
-        // Rasterized[id.xy] = float2(1, 0);
-        // return;
-        const int r = 32;
         uint2 off = uint2(1, 0);
         float2 c0, c1;
         
-        [unroll(r)]
-        for (int i = 0; i < r; i++)
+        [unroll(INTERPOLATION_SEARCH_RADIUS)]
+        for (int i = 0; i < INTERPOLATION_SEARCH_RADIUS; i++)
         {
             c0 = Rasterized[(id.xy - off * i) % RASTERIZATION_RESOLUTION];
             c1 = Rasterized[(id.xy + off * i) % RASTERIZATION_RESOLUTION];
@@ -277,8 +277,8 @@ void Interpolate(uint3 id : SV_DispatchThreadID)
         }
         
         
-        [unroll(r)]
-        for (i = 0; i < r; i++)
+        [unroll(INTERPOLATION_SEARCH_RADIUS)]
+        for (i = 0; i < INTERPOLATION_SEARCH_RADIUS; i++)
         {
             c0 = Rasterized[(id.xy - off.yx * i) % RASTERIZATION_RESOLUTION];
             c1 = Rasterized[(id.xy + off.yx * i) % RASTERIZATION_RESOLUTION];

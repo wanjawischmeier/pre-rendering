@@ -49,7 +49,7 @@ void DrawRow(int x0, int y0, int x1, Triangle tri, Triangle unsorted)
         if (d < og || og == 0)
         {
             // offset by one to allow checking for unset pixels
-            Rasterized[tc] = uv + 1;
+            Rasterized[tc] = unsorted.v0.oc; // uv + 1;
             RasterizedDepth[tc] = d;
         }
         

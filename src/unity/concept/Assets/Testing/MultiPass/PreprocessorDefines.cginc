@@ -1,7 +1,8 @@
 // constants
 #define QUAD_VERTEX_COUNT 4
-#define MAX_SCANLINE_LENGTH 1000
+#define MAX_SCANLINE_LENGTH 100
 #define PROJECTED_EMPTY_POINT float4(-1, -1, -1, -1)
+#define INTERPOLATION_SEARCH_RADIUS 8
 
 
 // debug constants

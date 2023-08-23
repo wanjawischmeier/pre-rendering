@@ -42,13 +42,13 @@ Shader "PreRendering/PostRasterization"
                 // still not working properly :(
                 float2 uv = _Coordinates[i.uv * (RESOLUTION - 1)];
                 float a = round(uv.x);
-                /*
+                
                 if (uv.x == 0)
                 {
                     // TODO: sample skybox
-                    return fixed4(1, 0, 0, 1);
+                    return fixed4(0, 0, 0, 1);
                 }
-                
+                /*
                 if (uv.x > 0)
                 {
                     return fixed4(0, 1, 0, 1); // green
@@ -62,13 +62,13 @@ Shader "PreRendering/PostRasterization"
                 {
                     return fixed4(0, 0, 1, 1); // blue
                 }
-                */
+                
                 const float epsilon = 1000;
                 if (a + 1000.0f >= 0.0f)
                 {
                     return fixed4(0, 0, 1, 1); // blue
                 }
-                
+                */
                 // return fixed4(1, 0, 0, 1); // red
                 
                 // correct originally offset range
