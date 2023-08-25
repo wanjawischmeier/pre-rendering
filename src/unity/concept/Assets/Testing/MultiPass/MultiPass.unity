@@ -230,7 +230,7 @@ MonoBehaviour:
   input: {fileID: 2800000, guid: f9e82ff9a9af25540bb4edde2f933ede, type: 3}
   computeShader: {fileID: 7200000, guid: 2b34f280db5c98c45a9ba6a3c15bf555, type: 3}
   postRasterization: {fileID: 4800000, guid: fe60f4afcc71ebb48af2270059806d05, type: 3}
-  passes: 2
+  passes: 1
   projectionResolutions:
   - {x: 2048, y: 1024}
   - {x: 2048, y: 1024}

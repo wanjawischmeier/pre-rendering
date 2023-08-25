@@ -119,6 +119,9 @@ void DrawCircle(int2 p, float2 col)
 {
     int x, y, px, nx, py, ny, d;
 
+#if DEBUG_CIRCLE_RADIUS == 1
+    Rasterized[int2(p.x, p.y)] += col;
+#else
     [unroll(DEBUG_CIRCLE_RADIUS)]
     for (x = 0; x <= DEBUG_CIRCLE_RADIUS; x++)
     {
@@ -136,6 +139,7 @@ void DrawCircle(int2 p, float2 col)
             Rasterized[int2(nx, ny)] += col;
         }
     }
+#endif
 }
 
 #endif // SHAPE_RENDERER_CGINC
