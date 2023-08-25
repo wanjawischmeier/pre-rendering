@@ -86,6 +86,8 @@ float3 project(float3 P)
 void PopulateWithTextures(int2 tc, inout ProjectedPoint points[QUAD_VERTEX_COUNT])
 {
     uint2 off = uint2(1, 0);
+    float4 so;
+    
     // counter-clockwise order
     points[0].oc = tc;          // (0, 0)
     points[1].oc = tc + off;    // (1, 0)
@@ -97,11 +99,9 @@ void PopulateWithTextures(int2 tc, inout ProjectedPoint points[QUAD_VERTEX_COUNT
     {
         points[i].oc %= PROJECTION_RESOLUTION;
         points[i].d = ProjectedDepth[points[i].oc];
-        float4 so = Projected[points[i].oc];
+        so = Projected[points[i].oc];
         points[i].uv = so.xy;
         points[i].oc = so.zw;
-        // points[i].oc = NORMALIZE_RANGE(tc, PROJECTION_RESOLUTION);
-        // points[i].oc = so.xy;
         points[i].pc = MAP_TO_RANGE(points[i].uv, RASTERIZATION_RESOLUTION);
     }
 }
@@ -213,9 +213,6 @@ void Rasterize(uint3 id : SV_DispatchThreadID)
     {
         return;
     }
-    
-    // might not be neccessary later, for now slightly helps with holes
-    // Rasterized[neighbors[0].pc] = neighbors[0].oc + 1;
     
 #ifdef DEBUG
     if (CURRENT_PASS == DEBUG_PASSES - 1 && DEBUG_MODE == DEBUG_MODE_HIGHLIGHT_QUAD)
