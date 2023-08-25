@@ -24,6 +24,19 @@ void SortTriangleVerticiesByHeight(inout Triangle tri)
 
 float3 InterpolateTriangle(int x, int y, int2 v0, int2 v1, int2 v2)
 {
+    float AB = length(v0 - v1);
+    float BC = length(v1 - v2);
+    float CA = length(v2 - v0);
+    
+    if (AB + BC < CA + TRI_DEGENERATE_THRESHOLD ||
+        BC + CA < AB + TRI_DEGENERATE_THRESHOLD ||
+        CA + AB < BC + TRI_DEGENERATE_THRESHOLD)
+    {
+        // maybe differenciate between small and flat tris
+        // and linearly interpolate the latter for a more accurate result
+        return (1 / 3.0).xxx;
+    }
+    
     float dv = (v1.y - v2.y) * (v0.x - v2.x) + (v2.x - v1.x) * (v0.y - v2.y);
     float w0 = ((v1.y - v2.y) * (x - v2.x) + (v2.x - v1.x) * (y - v2.y)) / dv;
     float w1 = ((v2.y - v0.y) * (x - v2.x) + (v0.x - v2.x) * (y - v2.y)) / dv;
@@ -49,7 +62,7 @@ void DrawRow(int x0, int y0, int x1, Triangle tri, Triangle unsorted)
         if (d < og || og == 0)
         {
             // offset by one to allow checking for unset pixels
-            Rasterized[tc] = unsorted.v0.oc; // uv + 1;
+            Rasterized[tc] = uv + 1;
             RasterizedDepth[tc] = d;
         }
         
