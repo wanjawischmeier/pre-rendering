@@ -28,7 +28,7 @@ public class MultiPass : MonoBehaviour
     public DebugChannel debugChannel = DebugChannel.rasterized;
     public DebugMode debugMode;
     public int debugPass, debugInt;
-    public float debugFloat;
+    public float debugFloat, debugFloat2;
 
     public RenderTexture motionVectors;
     public RenderTexture[] projected, projectedDepth, rasterized, rasterizedDepth;
@@ -93,7 +93,7 @@ public class MultiPass : MonoBehaviour
             rasterized[pass] = new RenderTexture(rasterizationResolutions[pass].x, rasterizationResolutions[pass].y, 0);
             rasterized[pass].enableRandomWrite = true;
             rasterized[pass].filterMode = FilterMode.Bilinear;
-            rasterized[pass].format = RenderTextureFormat.RGFloat;
+            rasterized[pass].format = RenderTextureFormat.ARGBFloat;
             rasterizedDepth[pass] = new RenderTexture(rasterized[pass]);
             rasterizedDepth[pass].format = RenderTextureFormat.RFloat;
 
@@ -140,6 +140,7 @@ public class MultiPass : MonoBehaviour
         computeShader.SetInt("DEBUG_INT", debugInt);
         computeShader.SetInt("DEBUG_MODE", (int)debugMode);
         computeShader.SetFloat("DEBUG_FLOAT", debugFloat);
+        computeShader.SetFloat("DEBUG_FLOAT2", debugFloat2);
         computeShader.SetFloat("TIMESTEP", Time.frameCount + Time.deltaTime);
         computeShader.SetFloat("CAM_NCLIP", mainCamera.nearClipPlane);
         computeShader.SetFloat("CAM_FCLIP", mainCamera.farClipPlane);

@@ -35,19 +35,19 @@ Shader "PreRendering/PostRasterization"
 
             float2 RESOLUTION;
             sampler2D _Input;
-            Texture2D<float2> _Coordinates;
+            Texture2D<float4> _Coordinates;
 
             fixed4 frag (v2f i) : SV_Target
             {
-                float2 uv = _Coordinates[i.uv * (RESOLUTION - 1)];
+                float4 tc = _Coordinates[i.uv * (RESOLUTION - 1)];
                 
-                if (uv.x == 0)
+                if (tc.a != 1)
                 {
                     // TODO: sample skybox
                     return fixed4(0, 0, 0, 1);
                 }
                 
-                // no need to correct originally offset range due to repeat sampler
+                float2 uv = tc.xy;
                 fixed4 col = tex2D(_Input, uv);
                 return col;
             }

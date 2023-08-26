@@ -22,39 +22,66 @@ void SortTriangleVerticiesByHeight(inout Triangle tri)
     }
 }
 
-float3 InterpolateTriangle(int x, int y, int2 v0, int2 v1, int2 v2)
+void InterpolateTriangle(int x, int y, Triangle tri, out float2 uv, out float d)
 {
-    float AB = length(v0 - v1);
-    float BC = length(v1 - v2);
-    float CA = length(v2 - v0);
+    /*
+    float w0, w1, w2;
+    float AB = length(tri.v0.uv - tri.v1.uv);
+    float BC = length(tri.v1.uv - tri.v2.uv);
+    float CA = length(tri.v2.uv - tri.v0.uv);
+    float perimiter = AB + BC + CA;
     
-    if (AB + BC < CA + TRI_DEGENERATE_THRESHOLD ||
-        BC + CA < AB + TRI_DEGENERATE_THRESHOLD ||
-        CA + AB < BC + TRI_DEGENERATE_THRESHOLD)
+    // skip interpolation for degenerate tris
+    if (perimiter < DEBUG_FLOAT ||
+        AB + BC < CA + DEBUG_FLOAT2 ||
+        BC + CA < AB + DEBUG_FLOAT2 ||
+        CA + AB < BC + DEBUG_FLOAT2)
     {
         // maybe differenciate between small and flat tris
         // and linearly interpolate the latter for a more accurate result
-        return (1 / 3.0).xxx;
+        w0 = w1 = w2 = 1 / 3.0;
+        uv = float2(0, 1);
+        d = tri.v0.d * w0 + tri.v1.d * w1 + tri.v2.d * w2;
+        return;
     }
-    
-    float dv = (v1.y - v2.y) * (v0.x - v2.x) + (v2.x - v1.x) * (v0.y - v2.y);
-    float w0 = ((v1.y - v2.y) * (x - v2.x) + (v2.x - v1.x) * (y - v2.y)) / dv;
-    float w1 = ((v2.y - v0.y) * (x - v2.x) + (v0.x - v2.x) * (y - v2.y)) / dv;
+    else
+    {
+    }
+    */
+    // calculate barycentric coordinates
+    float2 p0 = tri.v0.pc;
+    float2 p1 = tri.v1.pc;
+    float2 p2 = tri.v2.pc;
+    float dv = (p1.y - p2.y) * (p0.x - p2.x) + (p2.x - p1.x) * (p0.y - p2.y);
+    float w0 = ((p1.y - p2.y) * (x - p2.x) + (p2.x - p1.x) * (y - p2.y)) / dv;
+    float w1 = ((p2.y - p0.y) * (x - p2.x) + (p0.x - p2.x) * (y - p2.y)) / dv;
     float w2 = 1 - w0 - w1;
     
-    return float3(w0, w1, w2);
+    // apply weights
+    uv = tri.v0.oc * w0 + tri.v1.oc * w1 + tri.v2.oc * w2;
+    d = tri.v0.d * w0 + tri.v1.d * w1 + tri.v2.d * w2;
+    
+    // due to some otherworldly circumstances (compiler optimization?)
+    // uv.x <= 0 always equates to false. wtf.
+    if (uv.x > 0) {}
+    else
+    {
+        uv = (tri.v0.oc + tri.v1.oc + tri.v2.oc) / 3;
+        d = (tri.v0.d + tri.v1.d + tri.v2.d) / 3;
+    }
 }
 
 void DrawRow(int x0, int y0, int x1, Triangle tri, Triangle unsorted)
 {
     if (x1 - x0 <= 0)
         return;
-
+    
+    float2 uv;
+    float d;
+    
     for (int i = x0; i <= x1; i++)
     {
-        float3 w = InterpolateTriangle(i, y0, unsorted.v0.pc, unsorted.v1.pc, unsorted.v2.pc);
-        float2 uv = unsorted.v0.oc * w.x + unsorted.v1.oc * w.y + unsorted.v2.oc * w.z;
-        float d = tri.v0.d * w.x + tri.v1.d * w.y + tri.v2.d * w.z;
+        InterpolateTriangle(i, y0, unsorted, uv, d);
         
         uint2 tc = uint2(i, y0);
         float og = RasterizedDepth[tc];
@@ -62,7 +89,7 @@ void DrawRow(int x0, int y0, int x1, Triangle tri, Triangle unsorted)
         if (d < og || og == 0)
         {
             // offset by one to allow checking for unset pixels
-            Rasterized[tc] = uv + 1;
+            Rasterized[tc] = float4(uv, 0, 1);
             RasterizedDepth[tc] = d;
         }
         

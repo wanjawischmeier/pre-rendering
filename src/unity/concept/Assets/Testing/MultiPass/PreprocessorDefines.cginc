@@ -16,11 +16,11 @@
 #define DEBUG_MODE_WIREFRAME 5
 #define DEBUG_MODE_Z_SINE_FILLED 6
 
-#define DEBUG_COL_LINE float2(1, 1)
-#define DEBUG_COL_POINT_0 float2(1, 0)
-#define DEBUG_COL_POINT_1 float2(1, 0.5)
-#define DEBUG_COL_POINT_2 float2(0, 1)
-#define DEBUG_COL_POINT_3 float2(0.5, 1)
+#define DEBUG_COL_LINE float4(1, 1, 1, 1)
+#define DEBUG_COL_POINT_0 float4(1, 0, 0, 1)
+#define DEBUG_COL_POINT_1 float4(1, 0.5, 0, 1)
+#define DEBUG_COL_POINT_2 float4(0, 1, 0, 1)
+#define DEBUG_COL_POINT_3 float4(0.5, 1, 0, 1)
 
 #define DEBUG_MAX_LINE_LENGTH 600
 #define DEBUG_CIRCLE_RADIUS 1

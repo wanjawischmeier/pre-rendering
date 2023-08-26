@@ -2,7 +2,7 @@
 #define SHAPE_RENDERER_CGINC
 
 // Based on: https://jstutorial.medium.com/how-to-code-your-first-algorithm-rdaw-a-line-ca121f9a1395
-void DrawLine(int2 p0, int2 p1, float2 col)
+void DrawLine(int2 p0, int2 p1, float4 col)
 {
     if (length(p0 - p1) > DEBUG_MAX_LINE_LENGTH)
     {
@@ -115,7 +115,7 @@ void DrawLine(int2 p0, int2 p1, float2 col)
     }
 }
 
-void DrawCircle(int2 p, float2 col)
+void DrawCircle(int2 p, float4 col)
 {
     int x, y, px, nx, py, ny, d;
 
