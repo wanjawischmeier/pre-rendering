@@ -1,0 +1,29 @@
+#pragma kernel GroupQuads
+
+RWStructuredBuffer<int> _Triangles;
+RWStructuredBuffer<float3> _Positions;
+RWStructuredBuffer<float2> _UVs;
+
+[numthreads(1, 1, 1)]
+void GroupQuads(uint3 id : SV_DispatchThreadID)
+{
+    uint index = 0;
+
+    // Write the vertices and attributes to the buffer
+    _Positions[index + 0] = float3(-1, -1, 0);
+    _Positions[index + 1] = float3(1, -1, 0);
+    _Positions[index + 2] = float3(-1, 1, 0);
+    _Positions[index + 3] = float3(1, 1, 0);
+    
+    _UVs[index + 0] = float2(0, 0);
+    _UVs[index + 1] = float2(1, 0);
+    _UVs[index + 2] = float2(0, 1);
+    _UVs[index + 3] = float2(1, 1);
+    
+    _Triangles[index + 0] = 0;
+    _Triangles[index + 1] = 3;
+    _Triangles[index + 2] = 1;
+    _Triangles[index + 3] = 3;
+    _Triangles[index + 4] = 0;
+    _Triangles[index + 5] = 2;
+}
