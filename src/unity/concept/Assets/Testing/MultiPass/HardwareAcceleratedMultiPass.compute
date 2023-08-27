@@ -1,29 +1,61 @@
-#pragma kernel GroupQuads
+#define MAP_TO_RANGE(tc, targetRange) \
+    (tc) * ((targetRange) - 1)
 
+#define NORMALIZE_RANGE(tc, sourceRange) \
+    (tc) / ((sourceRange) - 1)
+
+float PI, PI2, NCLIP, FCLIP;
+float2 INPUT_RESOLUTION, PROJECTION_RESOLUTION, RASTERIZATION_RESOLUTION, PREVIOUS_RASTERIZATION_RESOLUTION;
+
+
+#pragma kernel LoadTexelsToQuadBuffer
+
+Texture2D<float4> _Input;
 RWStructuredBuffer<int> _Triangles;
 RWStructuredBuffer<float3> _Positions;
 RWStructuredBuffer<float2> _UVs;
 
 [numthreads(1, 1, 1)]
-void GroupQuads(uint3 id : SV_DispatchThreadID)
+void LoadTexelsToQuadBuffer(uint3 id : SV_DispatchThreadID)
 {
-    uint index = 0;
+    float2 uv = NORMALIZE_RANGE(id.xy, PROJECTION_RESOLUTION);
+    int2 tc = MAP_TO_RANGE(uv, INPUT_RESOLUTION);
+    float d = _Input[tc].a;
+    /*
+    // later optimize by skipping skybox verticies
+    if (d == 1)
+    {
+        return;
+    }
+    */
+    float2 ll1 = uv.yx;
+    ll1.x *= PI;
+    ll1.y *= PI2;
+    ll1.y += PI;
 
-    // Write the vertices and attributes to the buffer
-    _Positions[index + 0] = float3(-1, -1, 0);
-    _Positions[index + 1] = float3(1, -1, 0);
-    _Positions[index + 2] = float3(-1, 1, 0);
-    _Positions[index + 3] = float3(1, 1, 0);
+    float CP = d * (FCLIP - NCLIP) + NCLIP;
+
+    float3 P = float3(
+        CP * sin(ll1.y) * sin(ll1.x),
+        CP * cos(ll1.x),
+        CP * cos(ll1.y) * sin(ll1.x));
     
-    _UVs[index + 0] = float2(0, 0);
-    _UVs[index + 1] = float2(1, 0);
-    _UVs[index + 2] = float2(0, 1);
-    _UVs[index + 3] = float2(1, 1);
+    P *= -1;
     
-    _Triangles[index + 0] = 0;
-    _Triangles[index + 1] = 3;
-    _Triangles[index + 2] = 1;
-    _Triangles[index + 3] = 3;
-    _Triangles[index + 4] = 0;
-    _Triangles[index + 5] = 2;
+    // calculate vertex and tri indicies
+    uint i00 = id.x + id.y * PROJECTION_RESOLUTION.x;
+    uint i10 = i00 + 1;
+    uint i01 = i00 + PROJECTION_RESOLUTION.x;
+    uint i11 = i01 + 1;
+    uint triIndex = i00 * 6;
+    
+    _Positions[i00] = P;
+    _UVs[i00] = uv;
+    
+    _Triangles[triIndex + 0] = i00;
+    _Triangles[triIndex + 1] = i11;
+    _Triangles[triIndex + 2] = i10;
+    _Triangles[triIndex + 3] = i11;
+    _Triangles[triIndex + 4] = i00;
+    _Triangles[triIndex + 5] = i01;
 }

@@ -1,5 +1,9 @@
-Shader "PreRendering/PostRasterization"
+Shader"PreRendering/PostRasterization"
 {
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+    }
     SubShader
     {
         // No culling or depth
@@ -34,21 +38,22 @@ Shader "PreRendering/PostRasterization"
             }
 
             float2 RESOLUTION;
-            sampler2D _Input;
+            sampler2D _Input, _MainTex;
             Texture2D<float4> _Coordinates;
 
             fixed4 frag (v2f i) : SV_Target
             {
                 float4 tc = _Coordinates[i.uv * (RESOLUTION - 1)];
-                
-                if (tc.a != 1)
+                float4 col = tex2D(_MainTex, i.uv);
+    
+                if (col.a == 1)
                 {
                     // TODO: sample skybox
-                    return fixed4(0, 0, 0, 1);
+                    return col;
                 }
                 
                 float2 uv = tc.xy;
-                fixed4 col = tex2D(_Input, uv);
+                col = tex2D(_Input, uv);
                 return col;
             }
             ENDCG

@@ -1,12 +1,12 @@
 using UnityEngine;
 
+[RequireComponent(typeof(CharacterController))]
 public class FlyMovementController : MonoBehaviour
 {
     public float flySpeed = 5f;
     public float rotationSpeed = 2f;
 
     private CharacterController characterController;
-    private Transform cameraTransform;
 
     private float horizontalRotation = 0f;
     private float verticalRotation = 0f;
@@ -14,7 +14,6 @@ public class FlyMovementController : MonoBehaviour
     private void Start()
     {
         characterController = GetComponent<CharacterController>();
-        cameraTransform = Camera.main.transform;
         Cursor.lockState = CursorLockMode.Locked; // Lock cursor to the center of the screen
     }
 
@@ -28,7 +27,7 @@ public class FlyMovementController : MonoBehaviour
         horizontalRotation += mouseX;
         verticalRotation += mouseY;
         verticalRotation = Mathf.Clamp(verticalRotation, -90f, 90f);
-        cameraTransform.localRotation = Quaternion.Euler(verticalRotation, horizontalRotation, 0);
+        transform.localRotation = Quaternion.Euler(verticalRotation, horizontalRotation, 0);
 
         // Calculate movement based on user input
         float horizontalInput = 0f;

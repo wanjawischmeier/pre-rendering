@@ -56,7 +56,7 @@ public class MultiPass : MonoBehaviour
 
         // calculate group sizes
         computeShader.GetKernelThreadGroupSizes(projectKernel, out uint threadGroupSizeX, out uint threadGroupSizeY, out _);
-        calculateMotionVectorGroupsX = input.width / (int)threadGroupSizeY;
+        calculateMotionVectorGroupsX = input.width / (int)threadGroupSizeX;
         calculateMotionVectorGroupsY = input.height / (int)threadGroupSizeY;
 
         // input dimensions

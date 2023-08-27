@@ -16,9 +16,15 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 float2 uv : TEXCOORD0;
             };
 
+            Texture2D<float4> _Input;
+            SamplerState sampler_linear_repeat;
+
             StructuredBuffer<int> _Triangles;
             StructuredBuffer<float3> _Positions;
             StructuredBuffer<float2> _UVs;
+
+            float TIMESTEP;
+
             uniform uint _StartIndex;
             uniform uint _BaseVertexIndex;
             uniform float4x4 _ObjectToWorld;
@@ -30,6 +36,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 float2 uv = _UVs[_Triangles[vertexID + _StartIndex] + _BaseVertexIndex];
                 float3 pos = _Positions[_Triangles[vertexID + _StartIndex] + _BaseVertexIndex];
                 float4 wpos = mul(_ObjectToWorld, float4(pos + float3(instanceID, 0, 0), 1.0f));
+                wpos.y += sin(TIMESTEP / 50) * sin(length(wpos)) * sin(wpos.x);
                 o.pos = mul(UNITY_MATRIX_VP, wpos);
                 o.uv = uv;
                 return o;
@@ -37,7 +44,8 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
 
             float4 frag(v2f i) : SV_Target
             {
-                return fixed4(i.uv, 0, 1);
+                // return _Input.Sample(sampler_linear_repeat, i.uv);
+                return float4(i.uv, 0, 0);
             }
             ENDCG
         }
