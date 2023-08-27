@@ -146,8 +146,8 @@ Camera:
   m_GameObject: {fileID: 107278851}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 1
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_ClearFlags: 2
+  m_BackGroundColor: {r: 0, g: 0, b: 0, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -333,7 +333,7 @@ MeshCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 5
   m_Convex: 0
   m_CookingOptions: 30
@@ -511,14 +511,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d7d05af6f4136ad4f9d4fdc40ad66c67, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  input: {fileID: 2800000, guid: f9e82ff9a9af25540bb4edde2f933ede, type: 3}
+  input: {fileID: 2800000, guid: 3beb61103c224e94fb52a1a26587be40, type: 3}
   computeShader: {fileID: 7200000, guid: 87dba1d044049cf46aa6b5798711c964, type: 3}
   rasterizationShader: {fileID: 4800000, guid: ff3af3d092bd8fa48b9b61e5d11b7769, type: 3}
   postRasterizationShader: {fileID: 4800000, guid: fe60f4afcc71ebb48af2270059806d05, type: 3}
   nClip: 1
   fClip: 30
-  projectionResolution: {x: 1000, y: 500}
-  rasterizationResolution: {x: 1000, y: 500}
+  fClipCutoff: 1
+  projectionResolution: {x: 400, y: 200}
+  rasterizationResolution: {x: 960, y: 540}
   renderCamera: {fileID: 107278852}
   rasterized: {fileID: 8400000, guid: c4cf7d7b952be3344a09afd00c88b279, type: 2}
 --- !u!143 &1481361357

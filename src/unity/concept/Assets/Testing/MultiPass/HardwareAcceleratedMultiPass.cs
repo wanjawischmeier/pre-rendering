@@ -8,6 +8,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     public ComputeShader computeShader;
     public Shader rasterizationShader, postRasterizationShader;
     public float nClip, fClip;
+    public float fClipCutoff = 1;
     public Vector2Int projectionResolution, rasterizationResolution;
     public Camera renderCamera;
 
@@ -43,6 +44,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         computeShader.Dispatch(loadTexelsToQuadBuffer, projectionResolution.x / (int)threadGroupSizeX, projectionResolution.y / (int)threadGroupSizeY, 1);
 
         rasterized = new RenderTexture(rasterizationResolution.x, rasterizationResolution.y, 0);
+        rasterized.format = RenderTextureFormat.ARGBFloat;
         renderCamera.targetTexture = rasterized;
 
         rasterizationMaterial = new Material(rasterizationShader);
@@ -72,6 +74,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     void Update()
     {
         renderParams.matProps.SetFloat("TIMESTEP", Time.frameCount + Time.deltaTime);
+        renderParams.matProps.SetFloat("FCLIP", fClip - fClipCutoff);
         
         // (int)mesh.GetIndexCount(0) for external meshes
         // maybe switch to using quad topology

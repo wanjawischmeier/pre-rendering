@@ -38,15 +38,16 @@ Shader"PreRendering/PostRasterization"
             }
 
             float2 RESOLUTION;
-            sampler2D _Input, _MainTex;
-            Texture2D<float4> _Coordinates;
+            sampler2D _Input, _MainTex, _Coordinates;
+            // Texture2D<float4> _Coordinates;
 
             fixed4 frag (v2f i) : SV_Target
             {
-                float4 tc = _Coordinates[i.uv * (RESOLUTION - 1)];
+                // float4 tc = _Coordinates[i.uv * (RESOLUTION - 1)];
+                float4 tc = tex2D(_Coordinates, i.uv);
                 float4 col = tex2D(_MainTex, i.uv);
-    
-                if (col.a == 1)
+                
+                if (col.a == 1 || tc.a != 1)
                 {
                     // TODO: sample skybox
                     return col;
@@ -54,6 +55,7 @@ Shader"PreRendering/PostRasterization"
                 
                 float2 uv = tc.xy;
                 col = tex2D(_Input, uv);
+                // return float4(uv % 0.1 * 10, 0, 1);
                 return col;
             }
             ENDCG
