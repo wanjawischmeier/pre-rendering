@@ -5,6 +5,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
         Pass
         {
             // Cull Off
+            ZTest LEqual
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
@@ -16,10 +17,10 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 float4 pos : SV_POSITION;
                 float2 uv : TEXCOORD0;
                 float depth : SV_Depth;
+                int index : TEXCOORD1;
             };
 
             Texture2D<float4> _Input;
-            SamplerState sampler_linear_repeat;
 
             StructuredBuffer<int> _Triangles;
             StructuredBuffer<float3> _Positions;
@@ -39,16 +40,16 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 float2 uv0 = _UVs[index + 0];
                 float2 uv1 = _UVs[index + 1];
                 float2 uv2 = _UVs[index + 2];
-                
                 if (uv0.x == -1 || uv1.x == -1 || uv2.x == -1)
                 {
                     o.pos = float4(0, 0, 0, 0);
                     return o;
                 }
-    
+                
                 float3 pos = _Positions[index];
                 float4 wpos = mul(_ObjectToWorld, float4(pos + float3(instanceID, 0, 0), 1.0f));
                 
+                o.index = index;
                 o.depth = length(wpos);
                 // wpos.y += sin(TIMESTEP / 50) * sin(length(wpos)) * sin(wpos.x);
                 o.pos = mul(UNITY_MATRIX_VP, wpos);
@@ -58,8 +59,17 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
 
             float4 frag(v2f i) : SV_Target
             {
-                // return _Input.Sample(sampler_linear_repeat, i.uv);
-                return float4(i.uv, i.depth, i.depth < FCLIP);
+                /*
+                float2 uv0 = _UVs[_Triangles[i.index + 0] + _BaseVertexIndex];
+                float2 uv1 = _UVs[_Triangles[i.index + 1] + _BaseVertexIndex];
+                float2 uv2 = _UVs[_Triangles[i.index + 2] + _BaseVertexIndex];
+                bool isEdge = length(i.uv - uv0) + length(i.uv - uv1) + length(i.uv - uv2) < 0.6;
+                if (isEdge)
+                {
+                    return float4(0, 0, 0, 0);
+                }
+                */
+                return float4(i.uv, i.depth, 1);
             }
             ENDCG
         }

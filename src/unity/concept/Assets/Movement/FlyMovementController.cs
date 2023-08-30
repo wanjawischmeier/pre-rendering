@@ -19,6 +19,11 @@ public class FlyMovementController : MonoBehaviour
 
     private void Update()
     {
+        if (Input.GetKey(KeyCode.LeftControl))
+        {
+            return;
+        }
+
         // Handle rotation (looking around)
         float mouseX = Input.GetAxis("Mouse X") * rotationSpeed;
         float mouseY = -Input.GetAxis("Mouse Y") * rotationSpeed; // Invert Y-axis for natural camera movement

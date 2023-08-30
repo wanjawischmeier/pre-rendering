@@ -1,3 +1,5 @@
+#pragma multi_compile __ USE_PREVIOUS_PASS
+
 #define MAP_TO_RANGE(tc, targetRange) \
     (tc) * ((targetRange) - 1)
 
@@ -13,7 +15,11 @@ float2 INPUT_RESOLUTION, PROJECTION_RESOLUTION, PREVIOUS_RASTERIZATION_RESOLUTIO
 
 #pragma kernel LoadTexelsToQuadBuffer
 
-Texture2D<float4> _Input, _PreviousPass;
+Texture2D<float4> _Input;
+#ifdef USE_PREVIOUS_PASS
+Texture2D<float4> _PreviousPass;
+SamplerState sampler_linear_repeat;
+#endif
 RWStructuredBuffer<int> _Triangles;
 RWStructuredBuffer<float3> _Positions;
 RWStructuredBuffer<float2> _UVs;
@@ -29,21 +35,23 @@ void LoadTexelsToQuadBuffer(uint3 id : SV_DispatchThreadID)
     uint triIndex = i00 * 6;
     
     float2 uv = NORMALIZE_RANGE(id.xy, PROJECTION_RESOLUTION);
-    if (RENDER_PASS != 0)
+    
+#ifdef USE_PREVIOUS_PASS
+    float4 pc = _PreviousPass[MAP_TO_RANGE(uv, PREVIOUS_RASTERIZATION_RESOLUTION)];
+    if (pc.a == 0)
     {
-        float4 pc = _PreviousPass[MAP_TO_RANGE(uv, PREVIOUS_RASTERIZATION_RESOLUTION)];
-        if (pc.a != 1)
-        {
-            _UVs[i00] = float2(-1, 0);
-            return;
-        }
-        uv = pc.xy;
+        // _UVs[i00] = float2(-1, 0);
+        // return;
     }
     
+    uv = pc.xy;
+    float d = _Input.SampleLevel(sampler_linear_repeat, uv, 0).a;
+#else
     int2 tc = MAP_TO_RANGE(uv, INPUT_RESOLUTION);
+    float d = _Input[tc].a;
+#endif
     
-    // sample and skip skybox verticies
-    float d = _Input[tc].a;    
+    // skip skybox verticies
     if (d == 1)
     {
         _UVs[i00] = float2(-1, 0);
@@ -63,7 +71,6 @@ void LoadTexelsToQuadBuffer(uint3 id : SV_DispatchThreadID)
         CP * cos(ll1.y) * sin(ll1.x));
     
     P *= -1;
-    P.x += 20 * RENDER_PASS;
     
     _Positions[i00] = P;
     _UVs[i00] = uv;

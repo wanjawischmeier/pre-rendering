@@ -33,20 +33,23 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         meshUVs = new GraphicsBuffer[passes];
         rasterized = new RenderTexture[passes];
         renderCameras = new Camera[passes];
-
+        /*
         // disable all shader variants apart from the first one
         computeShader.EnableKeyword($"PASS_0");
         for (int pass = 1; pass < passes; pass++)
         {
             computeShader.DisableKeyword($"PASS_{pass}");
         }
+        */
+
+        Camera originalCamera = GetComponent<Camera>();
 
         computeShader.SetFloat("PI", Mathf.PI);
         computeShader.SetFloat("PI2", Mathf.PI * 2);
         computeShader.SetFloat("NCLIP", nClip);
         computeShader.SetFloat("FCLIP", fClip);
         computeShader.SetVector("INPUT_RESOLUTION", new Vector2(input.width, input.height));
-        
+
         loadTexelsToQuadBuffer = computeShader.FindKernel("LoadTexelsToQuadBuffer");
         computeShader.GetKernelThreadGroupSizes(loadTexelsToQuadBuffer, out threadGroupSizeX, out threadGroupSizeY, out _);
         computeShader.SetTexture(loadTexelsToQuadBuffer, "_Input", input);
@@ -68,8 +71,15 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             obj.transform.position = Vector3.zero;
             renderCameras[pass] = obj.AddComponent<Camera>();
             renderCameras[pass].clearFlags = CameraClearFlags.SolidColor;
+            renderCameras[pass].backgroundColor = Color.clear;
             renderCameras[pass].cullingMask = 1 << LayerMask.NameToLayer("Rasterized");
             renderCameras[pass].targetTexture = rasterized[pass];
+
+            // copy some other flags for comfort
+            renderCameras[pass].useOcclusionCulling = originalCamera.useOcclusionCulling;
+            renderCameras[pass].allowHDR = originalCamera.allowHDR;
+            renderCameras[pass].allowMSAA = originalCamera.allowMSAA;
+            renderCameras[pass].allowDynamicResolution = originalCamera.allowDynamicResolution;
         }
         
         rasterizationMaterial = new Material(rasterizationShader);
@@ -106,6 +116,10 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             computeShader.SetBuffer(loadTexelsToQuadBuffer, "_UVs", meshUVs[pass]);
             if (pass != 0)
             {
+                if (pass == 1)
+                {
+                    computeShader.EnableKeyword("USE_PREVIOUS_PASS");
+                }
                 computeShader.SetVector("PREVIOUS_RASTERIZATION_RESOLUTION", new Vector2(rasterizationResolutions[pass - 1].x, rasterizationResolutions[pass - 1].y));
                 computeShader.SetTexture(loadTexelsToQuadBuffer, "_PreviousPass", rasterized[pass - 1]);
             }
@@ -121,6 +135,11 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             // (int)mesh.GetIndexCount(0) for external meshes
             // maybe switch to using quad topology
             Graphics.RenderPrimitives(renderParams, MeshTopology.Triangles, indicies[pass]);
+        }
+
+        if (passes != 1)
+        {
+            computeShader.DisableKeyword("USE_PREVIOUS_PASS");
         }
     }
 

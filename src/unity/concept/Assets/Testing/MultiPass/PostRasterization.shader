@@ -45,7 +45,7 @@ Shader"PreRendering/PostRasterization"
                 float4 tc = tex2D(_Coordinates, i.uv);
                 float4 col = tex2D(_MainTex, i.uv);
 
-                if (tc.a != 1) // col.a == 1 with clear flags as solid color
+                if (tc.a == 0) // col.a == 1 with clear flags as solid color
                 {
                     return col;
                 }
