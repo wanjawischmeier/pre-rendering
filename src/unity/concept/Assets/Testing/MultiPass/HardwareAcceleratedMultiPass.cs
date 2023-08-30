@@ -5,6 +5,16 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
 {
     const int MAX_PASSES = 4;
 
+    public enum DebugChannel
+    {
+        none, motionVectors, rasterized
+    }
+
+    public enum DebugMode
+    {
+        none, zSineFilled
+    }
+
     public Texture2D input;
     public ComputeShader computeShader;
     public Shader rasterizationShader, postRasterizationShader;
@@ -14,18 +24,30 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     public int passes = 1;
     public Vector2Int[] projectionResolutions, rasterizationResolutions;
     public Vector3 meshTranslation;
-    public Camera[] renderCameras;
 
-    public Material rasterizationMaterial, postRasterizationMaterial;
+    [Header("Debugging")]
+    public DebugChannel debugChannel;
+    public DebugMode debugMode;
+    public int debugPass;
+
+    private Material rasterizationMaterial, postRasterizationMaterial;
     private RenderParams renderParams;
     private GraphicsBuffer[] meshTriangles, meshPositions, meshUVs;
-    public RenderTexture[] rasterized;
+    private RenderTexture motionVectors;
+    private RenderTexture[] rasterized;
+    private Camera[] renderCameras;
     private uint threadGroupSizeX, threadGroupSizeY;
-    private int loadTexelsToQuadBuffer;
+    private int calculateMotionVectorsKernel, loadTexelsToQuadBufferKernel;
     private int[] verticies, indicies;
 
     void Start()
     {
+        // input dimensions
+        motionVectors = new RenderTexture(input.width, input.height, 0);
+        motionVectors.enableRandomWrite = true;
+        motionVectors.format = RenderTextureFormat.ARGBFloat;
+
+        // initialize arrays
         verticies = new int[passes];
         indicies = new int[passes];
         meshTriangles = new GraphicsBuffer[passes];
@@ -50,9 +72,17 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         computeShader.SetFloat("FCLIP", fClip);
         computeShader.SetVector("INPUT_RESOLUTION", new Vector2(input.width, input.height));
 
-        loadTexelsToQuadBuffer = computeShader.FindKernel("LoadTexelsToQuadBuffer");
-        computeShader.GetKernelThreadGroupSizes(loadTexelsToQuadBuffer, out threadGroupSizeX, out threadGroupSizeY, out _);
-        computeShader.SetTexture(loadTexelsToQuadBuffer, "_Input", input);
+        calculateMotionVectorsKernel = computeShader.FindKernel("CalculateMotionVectors");
+        loadTexelsToQuadBufferKernel = computeShader.FindKernel("LoadTexelsToQuadBuffer");
+        computeShader.GetKernelThreadGroupSizes(loadTexelsToQuadBufferKernel, out threadGroupSizeX, out threadGroupSizeY, out _);
+
+        computeShader.SetTexture(calculateMotionVectorsKernel, "_Input", input);
+        computeShader.SetTexture(calculateMotionVectorsKernel, "_MotionVectorsWrite", motionVectors);
+        computeShader.SetTexture(loadTexelsToQuadBufferKernel, "_MotionVectors", motionVectors);
+        computeShader.SetTexture(loadTexelsToQuadBufferKernel, "_Input", input);
+
+        // calculate motion vectors
+        computeShader.Dispatch(calculateMotionVectorsKernel, input.width / (int)threadGroupSizeX, input.height / (int)threadGroupSizeY, 1);
 
         for (int pass = 0; pass < passes; pass++)
         {
@@ -63,7 +93,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             meshPositions[pass] = new GraphicsBuffer(GraphicsBuffer.Target.Structured, verticies[pass], 3 * sizeof(float));
             meshUVs[pass] = new GraphicsBuffer(GraphicsBuffer.Target.Structured, verticies[pass], 2 * sizeof(float));
 
-            rasterized[pass] = new RenderTexture(rasterizationResolutions[pass].x, rasterizationResolutions[pass].y, 0);
+            rasterized[pass] = new RenderTexture(rasterizationResolutions[pass].x, rasterizationResolutions[pass].y, 24);
             rasterized[pass].format = RenderTextureFormat.ARGBFloat;
 
             GameObject obj = new GameObject($"RenderCamera{pass}");
@@ -75,7 +105,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             renderCameras[pass].cullingMask = 1 << LayerMask.NameToLayer("Rasterized");
             renderCameras[pass].targetTexture = rasterized[pass];
 
-            // copy some other flags for comfort
+            // copy some flags for comfort
             renderCameras[pass].useOcclusionCulling = originalCamera.useOcclusionCulling;
             renderCameras[pass].allowHDR = originalCamera.allowHDR;
             renderCameras[pass].allowMSAA = originalCamera.allowMSAA;
@@ -99,6 +129,27 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         */
         // might be needed later for multiple viewpoints
         renderParams.matProps.SetMatrix("_ObjectToWorld", Matrix4x4.Translate(meshTranslation));
+
+        for (int pass = 0; pass < passes; pass++)
+        {
+
+            computeShader.SetInt("RENDER_PASS", pass);
+            computeShader.SetVector("PROJECTION_RESOLUTION", new Vector2(projectionResolutions[pass].x, projectionResolutions[pass].y));
+            computeShader.SetBuffer(loadTexelsToQuadBufferKernel, "_Triangles", meshTriangles[pass]);
+            computeShader.SetBuffer(loadTexelsToQuadBufferKernel, "_Positions", meshPositions[pass]);
+            computeShader.SetBuffer(loadTexelsToQuadBufferKernel, "_UVs", meshUVs[pass]);
+
+            if (pass != 0)
+            {
+                if (pass == 1)
+                {
+                    computeShader.EnableKeyword("USE_PREVIOUS_PASS");
+                }
+                computeShader.SetVector("PREVIOUS_RASTERIZATION_RESOLUTION", new Vector2(rasterizationResolutions[pass - 1].x, rasterizationResolutions[pass - 1].y));
+                computeShader.SetTexture(loadTexelsToQuadBufferKernel, "_PreviousPass", rasterized[pass - 1]);
+            }
+            computeShader.Dispatch(loadTexelsToQuadBufferKernel, projectionResolutions[pass].x / (int)threadGroupSizeX, projectionResolutions[pass].y / (int)threadGroupSizeY, 1);
+        }
     }
 
     void Update()
@@ -109,23 +160,26 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
 
         for (int pass = 0; pass < passes; pass++)
         {
-            computeShader.SetInt("RENDER_PASS", pass);
-            computeShader.SetVector("PROJECTION_RESOLUTION", new Vector2(projectionResolutions[pass].x, projectionResolutions[pass].y));
-            computeShader.SetBuffer(loadTexelsToQuadBuffer, "_Triangles", meshTriangles[pass]);
-            computeShader.SetBuffer(loadTexelsToQuadBuffer, "_Positions", meshPositions[pass]);
-            computeShader.SetBuffer(loadTexelsToQuadBuffer, "_UVs", meshUVs[pass]);
+
             if (pass != 0)
             {
+                computeShader.SetInt("RENDER_PASS", pass);
+                computeShader.SetVector("PROJECTION_RESOLUTION", new Vector2(projectionResolutions[pass].x, projectionResolutions[pass].y));
+                computeShader.SetBuffer(loadTexelsToQuadBufferKernel, "_Triangles", meshTriangles[pass]);
+                computeShader.SetBuffer(loadTexelsToQuadBufferKernel, "_Positions", meshPositions[pass]);
+                computeShader.SetBuffer(loadTexelsToQuadBufferKernel, "_UVs", meshUVs[pass]);
+
                 if (pass == 1)
                 {
                     computeShader.EnableKeyword("USE_PREVIOUS_PASS");
                 }
                 computeShader.SetVector("PREVIOUS_RASTERIZATION_RESOLUTION", new Vector2(rasterizationResolutions[pass - 1].x, rasterizationResolutions[pass - 1].y));
-                computeShader.SetTexture(loadTexelsToQuadBuffer, "_PreviousPass", rasterized[pass - 1]);
+                computeShader.SetTexture(loadTexelsToQuadBufferKernel, "_PreviousPass", rasterized[pass - 1]);
+
+                computeShader.Dispatch(loadTexelsToQuadBufferKernel, projectionResolutions[pass].x / (int)threadGroupSizeX, projectionResolutions[pass].y / (int)threadGroupSizeY, 1);
             }
 
-            computeShader.Dispatch(loadTexelsToQuadBuffer, projectionResolutions[pass].x / (int)threadGroupSizeX, projectionResolutions[pass].y / (int)threadGroupSizeY, 1);
-
+            renderParams.matProps.SetInt("DEBUG_MODE", (int)debugMode);
             renderParams.matProps.SetTexture("_Input", input);
             renderParams.matProps.SetBuffer("_Triangles", meshTriangles[pass]);
             renderParams.matProps.SetBuffer("_Positions", meshPositions[pass]);
@@ -145,7 +199,18 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
-        Graphics.Blit(source, destination, postRasterizationMaterial);
+        switch (debugChannel)
+        {
+            case DebugChannel.motionVectors:
+                Graphics.Blit(motionVectors, destination);
+                break;
+            case DebugChannel.rasterized:
+                Graphics.Blit(rasterized[debugPass], destination);
+                break;
+            default:
+                Graphics.Blit(source, destination, postRasterizationMaterial);
+                break;
+        }
     }
 
     void OnDestroy()

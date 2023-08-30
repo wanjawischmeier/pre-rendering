@@ -12,14 +12,49 @@ int RENDER_PASS;
 float PI, PI2, NCLIP, FCLIP;
 float2 INPUT_RESOLUTION, PROJECTION_RESOLUTION, PREVIOUS_RASTERIZATION_RESOLUTION;
 
+#pragma kernel CalculateMotionVectors
+
+Texture2D<float4> _Input;
+RWTexture2D<float4> _MotionVectorsWrite;
+
+[numthreads(8, 8, 1)]
+void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
+{
+    float2 uv = NORMALIZE_RANGE(id.xy, INPUT_RESOLUTION);
+    float d = _Input[id.xy].a;
+    
+    // invalidate skybox verticies
+    if (d == 1)
+    {
+        _MotionVectorsWrite[id.xy] = float4(0, 0, 0, 0);
+        return;
+    }
+        
+    float2 ll1 = uv.yx;
+    ll1.x *= PI;
+    ll1.y *= PI2;
+    ll1.y += PI;
+
+    float CP = d * (FCLIP - NCLIP) + NCLIP;
+
+    float3 P = float3(
+        CP * sin(ll1.y) * sin(ll1.x),
+        CP * cos(ll1.x),
+        CP * cos(ll1.y) * sin(ll1.x));
+    
+    _MotionVectorsWrite[id.xy] = float4(-P, 1);
+}
+
+
 
 #pragma kernel LoadTexelsToQuadBuffer
 
-Texture2D<float4> _Input;
+Texture2D<float4> _MotionVectors;
 #ifdef USE_PREVIOUS_PASS
 Texture2D<float4> _PreviousPass;
 SamplerState sampler_linear_repeat;
 #endif
+
 RWStructuredBuffer<int> _Triangles;
 RWStructuredBuffer<float3> _Positions;
 RWStructuredBuffer<float2> _UVs;
@@ -38,41 +73,27 @@ void LoadTexelsToQuadBuffer(uint3 id : SV_DispatchThreadID)
     
 #ifdef USE_PREVIOUS_PASS
     float4 pc = _PreviousPass[MAP_TO_RANGE(uv, PREVIOUS_RASTERIZATION_RESOLUTION)];
-    if (pc.a == 0)
-    {
-        // _UVs[i00] = float2(-1, 0);
-        // return;
-    }
-    
-    uv = pc.xy;
-    float d = _Input.SampleLevel(sampler_linear_repeat, uv, 0).a;
-#else
-    int2 tc = MAP_TO_RANGE(uv, INPUT_RESOLUTION);
-    float d = _Input[tc].a;
-#endif
-    
-    // skip skybox verticies
-    if (d == 1)
+    if (pc.a != 1)
     {
         _UVs[i00] = float2(-1, 0);
         return;
     }
     
-    float2 ll1 = uv.yx;
-    ll1.x *= PI;
-    ll1.y *= PI2;
-    ll1.y += PI;
-
-    float CP = d * (FCLIP - NCLIP) + NCLIP;
-
-    float3 P = float3(
-        CP * sin(ll1.y) * sin(ll1.x),
-        CP * cos(ll1.x),
-        CP * cos(ll1.y) * sin(ll1.x));
+    uv = pc.xy;
+    float4 P = _MotionVectors.SampleLevel(sampler_linear_repeat, uv, 0);
+#else
+    int2 tc = MAP_TO_RANGE(uv, INPUT_RESOLUTION);
+    float4 P = _MotionVectors[tc];
+#endif
     
-    P *= -1;
+    if (P.w == 0)
+    {
+        // skip invalid verticies
+        _UVs[i00] = float2(-1, 0);
+        return;
+    }
     
-    _Positions[i00] = P;
+    _Positions[i00] = P.xyz;
     _UVs[i00] = uv;
     
     _Triangles[triIndex + 0] = i00;

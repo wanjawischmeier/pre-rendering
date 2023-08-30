@@ -593,15 +593,14 @@ MonoBehaviour:
   passes: 1
   projectionResolutions:
   - {x: 400, y: 200}
-  - {x: 400, y: 200}
+  - {x: 2048, y: 512}
   rasterizationResolutions:
   - {x: 1920, y: 1080}
   - {x: 1920, y: 1080}
   meshTranslation: {x: 0, y: 0, z: 0}
-  renderCameras: []
-  rasterizationMaterial: {fileID: 0}
-  postRasterizationMaterial: {fileID: 0}
-  rasterized: []
+  debugChannel: 0
+  debugMode: 0
+  debugPass: 0
 --- !u!143 &1481361357
 CharacterController:
   m_ObjectHideFlags: 0
