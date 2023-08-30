@@ -4,7 +4,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
     {
         Pass
         {
-            Cull Off
+            // Cull Off
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
@@ -30,25 +30,36 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
             uniform uint _StartIndex;
             uniform uint _BaseVertexIndex;
             uniform float4x4 _ObjectToWorld;
-            uniform float _NumInstances;
 
             v2f vert(uint vertexID: SV_VertexID, uint instanceID : SV_InstanceID)
             {
                 v2f o;
-                float2 uv = _UVs[_Triangles[vertexID + _StartIndex] + _BaseVertexIndex];
-                float3 pos = _Positions[_Triangles[vertexID + _StartIndex] + _BaseVertexIndex];
+    
+                int index = _Triangles[vertexID + _StartIndex] + _BaseVertexIndex;
+                float2 uv0 = _UVs[index + 0];
+                float2 uv1 = _UVs[index + 1];
+                float2 uv2 = _UVs[index + 2];
+                
+                if (uv0.x == -1 || uv1.x == -1 || uv2.x == -1)
+                {
+                    o.pos = float4(0, 0, 0, 0);
+                    return o;
+                }
+    
+                float3 pos = _Positions[index];
                 float4 wpos = mul(_ObjectToWorld, float4(pos + float3(instanceID, 0, 0), 1.0f));
+                
                 o.depth = length(wpos);
                 // wpos.y += sin(TIMESTEP / 50) * sin(length(wpos)) * sin(wpos.x);
                 o.pos = mul(UNITY_MATRIX_VP, wpos);
-                o.uv = uv;
+                o.uv = uv0;
                 return o;
             }
 
             float4 frag(v2f i) : SV_Target
             {
                 // return _Input.Sample(sampler_linear_repeat, i.uv);
-                return float4(i.uv, 0, i.depth < FCLIP);
+                return float4(i.uv, i.depth, i.depth < FCLIP);
             }
             ENDCG
         }
