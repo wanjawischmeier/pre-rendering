@@ -56,7 +56,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
     
                 float4 wpos = mul(_ObjectToWorld, float4(pos0 + float3(instanceID, 0, 0), 1.0f));
     
-                if (DEBUG_MODE == 1) // zSineFilled
+                if (DEBUG_MODE == 1 && length(wpos.xyz - float3(-4, 0, -5)) < 10) // zSineFilled
                 {
                     wpos.y += sin(TIMESTEP * 2) * sin(length(wpos)) * sin(wpos.x);
                 }

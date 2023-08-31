@@ -95,7 +95,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
 
         for (int pass = 0; pass < passes; pass++)
         {
-            float relativePass = (float)pass / (passes - 1);
+            float relativePass = (passes == 1) ? 1 : (float)pass / (passes - 1);
             float relativeCurveMultiplier = projectionResolutionCurve.Evaluate(relativePass);
             projectionResolutions[pass] = Vector2Int.RoundToInt(tmpProjectionResolution * relativeCurveMultiplier);
             relativeCurveMultiplier = rasterizationResolutionCurve.Evaluate(relativePass);
