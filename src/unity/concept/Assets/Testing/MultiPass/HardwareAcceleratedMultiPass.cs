@@ -169,7 +169,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
 
     void Update()
     {
-        renderParams.matProps.SetFloat("TIMESTEP", Time.frameCount + Time.deltaTime);
+        renderParams.matProps.SetFloat("TIMESTEP", Time.time);
         renderParams.matProps.SetFloat("FCLIP", fClip - fClipCutoff);
         renderParams.matProps.SetFloat("MAX_CIRCUMFERENCE", maxCircumference);
 
@@ -204,7 +204,6 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             renderParams.camera = renderCameras[pass];
 
             // (int)mesh.GetIndexCount(0) for external meshes
-            // maybe switch to using quad topology
             Graphics.RenderPrimitives(renderParams, MeshTopology.Triangles, indicies[pass]);
         }
 

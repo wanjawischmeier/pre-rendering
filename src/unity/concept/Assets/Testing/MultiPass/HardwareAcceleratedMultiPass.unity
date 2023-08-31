@@ -601,20 +601,20 @@ MonoBehaviour:
     - serializedVersion: 3
       time: -0.012500763
       value: 0.103759766
-      inSlope: 0
-      outSlope: 0
+      inSlope: 0.000026749949
+      outSlope: 0.000026749949
       tangentMode: 0
       weightedMode: 0
       inWeight: 0
-      outWeight: 0
+      outWeight: 0.50612384
     - serializedVersion: 3
-      time: 1
-      value: 1
-      inSlope: 2
-      outSlope: 2
+      time: 1.0083313
+      value: 0.65094376
+      inSlope: 1.698159
+      outSlope: 1.698159
       tangentMode: 0
       weightedMode: 0
-      inWeight: 0
+      inWeight: 0.08163075
       outWeight: 0
     m_PreInfinity: 2
     m_PostInfinity: 2
@@ -644,7 +644,7 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   debugChannel: 0
-  debugMode: 0
+  debugMode: 1
   debugPass: 0
   renderCameras: []
   rasterized: []

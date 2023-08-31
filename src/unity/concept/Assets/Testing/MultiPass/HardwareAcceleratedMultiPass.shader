@@ -48,7 +48,6 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 float3 pos0 = _Positions[index + 0];
                 float3 pos1 = _Positions[index + 1];
                 float3 pos2 = _Positions[index + 2];
-                
                 if (RENDER_PASS != 0 && (length(pos0 - pos1) > MAX_CIRCUMFERENCE || length(pos1 - pos2) > MAX_CIRCUMFERENCE || length(pos2 - pos0) > MAX_CIRCUMFERENCE))
                 {
                     o.pos = float4(0, 0, 0, 0);
@@ -59,7 +58,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
     
                 if (DEBUG_MODE == 1) // zSineFilled
                 {
-                    wpos.y += sin(TIMESTEP / 50) * sin(length(wpos)) * sin(wpos.x);
+                    wpos.y += sin(TIMESTEP * 2) * sin(length(wpos)) * sin(wpos.x);
                 }
     
                 o.depth = length(wpos);
