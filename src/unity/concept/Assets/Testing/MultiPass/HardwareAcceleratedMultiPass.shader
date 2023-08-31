@@ -25,8 +25,8 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
             StructuredBuffer<float3> _Positions;
             StructuredBuffer<float2> _UVs;
             
-            uniform int DEBUG_MODE;
-            uniform float TIMESTEP, FCLIP;
+            uniform int DEBUG_MODE, RENDER_PASS;
+            uniform float TIMESTEP, FCLIP, MAX_CIRCUMFERENCE;
             uniform uint _StartIndex;
             uniform uint _BaseVertexIndex;
             uniform float4x4 _ObjectToWorld;
@@ -45,8 +45,17 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                     return o;
                 }
                 
-                float3 pos = _Positions[index];
-                float4 wpos = mul(_ObjectToWorld, float4(pos + float3(instanceID, 0, 0), 1.0f));
+                float3 pos0 = _Positions[index + 0];
+                float3 pos1 = _Positions[index + 1];
+                float3 pos2 = _Positions[index + 2];
+                
+                if (RENDER_PASS != 0 && (length(pos0 - pos1) > MAX_CIRCUMFERENCE || length(pos1 - pos2) > MAX_CIRCUMFERENCE || length(pos2 - pos0) > MAX_CIRCUMFERENCE))
+                {
+                    o.pos = float4(0, 0, 0, 0);
+                    return o;
+                }
+    
+                float4 wpos = mul(_ObjectToWorld, float4(pos0 + float3(instanceID, 0, 0), 1.0f));
     
                 if (DEBUG_MODE == 1) // zSineFilled
                 {

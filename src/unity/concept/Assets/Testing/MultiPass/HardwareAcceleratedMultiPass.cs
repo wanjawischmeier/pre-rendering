@@ -18,7 +18,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     public Texture2D input;
     public ComputeShader computeShader;
     public Shader rasterizationShader, postRasterizationShader;
-    public float nClip, fClip;
+    public float nClip, fClip, maxCircumference;
     public float fClipCutoff = 1;
     [Range(1, MAX_PASSES)]
     public int passes = 1;
@@ -156,6 +156,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     {
         renderParams.matProps.SetFloat("TIMESTEP", Time.frameCount + Time.deltaTime);
         renderParams.matProps.SetFloat("FCLIP", fClip - fClipCutoff);
+        renderParams.matProps.SetFloat("MAX_CIRCUMFERENCE", maxCircumference);
 
 
         for (int pass = 0; pass < passes; pass++)
@@ -180,6 +181,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             }
 
             renderParams.matProps.SetInt("DEBUG_MODE", (int)debugMode);
+            renderParams.matProps.SetInt("RENDER_PASS", pass);
             renderParams.matProps.SetTexture("_Input", input);
             renderParams.matProps.SetBuffer("_Triangles", meshTriangles[pass]);
             renderParams.matProps.SetBuffer("_Positions", meshPositions[pass]);
@@ -205,7 +207,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
                 Graphics.Blit(motionVectors, destination);
                 break;
             case DebugChannel.rasterized:
-                Graphics.Blit(rasterized[debugPass], destination);
+                Graphics.Blit(rasterized[Mathf.Max(0, Mathf.Min(passes - 1, debugPass))], destination);
                 break;
             default:
                 Graphics.Blit(source, destination, postRasterizationMaterial);
