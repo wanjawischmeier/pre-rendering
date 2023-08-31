@@ -22,20 +22,24 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     public float fClipCutoff = 1;
     [Range(1, MAX_PASSES)]
     public int passes = 1;
-    public Vector2Int[] projectionResolutions, rasterizationResolutions;
+    public Vector2Int projectionResolution, rasterizationResolution;
     public Vector3 meshTranslation;
+    public AnimationCurve projectionResolutionCurve, rasterizationResolutionCurve;
 
     [Header("Debugging")]
     public DebugChannel debugChannel;
     public DebugMode debugMode;
     public int debugPass;
 
+    [Header("Debugging Values")]
+    public Camera[] renderCameras;
+    public RenderTexture[] rasterized;
+    public Vector2Int[] projectionResolutions, rasterizationResolutions;
+
     private Material rasterizationMaterial, postRasterizationMaterial;
     private RenderParams renderParams;
     private GraphicsBuffer[] meshTriangles, meshPositions, meshUVs;
     private RenderTexture motionVectors;
-    private RenderTexture[] rasterized;
-    private Camera[] renderCameras;
     private uint threadGroupSizeX, threadGroupSizeY;
     private int calculateMotionVectorsKernel, loadTexelsToQuadBufferKernel;
     private int[] verticies, indicies;
@@ -48,6 +52,8 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         motionVectors.format = RenderTextureFormat.ARGBFloat;
 
         // initialize arrays
+        projectionResolutions = new Vector2Int[passes];
+        rasterizationResolutions = new Vector2Int[passes];
         verticies = new int[passes];
         indicies = new int[passes];
         meshTriangles = new GraphicsBuffer[passes];
@@ -65,7 +71,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         */
 
         Camera originalCamera = GetComponent<Camera>();
-
+        
         computeShader.SetFloat("PI", Mathf.PI);
         computeShader.SetFloat("PI2", Mathf.PI * 2);
         computeShader.SetFloat("NCLIP", nClip);
@@ -84,8 +90,17 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         // calculate motion vectors
         computeShader.Dispatch(calculateMotionVectorsKernel, input.width / (int)threadGroupSizeX, input.height / (int)threadGroupSizeY, 1);
 
+        Vector2 tmpProjectionResolution = new Vector2(projectionResolution.x, projectionResolution.y);
+        Vector2 tmpRasterizationResolution = new Vector2(rasterizationResolution.x, rasterizationResolution.y);
+
         for (int pass = 0; pass < passes; pass++)
         {
+            float relativePass = (float)pass / (passes - 1);
+            float relativeCurveMultiplier = projectionResolutionCurve.Evaluate(relativePass);
+            projectionResolutions[pass] = Vector2Int.RoundToInt(tmpProjectionResolution * relativeCurveMultiplier);
+            relativeCurveMultiplier = rasterizationResolutionCurve.Evaluate(relativePass);
+            rasterizationResolutions[pass] = Vector2Int.RoundToInt(tmpRasterizationResolution * relativeCurveMultiplier);
+
             verticies[pass] = projectionResolutions[pass].x * projectionResolutions[pass].y;
             indicies[pass] = verticies[pass] * 6;
 

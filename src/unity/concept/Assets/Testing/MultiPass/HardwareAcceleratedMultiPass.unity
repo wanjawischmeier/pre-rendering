@@ -592,16 +592,64 @@ MonoBehaviour:
   maxCircumference: 10
   fClipCutoff: 1
   passes: 2
-  projectionResolutions:
-  - {x: 400, y: 200}
-  - {x: 400, y: 200}
-  rasterizationResolutions:
-  - {x: 1920, y: 1080}
-  - {x: 1920, y: 1080}
+  projectionResolution: {x: 2048, y: 512}
+  rasterizationResolution: {x: 1920, y: 1080}
   meshTranslation: {x: 0, y: 0, z: 0}
+  projectionResolutionCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: -0.012500763
+      value: 0.103759766
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 2
+      outSlope: 2
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  rasterizationResolutionCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: -0.016666412
+      value: 0.2052002
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 2
+      outSlope: 2
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
   debugChannel: 0
   debugMode: 0
   debugPass: 0
+  renderCameras: []
+  rasterized: []
+  projectionResolutions: []
+  rasterizationResolutions: []
 --- !u!143 &1481361357
 CharacterController:
   m_ObjectHideFlags: 0
