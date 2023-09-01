@@ -1,0 +1,140 @@
+using System;
+using UnityEngine;
+
+namespace PreRendering
+{
+    public class DynamicRenderBuffer : IDisposable
+    {
+        public enum DebugMode
+        {
+            none, zSineFilled
+        }
+
+        /// <summary>
+        /// The camera used for rendering the buffer
+        /// </summary>
+        public readonly Camera[] renderCameras;
+
+        /// <summary>
+        /// The texture the camera renders to
+        /// </summary>
+        public readonly RenderTexture[] targetTextures;
+
+        public readonly GraphicsBuffer[] triangles, positions, uvs;
+
+        public readonly RenderParams[] renderParams;
+
+        public readonly int pass, verticies, indicies, slices;
+
+        private Camera originalCamera;
+
+        private readonly int cullingMaskLayer;
+
+        private const string cullingMaskLayerName = "Rasterized";
+
+        public DynamicRenderBuffer(int pass, int slices, Vector3[] meshTranslations, Transform parentTransform, Camera originalCamera, Resolution projectionResolution, Resolution rasterizationResolution, Shader rasterizationShader)
+        {
+            this.pass = pass;
+            this.slices = slices;
+            this.originalCamera = originalCamera;
+            triangles = new GraphicsBuffer[slices];
+            positions = new GraphicsBuffer[slices];
+            uvs = new GraphicsBuffer[slices];
+            targetTextures = new RenderTexture[slices];
+            renderCameras = new Camera[slices];
+            renderParams = new RenderParams[slices];
+
+            // calculate buffer constants
+            cullingMaskLayer = LayerMask.NameToLayer(cullingMaskLayerName);
+            verticies = projectionResolution.width * projectionResolution.height;
+            indicies = verticies * 6;
+            Matrix4x4[] matricies = new Matrix4x4[slices];
+            for (int i = 0; i < slices; i++)
+            {
+                matricies[i] = Matrix4x4.Translate(meshTranslations[i]);
+            }
+
+
+            for (int slice = 0; slice < slices; slice++)
+            {
+                // create graphics buffers
+                triangles[slice] = new GraphicsBuffer(GraphicsBuffer.Target.Structured, indicies, sizeof(int));
+                positions[slice] = new GraphicsBuffer(GraphicsBuffer.Target.Structured, verticies, 3 * sizeof(float));
+                uvs[slice] = new GraphicsBuffer(GraphicsBuffer.Target.Structured, verticies, 2 * sizeof(float));
+
+                // create target texture
+                targetTextures[slice] = new RenderTexture(rasterizationResolution.width, rasterizationResolution.height, 24);
+                targetTextures[slice].format = RenderTextureFormat.ARGBFloat;
+                targetTextures[slice].Create();
+
+                // create and set up the render camera
+                GameObject cameraObject = new GameObject($"RenderCamera{pass}");
+                cameraObject.transform.parent = parentTransform;
+                cameraObject.transform.position = Vector3.zero;
+                renderCameras[slice] = cameraObject.AddComponent<Camera>();
+                renderCameras[slice].clearFlags = CameraClearFlags.SolidColor;
+                renderCameras[slice].backgroundColor = Color.clear;
+                renderCameras[slice].cullingMask = 1 << cullingMaskLayer;
+                renderCameras[slice].targetTexture = targetTextures[slice];
+
+                // copy some flags for comfort
+                renderCameras[slice].useOcclusionCulling = originalCamera.useOcclusionCulling;
+                renderCameras[slice].allowHDR = originalCamera.allowHDR;
+                renderCameras[slice].allowMSAA = originalCamera.allowMSAA;
+                renderCameras[slice].allowDynamicResolution = originalCamera.allowDynamicResolution;
+
+                // create material props
+                var renderMatProps = new MaterialPropertyBlock();
+                renderMatProps.SetInt("RENDER_PASS", pass);
+                renderMatProps.SetBuffer("_Triangles", triangles[slice]);
+                renderMatProps.SetBuffer("_Positions", positions[slice]);
+                renderMatProps.SetBuffer("_UVs", uvs[slice]);
+                renderMatProps.SetMatrixArray("_ObjectToWorld", matricies);
+
+                // set render params
+                var rasterizationMaterial = new Material(rasterizationShader);
+                renderParams[slice] = new RenderParams(rasterizationMaterial)
+                {
+                    worldBounds = new Bounds(Vector3.zero, 10000 * Vector3.one), // use tighter bounds
+                    camera = renderCameras[slice],
+                    matProps = renderMatProps,
+                    layer = cullingMaskLayer
+                };
+            }
+        }
+
+        public void UpdateParamsAndRenderToBuffer(DebugMode debugMode, float maxCircumference)
+        {
+            for (int slice = 0; slice < slices; slice++)
+            {
+                // update camera params
+                renderCameras[slice].nearClipPlane = originalCamera.nearClipPlane;
+                renderCameras[slice].farClipPlane = originalCamera.farClipPlane;
+                renderCameras[slice].fieldOfView = originalCamera.fieldOfView;
+
+                // update render params
+                renderParams[slice].matProps.SetInt("DEBUG_MODE", (int)debugMode);
+                renderParams[slice].matProps.SetInt("TEXTURE_INDEX", 0);
+                renderParams[slice].matProps.SetFloat("TIMESTEP", Time.time);
+                renderParams[slice].matProps.SetFloat("MAX_CIRCUMFERENCE", maxCircumference);
+                renderParams[slice].matProps.SetBuffer("_Triangles", triangles[slice]);
+                renderParams[slice].matProps.SetBuffer("_Positions", positions[slice]);
+                renderParams[slice].matProps.SetBuffer("_UVs", uvs[slice]);
+
+                Graphics.RenderPrimitives(renderParams[slice], MeshTopology.Triangles, indicies);
+            }
+        }
+
+        public void Dispose()
+        {
+            for (int slice = 0; slice < slices; slice++)
+            {
+                triangles[slice].Dispose();
+                positions[slice].Dispose();
+                uvs[slice].Dispose();
+
+                targetTextures[slice].Release();
+            }
+        }
+    }
+}

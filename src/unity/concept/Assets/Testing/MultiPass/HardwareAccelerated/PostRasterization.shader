@@ -39,10 +39,13 @@ Shader"PreRendering/PostRasterization"
 
             float2 RESOLUTION;
             sampler2D _Input, _MainTex, _Coordinates;
+            // Texture2DArray _Coordinates;
+            // SamplerState sampler_linear_repeat;
             
             fixed4 frag (v2f i) : SV_Target
             {
                 float4 tc = tex2D(_Coordinates, i.uv);
+                // float4 tc = _Coordinates.Sample(sampler_linear_repeat, float3(i.uv, 0));
                 float4 col = tex2D(_MainTex, i.uv);
 
                 if (tc.a == 0) // col.a == 1 with clear flags as solid color

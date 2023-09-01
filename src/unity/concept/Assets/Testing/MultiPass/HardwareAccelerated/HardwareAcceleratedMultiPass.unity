@@ -584,17 +584,25 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   input: {fileID: 2800000, guid: 3beb61103c224e94fb52a1a26587be40, type: 3}
+  inputImages:
+  - {fileID: 2800000, guid: 6020236fe5b7cc04bb883b7834174afc, type: 3}
+  - {fileID: 2800000, guid: 6020236fe5b7cc04bb883b7834174afc, type: 3}
+  meshTranslations:
+  - {x: 0, y: 0, z: 0}
+  - {x: 10, y: 0, z: 0}
   computeShader: {fileID: 7200000, guid: 87dba1d044049cf46aa6b5798711c964, type: 3}
   rasterizationShader: {fileID: 4800000, guid: ff3af3d092bd8fa48b9b61e5d11b7769, type: 3}
   postRasterizationShader: {fileID: 4800000, guid: fe60f4afcc71ebb48af2270059806d05, type: 3}
-  nClip: 1
-  fClip: 30
+  map:
+    imageWidth: 2048
+    imageHeight: 512
+    nClip: 1
+    fClip: 30
   maxCircumference: 10
   fClipCutoff: 1
-  passes: 2
-  projectionResolution: {x: 2048, y: 512}
-  rasterizationResolution: {x: 1920, y: 1080}
-  meshTranslation: {x: 0, y: 0, z: 0}
+  dimensions: 02000000
+  projectionResolution: {x: 1000, y: 500}
+  rasterizationResolution: {x: 1000, y: 500}
   projectionResolutionCurve:
     serializedVersion: 2
     m_Curve:
@@ -644,12 +652,12 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   debugChannel: 0
-  debugMode: 1
+  debugMode: 0
   debugPass: 0
-  renderCameras: []
-  rasterized: []
-  projectionResolutions: []
-  rasterizationResolutions: []
+  originalCamera: {fileID: 0}
+  motionVectors: {fileID: 0}
+  rasterized: {fileID: 0}
+  postRasterizationMaterial: {fileID: 0}
 --- !u!143 &1481361357
 CharacterController:
   m_ObjectHideFlags: 0

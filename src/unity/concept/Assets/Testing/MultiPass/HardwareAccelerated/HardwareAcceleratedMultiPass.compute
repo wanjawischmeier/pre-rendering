@@ -8,14 +8,14 @@
 
 #define VERTICIES_PER_QUAD 6
 
-int RENDER_PASS;
+int TEXTURE_INDEX;
 float PI, PI2, NCLIP, FCLIP;
 float2 INPUT_RESOLUTION, PROJECTION_RESOLUTION, PREVIOUS_RASTERIZATION_RESOLUTION;
 
 #pragma kernel CalculateMotionVectors
 
 Texture2D<float4> _Input;
-RWTexture2D<float4> _MotionVectorsWrite;
+RWTexture2DArray<float4> _MotionVectorsWrite;
 
 [numthreads(8, 8, 1)]
 void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
@@ -26,7 +26,7 @@ void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
     // invalidate skybox verticies
     if (d == 1)
     {
-        _MotionVectorsWrite[id.xy] = float4(0, 0, 0, 0);
+        _MotionVectorsWrite[uint3(id.xy, TEXTURE_INDEX)] = float4(0, 0, 0, 0);
         return;
     }
         
@@ -42,14 +42,14 @@ void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
         CP * cos(ll1.x),
         CP * cos(ll1.y) * sin(ll1.x));
     
-    _MotionVectorsWrite[id.xy] = float4(-P, 1);
+    _MotionVectorsWrite[uint3(id.xy, TEXTURE_INDEX)] = float4(-P, 1);
 }
 
 
 
-#pragma kernel LoadTexelsToQuadBuffer
+#pragma kernel LoadTexelsToBuffer
 
-Texture2D<float4> _MotionVectors;
+Texture2DArray<float4> _MotionVectors;
 #ifdef USE_PREVIOUS_PASS
 Texture2D<float4> _PreviousPass;
 SamplerState sampler_linear_repeat;
@@ -60,7 +60,7 @@ RWStructuredBuffer<float3> _Positions;
 RWStructuredBuffer<float2> _UVs;
 
 [numthreads(1, 1, 1)]
-void LoadTexelsToQuadBuffer(uint3 id : SV_DispatchThreadID)
+void LoadTexelsToBuffer(uint3 id : SV_DispatchThreadID)
 {
     // calculate vertex and tri indicies
     uint i00 = id.x + id.y * PROJECTION_RESOLUTION.x;
@@ -83,7 +83,7 @@ void LoadTexelsToQuadBuffer(uint3 id : SV_DispatchThreadID)
     float4 P = _MotionVectors.SampleLevel(sampler_linear_repeat, uv, 0);
 #else
     int2 tc = MAP_TO_RANGE(uv, INPUT_RESOLUTION);
-    float4 P = _MotionVectors[tc];
+    float4 P = _MotionVectors[uint3(tc, TEXTURE_INDEX)];
 #endif
     
     if (P.w == 0)

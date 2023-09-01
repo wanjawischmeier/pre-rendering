@@ -4,44 +4,48 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
     {
         Pass
         {
-            // Cull Off
-            ZTest LEqual
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
 
             #include "UnityCG.cginc"
 
+            struct appdata
+            {
+                uint vertexID : SV_VertexID;
+                uint instanceID : SV_InstanceID;
+            };
+
+    
             struct v2f
             {
                 float4 pos : SV_POSITION;
                 float2 uv : TEXCOORD0;
-                float depth : SV_Depth;
+                // float depth : SV_Depth;
             };
-
-            Texture2D<float4> _Input;
 
             StructuredBuffer<int> _Triangles;
             StructuredBuffer<float3> _Positions;
             StructuredBuffer<float2> _UVs;
             
-            uniform int DEBUG_MODE, RENDER_PASS;
-            uniform float TIMESTEP, FCLIP, MAX_CIRCUMFERENCE;
+            uniform int DEBUG_MODE, RENDER_PASS, TEXTURE_INDEX;
+            uniform float TIMESTEP, MAX_CIRCUMFERENCE;
             uniform uint _StartIndex;
             uniform uint _BaseVertexIndex;
-            uniform float4x4 _ObjectToWorld;
+            uniform float4x4 _ObjectToWorld[1];
 
-            v2f vert(uint vertexID: SV_VertexID, uint instanceID : SV_InstanceID)
+            v2f vert(appdata v)
             {
                 v2f o;
     
-                int index = _Triangles[vertexID + _StartIndex] + _BaseVertexIndex;
+                int index = _Triangles[v.vertexID + _StartIndex] + _BaseVertexIndex;
                 float2 uv0 = _UVs[index + 0];
                 float2 uv1 = _UVs[index + 1];
                 float2 uv2 = _UVs[index + 2];
                 if (uv0.x == -1 || uv1.x == -1 || uv2.x == -1)
                 {
                     o.pos = float4(0, 0, 0, 0);
+                    o.uv = float2(0, 0);
                     return o;
                 }
                 
@@ -51,17 +55,19 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 if (RENDER_PASS != 0 && (length(pos0 - pos1) > MAX_CIRCUMFERENCE || length(pos1 - pos2) > MAX_CIRCUMFERENCE || length(pos2 - pos0) > MAX_CIRCUMFERENCE))
                 {
                     o.pos = float4(0, 0, 0, 0);
+                    o.uv = float2(0, 0);
                     return o;
                 }
     
-                float4 wpos = mul(_ObjectToWorld, float4(pos0 + float3(instanceID, 0, 0), 1.0f));
+                // float4 wpos = mul(_ObjectToWorld[TEXTURE_INDEX], float4(pos0, 1.0f));
+                float4 wpos = float4(pos0, 1.0f);
     
                 if (DEBUG_MODE == 1 && length(wpos.xyz - float3(-4, 0, -5)) < 10) // zSineFilled
                 {
                     wpos.y += sin(TIMESTEP * 2) * sin(length(wpos)) * sin(wpos.x);
                 }
     
-                o.depth = length(wpos);
+                // o.depth = length(wpos);
                 o.pos = mul(UNITY_MATRIX_VP, wpos);
                 o.uv = uv0;
                 return o;
@@ -69,7 +75,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
 
             float4 frag(v2f i) : SV_Target
             {
-                return float4(i.uv, i.depth, 1);
+                return float4(i.uv, TEXTURE_INDEX, 1);
             }
             ENDCG
         }
