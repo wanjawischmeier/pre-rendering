@@ -17,7 +17,6 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     public Shader rasterizationShader, postRasterizationShader;
     public GeometryLoader.Map map;
     public float maxCircumference;
-    public float fClipCutoff = 1;
     public int[] dimensions;
     public Vector2Int projectionResolution, rasterizationResolution;
     public AnimationCurve projectionResolutionCurve, rasterizationResolutionCurve;
@@ -25,22 +24,25 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     [Header("Debugging")]
     public DebugChannel debugChannel;
     public DynamicRenderBuffer.DebugMode debugMode;
-    public int debugPass, slice, samplePass;
+    public int debugPass, samplePass;
 
     [Header("Debugging Values")]
-    public Camera originalCamera;
     public RenderTexture motionVectors;
     public RenderTexture[] rasterized;
 
-    public Material postRasterizationMaterial;
+    private int passes;
+    private Camera originalCamera;
+    private Material postRasterizationMaterial;
     private GeometryLoader geometryLoader;
     private DynamicRenderBuffer[] renderBuffers;
     private Resolution[] projectionResolutions, rasterizationResolutions;
-    private int passes;
+
+    private const int MaximumShaderSupportedSlices = 4;
 
 
     private Resolution SamplePassResolutionFromCurve(int pass, Vector2Int inputResolution, AnimationCurve curve)
     {
+        // bypass dynamic resolution scaling for now
         return new Resolution()
         {
             width = inputResolution.x,
@@ -109,6 +111,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     {
         for (int pass = 0; pass < passes; pass++)
         {
+            // populate mesh buffer based on previous pass if available
             if (pass != 0)
             {
                 geometryLoader.PopulateMeshBuffer(renderBuffers, pass);
@@ -117,8 +120,6 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             renderBuffers[pass].meshTranslations = meshTranslations;
             renderBuffers[pass].UpdateParamsAndRenderToBuffer(debugMode, maxCircumference);
         }
-
-        postRasterizationMaterial.SetInt("TEXTURE_INDEX", slice);
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)

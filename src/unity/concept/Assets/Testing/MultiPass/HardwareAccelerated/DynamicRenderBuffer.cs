@@ -23,29 +23,26 @@ namespace PreRendering
         }
 
         /// <summary>
-        /// The camera used for rendering the buffer
+        /// The cameras used for rendering the buffer. Each camera corresponds to a slice.
         /// </summary>
         public readonly Camera[] renderCameras;
-
         /// <summary>
-        /// The texture the camera renders to
+        /// The textures the camera renders to.
         /// </summary>
         public readonly RenderTexture[] targetTextures;
-
         public readonly GraphicsBuffer[] triangles, positions, uvs;
-
         public readonly RenderParams[] renderParams;
-
         public readonly int pass, verticies, indicies, slices;
 
         private Camera originalCamera;
-
         private readonly int cullingMaskLayer;
 
-        private const string cullingMaskLayerName = "Rasterized";
+        private const string CullingMaskLayerName = "Rasterized";
+
 
         public DynamicRenderBuffer(int pass, int slices, Vector3[] meshTranslations, Transform parentTransform, Camera originalCamera, Resolution projectionResolution, Resolution rasterizationResolution, Shader rasterizationShader)
         {
+            // initialize fields and arrays
             this.pass = pass;
             this.slices = slices;
             this.originalCamera = originalCamera;
@@ -57,7 +54,7 @@ namespace PreRendering
             renderParams = new RenderParams[slices];
 
             // calculate buffer constants
-            cullingMaskLayer = LayerMask.NameToLayer(cullingMaskLayerName);
+            cullingMaskLayer = LayerMask.NameToLayer(CullingMaskLayerName);
             verticies = projectionResolution.width * projectionResolution.height;
             indicies = verticies * 6;
 
@@ -84,7 +81,6 @@ namespace PreRendering
                 renderCameras[slice].backgroundColor = Color.clear;
                 renderCameras[slice].cullingMask = 1 << cullingMaskLayer;
                 renderCameras[slice].targetTexture = targetTextures[slice];
-                // renderCameras[slice].targetTexture = targetTexture;
 
                 // copy some flags for comfort
                 renderCameras[slice].useOcclusionCulling = originalCamera.useOcclusionCulling;

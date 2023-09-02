@@ -36,6 +36,8 @@ Shader"PreRendering/PostRasterization"
                 o.uv = v.uv;
                 return o;
             }
+            
+            #define MAX_SLICES 4
 
             uniform int SLICES;
             uniform float2 RESOLUTION;
@@ -67,7 +69,7 @@ Shader"PreRendering/PostRasterization"
             
             fixed4 frag (v2f i) : SV_Target
             {
-                float4 tcs[4];
+                float4 tcs[MAX_SLICES];
                 tcs[0] = tex2D(_Coordinates0, i.uv);
                 tcs[1] = tex2D(_Coordinates1, i.uv);
                 tcs[2] = tex2D(_Coordinates2, i.uv);
