@@ -10,6 +10,23 @@ namespace PreRendering
             none, zSineFilled
         }
 
+        public Vector3[] meshTranslations
+        {
+            set
+            {
+                if (value.Length > slices)
+                {
+                    Debug.LogError($"Unable to set translations of {value.Length} slices, buffer only has {slices}.");
+                }
+
+                for (int slice = 0; slice < value.Length; slice++)
+                {
+                    var matrix = Matrix4x4.Translate(value[slice]);
+                    renderParams[slice].matProps.SetMatrix("_ObjectToWorld", matrix);
+                }
+            }
+        }
+
         /// <summary>
         /// The camera used for rendering the buffer
         /// </summary>
@@ -48,12 +65,6 @@ namespace PreRendering
             cullingMaskLayer = LayerMask.NameToLayer(cullingMaskLayerName);
             verticies = projectionResolution.width * projectionResolution.height;
             indicies = verticies * 6;
-            Matrix4x4[] matricies = new Matrix4x4[slices];
-            for (int i = 0; i < slices; i++)
-            {
-                matricies[i] = Matrix4x4.Translate(meshTranslations[i]);
-            }
-
 
             for (int slice = 0; slice < slices; slice++)
             {
@@ -68,7 +79,7 @@ namespace PreRendering
                 targetTextures[slice].Create();
 
                 // create and set up the render camera
-                GameObject cameraObject = new GameObject($"RenderCamera{pass}");
+                GameObject cameraObject = new GameObject($"RenderCamera_PASS{pass}_SLICE{slice}");
                 cameraObject.transform.parent = parentTransform;
                 cameraObject.transform.position = Vector3.zero;
                 renderCameras[slice] = cameraObject.AddComponent<Camera>();
@@ -76,6 +87,7 @@ namespace PreRendering
                 renderCameras[slice].backgroundColor = Color.clear;
                 renderCameras[slice].cullingMask = 1 << cullingMaskLayer;
                 renderCameras[slice].targetTexture = targetTextures[slice];
+                // renderCameras[slice].targetTexture = targetTexture;
 
                 // copy some flags for comfort
                 renderCameras[slice].useOcclusionCulling = originalCamera.useOcclusionCulling;
@@ -84,12 +96,13 @@ namespace PreRendering
                 renderCameras[slice].allowDynamicResolution = originalCamera.allowDynamicResolution;
 
                 // create material props
+                var matrix = Matrix4x4.Translate(meshTranslations[slice]);
                 var renderMatProps = new MaterialPropertyBlock();
                 renderMatProps.SetInt("RENDER_PASS", pass);
                 renderMatProps.SetBuffer("_Triangles", triangles[slice]);
                 renderMatProps.SetBuffer("_Positions", positions[slice]);
                 renderMatProps.SetBuffer("_UVs", uvs[slice]);
-                renderMatProps.SetMatrixArray("_ObjectToWorld", matricies);
+                renderMatProps.SetMatrix("_ObjectToWorld", matrix);
 
                 // set render params
                 var rasterizationMaterial = new Material(rasterizationShader);
@@ -111,10 +124,10 @@ namespace PreRendering
                 renderCameras[slice].nearClipPlane = originalCamera.nearClipPlane;
                 renderCameras[slice].farClipPlane = originalCamera.farClipPlane;
                 renderCameras[slice].fieldOfView = originalCamera.fieldOfView;
-
+                
                 // update render params
                 renderParams[slice].matProps.SetInt("DEBUG_MODE", (int)debugMode);
-                renderParams[slice].matProps.SetInt("TEXTURE_INDEX", 0);
+                renderParams[slice].matProps.SetInt("TEXTURE_INDEX", slice);
                 renderParams[slice].matProps.SetFloat("TIMESTEP", Time.time);
                 renderParams[slice].matProps.SetFloat("MAX_CIRCUMFERENCE", maxCircumference);
                 renderParams[slice].matProps.SetBuffer("_Triangles", triangles[slice]);

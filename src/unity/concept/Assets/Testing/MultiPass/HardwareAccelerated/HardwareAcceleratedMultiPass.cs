@@ -9,7 +9,6 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         none, motionVectors, rasterized
     }
     
-    public Texture2D input;
     public Texture2D[] inputImages;
     public Vector3[] meshTranslations;
     public ComputeShader computeShader;
@@ -24,7 +23,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     [Header("Debugging")]
     public DebugChannel debugChannel;
     public DynamicRenderBuffer.DebugMode debugMode;
-    public int debugPass;
+    public int debugPass, slice;
 
     [Header("Debugging Values")]
     public Camera originalCamera;
@@ -52,9 +51,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
 
     private void Start()
     {
-        Debug.Log(SystemInfo.supportsRenderTargetArrayIndexFromVertexShader);
         originalCamera = GetComponent<Camera>();
-
         passes = dimensions.Length;
         
         // initialize arrays
@@ -77,14 +74,17 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         }
 
         // create geometry loader and populate first mesh buffer, as that one will not change
-        geometryLoader = new GeometryLoader(dimensions[0], map, computeShader, projectionResolutions);
+        geometryLoader = new GeometryLoader(dimensions[0], map, computeShader, projectionResolutions, rasterizationResolutions);
         geometryLoader.CalculateMotionVectors(inputImages);
         geometryLoader.PopulateMeshBuffer(renderBuffers[0]);
-
+        
         postRasterizationMaterial = new Material(postRasterizationShader);
         postRasterizationMaterial.SetVector("RESOLUTION", rasterizationResolution.ToVector2());
-        postRasterizationMaterial.SetTexture("_Input", input);
-        postRasterizationMaterial.SetTexture("_Coordinates", renderBuffers.GetTexture(passes - 1, 1));
+        for (int slice = 0; slice < renderBuffers[passes - 1].slices; slice++)
+        {
+            postRasterizationMaterial.SetTexture($"_Input{slice}", inputImages[slice]);
+            postRasterizationMaterial.SetTexture($"_Coordinates{slice}", renderBuffers[passes - 1].targetTextures[slice]);
+        }
 
         // debug values
         motionVectors = geometryLoader.motionVectors;
@@ -93,21 +93,15 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
 
     private void Update()
     {
+        renderBuffers[0].meshTranslations = meshTranslations;
         renderBuffers[0].UpdateParamsAndRenderToBuffer(debugMode, maxCircumference);
-        /*
+        postRasterizationMaterial.SetInt("TEXTURE_INDEX", slice);
+        
         for (int pass = 0; pass < passes; pass++)
         {
             if (pass != 0)
             {
-                computeShader.SetInt("RENDER_PASS", pass);
-                // computeShader.SetVector("PROJECTION_RESOLUTION", new Vector2(projectionResolutions[pass].x, projectionResolutions[pass].y));
 
-                if (pass == 1)
-                {
-                    computeShader.EnableKeyword("USE_PREVIOUS_PASS");
-                }
-                computeShader.SetVector("PREVIOUS_RASTERIZATION_RESOLUTION", rasterizationResolution.ToVector2());
-                // computeShader.SetTexture(loadTexelsToQuadBufferKernel, "_PreviousPass", rasterized[pass - 1]);
 
                 // computeShader.Dispatch(loadTexelsToQuadBufferKernel, projectionResolutions[pass].x / (int)threadGroupSizeX, projectionResolutions[pass].y / (int)threadGroupSizeY, 1);
             }
@@ -119,7 +113,6 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         {
             computeShader.DisableKeyword("USE_PREVIOUS_PASS");
         }
-        */
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)

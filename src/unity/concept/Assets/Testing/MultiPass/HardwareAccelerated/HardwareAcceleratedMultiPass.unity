@@ -583,13 +583,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d7d05af6f4136ad4f9d4fdc40ad66c67, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  input: {fileID: 2800000, guid: 3beb61103c224e94fb52a1a26587be40, type: 3}
   inputImages:
   - {fileID: 2800000, guid: 6020236fe5b7cc04bb883b7834174afc, type: 3}
-  - {fileID: 2800000, guid: 6020236fe5b7cc04bb883b7834174afc, type: 3}
+  - {fileID: 2800000, guid: a479d5d114f88b847b7d2a4d17efbbe8, type: 3}
   meshTranslations:
   - {x: 0, y: 0, z: 0}
-  - {x: 10, y: 0, z: 0}
+  - {x: 0, y: 0, z: -3}
   computeShader: {fileID: 7200000, guid: 87dba1d044049cf46aa6b5798711c964, type: 3}
   rasterizationShader: {fileID: 4800000, guid: ff3af3d092bd8fa48b9b61e5d11b7769, type: 3}
   postRasterizationShader: {fileID: 4800000, guid: fe60f4afcc71ebb48af2270059806d05, type: 3}
@@ -654,9 +653,10 @@ MonoBehaviour:
   debugChannel: 0
   debugMode: 0
   debugPass: 0
+  slice: 0
   originalCamera: {fileID: 0}
   motionVectors: {fileID: 0}
-  rasterized: {fileID: 0}
+  rasterized: []
   postRasterizationMaterial: {fileID: 0}
 --- !u!143 &1481361357
 CharacterController:

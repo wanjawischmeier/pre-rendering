@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using static UnityEditor.ShaderData;
 
 namespace PreRendering
 {
@@ -14,18 +15,20 @@ namespace PreRendering
 
         public readonly RenderTexture motionVectors;
         private ComputeShader computeShader;
-        private Resolution[] projectionResolutions; 
+        private Resolution[] projectionResolutions, rasterizationResolutions;
         private Texture2D[] inputImages;
+        private UnityEngine.Rendering.LocalKeyword usePreviousPassComputeShaderKeyword;
         private int calculateMotionVectorsGroupSizeX, calculateMotionVectorsGroupSizeY;
         private int[] loadTexelsToBufferGroupSizesX, loadTexelsToBufferGroupSizesY;
         private int calculateMotionVectorsKernelId, loadTexelsToBufferKernelId, bufferSize;
         private bool isInputInitialized;
 
-        public GeometryLoader(int bufferSize, Map map, ComputeShader computeShader, Resolution[] projectionResolutions)
+        public GeometryLoader(int bufferSize, Map map, ComputeShader computeShader, Resolution[] projectionResolutions, Resolution[] rasterizationResolutions)
         {
             this.bufferSize = bufferSize;
             this.computeShader = computeShader;
             this.projectionResolutions = projectionResolutions;
+            this.rasterizationResolutions = rasterizationResolutions;
 
             // input dimensions
             // skip color conversions here (RenderTextureReadWrite.Linear)?
@@ -38,6 +41,7 @@ namespace PreRendering
 
             calculateMotionVectorsKernelId = computeShader.FindKernel("CalculateMotionVectors");
             loadTexelsToBufferKernelId = computeShader.FindKernel("LoadTexelsToBuffer");
+            usePreviousPassComputeShaderKeyword = new UnityEngine.Rendering.LocalKeyword(computeShader, "USE_PREVIOUS_PASS");
 
             computeShader.GetKernelThreadGroupSizes(calculateMotionVectorsKernelId, out uint threadGroupSizeX, out uint threadGroupSizeY, out _);
             calculateMotionVectorsGroupSizeX = map.imageWidth / (int)threadGroupSizeX;
@@ -75,11 +79,11 @@ namespace PreRendering
                 return;
             }
 
-            for (int index = 0; index < bufferSize; index++)
+            for (int slice = 0; slice < bufferSize; slice++)
             {
                 // calculate motion vectors
-                computeShader.SetInt("TEXTURE_INDEX", index);
-                computeShader.SetTexture(calculateMotionVectorsKernelId, "_Input", images[index]);
+                computeShader.SetInt("TEXTURE_INDEX", slice);
+                computeShader.SetTexture(calculateMotionVectorsKernelId, "_Input", images[slice]);
                 computeShader.Dispatch(calculateMotionVectorsKernelId, calculateMotionVectorsGroupSizeX, calculateMotionVectorsGroupSizeY, 1);
             }
 
@@ -94,17 +98,29 @@ namespace PreRendering
                 Debug.LogError("Input images not initialized, unable to populate mesh buffer.");
                 return;
             }
+            if (renderBuffer.slices > bufferSize)
+            {
+                Debug.LogError($"Invalid dimensions\nDynamicRenderBuffer: {renderBuffer.slices} slices\nGeometryLoader: {bufferSize}  slices");
+            }
 
-            var projectionResolution = projectionResolutions[renderBuffer.pass];
-            computeShader.SetVector("PROJECTION_RESOLUTION", projectionResolution.ToVector2());
+            computeShader.SetInt("RENDER_PASS", renderBuffer.pass);
+            computeShader.SetVector("PROJECTION_RESOLUTION", projectionResolutions[renderBuffer.pass].ToVector2());
+            computeShader.SetKeyword(usePreviousPassComputeShaderKeyword, renderBuffer.pass != 0);
+            if (renderBuffer.pass != 0)
+            {
+                Vector3 rasterizationResolution = rasterizationResolutions[renderBuffer.pass].ToVector2();
+                computeShader.SetVector("PREVIOUS_RASTERIZATION_RESOLUTION", rasterizationResolution);
+            }
 
             // TODO: all slices in single dispatch call
             for (int slice = 0; slice < renderBuffer.slices; slice++)
             {
+                computeShader.SetInt("TEXTURE_INDEX", slice);
                 computeShader.SetBuffer(loadTexelsToBufferKernelId, "_Triangles", renderBuffer.triangles[slice]);
                 computeShader.SetBuffer(loadTexelsToBufferKernelId, "_Positions", renderBuffer.positions[slice]);
                 computeShader.SetBuffer(loadTexelsToBufferKernelId, "_UVs", renderBuffer.uvs[slice]);
                 computeShader.SetTexture(loadTexelsToBufferKernelId, "_Input", inputImages[slice]);
+                computeShader.SetTexture(loadTexelsToBufferKernelId, "_PreviousPass", renderBuffer.targetTextures[slice]);
 
                 computeShader.Dispatch(
                     loadTexelsToBufferKernelId,

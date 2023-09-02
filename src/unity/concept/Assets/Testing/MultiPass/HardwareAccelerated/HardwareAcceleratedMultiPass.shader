@@ -32,7 +32,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
             uniform float TIMESTEP, MAX_CIRCUMFERENCE;
             uniform uint _StartIndex;
             uniform uint _BaseVertexIndex;
-            uniform float4x4 _ObjectToWorld[1];
+            uniform float4x4 _ObjectToWorld;
 
             v2f vert(appdata v)
             {
@@ -59,8 +59,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                     return o;
                 }
     
-                // float4 wpos = mul(_ObjectToWorld[TEXTURE_INDEX], float4(pos0, 1.0f));
-                float4 wpos = float4(pos0, 1.0f);
+                float4 wpos = mul(_ObjectToWorld, float4(pos0, 1.0f));
     
                 if (DEBUG_MODE == 1 && length(wpos.xyz - float3(-4, 0, -5)) < 10) // zSineFilled
                 {
