@@ -67,6 +67,9 @@ LightmapSettings:
     m_LightmapParameters: {fileID: 0}
     m_LightmapsBakeMode: 1
     m_TextureCompression: 1
+    m_FinalGather: 0
+    m_FinalGatherFiltering: 1
+    m_FinalGatherRayCount: 256
     m_ReflectionCompression: 2
     m_MixedBakeMode: 2
     m_BakeBackend: 1
@@ -584,23 +587,27 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   inputImages:
-  - {fileID: 2800000, guid: 6020236fe5b7cc04bb883b7834174afc, type: 3}
+  - {fileID: 2800000, guid: f0ff48611ee248f4dbe70df3f7206c07, type: 3}
+  - {fileID: 2800000, guid: 3beb61103c224e94fb52a1a26587be40, type: 3}
   - {fileID: 2800000, guid: a479d5d114f88b847b7d2a4d17efbbe8, type: 3}
+  - {fileID: 2800000, guid: 58eb90472ab17114e8a9b307a0d046a5, type: 3}
   meshTranslations:
-  - {x: 0, y: 0, z: 0}
-  - {x: 0, y: 0, z: -3}
+  - {x: 10, y: 0, z: 10}
+  - {x: 6, y: 0, z: 0}
+  - {x: 6, y: 0, z: -2}
+  - {x: -10, y: 0, z: -2}
   computeShader: {fileID: 7200000, guid: 87dba1d044049cf46aa6b5798711c964, type: 3}
   rasterizationShader: {fileID: 4800000, guid: ff3af3d092bd8fa48b9b61e5d11b7769, type: 3}
   postRasterizationShader: {fileID: 4800000, guid: fe60f4afcc71ebb48af2270059806d05, type: 3}
   map:
     imageWidth: 2048
     imageHeight: 512
-    nClip: 1
-    fClip: 30
+    nClip: 0.1
+    fClip: 20
   maxCircumference: 10
   fClipCutoff: 1
-  dimensions: 02000000
-  projectionResolution: {x: 1000, y: 500}
+  dimensions: 04000000
+  projectionResolution: {x: 500, y: 250}
   rasterizationResolution: {x: 1000, y: 500}
   projectionResolutionCurve:
     serializedVersion: 2
@@ -654,6 +661,7 @@ MonoBehaviour:
   debugMode: 0
   debugPass: 0
   slice: 0
+  samplePass: 0
   originalCamera: {fileID: 0}
   motionVectors: {fileID: 0}
   rasterized: []

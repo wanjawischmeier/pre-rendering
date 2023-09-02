@@ -1,5 +1,7 @@
 using UnityEngine;
 using PreRendering;
+using System;
+using System.Linq;
 
 [RequireComponent(typeof(Camera))]
 public class HardwareAcceleratedMultiPass : MonoBehaviour
@@ -23,7 +25,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     [Header("Debugging")]
     public DebugChannel debugChannel;
     public DynamicRenderBuffer.DebugMode debugMode;
-    public int debugPass, slice;
+    public int debugPass, slice, samplePass;
 
     [Header("Debugging Values")]
     public Camera originalCamera;
@@ -39,6 +41,12 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
 
     private Resolution SamplePassResolutionFromCurve(int pass, Vector2Int inputResolution, AnimationCurve curve)
     {
+        return new Resolution()
+        {
+            width = inputResolution.x,
+            height = inputResolution.y
+        };
+
         float relativePass = (passes == 1) ? 1 : (float)pass / (passes - 1);
         float relativeCurveMultiplier = projectionResolutionCurve.Evaluate(relativePass);
 
@@ -76,9 +84,10 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         // create geometry loader and populate first mesh buffer, as that one will not change
         geometryLoader = new GeometryLoader(dimensions[0], map, computeShader, projectionResolutions, rasterizationResolutions);
         geometryLoader.CalculateMotionVectors(inputImages);
-        geometryLoader.PopulateMeshBuffer(renderBuffers[0]);
+        geometryLoader.PopulateMeshBuffer(renderBuffers, 0);
         
         postRasterizationMaterial = new Material(postRasterizationShader);
+        postRasterizationMaterial.SetInt("SLICES", renderBuffers[passes - 1].slices);
         postRasterizationMaterial.SetVector("RESOLUTION", rasterizationResolution.ToVector2());
         for (int slice = 0; slice < renderBuffers[passes - 1].slices; slice++)
         {
@@ -88,31 +97,28 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
 
         // debug values
         motionVectors = geometryLoader.motionVectors;
-        rasterized = renderBuffers[passes - 1].targetTextures;
+        rasterized = new RenderTexture[passes * inputImages.Length];
+        for (int pass = 0; pass < passes; pass++)
+        {
+            var source = renderBuffers[pass].targetTextures;
+            Array.Copy(source, 0, rasterized, pass * inputImages.Length, source.Length);
+        }
     }
 
     private void Update()
     {
-        renderBuffers[0].meshTranslations = meshTranslations;
-        renderBuffers[0].UpdateParamsAndRenderToBuffer(debugMode, maxCircumference);
-        postRasterizationMaterial.SetInt("TEXTURE_INDEX", slice);
-        
         for (int pass = 0; pass < passes; pass++)
         {
             if (pass != 0)
             {
-
-
-                // computeShader.Dispatch(loadTexelsToQuadBufferKernel, projectionResolutions[pass].x / (int)threadGroupSizeX, projectionResolutions[pass].y / (int)threadGroupSizeY, 1);
+                geometryLoader.PopulateMeshBuffer(renderBuffers, pass);
             }
 
-            // renderBuffers[pass].UpdateAndRenderToBuffer(debugMode, fClip, maxCircumference);
+            renderBuffers[pass].meshTranslations = meshTranslations;
+            renderBuffers[pass].UpdateParamsAndRenderToBuffer(debugMode, maxCircumference);
         }
 
-        if (passes != 1)
-        {
-            computeShader.DisableKeyword("USE_PREVIOUS_PASS");
-        }
+        postRasterizationMaterial.SetInt("TEXTURE_INDEX", slice);
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)

@@ -21,6 +21,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
             {
                 float4 pos : SV_POSITION;
                 float2 uv : TEXCOORD0;
+                float perimeter : TEXCOORD1;
                 // float depth : SV_Depth;
             };
 
@@ -52,7 +53,12 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 float3 pos0 = _Positions[index + 0];
                 float3 pos1 = _Positions[index + 1];
                 float3 pos2 = _Positions[index + 2];
-                if (RENDER_PASS != 0 && (length(pos0 - pos1) > MAX_CIRCUMFERENCE || length(pos1 - pos2) > MAX_CIRCUMFERENCE || length(pos2 - pos0) > MAX_CIRCUMFERENCE))
+                float l0 = length(pos0 - pos1);
+                float l1 = length(pos1 - pos2);
+                float l2 = length(pos2 - pos0);
+                o.perimeter = l0 + l1 + l2;
+    
+                if (RENDER_PASS != 0 && (l0 > MAX_CIRCUMFERENCE || l1 > MAX_CIRCUMFERENCE || l2 > MAX_CIRCUMFERENCE))
                 {
                     o.pos = float4(0, 0, 0, 0);
                     o.uv = float2(0, 0);
@@ -74,7 +80,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
 
             float4 frag(v2f i) : SV_Target
             {
-                return float4(i.uv, TEXTURE_INDEX, 1);
+                return float4(i.uv, i.perimeter, TEXTURE_INDEX + 1);
             }
             ENDCG
         }

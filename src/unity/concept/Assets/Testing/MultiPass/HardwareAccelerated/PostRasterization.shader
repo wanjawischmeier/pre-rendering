@@ -37,11 +37,12 @@ Shader"PreRendering/PostRasterization"
                 return o;
             }
 
-            int TEXTURE_INDEX;
-            float2 RESOLUTION;
+            uniform int SLICES;
+            uniform float2 RESOLUTION;
+
             sampler2D _MainTex;
-            sampler2D _Input0, _Input1;
-            sampler2D _Coordinates0, _Coordinates1;
+            sampler2D _Input0, _Input1, _Input2, _Input3;
+            sampler2D _Coordinates0, _Coordinates1, _Coordinates2, _Coordinates3;
             
             // propably violating the genova convention
             // the camera refused to render onto multiple slices, so this has to exist :/
@@ -53,6 +54,12 @@ Shader"PreRendering/PostRasterization"
                     case 1:                                         \
                         result = tex2D(array##1, uv);               \
                         break;                                      \
+                    case 2:                                         \
+                        result = tex2D(array##2, uv);               \
+                        break;                                      \
+                    case 3:                                         \
+                        result = tex2D(array##3, uv);               \
+                        break;                                      \
                     default:                                        \
                         result = float4(1, 0, 1, 1);                \
                         break;                                      \
@@ -60,17 +67,32 @@ Shader"PreRendering/PostRasterization"
             
             fixed4 frag (v2f i) : SV_Target
             {
-                float4 tc;
-                SAMPLE_PSEUDO_ARRAY(_Coordinates, i.uv, TEXTURE_INDEX, tc);
+                float4 tcs[4];
+                tcs[0] = tex2D(_Coordinates0, i.uv);
+                tcs[1] = tex2D(_Coordinates1, i.uv);
+                tcs[2] = tex2D(_Coordinates2, i.uv);
+                tcs[3] = tex2D(_Coordinates3, i.uv);
+    
+                int index = 0;
+                float4 tmp, tc = tcs[0];
+                for (int slice = 1; slice < SLICES; slice++)
+                {
+                    tmp = tcs[slice];
+                    if (tmp.a != 0 && (tc.a == 0 || tmp.b < tc.b))
+                    {
+                        index = slice;
+                        tc = tcs[slice];
+                    }
+                }
+    
                 float4 col = tex2D(_MainTex, i.uv);
-                
                 if (tc.a == 0) // col.a == 1 with clear flags as solid color
                 {
                     return col;
                 }
                 
                 float2 uv = tc.xy;
-                SAMPLE_PSEUDO_ARRAY(_Input, uv, TEXTURE_INDEX, col);
+                SAMPLE_PSEUDO_ARRAY(_Input, uv, index, col);
                 return col;
             }
             ENDCG

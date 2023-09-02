@@ -73,14 +73,16 @@ void LoadTexelsToBuffer(uint3 id : SV_DispatchThreadID)
     
 #ifdef USE_PREVIOUS_PASS
     float4 pc = _PreviousPass[MAP_TO_RANGE(uv, PREVIOUS_RASTERIZATION_RESOLUTION)];
-    if (pc.a != 1)
+    if (pc.a == 0)
     {
         _UVs[i00] = float2(-1, 0);
         return;
     }
     
     uv = pc.xy;
-    float4 P = _MotionVectors.SampleLevel(sampler_linear_repeat, uv, 0);
+    float4 P = _MotionVectors.SampleLevel(sampler_linear_repeat, float3(uv, TEXTURE_INDEX), 0);
+    int2 tc = MAP_TO_RANGE(uv, INPUT_RESOLUTION);
+    P = _MotionVectors[uint3(tc, TEXTURE_INDEX)];
 #else
     int2 tc = MAP_TO_RANGE(uv, INPUT_RESOLUTION);
     float4 P = _MotionVectors[uint3(tc, TEXTURE_INDEX)];

@@ -31,12 +31,13 @@ namespace PreRendering
             this.rasterizationResolutions = rasterizationResolutions;
 
             // input dimensions
-            // skip color conversions here (RenderTextureReadWrite.Linear)?
-            motionVectors = new RenderTexture(map.imageWidth, map.imageHeight, 0);
+            motionVectors = new RenderTexture(
+                map.imageWidth, map.imageHeight, 0,
+                RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear
+            );
             motionVectors.dimension = UnityEngine.Rendering.TextureDimension.Tex2DArray;
             motionVectors.enableRandomWrite = true;
             motionVectors.volumeDepth = bufferSize;
-            motionVectors.format = RenderTextureFormat.ARGBFloat;
             motionVectors.Create();
 
             calculateMotionVectorsKernelId = computeShader.FindKernel("CalculateMotionVectors");
@@ -91,41 +92,52 @@ namespace PreRendering
             isInputInitialized = true;
         }
 
-        public void PopulateMeshBuffer(DynamicRenderBuffer renderBuffer)
+        public void PopulateMeshBuffer(DynamicRenderBuffer[] renderBuffers, int pass)
         {
             if (!isInputInitialized)
             {
                 Debug.LogError("Input images not initialized, unable to populate mesh buffer.");
                 return;
             }
-            if (renderBuffer.slices > bufferSize)
+
+            var renderBuffer = renderBuffers[pass];
+            DynamicRenderBuffer previousBuffer = null;
+            if (pass != 0)
             {
-                Debug.LogError($"Invalid dimensions\nDynamicRenderBuffer: {renderBuffer.slices} slices\nGeometryLoader: {bufferSize}  slices");
+                previousBuffer = renderBuffers[pass - 1];
+            }
+            int slices = renderBuffer.slices;
+            if (slices > bufferSize)
+            {
+                Debug.LogError($"Invalid dimensions\nDynamicRenderBuffer: {slices} slices\nGeometryLoader: {bufferSize}  slices");
             }
 
-            computeShader.SetInt("RENDER_PASS", renderBuffer.pass);
-            computeShader.SetVector("PROJECTION_RESOLUTION", projectionResolutions[renderBuffer.pass].ToVector2());
-            computeShader.SetKeyword(usePreviousPassComputeShaderKeyword, renderBuffer.pass != 0);
-            if (renderBuffer.pass != 0)
+            computeShader.SetInt("RENDER_PASS", pass);
+            computeShader.SetVector("PROJECTION_RESOLUTION", projectionResolutions[pass].ToVector2());
+            computeShader.SetKeyword(usePreviousPassComputeShaderKeyword, pass != 0);
+            if (pass != 0)
             {
-                Vector3 rasterizationResolution = rasterizationResolutions[renderBuffer.pass].ToVector2();
+                Vector3 rasterizationResolution = rasterizationResolutions[pass - 1].ToVector2();
                 computeShader.SetVector("PREVIOUS_RASTERIZATION_RESOLUTION", rasterizationResolution);
             }
 
             // TODO: all slices in single dispatch call
-            for (int slice = 0; slice < renderBuffer.slices; slice++)
+            for (int slice = 0; slice < slices; slice++)
             {
                 computeShader.SetInt("TEXTURE_INDEX", slice);
                 computeShader.SetBuffer(loadTexelsToBufferKernelId, "_Triangles", renderBuffer.triangles[slice]);
                 computeShader.SetBuffer(loadTexelsToBufferKernelId, "_Positions", renderBuffer.positions[slice]);
                 computeShader.SetBuffer(loadTexelsToBufferKernelId, "_UVs", renderBuffer.uvs[slice]);
                 computeShader.SetTexture(loadTexelsToBufferKernelId, "_Input", inputImages[slice]);
-                computeShader.SetTexture(loadTexelsToBufferKernelId, "_PreviousPass", renderBuffer.targetTextures[slice]);
+                if (pass != 0)
+                {
+                    computeShader.SetTexture(loadTexelsToBufferKernelId, "_PreviousPass", previousBuffer.targetTextures[slice]);
+                }
 
                 computeShader.Dispatch(
                     loadTexelsToBufferKernelId,
-                    loadTexelsToBufferGroupSizesX[renderBuffer.pass],
-                    loadTexelsToBufferGroupSizesY[renderBuffer.pass], 1
+                    loadTexelsToBufferGroupSizesX[pass],
+                    loadTexelsToBufferGroupSizesY[pass], 1
                 );
             }
         }

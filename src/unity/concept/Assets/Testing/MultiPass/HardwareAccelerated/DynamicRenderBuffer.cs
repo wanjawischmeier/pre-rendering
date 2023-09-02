@@ -14,12 +14,7 @@ namespace PreRendering
         {
             set
             {
-                if (value.Length > slices)
-                {
-                    Debug.LogError($"Unable to set translations of {value.Length} slices, buffer only has {slices}.");
-                }
-
-                for (int slice = 0; slice < value.Length; slice++)
+                for (int slice = 0; slice < Mathf.Min(slices, value.Length); slice++)
                 {
                     var matrix = Matrix4x4.Translate(value[slice]);
                     renderParams[slice].matProps.SetMatrix("_ObjectToWorld", matrix);
@@ -74,8 +69,10 @@ namespace PreRendering
                 uvs[slice] = new GraphicsBuffer(GraphicsBuffer.Target.Structured, verticies, 2 * sizeof(float));
 
                 // create target texture
-                targetTextures[slice] = new RenderTexture(rasterizationResolution.width, rasterizationResolution.height, 24);
-                targetTextures[slice].format = RenderTextureFormat.ARGBFloat;
+                targetTextures[slice] = new RenderTexture(
+                    rasterizationResolution.width, rasterizationResolution.height, 24,
+                    RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear
+                );
                 targetTextures[slice].Create();
 
                 // create and set up the render camera
