@@ -22,7 +22,13 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 float4 pos : SV_POSITION;
                 float2 uv : TEXCOORD0;
                 float perimeter : TEXCOORD1;
-                // float depth : SV_Depth;
+                float depth : SV_Depth;
+            };
+
+            struct ShaderOutput
+            {
+                half4 color : COLOR;
+                half depth : TEXCOORD0;
             };
 
             StructuredBuffer<int> _Triangles;
@@ -72,15 +78,18 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                     wpos.y += sin(TIMESTEP * 2) * sin(length(wpos)) * sin(wpos.x);
                 }
     
-                // o.depth = length(wpos);
+                o.depth = length(wpos);
                 o.pos = mul(UNITY_MATRIX_VP, wpos);
                 o.uv = uv0;
                 return o;
             }
 
-            float4 frag(v2f i) : SV_Target
+            ShaderOutput frag(v2f i) : SV_Target
             {
-                return float4(i.uv, i.perimeter, TEXTURE_INDEX + 1);
+                ShaderOutput o;
+                o.color = float4(i.uv, i.perimeter, TEXTURE_INDEX + 1);
+                o.depth = i.depth;
+                return o;
             }
             ENDCG
         }

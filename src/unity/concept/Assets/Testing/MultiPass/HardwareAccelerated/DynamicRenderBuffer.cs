@@ -29,7 +29,7 @@ namespace PreRendering
         /// <summary>
         /// The textures the camera renders to.
         /// </summary>
-        public readonly RenderTexture[] targetTextures;
+        public readonly RenderTexture[] targetTextures, depthTextures;
         public readonly GraphicsBuffer[] triangles, positions, uvs;
         public readonly RenderParams[] renderParams;
         public readonly int pass, verticies, indicies, slices;
@@ -56,6 +56,7 @@ namespace PreRendering
             positions = new GraphicsBuffer[slices];
             uvs = new GraphicsBuffer[slices];
             targetTextures = new RenderTexture[slices];
+            depthTextures = new RenderTexture[slices];
             renderCameras = new Camera[slices];
             renderParams = new RenderParams[slices];
 
@@ -76,7 +77,12 @@ namespace PreRendering
                     rasterizationResolution.width, rasterizationResolution.height, 24,
                     RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear
                 );
+                depthTextures[slice] = new RenderTexture(
+                    rasterizationResolution.width, rasterizationResolution.height, 24,
+                    RenderTextureFormat.Depth, RenderTextureReadWrite.Linear
+                );
                 targetTextures[slice].Create();
+                depthTextures[slice].Create();
 
                 // create and set up the render camera
                 GameObject cameraObject = new GameObject($"RenderCamera_PASS{pass}_SLICE{slice}");
@@ -86,7 +92,10 @@ namespace PreRendering
                 renderCameras[slice].clearFlags = CameraClearFlags.SolidColor;
                 renderCameras[slice].backgroundColor = Color.clear;
                 renderCameras[slice].cullingMask = 1 << cullingMaskLayer;
-                renderCameras[slice].targetTexture = targetTextures[slice];
+                renderCameras[slice].SetTargetBuffers(
+                    targetTextures[slice].colorBuffer,
+                    depthTextures[slice].depthBuffer
+                );
 
                 // copy some flags for comfort
                 renderCameras[slice].useOcclusionCulling = originalCamera.useOcclusionCulling;

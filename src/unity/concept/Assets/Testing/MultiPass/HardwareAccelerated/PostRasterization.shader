@@ -46,6 +46,7 @@ Shader"PreRendering/PostRasterization"
             sampler2D _MainTex;
             sampler2D _Input0, _Input1, _Input2, _Input3;
             sampler2D _Coordinates0, _Coordinates1, _Coordinates2, _Coordinates3;
+            sampler2D _Depth0, _Depth1, _Depth2, _Depth3;
             
             // propably violating the genova convention
             // the camera refused to render onto multiple slices, so this has to exist :/
@@ -86,6 +87,9 @@ Shader"PreRendering/PostRasterization"
             void sampleLowestBlurrySlices(float2 uv, out float4 slice0, out float4 slice1)
             {
                 float4 tc;
+                float d;
+                float d0 = 0;
+                float d1 = 0;
     
                 // initialize slices with high invalid blurryness
                 slice0 = float4(0, 0, MAX_CIRCUMFERENCE, 0);
@@ -94,20 +98,23 @@ Shader"PreRendering/PostRasterization"
                 for (int slice = 0; slice < NUM_SLICES; slice++)
                 {
                     SAMPLE_PSEUDO_ARRAY(_Coordinates, uv, slice, tc);
-                    
         
                     // check if the slice is valid
                     if (tc.w >= 1)
                     {
+                        SAMPLE_PSEUDO_ARRAY(_Depth, uv, slice, d);
+
                         // compare blurryness values
-                        if (tc.z < slice0.z)
+                        if (tc.z < slice0.z) // tc.z < slice0.z && d > d0
                         {
                             slice1 = slice0;
                             slice0 = tc;
+                            d0 = d;
                         }
-                        else if (tc.z < slice1.z)
+                        else if (tc.z < slice1.z) // tc.z < slice1.z && d > d1
                         {
                             slice1 = tc;
+                            d1 = d;
                         }
                     }
                 }
@@ -151,7 +158,8 @@ Shader"PreRendering/PostRasterization"
                     // no slice is valid, sample skybox / urp render
                     col = tex2D(_MainTex, i.uv);
                 }
-    
+                
+                // return tex2D(_Depth1, i.uv);
                 return col;
                 
             }

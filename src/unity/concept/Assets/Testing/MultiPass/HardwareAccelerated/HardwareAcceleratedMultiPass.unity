@@ -587,23 +587,23 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   inputImages:
-  - {fileID: 2800000, guid: f0ff48611ee248f4dbe70df3f7206c07, type: 3}
-  - {fileID: 2800000, guid: 3beb61103c224e94fb52a1a26587be40, type: 3}
-  - {fileID: 2800000, guid: a479d5d114f88b847b7d2a4d17efbbe8, type: 3}
-  - {fileID: 2800000, guid: 58eb90472ab17114e8a9b307a0d046a5, type: 3}
+  - {fileID: 2800000, guid: 2b87366908f8b5d438882b4ae60d3e09, type: 3}
+  - {fileID: 2800000, guid: 634c449034d85d64f80a5211a67b7b08, type: 3}
+  - {fileID: 2800000, guid: cf3cb3272e93cd24ab8111d3127e118b, type: 3}
+  - {fileID: 2800000, guid: e37e95fc8247d8548bba376e59df8a25, type: 3}
   meshTranslations:
-  - {x: 10, y: 0, z: 10}
-  - {x: 6, y: 0, z: 0}
-  - {x: 6, y: 0, z: -2}
-  - {x: -10, y: 0, z: -2}
+  - {x: 0, y: 0, z: 0}
+  - {x: -2, y: 0, z: -7}
+  - {x: -19, y: 0, z: -12}
+  - {x: -8, y: 0, z: 0}
   computeShader: {fileID: 7200000, guid: 87dba1d044049cf46aa6b5798711c964, type: 3}
   rasterizationShader: {fileID: 4800000, guid: ff3af3d092bd8fa48b9b61e5d11b7769, type: 3}
   postRasterizationShader: {fileID: 4800000, guid: fe60f4afcc71ebb48af2270059806d05, type: 3}
   map:
-    imageWidth: 2048
-    imageHeight: 512
+    imageWidth: 4096
+    imageHeight: 1024
     nClip: 0.1
-    fClip: 20
+    fClip: 30
   maxCircumference: 30
   interpolationRange: 0.1
   dimensions: 04000000
@@ -660,8 +660,6 @@ MonoBehaviour:
   debugChannel: 0
   debugMode: 0
   debugPass: 0
-  samplePass: 0
-  slice: 0
   motionVectors: {fileID: 0}
   rasterized: []
 --- !u!143 &1481361357

@@ -58,6 +58,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
 
     private void Start()
     {
+        Debug.Log(SystemInfo.supportedRenderTargetCount);
         originalCamera = GetComponent<Camera>();
         passes = dimensions.Length;
         
@@ -92,15 +93,21 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         {
             postRasterizationMaterial.SetTexture($"_Input{slice}", inputImages[slice]);
             postRasterizationMaterial.SetTexture($"_Coordinates{slice}", renderBuffers[passes - 1].targetTextures[slice]);
+            postRasterizationMaterial.SetTexture($"_Depth{slice}", renderBuffers[passes - 1].depthTextures[slice]);
         }
 
         // debug values
         motionVectors = geometryLoader.motionVectors;
-        rasterized = new RenderTexture[passes * dimensions[0]];
+        rasterized = new RenderTexture[passes * dimensions[0] * 2];
         for (int pass = 0; pass < passes; pass++)
         {
-            var source = renderBuffers[pass].targetTextures;
-            Array.Copy(source, 0, rasterized, pass * dimensions[0], source.Length);
+            var color = renderBuffers[pass].targetTextures;
+            var depth = renderBuffers[pass].depthTextures;
+            for (int slice = 0; slice < color.Length; slice++)
+            {
+                rasterized[pass * dimensions[0] * 2 + slice * 2] = color[slice];
+                rasterized[pass * dimensions[0] * 2 + slice * 2 + 1] = depth[slice];
+            }
         }
     }
 
@@ -136,6 +143,15 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             default:
                 Graphics.Blit(source, destination, postRasterizationMaterial);
                 break;
+        }
+    }
+
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.blue;
+        foreach (var translation in meshTranslations)
+        {
+            Gizmos.DrawSphere(translation + Vector3.down * 4, 0.1f);
         }
     }
 
