@@ -7,7 +7,7 @@ namespace PreRendering
     {
         public enum DebugMode
         {
-            none, zSineFilled
+            none, zSineFilled, showPerimeter
         }
 
         public Vector3[] meshTranslations
@@ -38,10 +38,16 @@ namespace PreRendering
         private readonly int cullingMaskLayer;
 
         private const string CullingMaskLayerName = "Rasterized";
+        private const int MaximumShaderSupportedSlices = 4;
 
 
         public DynamicRenderBuffer(int pass, int slices, Vector3[] meshTranslations, Transform parentTransform, Camera originalCamera, Resolution projectionResolution, Resolution rasterizationResolution, Shader rasterizationShader)
         {
+            if (slices > MaximumShaderSupportedSlices)
+            {
+                Debug.LogError($"Requested creation of a buffer with {slices} slices, but the shader only supports {MaximumShaderSupportedSlices}.");
+            }
+
             // initialize fields and arrays
             this.pass = pass;
             this.slices = slices;

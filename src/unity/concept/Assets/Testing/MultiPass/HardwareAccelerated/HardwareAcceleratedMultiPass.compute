@@ -82,7 +82,6 @@ void LoadTexelsToBuffer(uint3 id : SV_DispatchThreadID)
     uv = pc.xy;
     float4 P = _MotionVectors.SampleLevel(sampler_linear_repeat, float3(uv, TEXTURE_INDEX), 0);
     int2 tc = MAP_TO_RANGE(uv, INPUT_RESOLUTION);
-    P = _MotionVectors[uint3(tc, TEXTURE_INDEX)];
 #else
     int2 tc = MAP_TO_RANGE(uv, INPUT_RESOLUTION);
     float4 P = _MotionVectors[uint3(tc, TEXTURE_INDEX)];

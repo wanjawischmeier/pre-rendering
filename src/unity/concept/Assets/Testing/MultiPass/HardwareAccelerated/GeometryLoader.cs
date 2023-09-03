@@ -69,9 +69,9 @@ namespace PreRendering
         public void CalculateMotionVectors(Texture2D[] images)
         {
             // check texture compatability with buffer
-            if (images.Length != bufferSize)
+            if (images.Length < bufferSize)
             {
-                Debug.LogError($"Incorrect number of input images (buffer has size {bufferSize}, provided {images.Length} images).");
+                Debug.LogError($"Not enough images provided (buffer has size {bufferSize}, provided {images.Length} images).");
                 return;
             }
             if (images[0].width != motionVectors.width || images[0].height != motionVectors.height)

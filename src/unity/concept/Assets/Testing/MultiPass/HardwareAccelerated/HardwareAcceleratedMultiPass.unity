@@ -604,8 +604,8 @@ MonoBehaviour:
     imageHeight: 512
     nClip: 0.1
     fClip: 20
-  maxCircumference: 10
-  fClipCutoff: 1
+  maxCircumference: 30
+  interpolationRange: 0.1
   dimensions: 04000000
   projectionResolution: {x: 500, y: 250}
   rasterizationResolution: {x: 1000, y: 500}
@@ -660,12 +660,10 @@ MonoBehaviour:
   debugChannel: 0
   debugMode: 0
   debugPass: 0
-  slice: 0
   samplePass: 0
-  originalCamera: {fileID: 0}
+  slice: 0
   motionVectors: {fileID: 0}
   rasterized: []
-  postRasterizationMaterial: {fileID: 0}
 --- !u!143 &1481361357
 CharacterController:
   m_ObjectHideFlags: 0

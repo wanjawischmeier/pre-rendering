@@ -39,7 +39,8 @@ Shader"PreRendering/PostRasterization"
             
             #define MAX_SLICES 4
 
-            uniform int SLICES;
+            uniform int NUM_SLICES, DEBUG_MODE, SLICE, MAX_CIRCUMFERENCE;
+            uniform float INTERPOLATION_RANGE;
             uniform float2 RESOLUTION;
 
             sampler2D _MainTex;
@@ -66,36 +67,93 @@ Shader"PreRendering/PostRasterization"
                         result = float4(1, 0, 1, 1);                \
                         break;                                      \
                 }
+
+            float4 interpolateColors(float4 color1, float4 color2, float blurryness1, float blurryness2)
+            {
+                float blurrynessDiff = abs(blurryness1 - blurryness2);
+                if (blurrynessDiff <= INTERPOLATION_RANGE)
+                {
+                    float interpolationFactor = smoothstep(0.0, INTERPOLATION_RANGE, blurrynessDiff);
+                    return lerp(color2, color1, interpolationFactor);
+                }
+                else
+                {
+                    // if the difference is outside the range, select the color with the least blurryness
+                    return (blurryness1 < blurryness2) ? color1 : color2;
+                }
+            }
+
+            void sampleLowestBlurrySlices(float2 uv, out float4 slice0, out float4 slice1)
+            {
+                float4 tc;
+    
+                // initialize slices with high invalid blurryness
+                slice0 = float4(0, 0, MAX_CIRCUMFERENCE, 0);
+                slice1 = float4(0, 0, MAX_CIRCUMFERENCE, 0);
+
+                for (int slice = 0; slice < NUM_SLICES; slice++)
+                {
+                    SAMPLE_PSEUDO_ARRAY(_Coordinates, uv, slice, tc);
+                    
+        
+                    // check if the slice is valid
+                    if (tc.w >= 1)
+                    {
+                        // compare blurryness values
+                        if (tc.z < slice0.z)
+                        {
+                            slice1 = slice0;
+                            slice0 = tc;
+                        }
+                        else if (tc.z < slice1.z)
+                        {
+                            slice1 = tc;
+                        }
+                    }
+                }
+            }
             
             fixed4 frag (v2f i) : SV_Target
             {
-                float4 tcs[MAX_SLICES];
-                tcs[0] = tex2D(_Coordinates0, i.uv);
-                tcs[1] = tex2D(_Coordinates1, i.uv);
-                tcs[2] = tex2D(_Coordinates2, i.uv);
-                tcs[3] = tex2D(_Coordinates3, i.uv);
+                float4 col, slice0, slice1;
+                sampleLowestBlurrySlices(i.uv, slice0, slice1);
     
-                int index = 0;
-                float4 tmp, tc = tcs[0];
-                for (int slice = 1; slice < SLICES; slice++)
+                // correct initial texture index offset 
+                int index0 = slice0.w - 1;
+                int index1 = slice1.w - 1;
+    
+                if (DEBUG_MODE == 2)
                 {
-                    tmp = tcs[slice];
-                    if (tmp.a != 0 && (tc.a == 0 || tmp.b < tc.b))
-                    {
-                        index = slice;
-                        tc = tcs[slice];
-                    }
+                    return slice0.bbba * float4(index0, 1 - index0, 0, 1);
                 }
     
-                float4 col = tex2D(_MainTex, i.uv);
-                if (tc.a == 0) // col.a == 1 with clear flags as solid color
+                if (index0 >= 0 && index1 < 0)
                 {
-                    return col;
+                    // only slice0 is valid, sample its color
+                    SAMPLE_PSEUDO_ARRAY(_Input, slice0.xy, index0, col);
                 }
-                
-                float2 uv = tc.xy;
-                SAMPLE_PSEUDO_ARRAY(_Input, uv, index, col);
+                else if (index0 < 0 && index1 >= 0)
+                {
+                    // only slice1 is valid, sample its color
+                    SAMPLE_PSEUDO_ARRAY(_Input, slice1.xy, index1, col);
+                }
+                else if (index0 >= 0 && index1 >= 0)
+                {
+                    // both slices are valid, interpolate between them
+                    float4 col0, col1;
+                    SAMPLE_PSEUDO_ARRAY(_Input, slice0.xy, index0, col0);
+                    SAMPLE_PSEUDO_ARRAY(_Input, slice1.xy, index1, col1);
+        
+                    col = interpolateColors(col0, col1, slice0.z, slice1.z);
+                }
+                else
+                {
+                    // no slice is valid, sample skybox / urp render
+                    col = tex2D(_MainTex, i.uv);
+                }
+    
                 return col;
+                
             }
             ENDCG
         }

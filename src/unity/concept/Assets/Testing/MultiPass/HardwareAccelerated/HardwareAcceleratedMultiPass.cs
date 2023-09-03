@@ -1,7 +1,6 @@
 using UnityEngine;
 using PreRendering;
 using System;
-using System.Linq;
 
 [RequireComponent(typeof(Camera))]
 public class HardwareAcceleratedMultiPass : MonoBehaviour
@@ -16,7 +15,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     public ComputeShader computeShader;
     public Shader rasterizationShader, postRasterizationShader;
     public GeometryLoader.Map map;
-    public float maxCircumference;
+    public float maxCircumference, interpolationRange;
     public int[] dimensions;
     public Vector2Int projectionResolution, rasterizationResolution;
     public AnimationCurve projectionResolutionCurve, rasterizationResolutionCurve;
@@ -24,7 +23,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     [Header("Debugging")]
     public DebugChannel debugChannel;
     public DynamicRenderBuffer.DebugMode debugMode;
-    public int debugPass, samplePass;
+    public int debugPass;
 
     [Header("Debugging Values")]
     public RenderTexture motionVectors;
@@ -36,8 +35,6 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     private GeometryLoader geometryLoader;
     private DynamicRenderBuffer[] renderBuffers;
     private Resolution[] projectionResolutions, rasterizationResolutions;
-
-    private const int MaximumShaderSupportedSlices = 4;
 
 
     private Resolution SamplePassResolutionFromCurve(int pass, Vector2Int inputResolution, AnimationCurve curve)
@@ -89,7 +86,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         geometryLoader.PopulateMeshBuffer(renderBuffers, 0);
         
         postRasterizationMaterial = new Material(postRasterizationShader);
-        postRasterizationMaterial.SetInt("SLICES", renderBuffers[passes - 1].slices);
+        postRasterizationMaterial.SetInt("NUM_SLICES", renderBuffers[passes - 1].slices);
         postRasterizationMaterial.SetVector("RESOLUTION", rasterizationResolution.ToVector2());
         for (int slice = 0; slice < renderBuffers[passes - 1].slices; slice++)
         {
@@ -99,11 +96,11 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
 
         // debug values
         motionVectors = geometryLoader.motionVectors;
-        rasterized = new RenderTexture[passes * inputImages.Length];
+        rasterized = new RenderTexture[passes * dimensions[0]];
         for (int pass = 0; pass < passes; pass++)
         {
             var source = renderBuffers[pass].targetTextures;
-            Array.Copy(source, 0, rasterized, pass * inputImages.Length, source.Length);
+            Array.Copy(source, 0, rasterized, pass * dimensions[0], source.Length);
         }
     }
 
@@ -120,6 +117,10 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             renderBuffers[pass].meshTranslations = meshTranslations;
             renderBuffers[pass].UpdateParamsAndRenderToBuffer(debugMode, maxCircumference);
         }
+
+        postRasterizationMaterial.SetInt("DEBUG_MODE", (int)debugMode);
+        postRasterizationMaterial.SetFloat("INTERPOLATION_RANGE", interpolationRange);
+        postRasterizationMaterial.SetFloat("MAX_CIRCUMFERENCE", maxCircumference);
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
