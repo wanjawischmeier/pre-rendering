@@ -15,7 +15,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     public ComputeShader computeShader;
     public Shader rasterizationShader, postRasterizationShader;
     public GeometryLoader.Map map;
-    public float maxCircumference, interpolationRange;
+    public float maxCircumference, interpolationRange, depthOffset;
     public int[] dimensions;
     public Vector2Int projectionResolution, rasterizationResolution;
     public AnimationCurve projectionResolutionCurve, rasterizationResolutionCurve;
@@ -128,6 +128,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         postRasterizationMaterial.SetInt("DEBUG_MODE", (int)debugMode);
         postRasterizationMaterial.SetFloat("INTERPOLATION_RANGE", interpolationRange);
         postRasterizationMaterial.SetFloat("MAX_CIRCUMFERENCE", maxCircumference);
+        postRasterizationMaterial.SetFloat("DEPTH_OFFSET", depthOffset);
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)

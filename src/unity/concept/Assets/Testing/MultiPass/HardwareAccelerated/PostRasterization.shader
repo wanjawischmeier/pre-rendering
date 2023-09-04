@@ -40,7 +40,7 @@ Shader"PreRendering/PostRasterization"
             #define MAX_SLICES 4
 
             uniform int NUM_SLICES, DEBUG_MODE, SLICE, MAX_CIRCUMFERENCE;
-            uniform float INTERPOLATION_RANGE;
+            uniform float INTERPOLATION_RANGE, DEPTH_OFFSET;
             uniform float2 RESOLUTION;
 
             sampler2D _MainTex;
