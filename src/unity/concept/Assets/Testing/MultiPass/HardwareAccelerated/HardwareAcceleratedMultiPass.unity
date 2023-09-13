@@ -607,7 +607,8 @@ MonoBehaviour:
   maxCircumference: 30
   interpolationRange: 0.1
   depthOffset: 0
-  dimensions: 04000000
+  maxDifference: 0.002
+  dimensions: 01000000
   projectionResolution: {x: 100, y: 50}
   rasterizationResolution: {x: 1920, y: 1080}
   projectionResolutionCurve:

@@ -13,7 +13,7 @@ namespace PreRendering
         }
 
         public readonly RenderTexture motionVectors;
-        private ComputeShader computeShader;
+        public ComputeShader computeShader;
         private Resolution[] projectionResolutions, rasterizationResolutions;
         private Texture2D[] inputImages;
         private UnityEngine.Rendering.LocalKeyword usePreviousPassComputeShaderKeyword;

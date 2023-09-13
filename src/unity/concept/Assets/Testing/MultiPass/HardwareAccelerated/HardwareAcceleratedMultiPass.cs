@@ -15,7 +15,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     public ComputeShader computeShader;
     public Shader rasterizationShader, postRasterizationShader;
     public GeometryLoader.Map map;
-    public float maxCircumference, interpolationRange, depthOffset;
+    public float maxCircumference, interpolationRange, depthOffset, maxDifference;
     public int[] dimensions;
     public Vector2Int projectionResolution, rasterizationResolution;
     public AnimationCurve projectionResolutionCurve, rasterizationResolutionCurve;
@@ -83,9 +83,10 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
 
         // create geometry loader and populate first mesh buffer, as that one will not change
         geometryLoader = new GeometryLoader(dimensions[0], map, computeShader, projectionResolutions, rasterizationResolutions);
+        geometryLoader.computeShader.SetFloat("MAX_DIFFERENCE", maxDifference);
         geometryLoader.CalculateMotionVectors(inputImages);
         geometryLoader.PopulateMeshBuffer(renderBuffers, 0);
-        
+
         postRasterizationMaterial = new Material(postRasterizationShader);
         postRasterizationMaterial.SetInt("NUM_SLICES", renderBuffers[passes - 1].slices);
         postRasterizationMaterial.SetVector("RESOLUTION", rasterizationResolution.ToVector2());
@@ -120,7 +121,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             {
                 geometryLoader.PopulateMeshBuffer(renderBuffers, pass);
             }
-
+            
             renderBuffers[pass].meshTranslations = meshTranslations;
             renderBuffers[pass].UpdateParamsAndRenderToBuffer(debugMode, maxCircumference);
         }
