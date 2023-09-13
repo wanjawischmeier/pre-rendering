@@ -1,4 +1,4 @@
-Shader"PreRendering/HardwareAcceleratedMultiPass"
+Shader"PreRendering/ProjectionSurface"
 {
     SubShader
     {
@@ -21,7 +21,6 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
             {
                 float4 pos : SV_POSITION;
                 float2 uv : TEXCOORD0;
-                float perimeter : TEXCOORD1;
                 float depth : SV_Depth;
             };
 
@@ -37,15 +36,13 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
             
             uniform int DEBUG_MODE, RENDER_PASS, TEXTURE_INDEX;
             uniform float TIMESTEP, MAX_CIRCUMFERENCE;
-            uniform uint _StartIndex;
-            uniform uint _BaseVertexIndex;
             uniform float4x4 _ObjectToWorld;
 
             v2f vert(appdata v)
             {
                 v2f o;
     
-                int index = _Triangles[v.vertexID + _StartIndex] + _BaseVertexIndex;
+                int index = _Triangles[v.vertexID];
                 float2 uv0 = _UVs[index + 0];
                 float2 uv1 = _UVs[index + 1];
                 float2 uv2 = _UVs[index + 2];
@@ -53,30 +50,14 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 {
                     o.pos = float4(0, 0, 0, 0);
                     o.uv = float2(0, 0);
+                    o.depth = 0;
                     return o;
                 }
                 
-                float3 pos0 = _Positions[index + 0];
-                float3 pos1 = _Positions[index + 1];
-                float3 pos2 = _Positions[index + 2];
-                float l0 = length(pos0 - pos1);
-                float l1 = length(pos1 - pos2);
-                float l2 = length(pos2 - pos0);
-                o.perimeter = l0 + l1 + l2;
+                float3 pos = _Positions[index];
+                float4 wpos = mul(_ObjectToWorld, float4(pos, 1.0f));
     
-                if (RENDER_PASS != 0 && (l0 > MAX_CIRCUMFERENCE || l1 > MAX_CIRCUMFERENCE || l2 > MAX_CIRCUMFERENCE))
-                {
-                    o.pos = float4(0, 0, 0, 0);
-                    o.uv = float2(0, 0);
-                    return o;
-                }
-    
-                float4 wpos = mul(_ObjectToWorld, float4(pos0, 1.0f));
-    
-                if (DEBUG_MODE == 1 && length(wpos.xyz - float3(-4, 0, -5)) < 10) // zSineFilled
-                {
-                    wpos.y += sin(TIMESTEP * 2) * sin(length(wpos)) * sin(wpos.x);
-                }
+                // wpos.y += sin(TIMESTEP * 2) * sin(wpos.x);
     
                 o.depth = length(wpos);
                 o.pos = mul(UNITY_MATRIX_VP, wpos);
@@ -84,13 +65,9 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 return o;
             }
 
-            ShaderOutput frag(v2f i) : SV_Target
+            fixed4 frag(v2f i) : SV_Target
             {
-                ShaderOutput o;
-                o.color = float4(i.uv, i.perimeter, TEXTURE_INDEX + 1);
-                // o.color = (float(TEXTURE_INDEX + 1) / 4).xxxx;
-                o.depth = i.depth;
-                return o;
+                return float4(i.uv, i.depth, TEXTURE_INDEX + 1);
             }
             ENDCG
         }

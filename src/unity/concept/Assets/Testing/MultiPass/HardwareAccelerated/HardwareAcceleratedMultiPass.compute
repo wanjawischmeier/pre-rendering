@@ -39,10 +39,10 @@ void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
 
     float3 P = float3(
         CP * sin(ll1.y) * sin(ll1.x),
-        CP * cos(ll1.x),
+        CP * -cos(ll1.x), // no idea why that's neccessary, y-axis was just flipped for some reason
         CP * cos(ll1.y) * sin(ll1.x));
     
-    _MotionVectorsWrite[uint3(id.xy, TEXTURE_INDEX)] = float4(-P, 1);
+    _MotionVectorsWrite[uint3(id.xy, TEXTURE_INDEX)] = float4(P, 1);
 }
 
 

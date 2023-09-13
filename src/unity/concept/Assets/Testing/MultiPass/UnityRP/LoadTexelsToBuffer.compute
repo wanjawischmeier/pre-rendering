@@ -1,0 +1,54 @@
+#define NORMALIZE_RANGE(tc, sourceRange) \
+    (tc) / ((sourceRange) - 1)
+
+#include "UnityCG.cginc"
+#pragma kernel LoadTexelsToBuffer
+
+uniform float TIMESTEP;
+uniform float2 PROJECTION_RESOLUTION;
+uniform float4x4 _ViewProjInv;
+
+Texture2D<float> _CameraDepthTexture;
+Texture2D<float4> _InitialPass;
+SamplerState sampler_linear_repeat;
+
+RWStructuredBuffer<int> _Triangles;
+RWStructuredBuffer<float3> _Positions;
+RWStructuredBuffer<float2> _UVs;
+
+[numthreads(1, 1, 1)]
+void LoadTexelsToBuffer(uint3 id : SV_DispatchThreadID)
+{
+    // calculate vertex and tri indicies
+    uint i00 = id.x + id.y * PROJECTION_RESOLUTION.x;
+    uint i10 = i00 + 1;
+    uint i01 = i00 + PROJECTION_RESOLUTION.x;
+    uint i11 = i01 + 1;
+    uint triIndex = i00 * 6;
+    
+    float2 uv = NORMALIZE_RANGE(id.xy, PROJECTION_RESOLUTION);
+    
+    float rawDepth = _CameraDepthTexture[id.xy];
+    if (rawDepth == 0)
+    {
+        _UVs[i00] = float2(-1, 0);
+        return;
+    }
+    float depth = Linear01Depth(rawDepth);
+    
+    float4 clipPos = float4(uv * 2.0 - 1.0, depth, 1.0);
+    float4 worldPos = mul(_ViewProjInv, clipPos);
+    float3 P = worldPos.xyz / worldPos.w;
+    
+    P.y += sin(P.x);
+    
+    _Positions[i00] = P;
+    _UVs[i00] = uv;
+    
+    _Triangles[triIndex + 0] = i00;
+    _Triangles[triIndex + 1] = i11;
+    _Triangles[triIndex + 2] = i10;
+    _Triangles[triIndex + 3] = i11;
+    _Triangles[triIndex + 4] = i00;
+    _Triangles[triIndex + 5] = i01;
+}

@@ -77,6 +77,7 @@ namespace PreRendering
                     rasterizationResolution.width, rasterizationResolution.height, 24,
                     RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear
                 );
+                // targetTextures[slice].filterMode = FilterMode.Point;
                 depthTextures[slice] = new RenderTexture(
                     rasterizationResolution.width, rasterizationResolution.height, 24,
                     RenderTextureFormat.Depth, RenderTextureReadWrite.Linear
