@@ -124,41 +124,61 @@ Shader"PreRendering/PostRasterization"
             {
                 // float2 uv = tex2D(_Coordinates0, i.uv);
                 // return tex2D(_Input0, uv);
-                float4 col, slice0, slice1;
+                float4 col, col0, col1, slice0, slice1;
                 sampleLowestBlurrySlices(i.uv, slice0, slice1);
     
-                // correct initial texture index offset 
+                // correct initial texture index offset
                 int index0 = slice0.w - 1;
                 int index1 = slice1.w - 1;
     
+                bool sliceValid0 = slice0.w >= 1;
+                bool sliceValid1 = slice1.w >= 1;
+    
+                if (true)
+                {
+                    SAMPLE_PSEUDO_ARRAY(_Input, slice0.xy, 0, col0);
+                    sliceValid0 = sliceValid0 && col0.a < 0.5;
+                }
+                if (sliceValid1)
+                {
+                    SAMPLE_PSEUDO_ARRAY(_Input, slice1.xy, index1, col1);
+                    sliceValid1 = sliceValid1 && col1.a == 1;
+                }
+                /*
+                if (col0.a != 1 && col0.a < 0.7)
+                {
+                    return col0.aaaa;
+                }
+                else
+                {
+                    return fixed4(0, 1, 0, 1);
+                }
+                */
                 if (DEBUG_MODE == 2)
                 {
                     return slice0.bbba * float4(index0, 1 - index0, 0, 1);
                 }
     
-                if (index0 >= 0 && index1 < 0)
+                if (sliceValid0 && !sliceValid1)
                 {
                     // only slice0 is valid, sample its color
-                    SAMPLE_PSEUDO_ARRAY(_Input, slice0.xy, index0, col);
+                    col = col0;
                 }
-                else if (index0 < 0 && index1 >= 0)
+                else if (!sliceValid0 && sliceValid1)
                 {
                     // only slice1 is valid, sample its color
-                    SAMPLE_PSEUDO_ARRAY(_Input, slice1.xy, index1, col);
+                    col = col1;
                 }
-                else if (index0 >= 0 && index1 >= 0)
+                else if (sliceValid0 && sliceValid1)
                 {
                     // both slices are valid, interpolate between them
-                    float4 col0, col1;
-                    SAMPLE_PSEUDO_ARRAY(_Input, slice0.xy, index0, col0);
-                    SAMPLE_PSEUDO_ARRAY(_Input, slice1.xy, index1, col1);
-        
                     col = interpolateColors(col0, col1, slice0.z, slice1.z);
                 }
                 else
                 {
                     // no slice is valid, sample skybox / urp render
                     col = tex2D(_MainTex, i.uv);
+                    // SAMPLE_PSEUDO_ARRAY(_Input, slice0.xy, index0, col);
                 }
                 
                 // return tex2D(_Depth1, i.uv);

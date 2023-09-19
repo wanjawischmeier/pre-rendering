@@ -76,7 +76,7 @@ float4 GetWorldSpacePosition(float2 uv)
     }
     
     uv = pc.xy;
-    return = _MotionVectors.SampleLevel(sampler_linear_repeat, float3(uv, TEXTURE_INDEX), 0);
+    return _MotionVectors.SampleLevel(sampler_linear_repeat, float3(uv, TEXTURE_INDEX), 0);
 #else
     uint2 off = uint2(1, 0);
     int2 tc = MAP_TO_RANGE(uv, INPUT_RESOLUTION);
