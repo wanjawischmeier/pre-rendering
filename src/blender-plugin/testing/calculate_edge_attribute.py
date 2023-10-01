@@ -25,12 +25,15 @@ if obj is not None and obj.type == 'MESH':
         edge_pos = mesh.vertices[edge.vertices[0]].co
         direction = camera_pos.location - edge_pos
 
+        neighboring_faces_count = 0
         facing_away_count = 0
 
         # Iterate over the polygons (faces)
         for polygon in mesh.polygons:
             # Check if the edge is part of the current polygon
             if edge.key in polygon.edge_keys:
+                neighboring_faces_count += 1
+
                 # Calculate the dot product between the polygon normal and the direction
                 dot_product = polygon.normal.dot(direction)
 
@@ -38,7 +41,7 @@ if obj is not None and obj.type == 'MESH':
                     facing_away_count += 1
 
         # seperation only needed if exactly one is facing away
-        if facing_away_count == 1:
+        if facing_away_count + 1 == neighboring_faces_count:
             edge_facing_camera.data[edge.index].value = direction.length
         else:
             edge_facing_camera.data[edge.index].value = 0
