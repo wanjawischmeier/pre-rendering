@@ -40,7 +40,7 @@ def texture_coordinates(u, v):
 
     return x, y
 
-def texture_index(x, y):
+def texture_index(x,u y):
     return (y * texture_width + x) * 4  # 4 channels (RGBA)
 
 def spherical_to_texture_coordinates(lon, lat):

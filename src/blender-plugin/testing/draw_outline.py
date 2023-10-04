@@ -1,6 +1,7 @@
 import os
 import bpy
 import math
+import bmesh
 from time import time
 from math import atan2, asin
 from mathutils import Vector
@@ -47,7 +48,7 @@ def get_texture(name, width = scene_resolution_x, height = scene_resolution_y):
     else:
         if not texture == None:
             bpy.data.images.remove(texture)
-        bpy.ops.image.new(name=name, width=width, height=height, color=(0.0, 0.0, 0.0, 0.0), alpha=True)
+        bpy.ops.image.new(name=name, width=width, height=height, color=(0.0, 0.0, 0.0, 0.0), alpha=True, float=True)
         return bpy.data.images[name]
     
 def interpolate_points(p0, p1, t):
@@ -202,42 +203,33 @@ def draw_projected_line(texture, p0, p1, cam,
         if debug:
             print(f'iteration: {i}\ttc: ({x0}, {y0})')
 
-def draw_outline(mesh):
+def draw_outline(bm):
     global drawn_edges_count
 
     # Iterate over the edges
-    for edge in mesh.edges:
-        edge_pos_0 = mesh.vertices[edge.vertices[0]].co.copy()
-        edge_pos_1 = mesh.vertices[edge.vertices[1]].co.copy()
+    for edge in bm.edges:
+        edge_pos_0 = edge.verts[0].co.copy()
+        edge_pos_1 = edge.verts[1].co.copy()
         direction = camera_location - edge_pos_0
 
         neighboring_faces_count = 0
         facing_away_count = 0
 
-        # Iterate over the polygons (faces)
-        for polygon in mesh.polygons:
-            # Check if the edge is part of the current polygon
-            if edge.key in polygon.edge_keys:
-                neighboring_faces_count += 1
+        # iterate over all linked faces (typically 2)
+        for face in edge.link_faces:
+            neighboring_faces_count += 1
 
-                # Calculate the dot product between the polygon normal and the direction
-                dot_product = polygon.normal.dot(direction)
+            # Calculate the dot product between the polygon normal and the direction
+            dot_product = face.normal.dot(direction)
 
-                if dot_product <= 0:
-                    facing_away_count += 1
-
-        if (edge.vertices[0] == 16 or edge.vertices[0] == 19) and (edge.vertices[1] == 16 or edge.vertices[1] == 19):
-            # print(edge.vertices[0], edge.vertices[1], edge_pos_0, edge_pos_1, facing_away_count)
-            debug = True
-        else:
-            debug = False
+            if dot_product <= 0:
+                facing_away_count += 1
 
         # seperation only needed if exactly one is facing away
-        edge_index = mesh.edges.values().index(edge)
-        index_str = f'{edge_index}/{len(mesh.edges)}'
+        index_str = f'{edge.index}/{len(bm.edges)}'
         if facing_away_count + 1 == neighboring_faces_count:
             print_progress_bar(
-                edge_index, len(mesh.edges),
+                edge.index, len(bm.edges),
                 prefix=f'Drawing Edge \t{index_str}\t'
             )
 
@@ -249,7 +241,7 @@ def draw_outline(mesh):
             drawn_edges_count += 1
         else:
             print_progress_bar(
-                edge_index, len(mesh.edges),
+                edge.index, len(bm.edges),
                 prefix=f'Skipping Edge \t{index_str}\t'
             )
 
@@ -264,9 +256,10 @@ temporary_texture = [0.0] * len(outline_texture.pixels)
 camera = bpy.data.objects.get("ChunkPosition")
 camera_location = camera.location
 
-# Get the object to process
-obj = bpy.context.object
-
+previous_context = bpy.context.area.ui_type
+bpy.context.area.ui_type = 'VIEW_3D'
+bpy.ops.object.mode_set(mode='OBJECT')
+bpy.ops.object.select_all(action='DESELECT')
 print('-' * terminal_columns + '\n')
 
 start_time = time()
@@ -280,19 +273,32 @@ for obj in bpy.data.objects:
     if not any(collection for collection in obj.users_collection if bpy.context.layer_collection.children[collection.name].exclude == False):
         print(f'Skipping {obj.name}: Collection excluded from view layer\n')
         continue
-    
+
+    # select object and grab bmesh
+    obj.select_set(True)
+    bpy.ops.object.mode_set(mode='EDIT')
+    bm = bmesh.from_edit_mesh(obj.data)
+    bm.faces.ensure_lookup_table()
+
     print(f'Drawing outline of {obj.name}')
     rendered_objects_count += 1
 
     outline_start = time()
-    draw_outline(obj.data)
+    # draw_outline(obj.data)
+    draw_outline(bm)
     print_progress_bar(
         1, 1,
         prefix=f'Elapsed time: {round(time() - outline_start, 2)}s    \t'
     )
+
+    bm.free()
+    bpy.ops.object.mode_set(mode='OBJECT')
+    obj.select_set(False)
 
 print(f'Render time: {round(time() - start_time, 5)}s for {drawn_edges_count} edges on {rendered_objects_count} objects')
 print('Copying pixels from buffer to target texture...')
 outline_texture.pixels = temporary_texture
 
 print(f'Total time elapsed: {round(time() - start_time, 5)}s\n')
+
+bpy.context.area.ui_type = previous_context
