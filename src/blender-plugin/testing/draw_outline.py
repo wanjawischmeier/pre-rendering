@@ -2,6 +2,7 @@ import os
 import bpy
 import math
 import bmesh
+import numpy as np
 from time import time
 from math import atan2, asin
 from mathutils import Vector
@@ -79,7 +80,7 @@ def spherical_to_texture_coordinates(lon, lat, width, height):
     u, v = uv_coordinates(lon, lat)
     return texture_coordinates(u, v, width, height)
 
-def set_pixel(texture, texture_width, texture_height, x, y, color, width_2 = True):
+def set_pixel(texture, texture_width, texture_height, x, y, color, width_2 = False):
     index = texture_index(x, y, texture_width)
     color_old = texture[index + 2]
     if color_old == 0 or color_old > color[2]:
@@ -203,6 +204,73 @@ def draw_projected_line(texture, p0, p1, cam,
         if debug:
             print(f'iteration: {i}\ttc: ({x0}, {y0})')
 
+def draw_projected_line_2(texture, p0, p1, cam,
+        texture_width = scene_resolution_x, texture_height = scene_resolution_y,
+        max_iterations = 10000, base_step_size = 0.01, debug = False):
+
+    lon_step_size = (1 / texture_width) * (2 * math.pi)
+    lat_step_size = (1 / texture_height) * math.pi
+    t = 0
+
+    p0 -= cam
+    p1 -= cam
+
+    for i in range(max_iterations):
+        interpolated_point_0 = interpolate_points(p0, p1, t)
+        interpolated_point_1 = interpolate_points(p0, p1, t + base_step_size)
+        lon_lat_0 = spherical_coordinates(interpolated_point_0)
+        lon_lat_1 = spherical_coordinates(interpolated_point_1)
+
+        lon0, lat0 = lon_lat_0
+        lon1, lat1 = lon_lat_1
+        diff_lon = lon1 - lon0
+        diff_lat = lat1 - lat0
+
+        if abs(diff_lat) > abs(diff_lon):
+            lon0, lat0 = lat0, lon0
+            lon1, lat1 = lat1, lon1
+            diff_lon, diff_lat = diff_lat, diff_lon
+            spherical_step_size = lat_step_size
+        else:
+            spherical_step_size = lon_step_size
+
+        if lon0 > lon1:
+            lon0, lon1 = lon1, lon0
+            lat0, lat1 = lat1, lat0
+            diff_lon *= -1
+            diff_lat *= -1
+
+        if diff_lon == 0:
+            return
+        
+        slope = diff_lat / diff_lon
+        lon_sign = np.sign(diff_lon)
+        lat_sign = np.sign(diff_lat)
+
+        lon_interpolated = lon0 + spherical_step_size * lon_sign
+        lat_interpolated = lon_interpolated * slope * lat_sign
+
+        # sqrt needed?
+        length_0_1 = math.sqrt((lon1 - lon0) ** 2 + (lat1 - lat0) ** 2)
+        length_0_i = math.sqrt((lon_interpolated - lon0) ** 2 + (lat_interpolated - lat0) ** 2)
+
+        scaling_factor = length_0_i / length_0_1
+        t += base_step_size * scaling_factor
+
+        normalized_distance = (interpolated_point_0.length - nclip) / (fclip - nclip)
+        x0, y0 = spherical_to_texture_coordinates(lon0, lat0, texture_width, texture_height)
+
+        set_pixel(
+            texture, texture_width, texture_height,
+            x0, y0, (0.0, normalized_distance, normalized_distance, normalized_distance)
+        )
+
+        if debug:
+            print(f'iteration: {i}\ttc: ({x0}, {y0})')
+
+        if t >= 1:
+            return
+
 def draw_outline(bm):
     global drawn_edges_count
 
@@ -233,7 +301,7 @@ def draw_outline(bm):
                 prefix=f'Drawing Edge \t{index_str}\t'
             )
 
-            draw_projected_line(
+            draw_projected_line_2(
                 temporary_texture, edge_pos_0, edge_pos_1, camera_location,
                 texture_width=width, texture_height=height
             )
@@ -256,6 +324,30 @@ temporary_texture = [0.0] * len(outline_texture.pixels)
 camera = bpy.data.objects.get("ChunkPosition")
 camera_location = camera.location
 
+p0 = Vector((1, 2, 3))
+p1 = Vector((4, 5, 6))
+
+draw_projected_line(temporary_texture, p0, p1, camera_location, width, height)
+
+p0 -= camera_location
+p1 -= camera_location
+ll0 = spherical_coordinates(p0)
+ll1 = spherical_coordinates(p1)
+
+x0, y0 = spherical_to_texture_coordinates(ll0[0], ll0[1], width, height)
+x1, y1 = spherical_to_texture_coordinates(ll1[0], ll1[1], width, height)
+
+index0 = texture_index(x0, y0, width)
+index1 = texture_index(x1, y1, width)
+
+set_pixel(temporary_texture, width, height, x0, y0, (1, 0, 1, 1))
+set_pixel(temporary_texture, width, height, x1, y1, (0, 1, 1, 1))
+
+print(x0, y0)
+print(x1, y1)
+outline_texture.pixels = temporary_texture
+
+"""
 previous_context = bpy.context.area.ui_type
 bpy.context.area.ui_type = 'VIEW_3D'
 bpy.ops.object.mode_set(mode='OBJECT')
@@ -302,3 +394,4 @@ outline_texture.pixels = temporary_texture
 print(f'Total time elapsed: {round(time() - start_time, 5)}s\n')
 
 bpy.context.area.ui_type = previous_context
+"""
