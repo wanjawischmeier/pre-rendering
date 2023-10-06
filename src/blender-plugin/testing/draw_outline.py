@@ -204,9 +204,67 @@ def draw_projected_line(texture, p0, p1, cam,
         if debug:
             print(f'iteration: {i}\ttc: ({x0}, {y0})')
 
-def draw_projected_line_2(texture, p0, p1, cam,
+def interpolate_pos(lon0, lat0, x, y, t, p0, p1, texture_width, texture_height, lon_step_size, lat_step_size, base_step_size = 0.001, debug = False):
+    interpolated_point_0 = interpolate_points(p0, p1, t)
+    interpolated_point_1 = interpolate_points(p0, p1, t + base_step_size)
+    lon_lat_1 = spherical_coordinates(interpolated_point_1)
+    lon1, lat1 = lon_lat_1
+    diff_lon = lon1 - lon0
+    diff_lat = lat1 - lat0
+    switching = abs(diff_lat) > abs(diff_lon)
+
+    if debug:
+        print(diff_lon, diff_lat, switching)
+    
+    if switching:
+        x, y = y, x
+        lon0, lat0 = lat0, lon0
+        lon1, lat1 = lat1, lon1
+        diff_lon, diff_lat = diff_lat, diff_lon
+        lon_step_size, lat_step_size = lat_step_size, lon_step_size
+        texture_width, texture_height = texture_height, texture_width
+    
+    if lon0 > lon1:
+        lon0, lon1 = lon1, lon0
+        lat0, lat1 = lat1, lat0
+        diff_lon *= -1
+        diff_lat *= -1
+    
+    if diff_lon == 0:
+        return
+            
+    slope = diff_lat / diff_lon
+    lon_sign = np.sign(diff_lon)
+    lat_sign = np.sign(diff_lat)
+    lon_interpolated = lon0 + lon_step_size * lon_sign
+    lat_interpolated = lat0 + (lon_interpolated - lon0) * slope * lat_sign
+
+    # sqrt needed?
+    length_0_1 = math.sqrt((lon1 - lon0) ** 2 + (lat1 - lat0) ** 2)
+    length_0_i = math.sqrt((lon_interpolated - lon0) ** 2 + (lat_interpolated - lat0) ** 2)
+    scaling_factor = length_0_i / length_0_1
+    t += base_step_size * scaling_factor
+    x += int(lon_sign)
+    if switching:
+        v = uv_coordinates(lat0, lon0)[1]
+    else:
+        v = uv_coordinates(lon0, lat0)[1]
+    y = round(v * texture_height)
+    print(v, texture_height, y)
+            
+    if debug:
+        print(slope, lon0, lat0, lon_interpolated, lat_interpolated, length_0_1, length_0_i, scaling_factor)
+
+    if switching:
+        lon_interpolated, lat_interpolated = lat_interpolated, lon_interpolated
+        x, y = y, x
+
+    return lon_interpolated, lat_interpolated, x, y, t, interpolated_point_0
+
+
+def draw_projected_line_3(texture, p0, p1, cam,
         texture_width = scene_resolution_x, texture_height = scene_resolution_y,
-        max_iterations = 10000, base_step_size = 0.01, debug = False):
+        max_iterations = 10000, base_step_size = 0.0001, debug = False):
 
     lon_step_size = (1 / texture_width) * (2 * math.pi)
     lat_step_size = (1 / texture_height) * math.pi
@@ -214,7 +272,48 @@ def draw_projected_line_2(texture, p0, p1, cam,
 
     p0 -= cam
     p1 -= cam
+    
+    lon, lat = spherical_coordinates(p0)
+    x, y = spherical_to_texture_coordinates(lon, lat, texture_width, texture_height)
+    
+    for i in range(max_iterations):
+        interpolated = interpolate_pos(lon, lat, x, y, t, p0, p1, texture_width, texture_height, lon_step_size, lat_step_size, debug=debug)
+        if not interpolated:
+            return
+        
+        lon, lat, x, y, t, p = interpolated
+        # x0, y0 = spherical_to_texture_coordinates(lon, lat, width, height)
+        x0, y0 = x, y
 
+        normalized_distance = (p.length - nclip) / (fclip - nclip)
+
+        if debug:
+            u, v = uv_coordinates(lon, lat)
+            print(f'iteration: {i}\tt: {t}\tperc: ({round(u * width, 4)}, {round(v * height, 4)})\ttc: ({x}, {y})')
+
+        set_pixel(
+            texture, texture_width, texture_height,
+            x0, y0, (0.0, normalized_distance, normalized_distance, normalized_distance)
+        )
+
+        if t >= 1:
+            return
+
+
+
+
+
+def draw_projected_line_2(texture, p0, p1, cam,
+        texture_width = scene_resolution_x, texture_height = scene_resolution_y,
+        max_iterations = 10000, base_step_size = 0.0001, debug = False):
+
+    lon_step_size = (1 / texture_width) * (2 * math.pi)
+    lat_step_size = (1 / texture_height) * math.pi
+    t = 0
+
+    p0 -= cam
+    p1 -= cam
+    
     for i in range(max_iterations):
         interpolated_point_0 = interpolate_points(p0, p1, t)
         interpolated_point_1 = interpolate_points(p0, p1, t + base_step_size)
@@ -225,8 +324,12 @@ def draw_projected_line_2(texture, p0, p1, cam,
         lon1, lat1 = lon_lat_1
         diff_lon = lon1 - lon0
         diff_lat = lat1 - lat0
+        switching = abs(diff_lat) > abs(diff_lon)
 
-        if abs(diff_lat) > abs(diff_lon):
+        if debug:
+            print(diff_lon, diff_lat, switching)
+
+        if switching:
             lon0, lat0 = lat0, lon0
             lon1, lat1 = lat1, lon1
             diff_lon, diff_lat = diff_lat, diff_lon
@@ -248,7 +351,7 @@ def draw_projected_line_2(texture, p0, p1, cam,
         lat_sign = np.sign(diff_lat)
 
         lon_interpolated = lon0 + spherical_step_size * lon_sign
-        lat_interpolated = lon_interpolated * slope * lat_sign
+        lat_interpolated = lat0 + (lon_interpolated - lon0) * slope * lat_sign
 
         # sqrt needed?
         length_0_1 = math.sqrt((lon1 - lon0) ** 2 + (lat1 - lat0) ** 2)
@@ -256,8 +359,13 @@ def draw_projected_line_2(texture, p0, p1, cam,
 
         scaling_factor = length_0_i / length_0_1
         t += base_step_size * scaling_factor
+        
+        if debug:
+            print(slope, lon0, lat0, lon_interpolated, lat_interpolated, length_0_1, length_0_i, scaling_factor)
 
         normalized_distance = (interpolated_point_0.length - nclip) / (fclip - nclip)
+        if switching:
+            lon0, lat0 = lat0, lon0
         x0, y0 = spherical_to_texture_coordinates(lon0, lat0, texture_width, texture_height)
 
         set_pixel(
@@ -266,7 +374,7 @@ def draw_projected_line_2(texture, p0, p1, cam,
         )
 
         if debug:
-            print(f'iteration: {i}\ttc: ({x0}, {y0})')
+            print(f'iteration: {i}\tt: {t}\ttc: ({x0}, {y0})')
 
         if t >= 1:
             return
@@ -301,7 +409,7 @@ def draw_outline(bm):
                 prefix=f'Drawing Edge \t{index_str}\t'
             )
 
-            draw_projected_line_2(
+            draw_projected_line_3(
                 temporary_texture, edge_pos_0, edge_pos_1, camera_location,
                 texture_width=width, texture_height=height
             )
@@ -324,10 +432,10 @@ temporary_texture = [0.0] * len(outline_texture.pixels)
 camera = bpy.data.objects.get("ChunkPosition")
 camera_location = camera.location
 
-p0 = Vector((1, 2, 3))
-p1 = Vector((4, 5, 6))
+p0 = Vector((-9, 9, 1))
+p1 = Vector((1, 9, 1))
 
-draw_projected_line(temporary_texture, p0, p1, camera_location, width, height)
+draw_projected_line_3(temporary_texture, p0.copy(), p1.copy(), camera_location, width, height, debug=True)
 
 p0 -= camera_location
 p1 -= camera_location
@@ -336,9 +444,6 @@ ll1 = spherical_coordinates(p1)
 
 x0, y0 = spherical_to_texture_coordinates(ll0[0], ll0[1], width, height)
 x1, y1 = spherical_to_texture_coordinates(ll1[0], ll1[1], width, height)
-
-index0 = texture_index(x0, y0, width)
-index1 = texture_index(x1, y1, width)
 
 set_pixel(temporary_texture, width, height, x0, y0, (1, 0, 1, 1))
 set_pixel(temporary_texture, width, height, x1, y1, (0, 1, 1, 1))
