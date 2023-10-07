@@ -4,7 +4,7 @@ import math
 import bmesh
 import numpy as np
 from time import time
-from math import atan2, asin
+from math import sin, cos, atan2, asin
 from mathutils import Vector
 
 trailing_zeroes_formatter = '{:<010}'
@@ -79,6 +79,12 @@ def texture_index(x, y, width):
 def spherical_to_texture_coordinates(lon, lat, width, height):
     u, v = uv_coordinates(lon, lat)
     return texture_coordinates(u, v, width, height)
+
+def unit_sphere_to_tc(p, width, height):
+    lon = atan2(p.x, p.y)
+    lat = asin(p.z) # d is 1 on unit sphere
+
+    return spherical_to_texture_coordinates(lon, lat, width, height)
 
 def set_pixel(texture, texture_width, texture_height, x, y, color, width_2 = False):
     index = texture_index(x, y, texture_width)
@@ -204,6 +210,67 @@ def draw_projected_line(texture, p0, p1, cam,
         if debug:
             print(f'iteration: {i}\ttc: ({x0}, {y0})')
 
+# optimized for unit sphere
+def get_step_diff(x, y, texture_width, texture_height, p0, p1, step_size = 0.001):
+    u = x / texture_width
+    v = y / texture_height
+
+    lon0 = (u - 0.5) * 2 * math.pi
+    lat0 = (v - 0.5) * math.pi
+    
+    p = Vector((
+        cos(lat0) * sin(lon0),
+        cos(lat0) * cos(lon0),
+        sin(lat0)
+    ))
+
+    t = (p - p0).length / (p1 - p0).length
+    p_i = p + (t + step_size) * (p1 - p0)
+
+    lon1 = atan2(p_i.x, p_i.y)
+    lat1 = asin(p.z) # d is 1 on unit sphere
+
+    return lon1 - lon0, lat1 - lat0, 
+
+def interpolate_test(texture, p0, p1, width, height, max_iterations=10000):
+    # normalize / reproject onto unit sphere
+    p0.normalize()
+    p1.normalize()
+
+    x0, y0 = unit_sphere_to_tc(p0, width, height)
+    x1, y1 = unit_sphere_to_tc(p1, width, height)
+    x, y = x0, y0
+
+    if x0 >= x1 or (y1 - y0) > (x1 - x0):
+        print('invalid')
+        return
+
+    for i in range(max_iterations):
+        diff_lon, diff_lat = get_step_diff(x, y, width, height, p0, p1)
+        """
+        switching = abs(diff_lat) > abs(diff_lon)
+        if switching:
+            diff_lon, diff_lat = diff_lat, diff_lon
+            x_t, y_t = y, x
+
+        sign_lon = np.sign(diff_lon)
+        sign_lat = np.sign(diff_lat)
+        """
+        # assuming both positive, diff_lon > diff_lat
+        x += 1
+        y += diff_lat / diff_lon
+        print(i, x, y, diff_lon, diff_lat, diff_lat / diff_lon)
+        set_pixel(
+            texture, width, height,
+            round(x), round(y), (1, 1, 1, 1)
+        )
+
+        if x >= x1:
+            return
+
+
+
+
 def interpolate_pos(lon0, lat0, x, y, t, p0, p1, texture_width, texture_height, lon_step_size, lat_step_size, base_step_size = 0.001, debug = False):
     interpolated_point_0 = interpolate_points(p0, p1, t)
     interpolated_point_1 = interpolate_points(p0, p1, t + base_step_size)
@@ -252,7 +319,7 @@ def interpolate_pos(lon0, lat0, x, y, t, p0, p1, texture_width, texture_height, 
     y = round(v * texture_height)
     print(v, texture_height, y)
             
-    if debug:
+    if debug and False:
         print(slope, lon0, lat0, lon_interpolated, lat_interpolated, length_0_1, length_0_i, scaling_factor)
 
     if switching:
@@ -435,10 +502,12 @@ camera_location = camera.location
 p0 = Vector((-9, 9, 1))
 p1 = Vector((1, 9, 1))
 
-draw_projected_line_3(temporary_texture, p0.copy(), p1.copy(), camera_location, width, height, debug=True)
-
+# draw_projected_line_2(temporary_texture, p0.copy(), p1.copy(), camera_location, width, height, debug=True)
 p0 -= camera_location
 p1 -= camera_location
+
+interpolate_test(temporary_texture, p0.copy(), p1.copy(), width, height)
+
 ll0 = spherical_coordinates(p0)
 ll1 = spherical_coordinates(p1)
 
@@ -448,8 +517,8 @@ x1, y1 = spherical_to_texture_coordinates(ll1[0], ll1[1], width, height)
 set_pixel(temporary_texture, width, height, x0, y0, (1, 0, 1, 1))
 set_pixel(temporary_texture, width, height, x1, y1, (0, 1, 1, 1))
 
-print(x0, y0)
-print(x1, y1)
+print(x0, y0, ll0)
+print(x1, y1, ll1)
 outline_texture.pixels = temporary_texture
 
 """
