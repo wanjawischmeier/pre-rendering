@@ -20,8 +20,9 @@ nclip = bpy.data.cameras[0].clip_start
 fclip = bpy.data.cameras[0].clip_end
 drawn_edges_count = 0
 
+
 # taken from: https://stackoverflow.com/a/34325723/13215204
-def print_progress_bar (iteration, total, prefix = '', decimals = 1, length = terminal_columns - len(full_progress_bar), fill = '█', printEnd = "\r"):
+def print_progress_bar(iteration, total, prefix='', decimals=1, length=terminal_columns - len(full_progress_bar), fill='█', printEnd='\r'):
     """
     Call in a loop to create terminal progress bar
     @params:
@@ -38,9 +39,11 @@ def print_progress_bar (iteration, total, prefix = '', decimals = 1, length = te
     filledLength = int(length * iteration // total)
     bar = fill * filledLength + '-' * (length - filledLength)
     print(f'\r{prefix} |{bar}| {percent}%', end = printEnd)
+
     # print new line on complete
     if iteration == total:
         print('\n')
+
 
 def get_texture(name, width = scene_resolution_x, height = scene_resolution_y):
     texture = bpy.data.images.get(name)
@@ -51,9 +54,11 @@ def get_texture(name, width = scene_resolution_x, height = scene_resolution_y):
             bpy.data.images.remove(texture)
         bpy.ops.image.new(name=name, width=width, height=height, color=(0.0, 0.0, 0.0, 0.0), alpha=True, float=True)
         return bpy.data.images[name]
-    
+
+
 def interpolate_points(p0, p1, t):
     return p0 + t * (p1 - p0)
+
 
 def spherical_coordinates(p: Vector):
     lon = atan2(p.x, p.y)
@@ -61,42 +66,29 @@ def spherical_coordinates(p: Vector):
 
     return lon, lat
 
+
 def uv_coordinates(lon, lat):
     u = (lon / (2 * math.pi)) + 0.5
     v = (lat / math.pi) + 0.5
 
     return u, v
 
-def texture_coordinates(u, v, width, height):
+
+def spherical_to_texture_coordinates(lon, lat, width, height):
+    u, v = uv_coordinates(lon, lat)
     x = int(u * width)
     y = int(v * height)
 
     return x, y
 
-def texture_index(x, y, width):
-    return (y * width + x) * 4  # 4 channels (RGBA)
-
-def spherical_to_texture_coordinates(lon, lat, width, height):
-    u, v = uv_coordinates(lon, lat)
-    return texture_coordinates(u, v, width, height)
 
 def point_to_tc(p, width, height):
     lon, lat = spherical_coordinates(p)
     return spherical_to_texture_coordinates(lon, lat, width, height)
 
-def get_position_along_line(p, p0, p1):
-    v = p - p0
-    w = p1 - p0
-    dot_product = v.dot(w)
-    length_sq = w.dot(w)    
-    return dot_product / length_sq
-
-def get_position_along_line_2(p, p0, d):
-    n = p.cross(d)
-    return p.cross(n).dot(p0) / n.dot(n)
 
 def set_pixel(texture, texture_width, texture_height, x, y, color, width_2 = False):
-    index = texture_index(x, y, texture_width)
+    index = (x + y * width) * 4     # 4 channels (RGBA)
     color_old = texture[index + 2]
     if color_old == 0 or color_old > color[2]:
         texture[index:index + 4] = color
@@ -108,6 +100,7 @@ def set_pixel(texture, texture_width, texture_height, x, y, color, width_2 = Fal
     color_old = texture[index + 2]
     if color_old == 0 or color_old > color[2]:
         texture[index:index + 4] = color
+
 
 # based on: https://saturncloud.io/blog/bresenham-line-algorithm-a-powerful-tool-for-efficient-line-drawing
 def bresenham_line(texture, texture_width, texture_height, tc0, tc1, val0=1, val1=1, col=None):
@@ -154,74 +147,7 @@ def bresenham_line(texture, texture_width, texture_height, tc0, tc1, val0=1, val
             y += ystep
             error += dx
 
-def draw_projected_line(texture, p0, p1, cam,
-        texture_width = scene_resolution_x, texture_height = scene_resolution_y,
-        max_iterations = 10000, base_step_size = 0.01, debug = False):
 
-    p0 -= cam
-    p1 -= cam
-    t = 0
-
-    lon_lat_0 = spherical_coordinates(p0)
-    lon_lat_end = spherical_coordinates(p1)
-    tc_0 = spherical_to_texture_coordinates(lon_lat_0[0], lon_lat_0[1], texture_width, texture_height)
-    tc_end = spherical_to_texture_coordinates(lon_lat_end[0], lon_lat_end[1], texture_width, texture_height)
-    x_diff = abs(tc_end[0] - tc_0[0])
-
-    if x_diff < 10:
-        normalized_distance0 = (p0.length - nclip) / (fclip - nclip)
-        normalized_distance1 = (p1.length - nclip) / (fclip - nclip)
-
-        bresenham_line(
-            texture, texture_width, texture_height,
-            tc_0, tc_end, normalized_distance0, normalized_distance1
-        )
-        return
-    
-    step_size = base_step_size
-    lon_step_size = (1 / texture_width) * (2 * math.pi)
-
-    if lon_lat_0[0] > lon_lat_end[0]:
-        lon_lat_tmp = lon_lat_0
-        tmp_p = p0
-
-        lon_lat_0 = lon_lat_end
-        p0 = p1
-        
-        lon_lat_end = lon_lat_tmp
-        p1 = tmp_p
-
-    lon0, lat0 = lon_lat_0
-    lon_end = lon_lat_end[0]
-
-    for i in range(max_iterations):
-        interpolated_point = interpolate_points(p0, p1, t)
-        lon0, lat0 = spherical_coordinates(interpolated_point)
-        if lon0 > lon_end:
-            break
-        
-        interpolated_point1 = interpolate_points(p0, p1, t + base_step_size)
-        lon1 = spherical_coordinates(interpolated_point1)[0]
-
-        normalized_distance = (interpolated_point.length - nclip) / (fclip - nclip)
-        x0, y0 = spherical_to_texture_coordinates(lon0, lat0, texture_width, texture_height)
-
-        difference = lon1 - lon0
-        if difference == 0:
-            step_size = base_step_size
-        else:
-            step_size = base_step_size / (difference / lon_step_size)
-        t += step_size
-
-        set_pixel(
-            texture, texture_width, texture_height,
-            x0, y0, (0.0, normalized_distance, normalized_distance, normalized_distance)
-        )
-
-        if debug:
-            print(f'iteration: {i}\ttc: ({x0}, {y0})')
-
-# optimized for unit sphere
 def get_step_diff(x, y, texture_width, texture_height, p0, p1, step_size = 0.01):
     u = x / texture_width
     v = y / texture_height
@@ -236,7 +162,8 @@ def get_step_diff(x, y, texture_width, texture_height, p0, p1, step_size = 0.01)
     ))
 
     d = p1 - p0
-    t = get_position_along_line_2(p2, p0, d)
+    n = p2.cross(d)
+    t = p2.cross(n).dot(p0) / n.dot(n)
     p3 = p0 + t * d
 
     lon1, lat1 = spherical_coordinates(p3)
@@ -253,7 +180,8 @@ def get_step_diff(x, y, texture_width, texture_height, p0, p1, step_size = 0.01)
 
     return diff_lon, diff_lat, p3, correcting
 
-def interpolate_test(texture, p0, p1, width, height, max_iterations=10000):
+
+def draw_projected_line(texture, p0, p1, width, height, max_iterations=10000):
     tc0 = point_to_tc(p0, width, height)
     tc1 = point_to_tc(p1, width, height)
     x0, y0 = tc0
@@ -304,183 +232,6 @@ def interpolate_test(texture, p0, p1, width, height, max_iterations=10000):
         )
 
 
-
-
-def interpolate_pos(lon0, lat0, x, y, t, p0, p1, texture_width, texture_height, lon_step_size, lat_step_size, base_step_size = 0.001, debug = False):
-    interpolated_point_0 = interpolate_points(p0, p1, t)
-    interpolated_point_1 = interpolate_points(p0, p1, t + base_step_size)
-    lon_lat_1 = spherical_coordinates(interpolated_point_1)
-    lon1, lat1 = lon_lat_1
-    diff_lon = lon1 - lon0
-    diff_lat = lat1 - lat0
-    switching = abs(diff_lat) > abs(diff_lon)
-
-    if debug:
-        print(diff_lon, diff_lat, switching)
-    
-    if switching:
-        x, y = y, x
-        lon0, lat0 = lat0, lon0
-        lon1, lat1 = lat1, lon1
-        diff_lon, diff_lat = diff_lat, diff_lon
-        lon_step_size, lat_step_size = lat_step_size, lon_step_size
-        texture_width, texture_height = texture_height, texture_width
-    
-    if lon0 > lon1:
-        lon0, lon1 = lon1, lon0
-        lat0, lat1 = lat1, lat0
-        diff_lon *= -1
-        diff_lat *= -1
-    
-    if diff_lon == 0:
-        return
-            
-    slope = diff_lat / diff_lon
-    lon_sign = np.sign(diff_lon)
-    lat_sign = np.sign(diff_lat)
-    lon_interpolated = lon0 + lon_step_size * lon_sign
-    lat_interpolated = lat0 + (lon_interpolated - lon0) * slope * lat_sign
-
-    # sqrt needed?
-    length_0_1 = math.sqrt((lon1 - lon0) ** 2 + (lat1 - lat0) ** 2)
-    length_0_i = math.sqrt((lon_interpolated - lon0) ** 2 + (lat_interpolated - lat0) ** 2)
-    scaling_factor = length_0_i / length_0_1
-    t += base_step_size * scaling_factor
-    x += int(lon_sign)
-    if switching:
-        v = uv_coordinates(lat0, lon0)[1]
-    else:
-        v = uv_coordinates(lon0, lat0)[1]
-    y = round(v * texture_height)
-    print(v, texture_height, y)
-            
-    if debug and False:
-        print(slope, lon0, lat0, lon_interpolated, lat_interpolated, length_0_1, length_0_i, scaling_factor)
-
-    if switching:
-        lon_interpolated, lat_interpolated = lat_interpolated, lon_interpolated
-        x, y = y, x
-
-    return lon_interpolated, lat_interpolated, x, y, t, interpolated_point_0
-
-
-def draw_projected_line_3(texture, p0, p1, cam,
-        texture_width = scene_resolution_x, texture_height = scene_resolution_y,
-        max_iterations = 10000, base_step_size = 0.0001, debug = False):
-
-    lon_step_size = (1 / texture_width) * (2 * math.pi)
-    lat_step_size = (1 / texture_height) * math.pi
-    t = 0
-
-    p0 -= cam
-    p1 -= cam
-    
-    lon, lat = spherical_coordinates(p0)
-    x, y = spherical_to_texture_coordinates(lon, lat, texture_width, texture_height)
-    
-    for i in range(max_iterations):
-        interpolated = interpolate_pos(lon, lat, x, y, t, p0, p1, texture_width, texture_height, lon_step_size, lat_step_size, debug=debug)
-        if not interpolated:
-            return
-        
-        lon, lat, x, y, t, p = interpolated
-        # x0, y0 = spherical_to_texture_coordinates(lon, lat, width, height)
-        x0, y0 = x, y
-
-        normalized_distance = (p.length - nclip) / (fclip - nclip)
-
-        if debug:
-            u, v = uv_coordinates(lon, lat)
-            print(f'iteration: {i}\tt: {t}\tperc: ({round(u * width, 4)}, {round(v * height, 4)})\ttc: ({x}, {y})')
-
-        set_pixel(
-            texture, texture_width, texture_height,
-            x0, y0, (0.0, normalized_distance, normalized_distance, normalized_distance)
-        )
-
-        if t >= 1:
-            return
-
-
-
-
-
-def draw_projected_line_2(texture, p0, p1, cam,
-        texture_width = scene_resolution_x, texture_height = scene_resolution_y,
-        max_iterations = 10000, base_step_size = 0.0001, debug = False):
-
-    lon_step_size = (1 / texture_width) * (2 * math.pi)
-    lat_step_size = (1 / texture_height) * math.pi
-    t = 0
-
-    p0 -= cam
-    p1 -= cam
-    
-    for i in range(max_iterations):
-        interpolated_point_0 = interpolate_points(p0, p1, t)
-        interpolated_point_1 = interpolate_points(p0, p1, t + base_step_size)
-        lon_lat_0 = spherical_coordinates(interpolated_point_0)
-        lon_lat_1 = spherical_coordinates(interpolated_point_1)
-
-        lon0, lat0 = lon_lat_0
-        lon1, lat1 = lon_lat_1
-        diff_lon = lon1 - lon0
-        diff_lat = lat1 - lat0
-        switching = abs(diff_lat) > abs(diff_lon)
-
-        if debug:
-            print(diff_lon, diff_lat, switching)
-
-        if switching:
-            lon0, lat0 = lat0, lon0
-            lon1, lat1 = lat1, lon1
-            diff_lon, diff_lat = diff_lat, diff_lon
-            spherical_step_size = lat_step_size
-        else:
-            spherical_step_size = lon_step_size
-
-        if lon0 > lon1:
-            lon0, lon1 = lon1, lon0
-            lat0, lat1 = lat1, lat0
-            diff_lon *= -1
-            diff_lat *= -1
-
-        if diff_lon == 0:
-            return
-        
-        slope = diff_lat / diff_lon
-        lon_sign = np.sign(diff_lon)
-        lat_sign = np.sign(diff_lat)
-
-        lon_interpolated = lon0 + spherical_step_size * lon_sign
-        lat_interpolated = lat0 + (lon_interpolated - lon0) * slope * lat_sign
-
-        # sqrt needed?
-        length_0_1 = math.sqrt((lon1 - lon0) ** 2 + (lat1 - lat0) ** 2)
-        length_0_i = math.sqrt((lon_interpolated - lon0) ** 2 + (lat_interpolated - lat0) ** 2)
-
-        scaling_factor = length_0_i / length_0_1
-        t += base_step_size * scaling_factor
-        
-        if debug:
-            print(slope, lon0, lat0, lon_interpolated, lat_interpolated, length_0_1, length_0_i, scaling_factor)
-
-        normalized_distance = (interpolated_point_0.length - nclip) / (fclip - nclip)
-        if switching:
-            lon0, lat0 = lat0, lon0
-        x0, y0 = spherical_to_texture_coordinates(lon0, lat0, texture_width, texture_height)
-
-        set_pixel(
-            texture, texture_width, texture_height,
-            x0, y0, (0.0, normalized_distance, normalized_distance, normalized_distance)
-        )
-
-        if debug:
-            print(f'iteration: {i}\tt: {t}\ttc: ({x0}, {y0})')
-
-        if t >= 1:
-            return
-
 def draw_outline(bm):
     global drawn_edges_count
 
@@ -516,13 +267,8 @@ def draw_outline(bm):
                 edge.index, edge_count,
                 prefix=f'Drawing Edge \t{index_str}\t'
             )
-            """
-            draw_projected_line_3(
-                temporary_texture, edge_pos_0, edge_pos_1, camera_location,
-                texture_width=width, texture_height=height
-            )
-            """
-            interpolate_test(
+
+            draw_projected_line(
                 temporary_texture, edge_pos_0, edge_pos_1,
                 width, height
             )
@@ -537,41 +283,13 @@ def draw_outline(bm):
     wm.progress_end()
 
 
-
 width, height = (scene_resolution_x, scene_resolution_y)
-# width, height = (512, 128)
 outline_texture = get_texture('OutlineTexture', width, height)
 temporary_texture = [0.0] * len(outline_texture.pixels)
 
 # Get the camera object
 camera = bpy.data.objects.get("ChunkPosition")
 camera_location = camera.location
-"""
-p0 = Vector((-9, 9, 1))
-p1 = Vector((1, 9, 1))
-
-p0 = Vector((-7, 8, -3))
-p1 = Vector((-4, 8, 4))
-
-# draw_projected_line_2(temporary_texture, p0.copy(), p1.copy(), camera_location, width, height, debug=True)
-p0 -= camera_location
-p1 -= camera_location
-
-interpolate_test(temporary_texture, p0.copy(), p1.copy(), width, height)
-
-ll0 = spherical_coordinates(p0)
-ll1 = spherical_coordinates(p1)
-
-x0, y0 = spherical_to_texture_coordinates(ll0[0], ll0[1], width, height)
-x1, y1 = spherical_to_texture_coordinates(ll1[0], ll1[1], width, height)
-
-set_pixel(temporary_texture, width, height, x0, y0, (1, 0, 1, 1))
-set_pixel(temporary_texture, width, height, x1, y1, (0, 1, 1, 1))
-
-print(x0, y0, ll0)
-print(x1, y1, ll1)
-outline_texture.pixels = temporary_texture
-"""
 
 previous_context = bpy.context.area.ui_type
 bpy.context.area.ui_type = 'VIEW_3D'
@@ -603,7 +321,6 @@ for obj in bpy.data.objects:
     rendered_objects_count += 1
 
     outline_start = time()
-    # draw_outline(obj.data)
     draw_outline(bm)
     print_progress_bar(
         1, 1,
@@ -616,8 +333,8 @@ for obj in bpy.data.objects:
 
 print(f'Render time: {round(time() - start_time, 5)}s for {drawn_edges_count} edges on {rendered_objects_count} objects')
 print('Copying pixels from buffer to target texture...')
-outline_texture.pixels = temporary_texture
 
+outline_texture.pixels = temporary_texture
 print(f'Total time elapsed: {round(time() - start_time, 5)}s\n')
 
 bpy.context.area.ui_type = previous_context
