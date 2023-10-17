@@ -57,7 +57,7 @@ def interpolate_points(p0, p1, t):
 
 def spherical_coordinates(p: Vector):
     lon = atan2(p.x, p.y)
-    lat = asin(p.z / p.length)
+    lat = asin(min(1, max(-1, p.z / p.length)))
 
     return lon, lat
 
@@ -80,18 +80,20 @@ def spherical_to_texture_coordinates(lon, lat, width, height):
     u, v = uv_coordinates(lon, lat)
     return texture_coordinates(u, v, width, height)
 
-def unit_sphere_to_tc(p, width, height):
-    lon = atan2(p.x, p.y)
-    lat = asin(p.z) # d is 1 on unit sphere
-
+def point_to_tc(p, width, height):
+    lon, lat = spherical_coordinates(p)
     return spherical_to_texture_coordinates(lon, lat, width, height)
 
 def get_position_along_line(p, p0, p1):
     v = p - p0
     w = p1 - p0
     dot_product = v.dot(w)
-    length_sq = w.dot(w)
+    length_sq = w.dot(w)    
     return dot_product / length_sq
+
+def get_position_along_line_2(p, p0, d):
+    n = p.cross(d)
+    return p.cross(n).dot(p0) / n.dot(n)
 
 def set_pixel(texture, texture_width, texture_height, x, y, color, width_2 = False):
     index = texture_index(x, y, texture_width)
@@ -108,7 +110,7 @@ def set_pixel(texture, texture_width, texture_height, x, y, color, width_2 = Fal
         texture[index:index + 4] = color
 
 # based on: https://saturncloud.io/blog/bresenham-line-algorithm-a-powerful-tool-for-efficient-line-drawing
-def bresenham_line(texture, texture_width, texture_height, tc0, tc1, val0, val1):
+def bresenham_line(texture, texture_width, texture_height, tc0, tc1, val0=1, val1=1, col=None):
     x0, y0 = tc0
     x1, y1 = tc1
 
@@ -134,15 +136,17 @@ def bresenham_line(texture, texture_width, texture_height, tc0, tc1, val0, val1)
     for x in range(x0, x1 + 1):
         coord = (y, x) if slope else (x, y)
 
-        if total == 0:
-            t = 0.5
-        else:
-            t = (x1 - x) / (x1 - x0)
-        col = val0 * (1 - t) + val1 * t
+        if not col:
+            if total == 0:
+                t = 0.5
+            else:
+                t = (x1 - x) / (x1 - x0)
+            normalized_distance = val0 * (1 - t) + val1 * t
+            col = (1, 0, normalized_distance, normalized_distance)
 
         set_pixel(
             texture, texture_width, texture_height,
-            coord[0], coord[1], (col, 0.0, col, col)
+            coord[0], coord[1], col
         )
 
         error -= dy
@@ -218,7 +222,7 @@ def draw_projected_line(texture, p0, p1, cam,
             print(f'iteration: {i}\ttc: ({x0}, {y0})')
 
 # optimized for unit sphere
-def get_step_diff(x, y, texture_width, texture_height, p0, p1, step_size = 0.1):
+def get_step_diff(x, y, texture_width, texture_height, p0, p1, step_size = 0.01):
     u = x / texture_width
     v = y / texture_height
 
@@ -231,57 +235,73 @@ def get_step_diff(x, y, texture_width, texture_height, p0, p1, step_size = 0.1):
         sin(lat0)
     ))
 
-    t = get_position_along_line(p2, p0, p1)
-    p3 = p0 + (t + step_size) * (p1 - p0)
-    print(t, p0, p1, p2, p3, p3.length)
+    d = p1 - p0
+    t = get_position_along_line_2(p2, p0, d)
+    p3 = p0 + t * d
 
-    # ensure point is on unit sphere
-    p3.normalize()
+    lon1, lat1 = spherical_coordinates(p3)
+    diff_lon = lon1 - lon0
+    diff_lat = lat1 - lat0
 
-    lon1 = atan2(p3.x, p3.y)
-    lat1 = asin(p3.z) # d is 1 on unit sphere
+    correcting = abs(diff_lon) + abs(diff_lat) > 0.005
+    if not correcting:
+        p4 = p3 + step_size * d
 
-    return lon1 - lon0, lat1 - lat0
+        lon1, lat1 = spherical_coordinates(p4)
+        diff_lon = lon1 - lon0
+        diff_lat = lat1 - lat0
+
+    return diff_lon, diff_lat, p3, correcting
 
 def interpolate_test(texture, p0, p1, width, height, max_iterations=10000):
-    # normalize / reproject onto unit sphere
-    p0.normalize()
-    p1.normalize()
+    tc0 = point_to_tc(p0, width, height)
+    tc1 = point_to_tc(p1, width, height)
+    x0, y0 = tc0
+    x1, y1 = tc1
 
-    x0, y0 = unit_sphere_to_tc(p0, width, height)
-    x1, y1 = unit_sphere_to_tc(p1, width, height)
-
-    if x0 > x1:
-        print('switching')
-        p0, p1 = p1, p0
-        x0, x1 = x1, x0
-        y0, y1 = y1, y0
+    if max(abs(x1 - x0), abs(y1 - y0)) < 100:
+        normalized_distance0 = (p0.length - nclip) / (fclip - nclip)
+        normalized_distance1 = (p1.length - nclip) / (fclip - nclip)
         
-    x, y = x0, y0
-
-    for i in range(max_iterations):
-        diff_lon, diff_lat = get_step_diff(x, y, width, height, p0, p1)
-        """
-        switching = abs(diff_lat) > abs(diff_lon)
-        if switching:
-            diff_lon, diff_lat = diff_lat, diff_lon
-            x_t, y_t = y, x
-
+        bresenham_line(
+            texture, width, height, tc0, tc1,
+            normalized_distance0, normalized_distance1
+        )
+        return
+    
+    for _ in range(max_iterations):
+        diff_lon, diff_lat, p, correcting = get_step_diff(x0, y0, width, height, p0, p1)
         sign_lon = np.sign(diff_lon)
         sign_lat = np.sign(diff_lat)
-        """
-        # assuming both positive, diff_lon > diff_lat
-        slope = diff_lat / (diff_lon / math.pi)
-        x += 1
-        y += slope
-        print(i, x, y, (diff_lon / math.pi), diff_lat, slope)
+        
+        normalized_distance = (p.length - nclip) / (fclip - nclip)
+        x_dominant = abs(diff_lon) > abs(diff_lat)
         set_pixel(
             texture, width, height,
-            round(x), round(y), (1, 1, 1, 1)
+            round(x0), round(y0), (1, x_dominant / 2 - correcting, normalized_distance, normalized_distance)
         )
 
-        if x >= x1:
-            return
+        if x_dominant:
+            slope = diff_lat / diff_lon
+            x0 += sign_lon
+            y0 += sign_lat * abs(slope)
+            
+            if (sign_lon == 1 and x0 >= x1) or (sign_lon == -1 and x0 <= x1):
+                break
+        else:
+            slope = diff_lon / diff_lat
+            x0 += sign_lon * abs(slope)
+            y0 += sign_lat
+            
+            if not correcting and ((sign_lat == 1 and y0 >= y1) or (sign_lat == -1 and y0 <= y1)):
+                break
+
+    x0 = round(x0); y0 = round(y0)
+    if 0 < abs(x1 - x0) + abs(y1 - y0) < 10:
+        bresenham_line(
+            texture, width, height, (x0, y0), tc1,
+            col=(1, 1, normalized_distance, normalized_distance)
+        )
 
 
 
@@ -464,11 +484,16 @@ def draw_projected_line_2(texture, p0, p1, cam,
 def draw_outline(bm):
     global drawn_edges_count
 
+    edge_count = len(bm.edges)
+    wm.progress_begin(0, edge_count)
+
     # Iterate over the edges
     for edge in bm.edges:
         edge_pos_0 = edge.verts[0].co.copy()
         edge_pos_1 = edge.verts[1].co.copy()
         direction = camera_location - edge_pos_0
+        edge_pos_0 -= camera_location
+        edge_pos_1 -= camera_location
 
         neighboring_faces_count = 0
         facing_away_count = 0
@@ -484,24 +509,32 @@ def draw_outline(bm):
                 facing_away_count += 1
 
         # seperation only needed if exactly one is facing away
-        index_str = f'{edge.index}/{len(bm.edges)}'
+        wm.progress_update(edge.index)
+        index_str = f'{edge.index}/{edge_count}'
         if facing_away_count + 1 == neighboring_faces_count:
             print_progress_bar(
-                edge.index, len(bm.edges),
+                edge.index, edge_count,
                 prefix=f'Drawing Edge \t{index_str}\t'
             )
-
+            """
             draw_projected_line_3(
                 temporary_texture, edge_pos_0, edge_pos_1, camera_location,
                 texture_width=width, texture_height=height
             )
-
+            """
+            interpolate_test(
+                temporary_texture, edge_pos_0, edge_pos_1,
+                width, height
+            )
+            
             drawn_edges_count += 1
         else:
             print_progress_bar(
                 edge.index, len(bm.edges),
                 prefix=f'Skipping Edge \t{index_str}\t'
             )
+
+    wm.progress_end()
 
 
 
@@ -516,7 +549,7 @@ camera_location = camera.location
 """
 p0 = Vector((-9, 9, 1))
 p1 = Vector((1, 9, 1))
-"""
+
 p0 = Vector((-7, 8, -3))
 p1 = Vector((-4, 8, 4))
 
@@ -524,7 +557,7 @@ p1 = Vector((-4, 8, 4))
 p0 -= camera_location
 p1 -= camera_location
 
-interpolate_test(temporary_texture, p0.copy(), p1.copy(), width, height, max_iterations=1)
+interpolate_test(temporary_texture, p0.copy(), p1.copy(), width, height)
 
 ll0 = spherical_coordinates(p0)
 ll1 = spherical_coordinates(p1)
@@ -538,23 +571,25 @@ set_pixel(temporary_texture, width, height, x1, y1, (0, 1, 1, 1))
 print(x0, y0, ll0)
 print(x1, y1, ll1)
 outline_texture.pixels = temporary_texture
-
 """
+
 previous_context = bpy.context.area.ui_type
 bpy.context.area.ui_type = 'VIEW_3D'
 bpy.ops.object.mode_set(mode='OBJECT')
 bpy.ops.object.select_all(action='DESELECT')
 print('-' * terminal_columns + '\n')
 
-start_time = time()
 rendered_objects_count = 0
+collections = bpy.context.layer_collection.children
+wm = bpy.context.window_manager
+start_time = time()
 
 for obj in bpy.data.objects:
     if not obj or obj.type != 'MESH' or obj.hide_render:
         if obj.hide_render:
             print(f'Skipping {obj.name}: Object hidden in renders\n')
         continue
-    if not any(collection for collection in obj.users_collection if bpy.context.layer_collection.children[collection.name].exclude == False):
+    if not any(collection for collection in obj.users_collection if collection.name in collections and not collections[collection.name].exclude):
         print(f'Skipping {obj.name}: Collection excluded from view layer\n')
         continue
 
@@ -586,4 +621,3 @@ outline_texture.pixels = temporary_texture
 print(f'Total time elapsed: {round(time() - start_time, 5)}s\n')
 
 bpy.context.area.ui_type = previous_context
-"""
