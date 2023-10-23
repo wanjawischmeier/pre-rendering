@@ -84,7 +84,7 @@ Shader"PreRendering/PostRasterization"
                 }
             }
 
-            void sampleLowestBlurrySlices(float2 uv, out float4 slice0, out float4 slice1)
+            void sampleLeastBlurrySlices(float2 uv, out float4 slice0, out float4 slice1)
             {
                 float4 tc;
                 float d;
@@ -125,7 +125,7 @@ Shader"PreRendering/PostRasterization"
                 // float2 uv = tex2D(_Coordinates0, i.uv);
                 // return tex2D(_Input0, uv);
                 float4 col, col0, col1, slice0, slice1;
-                sampleLowestBlurrySlices(i.uv, slice0, slice1);
+                sampleLeastBlurrySlices(i.uv, slice0, slice1);
     
                 // correct initial texture index offset
                 int index0 = slice0.w - 1;
@@ -133,16 +133,16 @@ Shader"PreRendering/PostRasterization"
     
                 bool sliceValid0 = slice0.w >= 1;
                 bool sliceValid1 = slice1.w >= 1;
-    
-                if (true)
+                
+                if (sliceValid0)
                 {
                     SAMPLE_PSEUDO_ARRAY(_Input, slice0.xy, 0, col0);
-                    sliceValid0 = sliceValid0 && col0.a < 0.5;
+                    sliceValid0 = sliceValid0 && col0.a < 1;
                 }
                 if (sliceValid1)
                 {
                     SAMPLE_PSEUDO_ARRAY(_Input, slice1.xy, index1, col1);
-                    sliceValid1 = sliceValid1 && col1.a == 1;
+                    sliceValid1 = sliceValid1 && col1.a < 1;
                 }
                 /*
                 if (col0.a != 1 && col0.a < 0.7)

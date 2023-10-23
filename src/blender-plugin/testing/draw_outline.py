@@ -87,19 +87,17 @@ def point_to_tc(p, width, height):
     return spherical_to_texture_coordinates(lon, lat, width, height)
 
 
-def set_pixel(texture, texture_width, texture_height, x, y, color, width_2 = False):
+def set_pixel(texture, texture_width, texture_height, x, y, color, thickness_2=True):
     index = (x + y * width) * 4     # 4 channels (RGBA)
     color_old = texture[index + 2]
     if color_old == 0 or color_old > color[2]:
         texture[index:index + 4] = color
     
-    if not width_2:
+    if not thickness_2:
         return
     
-    index = (index + texture_width * 4) % (texture_width * texture_height * 4)
-    color_old = texture[index + 2]
-    if color_old == 0 or color_old > color[2]:
-        texture[index:index + 4] = color
+    set_pixel(texture, texture_width, texture_height, x + 1, y, color, thickness_2=False)
+    set_pixel(texture, texture_width, texture_height, x, y + 1, color, thickness_2=False)
 
 
 # based on: https://saturncloud.io/blog/bresenham-line-algorithm-a-powerful-tool-for-efficient-line-drawing
@@ -135,7 +133,7 @@ def bresenham_line(texture, texture_width, texture_height, tc0, tc1, val0=1, val
             else:
                 t = (x1 - x) / (x1 - x0)
             normalized_distance = val0 * (1 - t) + val1 * t
-            col = (1, 0, normalized_distance, normalized_distance)
+            col = (1, 0, normalized_distance, 1)
 
         set_pixel(
             texture, texture_width, texture_height,
@@ -187,7 +185,7 @@ def draw_projected_line(texture, p0, p1, width, height, max_iterations=10000):
     x0, y0 = tc0
     x1, y1 = tc1
 
-    if max(abs(x1 - x0), abs(y1 - y0)) < 100:
+    if max(abs(x1 - x0), abs(y1 - y0)) < 20:
         normalized_distance0 = (p0.length - nclip) / (fclip - nclip)
         normalized_distance1 = (p1.length - nclip) / (fclip - nclip)
         
@@ -206,7 +204,7 @@ def draw_projected_line(texture, p0, p1, width, height, max_iterations=10000):
         x_dominant = abs(diff_lon) > abs(diff_lat)
         set_pixel(
             texture, width, height,
-            round(x0), round(y0), (1, x_dominant / 2 - correcting, normalized_distance, normalized_distance)
+            round(x0), round(y0), (1, x_dominant / 2 - correcting, normalized_distance, 1)
         )
 
         if x_dominant:

@@ -8,6 +8,10 @@
 
 #define VERTICIES_PER_QUAD 6
 
+#define MARK_VERTEX_INVALID(tc, index) \
+    _MotionVectorsWrite[uint3(tc, index)] = float4(0, 0, 0, 0); \
+    return;
+
 #include "UnityCG.cginc"
 
 int TEXTURE_INDEX;
@@ -25,16 +29,26 @@ void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
     uint2 off = uint2(1, 0);
     float2 uv = NORMALIZE_RANGE(id.xy, INPUT_RESOLUTION);
     float d = _Input[id.xy].a;
-    float dl = abs(d - _Input[id.xy - off].a);
-    float dr = abs(d - _Input[id.xy + off].a);
-    float dt = abs(d - _Input[id.xy - off.yx].a);
-    float db = abs(d - _Input[id.xy + off.yx].a);
-    
+    float dl = _Input[id.xy - off].a;
+    float dr = _Input[id.xy + off].a;
+    float dt = _Input[id.xy - off.yx].a;
+    float db = _Input[id.xy + off.yx].a;
+
     // invalidate skybox verticies
-    if (d == 1 || dl > MAX_DIFFERENCE || dr > MAX_DIFFERENCE || dt > MAX_DIFFERENCE || db > MAX_DIFFERENCE)
+    if (d == 1 || dl == 1 || dr == 1 || dt == 1 || db == 1)
     {
-        _MotionVectorsWrite[uint3(id.xy, TEXTURE_INDEX)] = float4(0, 0, 0, 0);
-        return;
+        MARK_VERTEX_INVALID(id.xy, TEXTURE_INDEX);
+    }
+
+    float sl = abs(d - dl);
+    float sr = abs(d - dr);
+    float st = abs(d - dt);
+    float sb = abs(d - db);
+    
+    // invalidate steep angles
+    if (sl > MAX_DIFFERENCE || sr > MAX_DIFFERENCE || st > MAX_DIFFERENCE || sb > MAX_DIFFERENCE)
+    {
+        MARK_VERTEX_INVALID(id.xy, TEXTURE_INDEX);
     }
         
     float2 ll1 = uv.yx;
@@ -80,7 +94,13 @@ float4 GetWorldSpacePosition(float2 uv)
 #else
     uint2 off = uint2(1, 0);
     int2 tc = MAP_TO_RANGE(uv, INPUT_RESOLUTION);
-    return _MotionVectors[uint3(tc, TEXTURE_INDEX)];
+    float4 pos = _MotionVectors[uint3(tc, TEXTURE_INDEX)];
+    if (pos.w == 0)
+    {
+        return float4(0, 0, 0, 0);
+    }
+    
+    return pos;
 #endif
 }
 
