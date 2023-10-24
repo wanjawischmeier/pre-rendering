@@ -605,7 +605,7 @@ MonoBehaviour:
     nClip: 0.1
     fClip: 30
   maxCircumference: 30
-  interpolationRange: 0.02
+  interpolationRange: 0.1
   depthOffset: 0
   maxDifference: 1
   dimensions: 02000000

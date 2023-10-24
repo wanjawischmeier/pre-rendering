@@ -69,18 +69,20 @@ Shader"PreRendering/PostRasterization"
                         break;                                      \
                 }
 
-            float4 interpolateColors(float4 color0, float4 color1, float blurryness0, float blurryness1)
+            float4 interpolateColors(float4 color0, float4 color1, float blurriness0, float blurriness1)
             {
-                float blurrynessDiff = abs(blurryness0 - blurryness1);
-                if (blurrynessDiff <= INTERPOLATION_RANGE)
+                float deltaBlurriness = blurriness0 - blurriness1;
+                if (abs(deltaBlurriness) <= INTERPOLATION_RANGE)
                 {
-                    float interpolationFactor = smoothstep(0.0, INTERPOLATION_RANGE, blurrynessDiff);
-                    return lerp(color1, color0, interpolationFactor);
+                    // interpolate between color0 and color1 based on the difference in blurriness values
+                    float t = saturate(deltaBlurriness / INTERPOLATION_RANGE);
+                    // return t.xxxx;
+                    return lerp(color0, color1, t);
                 }
                 else
                 {
                     // if the difference is outside the range, select the color with the least blurryness
-                    return (blurryness0 < blurryness1) ? color0 : color1;
+                    return (blurriness0 < blurriness1) ? color0 : color1;
                 }
             }
 
