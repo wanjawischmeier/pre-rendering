@@ -605,10 +605,10 @@ MonoBehaviour:
     nClip: 0.1
     fClip: 30
   maxCircumference: 30
-  interpolationRange: 0.1
+  interpolationRange: 0.02
   depthOffset: 0
   maxDifference: 1
-  dimensions: 01000000
+  dimensions: 02000000
   projectionResolution: {x: 1000, y: 500}
   rasterizationResolution: {x: 1920, y: 1080}
   projectionResolutionCurve:
@@ -664,6 +664,7 @@ MonoBehaviour:
   debugPass: 0
   motionVectors: {fileID: 0}
   rasterized: []
+  colliderMesh: {fileID: 0}
 --- !u!143 &1481361357
 CharacterController:
   m_ObjectHideFlags: 0

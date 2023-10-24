@@ -69,18 +69,18 @@ Shader"PreRendering/PostRasterization"
                         break;                                      \
                 }
 
-            float4 interpolateColors(float4 color1, float4 color2, float blurryness1, float blurryness2)
+            float4 interpolateColors(float4 color0, float4 color1, float blurryness0, float blurryness1)
             {
-                float blurrynessDiff = abs(blurryness1 - blurryness2);
+                float blurrynessDiff = abs(blurryness0 - blurryness1);
                 if (blurrynessDiff <= INTERPOLATION_RANGE)
                 {
                     float interpolationFactor = smoothstep(0.0, INTERPOLATION_RANGE, blurrynessDiff);
-                    return lerp(color2, color1, interpolationFactor);
+                    return lerp(color1, color0, interpolationFactor);
                 }
                 else
                 {
                     // if the difference is outside the range, select the color with the least blurryness
-                    return (blurryness1 < blurryness2) ? color1 : color2;
+                    return (blurryness0 < blurryness1) ? color0 : color1;
                 }
             }
 
@@ -88,8 +88,8 @@ Shader"PreRendering/PostRasterization"
             {
                 float4 tc;
                 float d;
-                float d0 = 0;
-                float d1 = 0;
+                // float d0 = 0;
+                // float d1 = 0;
     
                 // initialize slices with high invalid blurryness
                 slice0 = float4(0, 0, MAX_CIRCUMFERENCE, 0);
@@ -98,23 +98,23 @@ Shader"PreRendering/PostRasterization"
                 for (int slice = 0; slice < NUM_SLICES; slice++)
                 {
                     SAMPLE_PSEUDO_ARRAY(_Coordinates, uv, slice, tc);
-        
+                    
                     // check if the slice is valid
                     if (tc.w >= 1)
                     {
-                        SAMPLE_PSEUDO_ARRAY(_Depth, uv, slice, d);
-
+                        // SAMPLE_PSEUDO_ARRAY(_Depth, uv, slice, d);
+                        
                         // compare blurryness values
                         if (tc.z < slice0.z) // tc.z < slice0.z && d > d0
                         {
                             slice1 = slice0;
                             slice0 = tc;
-                            d0 = d;
+                            // d0 = d;
                         }
                         else if (tc.z < slice1.z) // tc.z < slice1.z && d > d1
                         {
                             slice1 = tc;
-                            d1 = d;
+                            // d1 = d;
                         }
                     }
                 }
@@ -136,7 +136,7 @@ Shader"PreRendering/PostRasterization"
                 
                 if (sliceValid0)
                 {
-                    SAMPLE_PSEUDO_ARRAY(_Input, slice0.xy, 0, col0);
+                    SAMPLE_PSEUDO_ARRAY(_Input, slice0.xy, index0, col0);
                     sliceValid0 = sliceValid0 && col0.a < 1;
                 }
                 if (sliceValid1)
@@ -144,16 +144,7 @@ Shader"PreRendering/PostRasterization"
                     SAMPLE_PSEUDO_ARRAY(_Input, slice1.xy, index1, col1);
                     sliceValid1 = sliceValid1 && col1.a < 1;
                 }
-                /*
-                if (col0.a != 1 && col0.a < 0.7)
-                {
-                    return col0.aaaa;
-                }
-                else
-                {
-                    return fixed4(0, 1, 0, 1);
-                }
-                */
+    
                 if (DEBUG_MODE == 2)
                 {
                     return slice0.bbba * float4(index0, 1 - index0, 0, 1);
@@ -172,15 +163,21 @@ Shader"PreRendering/PostRasterization"
                 else if (sliceValid0 && sliceValid1)
                 {
                     // both slices are valid, interpolate between them
-                    col = interpolateColors(col0, col1, slice0.z, slice1.z);
+                    if (slice0.w < slice1.w)
+                    {
+                        col = interpolateColors(col0, col1, slice0.z, slice1.z);
+                    }
+                    else
+                    {
+                        col = interpolateColors(col1, col0, slice1.z, slice0.z);
+                    }
                 }
                 else
                 {
                     // no slice is valid, sample skybox / urp render
                     col = tex2D(_MainTex, i.uv);
-                    // SAMPLE_PSEUDO_ARRAY(_Input, slice0.xy, index0, col);
                 }
-                
+    
                 // return tex2D(_Depth1, i.uv);
                 return col;
                 

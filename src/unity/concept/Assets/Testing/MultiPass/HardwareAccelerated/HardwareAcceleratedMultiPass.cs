@@ -28,6 +28,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     [Header("Debugging Values")]
     public RenderTexture motionVectors;
     public RenderTexture[] rasterized;
+    public Mesh colliderMesh;
 
     private int passes;
     private Camera originalCamera;
@@ -110,6 +111,8 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
                 rasterized[pass * dimensions[0] * 2 + slice * 2 + 1] = depth[slice];
             }
         }
+
+        // colliderMesh = renderBuffers[0].CreateColliderMesh(0);
     }
 
     private void Update()

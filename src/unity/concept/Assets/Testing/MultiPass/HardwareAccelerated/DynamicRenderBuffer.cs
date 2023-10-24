@@ -1,5 +1,7 @@
 using System;
+using System.Linq;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace PreRendering
 {
@@ -157,6 +159,43 @@ namespace PreRendering
 
                 targetTextures[slice].Release();
             }
+        }
+
+        public Mesh CreateColliderMesh(int bufferIndex)
+        {
+            // create mesh
+            Mesh mesh = new Mesh();
+
+            // get positions
+            GraphicsBuffer positionBuffer = positions[bufferIndex];
+            int vertexCount = Mathf.FloorToInt(positionBuffer.count / 3);
+            Vector3[] rawPositions = new Vector3[vertexCount];
+            positionBuffer.GetData(rawPositions);
+
+            // set position buffer
+            mesh.SetVertexBufferParams(vertexCount, new VertexAttributeDescriptor[]
+            {
+                new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 3)
+            });
+            mesh.SetVertexBufferData(rawPositions, 0, 0, vertexCount);
+
+            // get indicies
+            GraphicsBuffer indexBuffer = triangles[bufferIndex];
+            int indexCount = indexBuffer.count;
+            uint[] rawTriangles = new uint[indexCount];
+            indexBuffer.GetData(rawTriangles);
+            Debug.Log(indexCount);
+            Debug.Log(vertexCount);
+            // set index buffer
+            mesh.SetIndexBufferParams(indexCount / 10, IndexFormat.UInt32);
+            mesh.SetIndexBufferData(rawTriangles, 0, 0, indexCount / 10);
+
+            mesh.RecalculateBounds();
+            mesh.RecalculateNormals();
+            mesh.RecalculateTangents();
+            mesh.RecalculateUVDistributionMetrics();
+
+            return mesh;
         }
     }
 }
