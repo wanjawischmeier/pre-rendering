@@ -38,6 +38,7 @@ Shader"PreRendering/PostRasterization"
             }
             
             #define MAX_SLICES 4
+            #define DEPTH_TOLERANCE 0.0001
 
             uniform int NUM_SLICES, DEBUG_MODE, SLICE, MAX_CIRCUMFERENCE;
             uniform float INTERPOLATION_RANGE, DEPTH_OFFSET;
@@ -86,12 +87,10 @@ Shader"PreRendering/PostRasterization"
                 }
             }
 
-            void sampleLeastBlurrySlices(float2 uv, out float4 slice0, out float4 slice1)
+            void sampleLeastBlurrySlices(float2 uv, out float4 slice0, out float4 slice1, out float d)
             {
                 float4 tc;
-                float d;
-                // float d0 = 0;
-                // float d1 = 0;
+                float d0, d1 = 0;
     
                 // initialize slices with high invalid blurryness
                 slice0 = float4(0, 0, MAX_CIRCUMFERENCE, 0);
@@ -104,19 +103,29 @@ Shader"PreRendering/PostRasterization"
                     // check if the slice is valid
                     if (tc.w >= 1)
                     {
-                        // SAMPLE_PSEUDO_ARRAY(_Depth, uv, slice, d);
+                        SAMPLE_PSEUDO_ARRAY(_Depth, uv, slice, d0);
                         
-                        // compare blurryness values
-                        if (tc.z < slice0.z) // tc.z < slice0.z && d > d0
+                        // sort using depth layers
+                        if (d0 > d1 + DEPTH_TOLERANCE)
                         {
-                            slice1 = slice0;
+                            // new closest layer, clear least blurry slices
                             slice0 = tc;
-                            // d0 = d;
+                            slice1 = float4(0, 0, MAX_CIRCUMFERENCE, 0);
+                            d1 = d0;
+                            d = d0;
                         }
-                        else if (tc.z < slice1.z) // tc.z < slice1.z && d > d1
+                        else if (d0 > d1 - DEPTH_TOLERANCE)
                         {
-                            slice1 = tc;
-                            // d1 = d;
+                            // pixel is in current layer, compare blurryness values
+                            if (tc.z < slice0.z)
+                            {
+                                slice1 = slice0;
+                                slice0 = tc;
+                            }
+                            else if (tc.z < slice1.z)
+                            {
+                                slice1 = tc;
+                            }
                         }
                     }
                 }
@@ -126,15 +135,18 @@ Shader"PreRendering/PostRasterization"
             {
                 // float2 uv = tex2D(_Coordinates0, i.uv);
                 // return tex2D(_Input0, uv);
+                float d;
                 float4 col, col0, col1, slice0, slice1;
-                sampleLeastBlurrySlices(i.uv, slice0, slice1);
+                sampleLeastBlurrySlices(i.uv, slice0, slice1, d);
     
                 // correct initial texture index offset
                 int index0 = slice0.w - 1;
                 int index1 = slice1.w - 1;
     
-                bool sliceValid0 = slice0.w >= 1;
-                bool sliceValid1 = slice1.w >= 1;
+                bool sliceValid0 = index0 >= 0;
+                bool sliceValid1 = index1 >= 0;
+                // return (d * 3).xxxx;
+                // return fixed4(slice0.w / 2, slice1.w / 2, 0, 1);
                 
                 if (sliceValid0)
                 {
@@ -173,6 +185,7 @@ Shader"PreRendering/PostRasterization"
                     {
                         col = interpolateColors(col1, col0, slice1.z, slice0.z);
                     }
+                    // col = fixed4(0, 1, 0, 1);
                 }
                 else
                 {

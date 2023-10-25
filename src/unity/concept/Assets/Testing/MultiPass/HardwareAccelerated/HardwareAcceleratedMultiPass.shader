@@ -80,7 +80,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
     
                 o.depth = length(wpos);
                 o.pos = mul(UNITY_MATRIX_VP, wpos);
-                // o.perimeter = length(o.pos);
+                // o.depth = length(o.pos);
                 o.uv = uv0;
                 return o;
             }

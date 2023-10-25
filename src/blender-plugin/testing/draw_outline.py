@@ -146,7 +146,7 @@ def bresenham_line(texture, texture_width, texture_height, tc0, tc1, val0=1, val
             error += dx
 
 
-def get_step_diff(x, y, texture_width, texture_height, p0, p1, step_size = 0.01):
+def get_step_diff(x, y, texture_width, texture_height, p0, p1, step_size=0.01, correction_threshold=0.005):
     u = x / texture_width
     v = y / texture_height
 
@@ -168,14 +168,15 @@ def get_step_diff(x, y, texture_width, texture_height, p0, p1, step_size = 0.01)
     diff_lon = lon1 - lon0
     diff_lat = lat1 - lat0
 
-    correcting = abs(diff_lon) + abs(diff_lat) > 0.005
+    correcting = abs(diff_lon) + abs(diff_lat) > correction_threshold
     if not correcting:
         p4 = p3 + step_size * d
 
+        lon0, lat0 = spherical_coordinates(p3)
         lon1, lat1 = spherical_coordinates(p4)
         diff_lon = lon1 - lon0
         diff_lat = lat1 - lat0
-
+    # print(u,v,lon0,lat0,p2,p3,p4, correcting)
     return diff_lon, diff_lat, p3, correcting
 
 
@@ -206,13 +207,13 @@ def draw_projected_line(texture, p0, p1, width, height, max_iterations=10000):
             texture, width, height,
             round(x0), round(y0), (1, x_dominant / 2 - correcting, normalized_distance, 1)
         )
-
+        # print(x0, y0, x_dominant, diff_lon, diff_lat, p0, p1)
         if x_dominant:
             slope = diff_lat / diff_lon
             x0 += sign_lon
             y0 += sign_lat * abs(slope)
             
-            if (sign_lon == 1 and x0 >= x1) or (sign_lon == -1 and x0 <= x1):
+            if not correcting and ((sign_lon == 1 and x0 >= x1) or (sign_lon == -1 and x0 <= x1)):
                 break
         else:
             slope = diff_lon / diff_lat
@@ -230,7 +231,7 @@ def draw_projected_line(texture, p0, p1, width, height, max_iterations=10000):
         )
 
 
-def draw_outline(bm):
+def draw_outline(bm, matrix_world, all_edges=False):
     global drawn_edges_count
 
     edge_count = len(bm.edges)
@@ -238,9 +239,12 @@ def draw_outline(bm):
 
     # Iterate over the edges
     for edge in bm.edges:
-        edge_pos_0 = edge.verts[0].co.copy()
-        edge_pos_1 = edge.verts[1].co.copy()
-        direction = camera_location - edge_pos_0
+        if edge.index != 53 and False:
+            continue
+        edge_pos_0 = matrix_world @ edge.verts[0].co
+        edge_pos_1 = matrix_world @ edge.verts[1].co
+        direction0 = camera_location - edge_pos_0
+        direction1 = camera_location - edge_pos_1
         edge_pos_0 -= camera_location
         edge_pos_1 -= camera_location
 
@@ -250,17 +254,20 @@ def draw_outline(bm):
         # iterate over all linked faces (typically 2)
         for face in edge.link_faces:
             neighboring_faces_count += 1
+            if not any(face.normal):
+                continue
 
             # Calculate the dot product between the polygon normal and the direction
-            dot_product = face.normal.dot(direction)
-
-            if dot_product <= 0:
+            dot_product0 = face.normal.dot(direction0)
+            dot_product1 = face.normal.dot(direction1)
+            if dot_product0 <= 0 or dot_product1 <= 0:
                 facing_away_count += 1
-
+                # print(f'face {face.index}: {face.normal} ({dot_product0}, {dot_product1})')
+        
         # seperation only needed if exactly one is facing away
         wm.progress_update(edge.index)
-        index_str = f'{edge.index}/{edge_count}'
-        if facing_away_count + 1 == neighboring_faces_count:
+        index_str = f'{edge.index}/{edge_count}' # ,({neighboring_faces_count}, {facing_away_count})
+        if 0 < facing_away_count < neighboring_faces_count or facing_away_count == 1 - neighboring_faces_count == 0 or all_edges:
             print_progress_bar(
                 edge.index, edge_count,
                 prefix=f'Drawing Edge \t{index_str}\t'
@@ -289,10 +296,6 @@ temporary_texture = [0.0] * len(outline_texture.pixels)
 camera = bpy.data.objects.get("ChunkPosition")
 camera_location = camera.location
 
-previous_context = bpy.context.area.ui_type
-bpy.context.area.ui_type = 'VIEW_3D'
-bpy.ops.object.mode_set(mode='OBJECT')
-bpy.ops.object.select_all(action='DESELECT')
 print('-' * terminal_columns + '\n')
 
 rendered_objects_count = 0
@@ -309,30 +312,26 @@ for obj in bpy.data.objects:
         print(f'Skipping {obj.name}: Collection excluded from view layer\n')
         continue
 
-    # select object and grab bmesh
-    obj.select_set(True)
-    bpy.ops.object.mode_set(mode='EDIT')
-    bm = bmesh.from_edit_mesh(obj.data)
+    # load bmesh
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
     bm.faces.ensure_lookup_table()
 
     print(f'Drawing outline of {obj.name}')
     rendered_objects_count += 1
 
     outline_start = time()
-    draw_outline(bm)
+    if obj.name=='Wall' or True:
+        draw_outline(bm, obj.matrix_world, all_edges=obj.name=='Plane')
     print_progress_bar(
         1, 1,
         prefix=f'Elapsed time: {round(time() - outline_start, 2)}s    \t'
     )
 
     bm.free()
-    bpy.ops.object.mode_set(mode='OBJECT')
-    obj.select_set(False)
 
 print(f'Render time: {round(time() - start_time, 5)}s for {drawn_edges_count} edges on {rendered_objects_count} objects')
 print('Copying pixels from buffer to target texture...')
 
 outline_texture.pixels = temporary_texture
 print(f'Total time elapsed: {round(time() - start_time, 5)}s\n')
-
-bpy.context.area.ui_type = previous_context

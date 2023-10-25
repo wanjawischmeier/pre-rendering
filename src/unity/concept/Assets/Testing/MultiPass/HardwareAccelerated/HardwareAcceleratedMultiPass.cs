@@ -99,8 +99,14 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         }
 
         // debug values
+        int totalPasses = 0;
+        foreach (int dimension in dimensions)
+        {
+            totalPasses += dimension;
+        }
+
         motionVectors = geometryLoader.motionVectors;
-        rasterized = new RenderTexture[passes * dimensions[0] * 2];
+        rasterized = new RenderTexture[totalPasses * 2];
         for (int pass = 0; pass < passes; pass++)
         {
             var color = renderBuffers[pass].targetTextures;
