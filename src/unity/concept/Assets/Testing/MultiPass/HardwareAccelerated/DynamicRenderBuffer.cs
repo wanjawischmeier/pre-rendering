@@ -145,9 +145,6 @@ namespace PreRendering
                 renderParams[slice].matProps.SetInt("DEBUG_MODE", (int)debugMode);
                 renderParams[slice].matProps.SetFloat("TIMESTEP", Time.time);
                 renderParams[slice].matProps.SetFloat("MAX_CIRCUMFERENCE", maxCircumference);
-                renderParams[slice].matProps.SetBuffer("_Triangles", triangles[slice]);
-                renderParams[slice].matProps.SetBuffer("_Positions", positions[slice]);
-                renderParams[slice].matProps.SetBuffer("_UVs", uvs[slice]);
 
                 Graphics.RenderPrimitives(renderParams[slice], MeshTopology.Triangles, indicies);
             }

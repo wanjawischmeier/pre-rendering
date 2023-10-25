@@ -81,7 +81,7 @@ RWStructuredBuffer<int> _Triangles;
 RWStructuredBuffer<float3> _Positions;
 RWStructuredBuffer<float2> _UVs;
 
-float4 GetWorldSpacePosition(float2 uv)
+float4 GetWorldSpacePositionAndTransformUV(inout float2 uv)
 {
 #ifdef USE_PREVIOUS_PASS
     float4 pc = _PreviousPass[MAP_TO_RANGE(uv, PREVIOUS_RASTERIZATION_RESOLUTION)];
@@ -118,7 +118,7 @@ void LoadTexelsToBuffer(uint3 id : SV_DispatchThreadID)
     float3 off = float3(1.0 / PROJECTION_RESOLUTION, 0);
     float2 uv = NORMALIZE_RANGE(id.xy, PROJECTION_RESOLUTION);
     
-    float4 P = GetWorldSpacePosition(uv);
+    float4 P = GetWorldSpacePositionAndTransformUV(uv);
     if (P.w == 0)
     {
         // skip invalid verticies

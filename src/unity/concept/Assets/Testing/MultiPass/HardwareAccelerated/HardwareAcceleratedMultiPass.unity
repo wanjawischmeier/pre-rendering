@@ -612,9 +612,9 @@ MonoBehaviour:
   interpolationRange: 0.1
   depthOffset: 0
   maxDifference: 1
-  dimensions: 06000000
+  dimensions: 0600000001000000
   projectionResolution: {x: 500, y: 250}
-  rasterizationResolution: {x: 1920, y: 1080}
+  rasterizationResolution: {x: 960, y: 540}
   projectionResolutionCurve:
     serializedVersion: 2
     m_Curve:

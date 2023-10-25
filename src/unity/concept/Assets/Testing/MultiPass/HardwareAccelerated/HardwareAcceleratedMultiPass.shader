@@ -111,7 +111,6 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 float l1 = length(pos1 - pos2);
                 float l2 = length(pos2 - pos0);
                 o.perimeter = l0 + l1 + l2;
-                // o.perimeter = length(pos0);
     
                 if (RENDER_PASS != 0 && (l0 > MAX_CIRCUMFERENCE || l1 > MAX_CIRCUMFERENCE || l2 > MAX_CIRCUMFERENCE))
                 {
