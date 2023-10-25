@@ -293,8 +293,8 @@ outline_texture = get_texture('OutlineTexture', width, height)
 temporary_texture = [0.0] * len(outline_texture.pixels)
 
 # Get the camera object
-camera = bpy.data.objects.get("ChunkPosition")
-camera_location = camera.location
+camera = bpy.context.scene.camera
+camera_location = camera.matrix_world @ camera.location
 
 print('-' * terminal_columns + '\n')
 

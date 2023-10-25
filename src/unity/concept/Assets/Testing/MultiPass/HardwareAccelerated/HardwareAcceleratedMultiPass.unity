@@ -588,14 +588,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   inputImages:
   - {fileID: 2800000, guid: aebf9a324a7d10e419bcf52eb2cecfd5, type: 3}
+  - {fileID: 2800000, guid: 458ba5abcf875a543a22d23f7fa43456, type: 3}
   - {fileID: 2800000, guid: 0a8d6694a2466e543abd19b5a4981689, type: 3}
-  - {fileID: 2800000, guid: 689402d03b1ed4b46a3b119f120bffbb, type: 3}
   - {fileID: 2800000, guid: 59c058d9038913f47afcffe1afdd53c6, type: 3}
+  - {fileID: 2800000, guid: c35c77f6155708942afbb80d8a75f876, type: 3}
+  - {fileID: 2800000, guid: 689402d03b1ed4b46a3b119f120bffbb, type: 3}
   meshTranslations:
   - {x: -10, y: 0, z: -10}
+  - {x: -10, y: -3.8, z: -10}
   - {x: -8, y: 0, z: -3}
-  - {x: 9, y: 0, z: 2}
   - {x: -2, y: 0, z: -10}
+  - {x: -2, y: -3.8, z: -10}
+  - {x: 9, y: 0, z: 2}
   computeShader: {fileID: 7200000, guid: 87dba1d044049cf46aa6b5798711c964, type: 3}
   rasterizationShader: {fileID: 4800000, guid: ff3af3d092bd8fa48b9b61e5d11b7769, type: 3}
   postRasterizationShader: {fileID: 4800000, guid: fe60f4afcc71ebb48af2270059806d05, type: 3}
@@ -608,8 +612,8 @@ MonoBehaviour:
   interpolationRange: 0.1
   depthOffset: 0
   maxDifference: 1
-  dimensions: 04000000
-  projectionResolution: {x: 1000, y: 500}
+  dimensions: 06000000
+  projectionResolution: {x: 500, y: 250}
   rasterizationResolution: {x: 1920, y: 1080}
   projectionResolutionCurve:
     serializedVersion: 2

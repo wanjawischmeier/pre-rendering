@@ -37,37 +37,49 @@ Shader"PreRendering/PostRasterization"
                 return o;
             }
             
-            #define MAX_SLICES 4
             #define DEPTH_TOLERANCE 0.0001
 
             uniform int NUM_SLICES, DEBUG_MODE, SLICE, MAX_CIRCUMFERENCE;
             uniform float INTERPOLATION_RANGE, DEPTH_OFFSET;
             uniform float2 RESOLUTION;
-
-            sampler2D _MainTex;
-            sampler2D _Input0, _Input1, _Input2, _Input3;
-            sampler2D _Coordinates0, _Coordinates1, _Coordinates2, _Coordinates3;
-            sampler2D _Depth0, _Depth1, _Depth2, _Depth3;
+            
+            SamplerState sampler_linear_repeat;
+            Texture2D _MainTex;
+            Texture2D _Input0, _Input1, _Input2, _Input3, _Input4, _Input5, _Input6, _Input7;
+            Texture2D _Coordinates0, _Coordinates1, _Coordinates2, _Coordinates3, _Coordinates4, _Coordinates5, _Coordinates6, _Coordinates7;
+            Texture2D _Depth0, _Depth1, _Depth2, _Depth3, _Depth4, _Depth5, _Depth6, _Depth7;
             
             // propably violating the genova convention
             // the camera refused to render onto multiple slices, so this has to exist :/
-            #define SAMPLE_PSEUDO_ARRAY(array, uv, slice, result)   \
-                switch (slice) {                                    \
-                    case 0:                                         \
-                        result = tex2D(array##0, uv);               \
-                        break;                                      \
-                    case 1:                                         \
-                        result = tex2D(array##1, uv);               \
-                        break;                                      \
-                    case 2:                                         \
-                        result = tex2D(array##2, uv);               \
-                        break;                                      \
-                    case 3:                                         \
-                        result = tex2D(array##3, uv);               \
-                        break;                                      \
-                    default:                                        \
-                        result = float4(1, 0, 1, 1);                \
-                        break;                                      \
+            #define SAMPLE_PSEUDO_ARRAY(array, uv, slice, result)               \
+                switch (slice) {                                                \
+                    case 0:                                                     \
+                        result = array##0.Sample(sampler_linear_repeat, uv);    \
+                        break;                                                  \
+                    case 1:                                                     \
+                        result = array##1.Sample(sampler_linear_repeat, uv);    \
+                        break;                                                  \
+                    case 2:                                                     \
+                        result = array##2.Sample(sampler_linear_repeat, uv);    \
+                        break;                                                  \
+                    case 3:                                                     \
+                        result = array##3.Sample(sampler_linear_repeat, uv);    \
+                        break;                                                  \
+                    case 4:                                                     \
+                        result = array##4.Sample(sampler_linear_repeat, uv);    \
+                        break;                                                  \
+                    case 5:                                                     \
+                        result = array##5.Sample(sampler_linear_repeat, uv);    \
+                        break;                                                  \
+                    case 6:                                                     \
+                        result = array##6.Sample(sampler_linear_repeat, uv);    \
+                        break;                                                  \
+                    case 7:                                                     \
+                        result = array##7.Sample(sampler_linear_repeat, uv);    \
+                        break;                                                  \
+                    default:                                                    \
+                        result = float4(1, 0, 1, 1);                            \
+                        break;                                                  \
                 }
 
             float4 interpolateColors(float4 color0, float4 color1, float blurriness0, float blurriness1)
@@ -190,7 +202,7 @@ Shader"PreRendering/PostRasterization"
                 else
                 {
                     // no slice is valid, sample skybox / urp render
-                    col = tex2D(_MainTex, i.uv);
+                    col = _MainTex.Sample(sampler_linear_repeat, i.uv);
                 }
     
                 // return tex2D(_Depth1, i.uv);

@@ -63,29 +63,36 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         originalCamera = GetComponent<Camera>();
         passes = dimensions.Length;
         
-        // initialize arrays
+        // initialize resolution arrays
         projectionResolutions = new Resolution[passes];
         rasterizationResolutions = new Resolution[passes];
-        renderBuffers = new DynamicRenderBuffer[passes];
 
         for (int pass = 0; pass < passes; pass++)
         {
             projectionResolutions[pass] = SamplePassResolutionFromCurve(pass, projectionResolution, projectionResolutionCurve);
             rasterizationResolutions[pass] = SamplePassResolutionFromCurve(pass, rasterizationResolution, rasterizationResolutionCurve);
-
-            Debug.Log($"Projection Resolution {pass}: {projectionResolutions[pass]}");
-            Debug.Log($"Rasterization Resolution {pass}: {rasterizationResolutions[pass]}");
-
-            renderBuffers[pass] = new DynamicRenderBuffer(
-                pass, dimensions[pass], meshTranslations, transform, originalCamera,
-                projectionResolutions[pass], rasterizationResolutions[pass], rasterizationShader
-            );
         }
 
         // create geometry loader and populate first mesh buffer, as that one will not change
         geometryLoader = new GeometryLoader(dimensions[0], map, computeShader, projectionResolutions, rasterizationResolutions);
         geometryLoader.computeShader.SetFloat("MAX_DIFFERENCE", maxDifference);
         geometryLoader.CalculateMotionVectors(inputImages);
+
+        // initialize render buffers
+        renderBuffers = new DynamicRenderBuffer[passes];
+        
+        for (int pass = 0; pass < passes; pass++)
+        {
+
+            Debug.Log($"Projection Resolution {pass}: {projectionResolutions[pass]}");
+            Debug.Log($"Rasterization Resolution {pass}: {rasterizationResolutions[pass]}");
+
+            renderBuffers[pass] = new DynamicRenderBuffer(
+                pass, dimensions[pass], meshTranslations, transform, originalCamera, geometryLoader.motionVectors,
+                projectionResolutions[pass], rasterizationResolutions[pass], rasterizationShader
+            );
+        }
+        
         geometryLoader.PopulateMeshBuffer(renderBuffers, 0);
 
         postRasterizationMaterial = new Material(postRasterizationShader);

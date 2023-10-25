@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -40,10 +39,10 @@ namespace PreRendering
         private readonly int cullingMaskLayer;
 
         private const string CullingMaskLayerName = "Rasterized";
-        private const int MaximumShaderSupportedSlices = 4;
+        private const int MaximumShaderSupportedSlices = 8;
 
 
-        public DynamicRenderBuffer(int pass, int slices, Vector3[] meshTranslations, Transform parentTransform, Camera originalCamera, Resolution projectionResolution, Resolution rasterizationResolution, Shader rasterizationShader)
+        public DynamicRenderBuffer(int pass, int slices, Vector3[] meshTranslations, Transform parentTransform, Camera originalCamera, RenderTexture motionVectors, Resolution projectionResolution, Resolution rasterizationResolution, Shader rasterizationShader)
         {
             if (slices > MaximumShaderSupportedSlices)
             {
@@ -62,6 +61,12 @@ namespace PreRendering
             renderCameras = new Camera[slices];
             renderParams = new RenderParams[slices];
 
+            // set non-slice specific material properties
+            var rasterizationMaterial = new Material(rasterizationShader);
+            rasterizationMaterial.SetInt("RENDER_PASS", pass);
+            rasterizationMaterial.SetVector("INPUT_RESOLUTION", new Vector2(motionVectors.width, motionVectors.height));
+            rasterizationMaterial.SetTexture("_MotionVectors", motionVectors);
+
             // calculate buffer constants
             cullingMaskLayer = LayerMask.NameToLayer(CullingMaskLayerName);
             verticies = projectionResolution.width * projectionResolution.height;
@@ -79,6 +84,7 @@ namespace PreRendering
                     rasterizationResolution.width, rasterizationResolution.height, 24,
                     RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear
                 );
+
                 // targetTextures[slice].filterMode = FilterMode.Point;
                 depthTextures[slice] = new RenderTexture(
                     rasterizationResolution.width, rasterizationResolution.height, 24,
@@ -106,17 +112,16 @@ namespace PreRendering
                 renderCameras[slice].allowMSAA = originalCamera.allowMSAA;
                 renderCameras[slice].allowDynamicResolution = originalCamera.allowDynamicResolution;
 
-                // create material props
+                // set render material properties
                 var matrix = Matrix4x4.Translate(meshTranslations[slice]);
                 var renderMatProps = new MaterialPropertyBlock();
-                renderMatProps.SetInt("RENDER_PASS", pass);
+                renderMatProps.SetInt("TEXTURE_INDEX", slice);
                 renderMatProps.SetBuffer("_Triangles", triangles[slice]);
                 renderMatProps.SetBuffer("_Positions", positions[slice]);
                 renderMatProps.SetBuffer("_UVs", uvs[slice]);
                 renderMatProps.SetMatrix("_ObjectToWorld", matrix);
 
                 // set render params
-                var rasterizationMaterial = new Material(rasterizationShader);
                 renderParams[slice] = new RenderParams(rasterizationMaterial)
                 {
                     worldBounds = new Bounds(Vector3.zero, 10000 * Vector3.one), // use tighter bounds
@@ -138,7 +143,6 @@ namespace PreRendering
                 
                 // update render params
                 renderParams[slice].matProps.SetInt("DEBUG_MODE", (int)debugMode);
-                renderParams[slice].matProps.SetInt("TEXTURE_INDEX", slice);
                 renderParams[slice].matProps.SetFloat("TIMESTEP", Time.time);
                 renderParams[slice].matProps.SetFloat("MAX_CIRCUMFERENCE", maxCircumference);
                 renderParams[slice].matProps.SetBuffer("_Triangles", triangles[slice]);
@@ -156,7 +160,8 @@ namespace PreRendering
                 triangles[slice].Dispose();
                 positions[slice].Dispose();
                 uvs[slice].Dispose();
-
+                
+                UnityEngine.Object.Destroy(renderCameras[slice].gameObject);
                 targetTextures[slice].Release();
             }
         }
@@ -186,6 +191,7 @@ namespace PreRendering
             indexBuffer.GetData(rawTriangles);
             Debug.Log(indexCount);
             Debug.Log(vertexCount);
+
             // set index buffer
             mesh.SetIndexBufferParams(indexCount / 10, IndexFormat.UInt32);
             mesh.SetIndexBufferData(rawTriangles, 0, 0, indexCount / 10);
