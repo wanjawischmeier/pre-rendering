@@ -13,6 +13,7 @@
     _MotionVectorsWrite[uint3(tc, index)] = float4(0, 0, 0, 0); \
     return;
 
+uniform bool VALIDATE_NEIGHBORS;
 uniform int TEXTURE_INDEX;
 uniform float PI, PI2, NCLIP, FCLIP, MAX_DIFFERENCE;
 uniform float2 INPUT_RESOLUTION, PROJECTION_RESOLUTION, PREVIOUS_RASTERIZATION_RESOLUTION;
@@ -146,12 +147,10 @@ void LoadTexelsToBuffer(uint3 id : SV_DispatchThreadID)
         _UVs[i00] = float2(-1, 0);
         return;
     }
-    /*
-    if (!neighborsValid(uv))
+    if (VALIDATE_NEIGHBORS && !neighborsValid(uv))
     {
-        // uv.x += 1;
+        uv.x += 1;
     }
-    */
     
     _Positions[i00] = P.xyz;
     _UVs[i00] = uv;

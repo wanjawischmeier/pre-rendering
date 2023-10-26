@@ -31,7 +31,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 half depth : TEXCOORD0;
             };
 
-            #define VALIDATION_ITERATIONS 10
+            #define VALIDATION_ITERATIONS 1
             #define AREA_TRIANGLE_SQ(v0, v1, v2) \
                 (pow(length(v0 - v1), 2) + pow(length(v1 - v2), 2) + pow(length(v2 - v0), 2)) * 1000
 
@@ -121,9 +121,9 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 }
                 
                 #if VALIDATION_ITERATIONS > 0
-                uint2 tc0 = uv0 * INPUT_RESOLUTION;
-                uint2 tc1 = uv1 * INPUT_RESOLUTION;
-                uint2 tc2 = uv2 * INPUT_RESOLUTION;
+                uint2 tc0 = (uv0 % 1) * INPUT_RESOLUTION;
+                uint2 tc1 = (uv1 % 1) * INPUT_RESOLUTION;
+                uint2 tc2 = (uv2 % 1) * INPUT_RESOLUTION;
     
                 if (!validLine(tc0, tc1) || !validLine(tc0, tc2))
                 {
@@ -142,19 +142,17 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 float l2 = length(pos2 - pos0);
                 o.perimeter = l0 + l1 + l2;
     
-                /*
                 if (uv.x > 1)
                 {
-                    // o.perimeter = 1;
-                    // uv %= 1;
+                    o.perimeter = 1;
+                    uv %= 1;
                 }
                 else
                 {
                     o.perimeter = l0 + l1 + l2;
                 }
-                */
     
-                if (RENDER_PASS != 0 && (l0 > MAX_CIRCUMFERENCE || l1 > MAX_CIRCUMFERENCE || l2 > MAX_CIRCUMFERENCE))
+                if (l0 > MAX_CIRCUMFERENCE || l1 > MAX_CIRCUMFERENCE || l2 > MAX_CIRCUMFERENCE)
                 {
                     o.pos = float4(0, 0, 0, 0);
                     o.uv = float2(0, 0);
@@ -163,7 +161,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
     
                 float4 wpos = mul(_ObjectToWorld, float4(pos, 1.0f));
     
-                if (DEBUG_MODE == 1 && length(wpos.xyz - float3(-4, 0, -5)) < 10) // zSineFilled
+                if (DEBUG_MODE == 1 && RENDER_PASS != 0 && length(wpos.xyz - float3(-4, 0, -5)) < 10) // zSineFilled
                 {
                     wpos.y += sin(TIMESTEP * 2) * sin(length(wpos)) * sin(wpos.x);
                 }

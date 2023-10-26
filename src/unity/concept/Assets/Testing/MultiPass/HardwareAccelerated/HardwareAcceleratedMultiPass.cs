@@ -15,6 +15,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     public ComputeShader computeShader;
     public Shader rasterizationShader, postRasterizationShader;
     public GeometryLoader.Map map;
+    public bool validateNeighbors;
     public float maxCircumference, interpolationRange, depthOffset, maxDifference;
     public int fieldOfViewOffset = 10;
     public int[] dimensions;
@@ -84,7 +85,6 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         
         for (int pass = 0; pass < passes; pass++)
         {
-
             Debug.Log($"Projection Resolution {pass}: {projectionResolutions[pass]}");
             Debug.Log($"Rasterization Resolution {pass}: {rasterizationResolutions[pass]}");
 
@@ -93,7 +93,8 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
                 projectionResolutions[pass], rasterizationResolutions[pass], rasterizationShader
             );
         }
-        
+
+        geometryLoader.validateNeighbors = validateNeighbors;
         geometryLoader.PopulateMeshBuffer(renderBuffers, 0);
 
         postRasterizationMaterial = new Material(postRasterizationShader);

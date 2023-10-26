@@ -608,13 +608,14 @@ MonoBehaviour:
     imageHeight: 1024
     nClip: 0.1
     fClip: 30
-  maxCircumference: 30
-  interpolationRange: 0.1
+  validateNeighbors: 0
+  maxCircumference: 2
+  interpolationRange: 0.5
   depthOffset: 0
   maxDifference: 1
   fieldOfViewOffset: 10
-  dimensions: 06000000
-  projectionResolution: {x: 500, y: 250}
+  dimensions: 0600000001000000
+  projectionResolution: {x: 1000, y: 500}
   rasterizationResolution: {x: 1920, y: 1080}
   resolutionCurve:
     serializedVersion: 2

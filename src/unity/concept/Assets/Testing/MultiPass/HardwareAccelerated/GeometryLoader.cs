@@ -12,6 +12,20 @@ namespace PreRendering
             public float nClip, fClip;
         }
 
+        /// <summary>
+        /// Wether the gpu should search neighboring pixels to filter overlapping edges.
+        /// Can only be set upon startup.
+        /// </summary>
+        public bool validateNeighbors
+        {
+            get => _validateNeighbors;
+            set
+            {
+                _validateNeighbors = value;
+                computeShader.SetBool("VALIDATE_NEIGHBORS", value);
+            }
+        }
+
         public readonly RenderTexture motionVectors;
         public ComputeShader computeShader;
         private Resolution[] projectionResolutions, rasterizationResolutions;
@@ -21,6 +35,7 @@ namespace PreRendering
         private int[] loadTexelsToBufferGroupSizesX, loadTexelsToBufferGroupSizesY;
         private int calculateMotionVectorsKernelId, loadTexelsToBufferKernelId, bufferSize;
         private bool isInputInitialized;
+        private bool _validateNeighbors = false;
 
         public GeometryLoader(int bufferSize, Map map, ComputeShader computeShader, Resolution[] projectionResolutions, Resolution[] rasterizationResolutions)
         {
@@ -55,7 +70,7 @@ namespace PreRendering
                 loadTexelsToBufferGroupSizesX[i] = projectionResolutions[i].width / (int)threadGroupSizeX;
                 loadTexelsToBufferGroupSizesY[i] = projectionResolutions[i].height / (int)threadGroupSizeY;
             }
-
+            computeShader.SetBool("VALIDATE_NEIGHBORS", true);
             computeShader.SetFloat("PI", Mathf.PI);
             computeShader.SetFloat("PI2", Mathf.PI * 2);
             computeShader.SetFloat("NCLIP", map.nClip);
@@ -111,6 +126,7 @@ namespace PreRendering
                 Debug.LogError($"Invalid dimensions\nDynamicRenderBuffer: {slices} slices\nGeometryLoader: {bufferSize}  slices");
             }
 
+            computeShader.SetBool("VALIDATE_NEIGHBORS", validateNeighbors);
             computeShader.SetInt("RENDER_PASS", pass);
             computeShader.SetVector("PROJECTION_RESOLUTION", projectionResolutions[pass].ToVector2());
             computeShader.SetKeyword(usePreviousPassComputeShaderKeyword, pass != 0);
