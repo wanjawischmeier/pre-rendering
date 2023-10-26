@@ -64,6 +64,7 @@ namespace PreRendering
             // set non-slice specific material properties
             var rasterizationMaterial = new Material(rasterizationShader);
             rasterizationMaterial.SetInt("RENDER_PASS", pass);
+            rasterizationMaterial.SetVector("PROJECTION_RESOLUTION", new Vector2(projectionResolution.width, projectionResolution.height));
             rasterizationMaterial.SetVector("INPUT_RESOLUTION", new Vector2(motionVectors.width, motionVectors.height));
             rasterizationMaterial.SetTexture("_MotionVectors", motionVectors);
 
@@ -132,14 +133,14 @@ namespace PreRendering
             }
         }
 
-        public void UpdateParamsAndRenderToBuffer(DebugMode debugMode, float maxCircumference)
+        public void UpdateParamsAndRenderToBuffer(DebugMode debugMode, float maxCircumference, float fieldOfViewOffset = 0)
         {
             for (int slice = 0; slice < slices; slice++)
             {
                 // update camera params
                 renderCameras[slice].nearClipPlane = originalCamera.nearClipPlane;
                 renderCameras[slice].farClipPlane = originalCamera.farClipPlane;
-                renderCameras[slice].fieldOfView = originalCamera.fieldOfView;
+                renderCameras[slice].fieldOfView = originalCamera.fieldOfView + fieldOfViewOffset;
                 
                 // update render params
                 renderParams[slice].matProps.SetInt("DEBUG_MODE", (int)debugMode);

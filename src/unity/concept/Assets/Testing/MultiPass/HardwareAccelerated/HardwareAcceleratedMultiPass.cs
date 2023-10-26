@@ -16,9 +16,10 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     public Shader rasterizationShader, postRasterizationShader;
     public GeometryLoader.Map map;
     public float maxCircumference, interpolationRange, depthOffset, maxDifference;
+    public int fieldOfViewOffset = 10;
     public int[] dimensions;
     public Vector2Int projectionResolution, rasterizationResolution;
-    public AnimationCurve projectionResolutionCurve, rasterizationResolutionCurve;
+    public AnimationCurve resolutionCurve;
 
     [Header("Debugging")]
     public DebugChannel debugChannel;
@@ -38,17 +39,17 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     private Resolution[] projectionResolutions, rasterizationResolutions;
 
 
-    private Resolution SamplePassResolutionFromCurve(int pass, Vector2Int inputResolution, AnimationCurve curve)
+    private Resolution CalculatePassResolutionFromCurve(int pass, Vector2Int inputResolution, AnimationCurve curve)
     {
         // bypass dynamic resolution scaling for now
-        return new Resolution()
+        new Resolution()
         {
             width = inputResolution.x,
             height = inputResolution.y
         };
 
-        float relativePass = (passes == 1) ? 1 : (float)pass / (passes - 1);
-        float relativeCurveMultiplier = projectionResolutionCurve.Evaluate(relativePass);
+        float relativePass = (pass + 1) / (float)passes;
+        float relativeCurveMultiplier = curve.Evaluate(relativePass);
 
         return new Resolution()
         {
@@ -69,8 +70,8 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
 
         for (int pass = 0; pass < passes; pass++)
         {
-            projectionResolutions[pass] = SamplePassResolutionFromCurve(pass, projectionResolution, projectionResolutionCurve);
-            rasterizationResolutions[pass] = SamplePassResolutionFromCurve(pass, rasterizationResolution, rasterizationResolutionCurve);
+            projectionResolutions[pass] = CalculatePassResolutionFromCurve(pass, projectionResolution, resolutionCurve);
+            rasterizationResolutions[pass] = CalculatePassResolutionFromCurve(pass, rasterizationResolution, resolutionCurve);
         }
 
         // create geometry loader and populate first mesh buffer, as that one will not change
@@ -139,7 +140,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             }
             
             renderBuffers[pass].meshTranslations = meshTranslations;
-            renderBuffers[pass].UpdateParamsAndRenderToBuffer(debugMode, maxCircumference);
+            renderBuffers[pass].UpdateParamsAndRenderToBuffer(debugMode, maxCircumference, pass == passes - 1 ? 0 : fieldOfViewOffset);
         }
 
         postRasterizationMaterial.SetInt("DEBUG_MODE", (int)debugMode);

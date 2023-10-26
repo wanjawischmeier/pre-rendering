@@ -31,7 +31,9 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 half depth : TEXCOORD0;
             };
 
-            #define VALIDATION_ITERATIONS 2
+            #define VALIDATION_ITERATIONS 10
+            #define AREA_TRIANGLE_SQ(v0, v1, v2) \
+                (pow(length(v0 - v1), 2) + pow(length(v1 - v2), 2) + pow(length(v2 - v0), 2)) * 1000
 
             Texture2DArray<float4> _MotionVectors;
             StructuredBuffer<int> _Triangles;
@@ -40,13 +42,19 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
             
             uniform int DEBUG_MODE, RENDER_PASS, TEXTURE_INDEX;
             uniform float TIMESTEP, MAX_CIRCUMFERENCE;
-            uniform float2 INPUT_RESOLUTION;
+            uniform float2 PROJECTION_RESOLUTION, INPUT_RESOLUTION;
             uniform uint _StartIndex;
             uniform uint _BaseVertexIndex;
             uniform float4x4 _ObjectToWorld;
 
             bool validLine(uint2 tc0, uint2 tc1)
             {
+                // the line is fine (no component is greater than 1)
+                if (!any(max(abs(tc0 - tc1) - 1, 0)))
+                {
+                    return true;
+                }
+                
                 #if VALIDATION_ITERATIONS == 1
                 // use a single midpoint for fast approximation
                 return _MotionVectors[uint3((tc0 + tc1) / 2, TEXTURE_INDEX)].w != 0;
@@ -79,11 +87,32 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
             v2f vert(appdata v)
             {
                 v2f o;
-                
                 int index = _Triangles[v.vertexID + _StartIndex] + _BaseVertexIndex;
-                float2 uv0 = _UVs[index + 0];
-                float2 uv1 = _UVs[index + 1];
-                float2 uv2 = _UVs[index + 2];
+                
+                // TODO: calculate indicies instead of sampling
+                /*
+                int index0 = v.vertexID - (v.vertexID % 3);     // i00
+                int index1, index2;
+                if ((index0 + 1) % 6)
+                {
+                    index1 = index0 + PROJECTION_RESOLUTION.x;  // i01
+                    index2 = index1 + 1;                        // i11
+                }
+                else
+                {
+                    index1 = index0 + 1;                        // i10
+                    index2 = index1 + PROJECTION_RESOLUTION.x;  // i11
+                }
+                */
+                int baseIndex = v.vertexID - v.vertexID % 3;
+                int index0 = _Triangles[baseIndex + 0 + _StartIndex] + _BaseVertexIndex;
+                int index1 = _Triangles[baseIndex + 1 + _StartIndex] + _BaseVertexIndex;
+                int index2 = _Triangles[baseIndex + 2 + _StartIndex] + _BaseVertexIndex;
+    
+                float2 uv = _UVs[index];
+                float2 uv0 = _UVs[index0];
+                float2 uv1 = _UVs[index1];
+                float2 uv2 = _UVs[index2];
                 if (uv0.x == -1 || uv1.x == -1 || uv2.x == -1)
                 {
                     o.pos = float4(0, 0, 0, 0);
@@ -96,7 +125,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 uint2 tc1 = uv1 * INPUT_RESOLUTION;
                 uint2 tc2 = uv2 * INPUT_RESOLUTION;
     
-                if (!validLine(tc0, tc1) || !validLine(tc1, tc2) || !validLine(tc2, tc0))
+                if (!validLine(tc0, tc1) || !validLine(tc0, tc2))
                 {
                     o.pos = float4(0, 0, 0, 0);
                     o.uv = float2(0, 0);
@@ -104,13 +133,26 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 }
                 #endif
                 
-                float3 pos0 = _Positions[index + 0];
-                float3 pos1 = _Positions[index + 1];
-                float3 pos2 = _Positions[index + 2];
+                float3 pos = _Positions[index];
+                float3 pos0 = _Positions[index0];
+                float3 pos1 = _Positions[index1];
+                float3 pos2 = _Positions[index2];
                 float l0 = length(pos0 - pos1);
                 float l1 = length(pos1 - pos2);
                 float l2 = length(pos2 - pos0);
                 o.perimeter = l0 + l1 + l2;
+    
+                /*
+                if (uv.x > 1)
+                {
+                    // o.perimeter = 1;
+                    // uv %= 1;
+                }
+                else
+                {
+                    o.perimeter = l0 + l1 + l2;
+                }
+                */
     
                 if (RENDER_PASS != 0 && (l0 > MAX_CIRCUMFERENCE || l1 > MAX_CIRCUMFERENCE || l2 > MAX_CIRCUMFERENCE))
                 {
@@ -119,7 +161,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                     return o;
                 }
     
-                float4 wpos = mul(_ObjectToWorld, float4(pos0, 1.0f));
+                float4 wpos = mul(_ObjectToWorld, float4(pos, 1.0f));
     
                 if (DEBUG_MODE == 1 && length(wpos.xyz - float3(-4, 0, -5)) < 10) // zSineFilled
                 {
@@ -128,7 +170,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
     
                 o.depth = length(wpos);
                 o.pos = mul(UNITY_MATRIX_VP, wpos);
-                o.uv = uv0;
+                o.uv = uv;
                 return o;
             }
 

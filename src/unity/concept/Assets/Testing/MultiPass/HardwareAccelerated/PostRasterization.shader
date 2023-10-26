@@ -173,7 +173,8 @@ Shader"PreRendering/PostRasterization"
     
                 if (DEBUG_MODE == 2)
                 {
-                    return slice0.bbba * float4(index0, 1 - index0, 0, 1);
+                    // return slice0.bbba * float4(index0, 1 - index0, 0, 1);
+                    return float4(slice0.b, slice1.b, 0, 1);
                 }
     
                 if (sliceValid0 && !sliceValid1)

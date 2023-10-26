@@ -1,18 +1,17 @@
+#include "UnityCG.cginc"
 #pragma multi_compile __ USE_PREVIOUS_PASS
 
-#define MAP_TO_RANGE(tc, targetRange) \
+#define MAP_TO_RANGE(tc, targetRange)                           \
     (tc) * ((targetRange) - 1)
 
-#define NORMALIZE_RANGE(tc, sourceRange) \
+#define NORMALIZE_RANGE(tc, sourceRange)                        \
     (tc) / ((sourceRange) - 1)
 
 #define VERTICIES_PER_QUAD 6
 
-#define MARK_VERTEX_INVALID(tc, index) \
+#define MARK_VERTEX_INVALID(tc, index)                          \
     _MotionVectorsWrite[uint3(tc, index)] = float4(0, 0, 0, 0); \
     return;
-
-#include "UnityCG.cginc"
 
 uniform int TEXTURE_INDEX;
 uniform float PI, PI2, NCLIP, FCLIP, MAX_DIFFERENCE;
@@ -83,6 +82,8 @@ RWStructuredBuffer<float2> _UVs;
 
 float4 GetWorldSpacePositionAndTransformUV(inout float2 uv)
 {
+    float4 pos;
+    
 #ifdef USE_PREVIOUS_PASS
     float4 pc = _PreviousPass[MAP_TO_RANGE(uv, PREVIOUS_RASTERIZATION_RESOLUTION)];
     if (pc.a == 0)
@@ -91,18 +92,39 @@ float4 GetWorldSpacePositionAndTransformUV(inout float2 uv)
     }
     
     uv = pc.xy;
-    return _MotionVectors.SampleLevel(sampler_linear_repeat, float3(uv, TEXTURE_INDEX), 0);
-#else
-    uint2 off = uint2(1, 0);
-    int2 tc = MAP_TO_RANGE(uv, INPUT_RESOLUTION);
-    float4 pos = _MotionVectors[uint3(tc, TEXTURE_INDEX)];
+#endif
+    
+    uint3 tc = uint3(MAP_TO_RANGE(uv, INPUT_RESOLUTION), TEXTURE_INDEX);
+    pos = _MotionVectors[tc];
     if (pos.w == 0)
     {
         return float4(0, 0, 0, 0);
     }
     
     return pos;
-#endif
+}
+
+bool neighborsValid(float2 uv)
+{
+    float3 off = float3(1.0 / PROJECTION_RESOLUTION, 0);
+    
+    float2 uv_tmp = uv - off.xz;
+    float4 P_tmp = GetWorldSpacePositionAndTransformUV(uv_tmp);
+    if (P_tmp.w == 0) return false;
+    
+    uv_tmp = uv + off.xz;
+    P_tmp = GetWorldSpacePositionAndTransformUV(uv_tmp);
+    if (P_tmp.w == 0) return false;
+    
+    uv_tmp = uv - off.zy;
+    P_tmp = GetWorldSpacePositionAndTransformUV(uv_tmp);
+    if (P_tmp.w == 0) return false;
+    
+    uv_tmp = uv + off.zy;
+    P_tmp = GetWorldSpacePositionAndTransformUV(uv_tmp);
+    if (P_tmp.w == 0) return false;
+    
+    return true;
 }
 
 [numthreads(1, 1, 1)]
@@ -115,7 +137,6 @@ void LoadTexelsToBuffer(uint3 id : SV_DispatchThreadID)
     uint i11 = i01 + 1;
     uint triIndex = i00 * 6;
     
-    float3 off = float3(1.0 / PROJECTION_RESOLUTION, 0);
     float2 uv = NORMALIZE_RANGE(id.xy, PROJECTION_RESOLUTION);
     
     float4 P = GetWorldSpacePositionAndTransformUV(uv);
@@ -125,6 +146,12 @@ void LoadTexelsToBuffer(uint3 id : SV_DispatchThreadID)
         _UVs[i00] = float2(-1, 0);
         return;
     }
+    /*
+    if (!neighborsValid(uv))
+    {
+        // uv.x += 1;
+    }
+    */
     
     _Positions[i00] = P.xyz;
     _UVs[i00] = uv;

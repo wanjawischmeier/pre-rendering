@@ -539,7 +539,7 @@ Camera:
     y: 0
     width: 1
     height: 1
-  near clip plane: 0.1
+  near clip plane: 0.01
   far clip plane: 1000
   field of view: 60
   orthographic: 0
@@ -612,53 +612,30 @@ MonoBehaviour:
   interpolationRange: 0.1
   depthOffset: 0
   maxDifference: 1
-  dimensions: 0600000001000000
+  fieldOfViewOffset: 10
+  dimensions: 06000000
   projectionResolution: {x: 500, y: 250}
-  rasterizationResolution: {x: 960, y: 540}
-  projectionResolutionCurve:
+  rasterizationResolution: {x: 1920, y: 1080}
+  resolutionCurve:
     serializedVersion: 2
     m_Curve:
     - serializedVersion: 3
-      time: -0.012500763
-      value: 0.103759766
-      inSlope: 0.000026749949
-      outSlope: 0.000026749949
-      tangentMode: 0
+      time: 0
+      value: 0
+      inSlope: 1
+      outSlope: 1
+      tangentMode: 34
       weightedMode: 0
       inWeight: 0
-      outWeight: 0.50612384
-    - serializedVersion: 3
-      time: 1.0083313
-      value: 0.65094376
-      inSlope: 1.698159
-      outSlope: 1.698159
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.08163075
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  rasterizationResolutionCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: -0.016666412
-      value: 0.2052002
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
+      outWeight: 0.33333334
     - serializedVersion: 3
       time: 1
       value: 1
-      inSlope: 2
-      outSlope: 2
-      tangentMode: 0
+      inSlope: 1
+      outSlope: 1
+      tangentMode: 34
       weightedMode: 0
-      inWeight: 0
+      inWeight: 0.33333334
       outWeight: 0
     m_PreInfinity: 2
     m_PostInfinity: 2
