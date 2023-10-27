@@ -29,7 +29,6 @@ namespace PreRendering
         public readonly RenderTexture motionVectors;
         public ComputeShader computeShader;
         private Resolution[] projectionResolutions, rasterizationResolutions;
-        private Texture2D[] inputImages;
         private UnityEngine.Rendering.LocalKeyword usePreviousPassComputeShaderKeyword;
         private int calculateMotionVectorsGroupSizeX, calculateMotionVectorsGroupSizeY;
         private int[] loadTexelsToBufferGroupSizesX, loadTexelsToBufferGroupSizesY;
@@ -103,7 +102,6 @@ namespace PreRendering
                 computeShader.Dispatch(calculateMotionVectorsKernelId, calculateMotionVectorsGroupSizeX, calculateMotionVectorsGroupSizeY, 1);
             }
 
-            inputImages = images;
             isInputInitialized = true;
         }
 
@@ -135,7 +133,9 @@ namespace PreRendering
                 computeShader.SetInt("NUM_PREVIOUS_SLICES", previousBuffer.slices);
                 for (int slice = 0; slice < previousBuffer.slices; slice++)
                 {
+                    // TODO: only upon startup?
                     computeShader.SetTexture(loadTexelsToBufferKernelId, $"_PreviousPass{slice}", previousBuffer.targetTextures[slice]);
+                    computeShader.SetTexture(loadTexelsToBufferKernelId, $"_PreviousDepth{slice}", previousBuffer.depthTextures[slice]);
                 }
             }
 

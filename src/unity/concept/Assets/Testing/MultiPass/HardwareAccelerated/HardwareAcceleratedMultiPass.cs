@@ -21,7 +21,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     public int fieldOfViewOffset = 10;
     public int[] dimensions;
     public Vector2Int projectionResolution, rasterizationResolution;
-    public AnimationCurve resolutionCurve;
+    public AnimationCurve projectionResolutionCurve, rasterizationResolutionCurve;
 
     [Header("Debugging")]
     public DebugChannel debugChannel;
@@ -72,8 +72,8 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
 
         for (int pass = 0; pass < passes; pass++)
         {
-            projectionResolutions[pass] = CalculatePassResolutionFromCurve(pass, projectionResolution, resolutionCurve);
-            rasterizationResolutions[pass] = CalculatePassResolutionFromCurve(pass, rasterizationResolution, resolutionCurve);
+            projectionResolutions[pass] = CalculatePassResolutionFromCurve(pass, projectionResolution, projectionResolutionCurve);
+            rasterizationResolutions[pass] = CalculatePassResolutionFromCurve(pass, rasterizationResolution, rasterizationResolutionCurve);
         }
 
         // create geometry loader and populate first mesh buffer, as that one will not change

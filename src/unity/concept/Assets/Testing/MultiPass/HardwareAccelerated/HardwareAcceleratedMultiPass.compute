@@ -8,6 +8,7 @@
     (tc) / ((sourceRange) - 1)
 
 #define VERTICIES_PER_QUAD 6
+#define MAX_INT_CONST 9999
 
 #define MARK_VERTEX_INVALID(tc, index)                          \
     _MotionVectorsWrite[uint3(tc, index)] = float4(0, 0, 0, 0); \
@@ -45,7 +46,7 @@
     }
 
 uniform bool VALIDATE_NEIGHBORS;
-uniform int TEXTURE_INDEX, NUM_PREVIOUS_SLICES;
+int TEXTURE_INDEX, NUM_PREVIOUS_SLICES;
 uniform float PI, PI2, NCLIP, FCLIP, MAX_DIFFERENCE;
 uniform float2 INPUT_RESOLUTION, PROJECTION_RESOLUTION, PREVIOUS_RASTERIZATION_RESOLUTION;
 
@@ -105,6 +106,7 @@ void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
 Texture2DArray<float4> _MotionVectors;
 #ifdef USE_PREVIOUS_PASS
 Texture2D<float4> _PreviousPass0, _PreviousPass1, _PreviousPass2, _PreviousPass3, _PreviousPass4, _PreviousPass5, _PreviousPass6, _PreviousPass7;
+Texture2D<float4> _PreviousDepth0, _PreviousDepth1, _PreviousDepth2, _PreviousDepth3, _PreviousDepth4, _PreviousDepth5, _PreviousDepth6, _PreviousDepth7;
 SamplerState sampler_linear_repeat;
 #endif
 
@@ -112,63 +114,65 @@ RWStructuredBuffer<int> _Triangles;
 RWStructuredBuffer<float3> _Positions;
 RWStructuredBuffer<float3> _UVs;
 
-float4 GetWorldSpacePositionAndTransformUV(inout float2 uv, int s = 0)
+float4 GetWorldSpacePositionAndTransformUV(inout float2 uv, inout int s)
 {
     float4 pos;
+    if (NUM_PREVIOUS_SLICES == 0)
+        return float4(0, 0, 0, 0);
     
-#ifdef USE_PREVIOUS_PASS_FALSE
+#ifdef USE_PREVIOUS_PASS
+    float d, d0 = 0;
     float2 rc;
     float4 tmp;
-    float4 pc = float4(0, 0, 9999, 0);
-    for (int slice = 0; slice < 2; slice++)
+    float4 pc = float4(0, 0, MAX_INT_CONST, 0);
+    
+    // TODO: wtf is going on here???
+    if (NUM_PREVIOUS_SLICES != 6)
+        return float4(0, 0, 0, 0);
+    
+    for (int slice = 0; slice < NUM_PREVIOUS_SLICES - 1; slice++)
     {
         rc = MAP_TO_RANGE(uv, PREVIOUS_RASTERIZATION_RESOLUTION);
         READ_PSEUDO_ARRAY(_PreviousPass, rc, slice, tmp);
-        if (tmp.z != 0 && tmp.z < pc.z)
+        if (tmp.z != 0 && tmp.z < pc.z)                             // tmp.a == 0 ??
         {
-            pc = tmp;
+            READ_PSEUDO_ARRAY(_PreviousDepth, rc, slice, d);
+            if (d > d0)
+            {
+                d0 = d;
+                pc = tmp;
+                s = tmp.w - 1;
+            }
         }
     }
     
-    rc = MAP_TO_RANGE(uv, PREVIOUS_RASTERIZATION_RESOLUTION);
-    READ_PSEUDO_ARRAY(_PreviousPass, rc, s, pc);
-    if (pc.a == 0)
-    {
-        return float4(0, 0, 0, 0);
-    }
-    
+    s = pc.w - 1;
     uv = pc.xy;
 #endif
     
     uint3 tc = uint3(MAP_TO_RANGE(uv, INPUT_RESOLUTION), s);
-    pos = _MotionVectors[tc];
-    if (pos.w == 0)
-    {
-        return float4(0, 0, 0, 0);
-    }
-    
-    return pos;
+    return _MotionVectors[tc];
 }
 
-bool neighborsValid(float2 uv)
+bool neighborsValid(float2 uv, int s)
 {
-    float3 off = float3(1.0 / PROJECTION_RESOLUTION, 0);
+    uint3 tc = uint3(MAP_TO_RANGE(uv, INPUT_RESOLUTION), s);
     
-    float2 uv_tmp = uv - off.xz;
-    float4 P_tmp = GetWorldSpacePositionAndTransformUV(uv_tmp);
-    if (P_tmp.w == 0) return false;
+    tc.x -= 1;
+    if (_MotionVectors[tc].w == 0)
+        return false;
     
-    uv_tmp = uv + off.xz;
-    P_tmp = GetWorldSpacePositionAndTransformUV(uv_tmp);
-    if (P_tmp.w == 0) return false;
+    tc.x += 2;
+    if (_MotionVectors[tc].w == 0)
+        return false;
     
-    uv_tmp = uv - off.zy;
-    P_tmp = GetWorldSpacePositionAndTransformUV(uv_tmp);
-    if (P_tmp.w == 0) return false;
+    tc.xy -= 1;
+    if (_MotionVectors[tc].w == 0)
+        return false;
     
-    uv_tmp = uv + off.zy;
-    P_tmp = GetWorldSpacePositionAndTransformUV(uv_tmp);
-    if (P_tmp.w == 0) return false;
+    tc.y += 2;
+    if (_MotionVectors[tc].w == 0)
+        return false;
     
     return true;
 }
@@ -186,7 +190,7 @@ void LoadTexelsToBuffer(uint3 id : SV_DispatchThreadID)
     float2 uv = NORMALIZE_RANGE(id.xy, PROJECTION_RESOLUTION);
     
 #ifdef USE_PREVIOUS_PASS
-    int s = 0;
+    int s = 2;
 #else
     int s = TEXTURE_INDEX;
 #endif
@@ -199,7 +203,7 @@ void LoadTexelsToBuffer(uint3 id : SV_DispatchThreadID)
         return;
     }
     
-    if (VALIDATE_NEIGHBORS && !neighborsValid(uv))
+    if (VALIDATE_NEIGHBORS && !neighborsValid(uv, s))
     {
         uv.x += 1;
     }

@@ -31,7 +31,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 half depth : TEXCOORD0;
             };
 
-            #define VALIDATION_ITERATIONS 0
+            #define VALIDATION_ITERATIONS 1
             #define MARK_VERTEX_INVALID()   \
                 o.pos = float4(0, 0, 0, 0); \
                 o.uv = float3(0, 0, 0);     \
@@ -155,17 +155,17 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 {
                     o.perimeter = l0 + l1 + l2;
                 }
-                /*
+                
                 if (l0 > MAX_CIRCUMFERENCE || l1 > MAX_CIRCUMFERENCE || l2 > MAX_CIRCUMFERENCE)
                 {
                     o.pos = float4(0, 0, 0, 0);
                     o.uv = float3(0, 0, 0);
                     return o;
                 }
-                */
+                
                 float4 wpos = mul(_ObjectToWorldMatricies[slice], float4(pos, 1.0f));
     
-                if (DEBUG_MODE == 1 && RENDER_PASS != 0 && length(wpos.xyz - float3(-4, 0, -5)) < 10) // zSineFilled
+                if (DEBUG_MODE == 1 && RENDER_PASS != 0 && length(wpos.xyz - float3(-4, 0, -5)) < 20) // zSineFilled
                 {
                     wpos.y += sin(TIMESTEP * 2) * sin(length(wpos)) * sin(wpos.x);
                 }
