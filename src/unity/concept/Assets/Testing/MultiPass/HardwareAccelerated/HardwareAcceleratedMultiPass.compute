@@ -13,8 +13,39 @@
     _MotionVectorsWrite[uint3(tc, index)] = float4(0, 0, 0, 0); \
     return;
 
+#define READ_PSEUDO_ARRAY(array, tc, slice, result) \
+    switch (slice) {                                \
+        case 0:                                     \
+            result = array##0[tc];                  \
+            break;                                  \
+        case 1:                                     \
+            result = array##1[tc];                  \
+            break;                                  \
+        case 2:                                     \
+            result = array##2[tc];                  \
+            break;                                  \
+        case 3:                                     \
+            result = array##3[tc];                  \
+            break;                                  \
+        case 4:                                     \
+            result = array##4[tc];                  \
+            break;                                  \
+        case 5:                                     \
+            result = array##5[tc];                  \
+            break;                                  \
+        case 6:                                     \
+            result = array##6[tc];                  \
+            break;                                  \
+        case 7:                                     \
+            result = array##7[tc];                  \
+            break;                                  \
+        default:                                    \
+            result = float4(1, 0, 1, 1);            \
+            break;                                  \
+    }
+
 uniform bool VALIDATE_NEIGHBORS;
-uniform int TEXTURE_INDEX;
+uniform int TEXTURE_INDEX, NUM_PREVIOUS_SLICES;
 uniform float PI, PI2, NCLIP, FCLIP, MAX_DIFFERENCE;
 uniform float2 INPUT_RESOLUTION, PROJECTION_RESOLUTION, PREVIOUS_RASTERIZATION_RESOLUTION;
 
@@ -73,20 +104,34 @@ void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
 
 Texture2DArray<float4> _MotionVectors;
 #ifdef USE_PREVIOUS_PASS
-Texture2D<float4> _PreviousPass;
+Texture2D<float4> _PreviousPass0, _PreviousPass1, _PreviousPass2, _PreviousPass3, _PreviousPass4, _PreviousPass5, _PreviousPass6, _PreviousPass7;
 SamplerState sampler_linear_repeat;
 #endif
 
 RWStructuredBuffer<int> _Triangles;
 RWStructuredBuffer<float3> _Positions;
-RWStructuredBuffer<float2> _UVs;
+RWStructuredBuffer<float3> _UVs;
 
-float4 GetWorldSpacePositionAndTransformUV(inout float2 uv)
+float4 GetWorldSpacePositionAndTransformUV(inout float2 uv, int s = 0)
 {
     float4 pos;
     
-#ifdef USE_PREVIOUS_PASS
-    float4 pc = _PreviousPass[MAP_TO_RANGE(uv, PREVIOUS_RASTERIZATION_RESOLUTION)];
+#ifdef USE_PREVIOUS_PASS_FALSE
+    float2 rc;
+    float4 tmp;
+    float4 pc = float4(0, 0, 9999, 0);
+    for (int slice = 0; slice < 2; slice++)
+    {
+        rc = MAP_TO_RANGE(uv, PREVIOUS_RASTERIZATION_RESOLUTION);
+        READ_PSEUDO_ARRAY(_PreviousPass, rc, slice, tmp);
+        if (tmp.z != 0 && tmp.z < pc.z)
+        {
+            pc = tmp;
+        }
+    }
+    
+    rc = MAP_TO_RANGE(uv, PREVIOUS_RASTERIZATION_RESOLUTION);
+    READ_PSEUDO_ARRAY(_PreviousPass, rc, s, pc);
     if (pc.a == 0)
     {
         return float4(0, 0, 0, 0);
@@ -95,7 +140,7 @@ float4 GetWorldSpacePositionAndTransformUV(inout float2 uv)
     uv = pc.xy;
 #endif
     
-    uint3 tc = uint3(MAP_TO_RANGE(uv, INPUT_RESOLUTION), TEXTURE_INDEX);
+    uint3 tc = uint3(MAP_TO_RANGE(uv, INPUT_RESOLUTION), s);
     pos = _MotionVectors[tc];
     if (pos.w == 0)
     {
@@ -140,20 +185,27 @@ void LoadTexelsToBuffer(uint3 id : SV_DispatchThreadID)
     
     float2 uv = NORMALIZE_RANGE(id.xy, PROJECTION_RESOLUTION);
     
-    float4 P = GetWorldSpacePositionAndTransformUV(uv);
+#ifdef USE_PREVIOUS_PASS
+    int s = 0;
+#else
+    int s = TEXTURE_INDEX;
+#endif
+    
+    float4 P = GetWorldSpacePositionAndTransformUV(uv, s);
     if (P.w == 0)
     {
         // skip invalid verticies
-        _UVs[i00] = float2(-1, 0);
+        _UVs[i00] = float3(0, 0, -1);
         return;
     }
+    
     if (VALIDATE_NEIGHBORS && !neighborsValid(uv))
     {
         uv.x += 1;
     }
     
     _Positions[i00] = P.xyz;
-    _UVs[i00] = uv;
+    _UVs[i00] = float3(uv, s);
     
     _Triangles[triIndex + 0] = i00;
     _Triangles[triIndex + 1] = i11;

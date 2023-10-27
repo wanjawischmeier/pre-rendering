@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -15,10 +16,15 @@ namespace PreRendering
         {
             set
             {
+                var matricies = new Matrix4x4[value.Length];
+                for (int slice = 0; slice < value.Length; slice++)
+                {
+                    matricies[slice] = Matrix4x4.Translate(value[slice]);
+                }
+
                 for (int slice = 0; slice < Mathf.Min(slices, value.Length); slice++)
                 {
-                    var matrix = Matrix4x4.Translate(value[slice]);
-                    renderParams[slice].matProps.SetMatrix("_ObjectToWorld", matrix);
+                    renderParams[slice].matProps.SetMatrixArray("_ObjectToWorldMatricies", matricies);
                 }
             }
         }
@@ -61,11 +67,19 @@ namespace PreRendering
             renderCameras = new Camera[slices];
             renderParams = new RenderParams[slices];
 
+            // initialize transformation matricies
+            var matricies = new Matrix4x4[meshTranslations.Length];
+            for (int slice = 0; slice < meshTranslations.Length; slice++)
+            {
+                matricies[slice] = Matrix4x4.Translate(meshTranslations[slice]);
+            }
+
             // set non-slice specific material properties
             var rasterizationMaterial = new Material(rasterizationShader);
             rasterizationMaterial.SetInt("RENDER_PASS", pass);
             rasterizationMaterial.SetVector("PROJECTION_RESOLUTION", new Vector2(projectionResolution.width, projectionResolution.height));
             rasterizationMaterial.SetVector("INPUT_RESOLUTION", new Vector2(motionVectors.width, motionVectors.height));
+            rasterizationMaterial.SetMatrixArray("_ObjectToWorldMatricies", matricies);
             rasterizationMaterial.SetTexture("_MotionVectors", motionVectors);
 
             // calculate buffer constants
@@ -78,7 +92,7 @@ namespace PreRendering
                 // create graphics buffers
                 triangles[slice] = new GraphicsBuffer(GraphicsBuffer.Target.Structured, indicies, sizeof(int));
                 positions[slice] = new GraphicsBuffer(GraphicsBuffer.Target.Structured, verticies, 3 * sizeof(float));
-                uvs[slice] = new GraphicsBuffer(GraphicsBuffer.Target.Structured, verticies, 2 * sizeof(float));
+                uvs[slice] = new GraphicsBuffer(GraphicsBuffer.Target.Structured, verticies, 3 * sizeof(float));
 
                 // create target texture
                 targetTextures[slice] = new RenderTexture(
@@ -114,13 +128,10 @@ namespace PreRendering
                 renderCameras[slice].allowDynamicResolution = originalCamera.allowDynamicResolution;
 
                 // set render material properties
-                var matrix = Matrix4x4.Translate(meshTranslations[slice]);
                 var renderMatProps = new MaterialPropertyBlock();
-                renderMatProps.SetInt("TEXTURE_INDEX", slice);
                 renderMatProps.SetBuffer("_Triangles", triangles[slice]);
                 renderMatProps.SetBuffer("_Positions", positions[slice]);
                 renderMatProps.SetBuffer("_UVs", uvs[slice]);
-                renderMatProps.SetMatrix("_ObjectToWorld", matrix);
 
                 // set render params
                 renderParams[slice] = new RenderParams(rasterizationMaterial)

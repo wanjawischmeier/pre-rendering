@@ -1,6 +1,7 @@
 using UnityEngine;
 using PreRendering;
 using System;
+using static UnityEditor.ShaderData;
 
 [RequireComponent(typeof(Camera))]
 public class HardwareAcceleratedMultiPass : MonoBehaviour
@@ -15,7 +16,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     public ComputeShader computeShader;
     public Shader rasterizationShader, postRasterizationShader;
     public GeometryLoader.Map map;
-    public bool validateNeighbors;
+    public bool validateNeighbors, performanceLogging;
     public float maxCircumference, interpolationRange, depthOffset, maxDifference;
     public int fieldOfViewOffset = 10;
     public int[] dimensions;
@@ -100,11 +101,17 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         postRasterizationMaterial = new Material(postRasterizationShader);
         postRasterizationMaterial.SetInt("NUM_SLICES", renderBuffers[passes - 1].slices);
         postRasterizationMaterial.SetVector("RESOLUTION", rasterizationResolution.ToVector2());
-        for (int slice = 0; slice < renderBuffers[passes - 1].slices; slice++)
+
+        for (int imageIndex = 0; imageIndex < inputImages.Length; imageIndex++)
         {
-            postRasterizationMaterial.SetTexture($"_Input{slice}", inputImages[slice]);
-            postRasterizationMaterial.SetTexture($"_Coordinates{slice}", renderBuffers[passes - 1].targetTextures[slice]);
-            postRasterizationMaterial.SetTexture($"_Depth{slice}", renderBuffers[passes - 1].depthTextures[slice]);
+            postRasterizationMaterial.SetTexture($"_Input{imageIndex}", inputImages[imageIndex]);
+        }
+
+        var lastRenderBuffer = renderBuffers[passes - 1];
+        for (int slice = 0; slice < lastRenderBuffer.slices; slice++)
+        {
+            postRasterizationMaterial.SetTexture($"_Coordinates{slice}", lastRenderBuffer.targetTextures[slice]);
+            postRasterizationMaterial.SetTexture($"_Depth{slice}", lastRenderBuffer.depthTextures[slice]);
         }
 
         // debug values
@@ -132,16 +139,30 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
 
     private void Update()
     {
+        double startTime;
+        double populateTime = 0;
+        double renderTime = 0;
+
         for (int pass = 0; pass < passes; pass++)
         {
             // populate mesh buffer based on previous pass if available
             if (pass != 0)
             {
+                startTime = Time.realtimeSinceStartupAsDouble;
                 geometryLoader.PopulateMeshBuffer(renderBuffers, pass);
+                populateTime += Time.realtimeSinceStartupAsDouble - startTime;
             }
-            
-            renderBuffers[pass].meshTranslations = meshTranslations;
+
+            startTime = Time.realtimeSinceStartupAsDouble;
+            // renderBuffers[pass].meshTranslations = meshTranslations;
             renderBuffers[pass].UpdateParamsAndRenderToBuffer(debugMode, maxCircumference, pass == passes - 1 ? 0 : fieldOfViewOffset);
+            renderTime += Time.realtimeSinceStartupAsDouble - startTime;
+        }
+        
+        if (performanceLogging)
+        {
+            Debug.Log($"Populating mesh buffers took {populateTime}s");
+            Debug.Log($"Rendering to buffer took {renderTime}s");
         }
 
         postRasterizationMaterial.SetInt("DEBUG_MODE", (int)debugMode);

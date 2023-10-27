@@ -20,7 +20,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
             struct v2f
             {
                 float4 pos : SV_POSITION;
-                float2 uv : TEXCOORD0;
+                float3 uv : TEXCOORD0;
                 float perimeter : TEXCOORD1;
                 float depth : SV_Depth;
             };
@@ -31,37 +31,40 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 half depth : TEXCOORD0;
             };
 
-            #define VALIDATION_ITERATIONS 1
-            #define AREA_TRIANGLE_SQ(v0, v1, v2) \
-                (pow(length(v0 - v1), 2) + pow(length(v1 - v2), 2) + pow(length(v2 - v0), 2)) * 1000
+            #define VALIDATION_ITERATIONS 0
+            #define MARK_VERTEX_INVALID()   \
+                o.pos = float4(0, 0, 0, 0); \
+                o.uv = float3(0, 0, 0);     \
+                return o;
+                
 
             Texture2DArray<float4> _MotionVectors;
             StructuredBuffer<int> _Triangles;
             StructuredBuffer<float3> _Positions;
-            StructuredBuffer<float2> _UVs;
+            StructuredBuffer<float3> _UVs;
             
-            uniform int DEBUG_MODE, RENDER_PASS, TEXTURE_INDEX;
+            uniform int DEBUG_MODE, RENDER_PASS;
             uniform float TIMESTEP, MAX_CIRCUMFERENCE;
             uniform float2 PROJECTION_RESOLUTION, INPUT_RESOLUTION;
             uniform uint _StartIndex;
             uniform uint _BaseVertexIndex;
-            uniform float4x4 _ObjectToWorld;
+            uniform float4x4 _ObjectToWorldMatricies[8];
 
-            bool validLine(uint2 tc0, uint2 tc1)
+            bool validLine(uint2 tc0, uint2 tc1, int slice)
             {
                 // the line is fine (no component is greater than 1)
-                if (!any(max(abs(tc0 - tc1) - 1, 0)))
+                if (!any(max(abs(int2(tc0) - int2(tc1)) - 1, 0)))
                 {
                     return true;
                 }
                 
                 #if VALIDATION_ITERATIONS == 1
                 // use a single midpoint for fast approximation
-                return _MotionVectors[uint3((tc0 + tc1) / 2, TEXTURE_INDEX)].w != 0;
+                return _MotionVectors[uint3((tc0 + tc1) / 2, slice)].w != 0;
                 
                 #else
                 // use a generalized iterative approach for accurate approximation
-                uint3 tc = uint3(0, 0, TEXTURE_INDEX);
+                uint3 tc = uint3(0, 0, slice);
                 int2 direction = tc1 - tc0;
                 float step = max(1, length(direction) / (VALIDATION_ITERATIONS + 2));
                 direction = normalize(direction);
@@ -109,26 +112,28 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 int index1 = _Triangles[baseIndex + 1 + _StartIndex] + _BaseVertexIndex;
                 int index2 = _Triangles[baseIndex + 2 + _StartIndex] + _BaseVertexIndex;
     
-                float2 uv = _UVs[index];
-                float2 uv0 = _UVs[index0];
-                float2 uv1 = _UVs[index1];
-                float2 uv2 = _UVs[index2];
-                if (uv0.x == -1 || uv1.x == -1 || uv2.x == -1)
+                float3 uv = _UVs[index];
+                float3 uv0 = _UVs[index0];
+                float3 uv1 = _UVs[index1];
+                float3 uv2 = _UVs[index2];
+                if (uv0.z == -1 || uv1.z == -1 || uv2.z == -1)
                 {
                     o.pos = float4(0, 0, 0, 0);
-                    o.uv = float2(0, 0);
+                    o.uv = float3(0, 0, 0);
                     return o;
                 }
-                
-                #if VALIDATION_ITERATIONS > 0
-                uint2 tc0 = (uv0 % 1) * INPUT_RESOLUTION;
-                uint2 tc1 = (uv1 % 1) * INPUT_RESOLUTION;
-                uint2 tc2 = (uv2 % 1) * INPUT_RESOLUTION;
+        
+                int slice = uv.z;
     
-                if (!validLine(tc0, tc1) || !validLine(tc0, tc2))
+                #if VALIDATION_ITERATIONS > 0
+                uint2 tc0 = (uv0.xy % 1) * INPUT_RESOLUTION;
+                uint2 tc1 = (uv1.xy % 1) * INPUT_RESOLUTION;
+                uint2 tc2 = (uv2.xy % 1) * INPUT_RESOLUTION;
+    
+                if (!validLine(tc0, tc1, slice) || !validLine(tc0, tc2, slice))
                 {
                     o.pos = float4(0, 0, 0, 0);
-                    o.uv = float2(0, 0);
+                    o.uv = float3(0, 0, 0);
                     return o;
                 }
                 #endif
@@ -140,26 +145,25 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 float l0 = length(pos0 - pos1);
                 float l1 = length(pos1 - pos2);
                 float l2 = length(pos2 - pos0);
-                o.perimeter = l0 + l1 + l2;
     
                 if (uv.x > 1)
                 {
                     o.perimeter = 1;
-                    uv %= 1;
+                    uv.x %= 1;
                 }
                 else
                 {
                     o.perimeter = l0 + l1 + l2;
                 }
-    
+                /*
                 if (l0 > MAX_CIRCUMFERENCE || l1 > MAX_CIRCUMFERENCE || l2 > MAX_CIRCUMFERENCE)
                 {
                     o.pos = float4(0, 0, 0, 0);
-                    o.uv = float2(0, 0);
+                    o.uv = float3(0, 0, 0);
                     return o;
                 }
-    
-                float4 wpos = mul(_ObjectToWorld, float4(pos, 1.0f));
+                */
+                float4 wpos = mul(_ObjectToWorldMatricies[slice], float4(pos, 1.0f));
     
                 if (DEBUG_MODE == 1 && RENDER_PASS != 0 && length(wpos.xyz - float3(-4, 0, -5)) < 10) // zSineFilled
                 {
@@ -175,7 +179,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
             ShaderOutput frag(v2f i) : SV_Target
             {
                 ShaderOutput o;
-                o.color = float4(i.uv, i.perimeter, TEXTURE_INDEX + 1);
+                o.color = float4(i.uv.xy, i.perimeter, i.uv.z + 1);
                 o.depth = i.depth;
                 return o;
             }

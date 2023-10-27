@@ -70,7 +70,8 @@ namespace PreRendering
                 loadTexelsToBufferGroupSizesX[i] = projectionResolutions[i].width / (int)threadGroupSizeX;
                 loadTexelsToBufferGroupSizesY[i] = projectionResolutions[i].height / (int)threadGroupSizeY;
             }
-            computeShader.SetBool("VALIDATE_NEIGHBORS", true);
+
+            computeShader.SetBool("VALIDATE_NEIGHBORS", false);
             computeShader.SetFloat("PI", Mathf.PI);
             computeShader.SetFloat("PI2", Mathf.PI * 2);
             computeShader.SetFloat("NCLIP", map.nClip);
@@ -115,11 +116,6 @@ namespace PreRendering
             }
 
             var renderBuffer = renderBuffers[pass];
-            DynamicRenderBuffer previousBuffer = null;
-            if (pass != 0)
-            {
-                previousBuffer = renderBuffers[pass - 1];
-            }
             int slices = renderBuffer.slices;
             if (slices > bufferSize)
             {
@@ -132,8 +128,15 @@ namespace PreRendering
             computeShader.SetKeyword(usePreviousPassComputeShaderKeyword, pass != 0);
             if (pass != 0)
             {
-                Vector3 rasterizationResolution = rasterizationResolutions[pass - 1].ToVector2();
-                computeShader.SetVector("PREVIOUS_RASTERIZATION_RESOLUTION", rasterizationResolution);
+                Vector3 previousRasterizationResolution = rasterizationResolutions[pass - 1].ToVector2();
+                computeShader.SetVector("PREVIOUS_RASTERIZATION_RESOLUTION", previousRasterizationResolution);
+
+                DynamicRenderBuffer previousBuffer = renderBuffers[pass - 1];
+                computeShader.SetInt("NUM_PREVIOUS_SLICES", previousBuffer.slices);
+                for (int slice = 0; slice < previousBuffer.slices; slice++)
+                {
+                    computeShader.SetTexture(loadTexelsToBufferKernelId, $"_PreviousPass{slice}", previousBuffer.targetTextures[slice]);
+                }
             }
 
             // TODO: all slices in single dispatch call
@@ -143,11 +146,6 @@ namespace PreRendering
                 computeShader.SetBuffer(loadTexelsToBufferKernelId, "_Triangles", renderBuffer.triangles[slice]);
                 computeShader.SetBuffer(loadTexelsToBufferKernelId, "_Positions", renderBuffer.positions[slice]);
                 computeShader.SetBuffer(loadTexelsToBufferKernelId, "_UVs", renderBuffer.uvs[slice]);
-                computeShader.SetTexture(loadTexelsToBufferKernelId, "_Input", inputImages[slice]);
-                if (pass != 0)
-                {
-                    computeShader.SetTexture(loadTexelsToBufferKernelId, "_PreviousPass", previousBuffer.targetTextures[slice]);
-                }
 
                 computeShader.Dispatch(
                     loadTexelsToBufferKernelId,

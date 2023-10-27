@@ -145,8 +145,12 @@ Shader"PreRendering/PostRasterization"
             
             fixed4 frag (v2f i) : SV_Target
             {
-                // float2 uv = tex2D(_Coordinates0, i.uv);
-                // return tex2D(_Input0, uv);
+                /*
+                float4 uv = _Coordinates0.Sample(sampler_linear_repeat, i.uv);
+                float4 col2;
+                SAMPLE_PSEUDO_ARRAY(_Input, uv.xy, 1, col2);
+                return uv;
+                */
                 float d;
                 float4 col, col0, col1, slice0, slice1;
                 sampleLeastBlurrySlices(i.uv, slice0, slice1, d);
