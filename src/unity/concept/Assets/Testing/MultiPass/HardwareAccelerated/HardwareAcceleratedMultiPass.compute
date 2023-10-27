@@ -14,35 +14,66 @@
     _MotionVectorsWrite[uint3(tc, index)] = float4(0, 0, 0, 0); \
     return;
 
-#define READ_PSEUDO_ARRAY(array, tc, slice, result) \
-    switch (slice) {                                \
-        case 0:                                     \
-            result = array##0[tc];                  \
-            break;                                  \
-        case 1:                                     \
-            result = array##1[tc];                  \
-            break;                                  \
-        case 2:                                     \
-            result = array##2[tc];                  \
-            break;                                  \
-        case 3:                                     \
-            result = array##3[tc];                  \
-            break;                                  \
-        case 4:                                     \
-            result = array##4[tc];                  \
-            break;                                  \
-        case 5:                                     \
-            result = array##5[tc];                  \
-            break;                                  \
-        case 6:                                     \
-            result = array##6[tc];                  \
-            break;                                  \
-        case 7:                                     \
-            result = array##7[tc];                  \
-            break;                                  \
-        default:                                    \
-            result = float4(1, 0, 1, 1);            \
-            break;                                  \
+#define READ_PSEUDO_ARRAY(array, tc, slice, result)                 \
+    switch (slice) {                                                \
+        case 0:                                                     \
+            result = array##0[tc];                                  \
+            break;                                                  \
+        case 1:                                                     \
+            result = array##1[tc];                                  \
+            break;                                                  \
+        case 2:                                                     \
+            result = array##2[tc];                                  \
+            break;                                                  \
+        case 3:                                                     \
+            result = array##3[tc];                                  \
+            break;                                                  \
+        case 4:                                                     \
+            result = array##4[tc];                                  \
+            break;                                                  \
+        case 5:                                                     \
+            result = array##5[tc];                                  \
+            break;                                                  \
+        case 6:                                                     \
+            result = array##6[tc];                                  \
+            break;                                                  \
+        case 7:                                                     \
+            result = array##7[tc];                                  \
+            break;                                                  \
+        default:                                                    \
+            result = float4(1, 0, 1, 1);                            \
+            break;                                                  \
+    }
+
+#define SAMPLE_PSEUDO_ARRAY(array, uv, slice, result)               \
+    switch (slice) {                                                \
+        case 0:                                                     \
+            result = array##0.SampleLevel(sampler_linear_repeat, uv, 0);    \
+            break;                                                  \
+        case 1:                                                     \
+            result = array##1.SampleLevel(sampler_linear_repeat, uv, 0);    \
+            break;                                                  \
+        case 2:                                                     \
+            result = array##2.SampleLevel(sampler_linear_repeat, uv, 0);    \
+            break;                                                  \
+        case 3:                                                     \
+            result = array##3.SampleLevel(sampler_linear_repeat, uv, 0);    \
+            break;                                                  \
+        case 4:                                                     \
+            result = array##4.SampleLevel(sampler_linear_repeat, uv, 0);    \
+            break;                                                  \
+        case 5:                                                     \
+            result = array##5.SampleLevel(sampler_linear_repeat, uv, 0);    \
+            break;                                                  \
+        case 6:                                                     \
+            result = array##6.SampleLevel(sampler_linear_repeat, uv, 0);    \
+            break;                                                  \
+        case 7:                                                     \
+            result = array##7.SampleLevel(sampler_linear_repeat, uv, 0);    \
+            break;                                                  \
+        default:                                                    \
+            result = float4(1, 0, 1, 1);                            \
+            break;                                                  \
     }
 
 uniform bool VALIDATE_NEIGHBORS;
@@ -117,23 +148,17 @@ RWStructuredBuffer<float3> _UVs;
 float4 GetWorldSpacePositionAndTransformUV(inout float2 uv, inout int s)
 {
     float4 pos;
-    if (NUM_PREVIOUS_SLICES == 0)
-        return float4(0, 0, 0, 0);
     
 #ifdef USE_PREVIOUS_PASS
     float d, d0 = 0;
-    float2 rc;
+    float2 rc = MAP_TO_RANGE(uv, PREVIOUS_RASTERIZATION_RESOLUTION);
     float4 tmp;
     float4 pc = float4(0, 0, MAX_INT_CONST, 0);
     
-    // TODO: wtf is going on here???
-    if (NUM_PREVIOUS_SLICES != 6)
-        return float4(0, 0, 0, 0);
-    
-    for (int slice = 0; slice < NUM_PREVIOUS_SLICES - 1; slice++)
+    for (int slice = 0; slice < 5; slice++)
     {
-        rc = MAP_TO_RANGE(uv, PREVIOUS_RASTERIZATION_RESOLUTION);
         READ_PSEUDO_ARRAY(_PreviousPass, rc, slice, tmp);
+        // SAMPLE_PSEUDO_ARRAY(_PreviousPass, uv, slice, tmp);
         if (tmp.z != 0 && tmp.z < pc.z)                             // tmp.a == 0 ??
         {
             READ_PSEUDO_ARRAY(_PreviousDepth, rc, slice, d);
@@ -202,12 +227,12 @@ void LoadTexelsToBuffer(uint3 id : SV_DispatchThreadID)
         _UVs[i00] = float3(0, 0, -1);
         return;
     }
-    
+    /*
     if (VALIDATE_NEIGHBORS && !neighborsValid(uv, s))
     {
         uv.x += 1;
     }
-    
+    */
     _Positions[i00] = P.xyz;
     _UVs[i00] = float3(uv, s);
     

@@ -3,37 +3,31 @@ using PreRendering;
 using System;
 
 [RequireComponent(typeof(CharacterController))]
-[RequireComponent(typeof(HardwareAcceleratedMultiPass))]
 public class FlyMovementController : MonoBehaviour
 {
     public float flySpeed = 5f;
     public float rotationSpeed = 2f;
 
     private CharacterController characterController;
-    private HardwareAcceleratedMultiPass debugger;
 
     private float horizontalRotation = 0f;
     private float verticalRotation = 0f;
 
-    private int debugModeCount = Enum.GetValues(typeof(DynamicRenderBuffer.DebugMode)).Length;
-
     private void Start()
     {
         characterController = GetComponent<CharacterController>();
-        debugger = GetComponent<HardwareAcceleratedMultiPass>();
         Cursor.lockState = CursorLockMode.Locked; // Lock cursor to the center of the screen
     }
 
     private void Update()
     {
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            Application.Quit();
+        }
         if (Input.GetKey(KeyCode.LeftControl))
         {
             return;
-        }
-
-        if (Input.GetKeyDown(KeyCode.Tab))
-        {
-            debugger.debugMode = (DynamicRenderBuffer.DebugMode)((int)(debugger.debugMode + 1) % debugModeCount);
         }
 
         float speed = Input.GetKey(KeyCode.LeftShift) ? flySpeed / 10 : flySpeed;

@@ -1,16 +1,17 @@
+using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
-[RequireComponent(typeof(Text))]
+[RequireComponent(typeof(TextMeshProUGUI))]
 public class FPSCounter : MonoBehaviour
 {
-    private Text text;
-    private const int Smoothing = 10;
+    private TextMeshProUGUI text;
+    private const float CounterFps = 1 / 30f;
     private int framesPassed = 0;
+    private float lastUpdate = 0;
     private float fpsTotal = 0;
 
     private void Start() =>
-        text = GetComponent<Text>();
+        text = GetComponent<TextMeshProUGUI>();
 
     private void Update()
     {
@@ -18,10 +19,11 @@ public class FPSCounter : MonoBehaviour
         fpsTotal += fps;
         framesPassed++;
 
-        text.text = $"FPS: {Mathf.Round((fpsTotal / framesPassed * 100) / 100)}";
-
-        if (framesPassed > Smoothing)
+        if (Time.realtimeSinceStartup - lastUpdate > CounterFps)
         {
+            text.text = $"FPS: {Mathf.Round(fpsTotal / framesPassed * 100 / 100)}\t({Mathf.Round(Time.unscaledDeltaTime * 100000) / 100}ms)";
+
+            lastUpdate = Time.realtimeSinceStartup;
             framesPassed = 0;
             fpsTotal = 0;
         }

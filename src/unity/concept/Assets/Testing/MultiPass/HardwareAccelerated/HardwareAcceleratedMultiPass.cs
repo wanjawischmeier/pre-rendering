@@ -1,44 +1,44 @@
 using UnityEngine;
 using PreRendering;
+using TMPro;
 using System;
-using static UnityEditor.ShaderData;
+using System.Linq;
 
 [RequireComponent(typeof(Camera))]
 public class HardwareAcceleratedMultiPass : MonoBehaviour
 {
-    public enum DebugChannel
-    {
-        none, motionVectors, rasterized
-    }
-    
     public Texture2D[] inputImages;
     public Vector3[] meshTranslations;
     public ComputeShader computeShader;
     public Shader rasterizationShader, postRasterizationShader;
     public GeometryLoader.Map map;
-    public bool validateNeighbors, performanceLogging;
+    public bool validateNeighbors, performanceLogging, uiDebuggerState;
     public float maxCircumference, interpolationRange, depthOffset, maxDifference;
     public int fieldOfViewOffset = 10;
     public int[] dimensions;
     public Vector2Int projectionResolution, rasterizationResolution;
     public AnimationCurve projectionResolutionCurve, rasterizationResolutionCurve;
+    public Camera uiCamera;
+    public TextMeshProUGUI uiDebugger;
 
     [Header("Debugging")]
-    public DebugChannel debugChannel;
     public DynamicRenderBuffer.DebugMode debugMode;
-    public int debugPass;
+    public int debugPass, debugSlice;
 
     [Header("Debugging Values")]
     public RenderTexture motionVectors;
     public RenderTexture[] rasterized;
     public Mesh colliderMesh;
 
+    private bool previousUIDebuggerState = false;
     private int passes;
     private Camera originalCamera;
+    private RenderTexture uiTexture;
     private Material postRasterizationMaterial;
     private GeometryLoader geometryLoader;
     private DynamicRenderBuffer[] renderBuffers;
     private Resolution[] projectionResolutions, rasterizationResolutions;
+    private int debugModeCount = Enum.GetValues(typeof(DynamicRenderBuffer.DebugMode)).Length;
 
 
     private Resolution CalculatePassResolutionFromCurve(int pass, Vector2Int inputResolution, AnimationCurve curve)
@@ -135,10 +135,57 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         }
 
         // colliderMesh = renderBuffers[0].CreateColliderMesh(0);
+        uiTexture = new RenderTexture(Screen.width, Screen.height, 0);
+        uiCamera.targetTexture = uiTexture;
+        postRasterizationMaterial.SetTexture("_UI", uiTexture);
     }
 
     private void Update()
     {
+        if (Input.GetKeyDown(KeyCode.Tab))
+        {
+            debugMode = (DynamicRenderBuffer.DebugMode)((int)(debugMode + 1) % debugModeCount);
+        }
+        if (Input.GetKeyDown(KeyCode.F1))
+        {
+            uiDebuggerState = !uiDebuggerState;
+        }
+        if ((Input.GetKeyDown(KeyCode.LeftArrow) || Input.mouseScrollDelta.y < 0) && debugSlice > 0)
+        {
+            debugSlice -= 1;
+        }
+        if ((Input.GetKeyDown(KeyCode.RightArrow) || Input.mouseScrollDelta.y > 0) && debugSlice < dimensions[debugPass] - 1)
+        {
+            debugSlice += 1;
+        }
+        if (Input.GetKeyDown(KeyCode.DownArrow) && debugPass > 0)
+        {
+            debugPass -= 1;
+        }
+        if (Input.GetKeyDown(KeyCode.UpArrow) && debugPass < passes - 1)
+        {
+            debugPass += 1;
+        }
+        if (debugSlice > dimensions[debugPass] - 1)
+        {
+            debugSlice = dimensions[debugPass] - 1;
+        }
+        if (uiDebuggerState != previousUIDebuggerState)
+        {
+            uiCamera.enabled = uiDebuggerState;
+            previousUIDebuggerState = uiDebuggerState;
+            postRasterizationMaterial.SetInteger("UI_DEBUGGER", uiDebuggerState ? 1 : 0);
+        }
+        if (uiDebuggerState)
+        {
+            uiDebugger.text = $"3D Position:\t\t\t\t{transform.position}\r\n" +
+                $"Projection Resolutions:\t\t[{string.Join(", ", projectionResolutions.Select(res => $"{res.width}x{res.height}"))}]\r\n" +
+                $"Rasterization Resolutions:\t[{string.Join(", ", rasterizationResolutions.Select(res => $"{res.width}x{res.height}"))}]\r\n" +
+                $"Debugging Mode:\t\t\t{debugMode}\r\n" +
+                $"Debugging Pass:\t\t\t{debugPass + 1} / {passes}\r\n" +
+                $"Debugging Slice:\t\t\t{debugSlice + 1} / {dimensions[debugPass]}";
+        }
+
         double startTime;
         double populateTime = 0;
         double renderTime = 0;
@@ -155,7 +202,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
 
             startTime = Time.realtimeSinceStartupAsDouble;
             // renderBuffers[pass].meshTranslations = meshTranslations;
-            renderBuffers[pass].UpdateParamsAndRenderToBuffer(debugMode, maxCircumference, pass == passes - 1 ? 0 : fieldOfViewOffset);
+            renderBuffers[pass].UpdateParamsAndRenderToBuffer(debugMode, debugSlice, maxCircumference, pass == passes - 1 ? 0 : fieldOfViewOffset);
             renderTime += Time.realtimeSinceStartupAsDouble - startTime;
         }
         
@@ -173,13 +220,17 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
-        switch (debugChannel)
+        switch (debugMode)
         {
-            case DebugChannel.motionVectors:
-                Graphics.Blit(geometryLoader.motionVectors, destination);
+            case DynamicRenderBuffer.DebugMode.inputImages:
+                Graphics.Blit(inputImages[debugSlice], destination, postRasterizationMaterial);
                 break;
-            case DebugChannel.rasterized:
-                Graphics.Blit(renderBuffers.GetTexture(debugPass), destination);
+            case DynamicRenderBuffer.DebugMode.motionVectors:
+                Graphics.Blit(geometryLoader.motionVectors, source, debugSlice, 0); // a bit suboptimal, but oh well...
+                Graphics.Blit(source, destination, postRasterizationMaterial);
+                break;
+            case DynamicRenderBuffer.DebugMode.rasterized:
+                Graphics.Blit(renderBuffers.GetTexture(debugPass, debugSlice), destination, postRasterizationMaterial);
                 break;
             default:
                 Graphics.Blit(source, destination, postRasterizationMaterial);

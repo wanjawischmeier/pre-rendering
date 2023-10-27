@@ -8,7 +8,7 @@ namespace PreRendering
     {
         public enum DebugMode
         {
-            none, zSineFilled, showPerimeter
+            none, zSineFilled, showPerimeter, inputImages, motionVectors, rasterized
         }
 
         public Vector3[] meshTranslations
@@ -98,6 +98,7 @@ namespace PreRendering
                     rasterizationResolution.width, rasterizationResolution.height, 24,
                     RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear
                 );
+                targetTextures[slice].filterMode = FilterMode.Bilinear;
 
                 // targetTextures[slice].filterMode = FilterMode.Point;
                 depthTextures[slice] = new RenderTexture(
@@ -143,7 +144,7 @@ namespace PreRendering
             }
         }
 
-        public void UpdateParamsAndRenderToBuffer(DebugMode debugMode, float maxCircumference, float fieldOfViewOffset = 0)
+        public void UpdateParamsAndRenderToBuffer(DebugMode debugMode, int debugSlice, float maxCircumference, float fieldOfViewOffset = 0)
         {
             for (int slice = 0; slice < slices; slice++)
             {
@@ -153,7 +154,7 @@ namespace PreRendering
                 renderCameras[slice].fieldOfView = originalCamera.fieldOfView + fieldOfViewOffset;
                 
                 // update render params
-                renderParams[slice].matProps.SetInt("DEBUG_MODE", (int)debugMode);
+                renderParams[slice].matProps.SetInteger("DEBUG_MODE", slice == debugSlice ? (int)debugMode : 0);
                 renderParams[slice].matProps.SetFloat("TIMESTEP", Time.time);
                 renderParams[slice].matProps.SetFloat("MAX_CIRCUMFERENCE", maxCircumference);
 

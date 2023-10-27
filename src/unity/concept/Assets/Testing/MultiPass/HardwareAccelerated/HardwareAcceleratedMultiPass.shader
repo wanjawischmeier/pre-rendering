@@ -124,17 +124,20 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 }
         
                 int slice = uv.z;
-    
+                
                 #if VALIDATION_ITERATIONS > 0
-                uint2 tc0 = (uv0.xy % 1) * INPUT_RESOLUTION;
-                uint2 tc1 = (uv1.xy % 1) * INPUT_RESOLUTION;
-                uint2 tc2 = (uv2.xy % 1) * INPUT_RESOLUTION;
-    
-                if (!validLine(tc0, tc1, slice) || !validLine(tc0, tc2, slice))
+                if (RENDER_PASS == 0)
                 {
-                    o.pos = float4(0, 0, 0, 0);
-                    o.uv = float3(0, 0, 0);
-                    return o;
+                    uint2 tc0 = (uv0.xy % 1) * INPUT_RESOLUTION;
+                    uint2 tc1 = (uv1.xy % 1) * INPUT_RESOLUTION;
+                    uint2 tc2 = (uv2.xy % 1) * INPUT_RESOLUTION;
+                
+                    if (!validLine(tc0, tc1, slice) || !validLine(tc0, tc2, slice))
+                    {
+                        o.pos = float4(0, 0, 0, 0);
+                        o.uv = float3(0, 0, 0);
+                        return o;
+                    }
                 }
                 #endif
                 
@@ -145,7 +148,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 float l0 = length(pos0 - pos1);
                 float l1 = length(pos1 - pos2);
                 float l2 = length(pos2 - pos0);
-    
+                
                 if (uv.x > 1)
                 {
                     o.perimeter = 1;

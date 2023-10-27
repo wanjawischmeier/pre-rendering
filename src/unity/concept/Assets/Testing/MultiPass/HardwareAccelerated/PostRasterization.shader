@@ -38,13 +38,14 @@ Shader"PreRendering/PostRasterization"
             }
             
             #define DEPTH_TOLERANCE 0.0001
+            #define MAX_SLICES 8
 
-            uniform int NUM_SLICES, DEBUG_MODE, SLICE, MAX_CIRCUMFERENCE;
+            uniform int NUM_SLICES, DEBUG_MODE, UI_DEBUGGER, SLICE, MAX_CIRCUMFERENCE;
             uniform float INTERPOLATION_RANGE, DEPTH_OFFSET;
             uniform float2 RESOLUTION;
             
             SamplerState sampler_linear_repeat;
-            Texture2D _MainTex;
+            Texture2D _MainTex, _UI;
             Texture2D _Input0, _Input1, _Input2, _Input3, _Input4, _Input5, _Input6, _Input7;
             Texture2D _Coordinates0, _Coordinates1, _Coordinates2, _Coordinates3, _Coordinates4, _Coordinates5, _Coordinates6, _Coordinates7;
             Texture2D _Depth0, _Depth1, _Depth2, _Depth3, _Depth4, _Depth5, _Depth6, _Depth7;
@@ -82,6 +83,9 @@ Shader"PreRendering/PostRasterization"
                         break;                                                  \
                 }
 
+            #define MIX_COL_UI_BY_ALPHA(col, ui) \
+                UI_DEBUGGER == 1 ? col * (1 - ui.g) + ui.rrrr * ui.g : col
+
             float4 interpolateColors(float4 color0, float4 color1, float blurriness0, float blurriness1)
             {
                 float deltaBlurriness = blurriness0 - blurriness1;
@@ -108,7 +112,7 @@ Shader"PreRendering/PostRasterization"
                 slice0 = float4(0, 0, MAX_CIRCUMFERENCE, 0);
                 slice1 = float4(0, 0, MAX_CIRCUMFERENCE, 0);
 
-                for (int slice = 0; slice < NUM_SLICES; slice++)
+                for (int slice = 0; slice < MAX_SLICES - 1; slice++)
                 {
                     SAMPLE_PSEUDO_ARRAY(_Coordinates, uv, slice, tc);
                     
@@ -151,6 +155,22 @@ Shader"PreRendering/PostRasterization"
                 SAMPLE_PSEUDO_ARRAY(_Input, uv.xy, 1, col2);
                 return uv;
                 */
+                fixed4 ui;
+                if (UI_DEBUGGER == 1)
+                {
+                    ui = _UI.Sample(sampler_linear_repeat, i.uv);
+                    if (any(ui) && ui.g != ui.b)
+                    {
+                        return ui;
+                    }
+                }
+    
+                if (DEBUG_MODE > 2)
+                {
+                    float4 col = _MainTex.Sample(sampler_linear_repeat, i.uv);
+                    return MIX_COL_UI_BY_ALPHA(col, ui);
+                }
+    
                 float d;
                 float4 col, col0, col1, slice0, slice1;
                 sampleLeastBlurrySlices(i.uv, slice0, slice1, d);
@@ -177,11 +197,9 @@ Shader"PreRendering/PostRasterization"
     
                 if (DEBUG_MODE == 2)
                 {
-                    // return slice0.bbba * float4(index0, 1 - index0, 0, 1);
-                    return float4(slice0.b, slice1.b, 0, 1);
+                    col = normalize(float4(slice0.b, slice1.b, slice1.b / 2, 1));
                 }
-    
-                if (sliceValid0 && !sliceValid1)
+                else if (sliceValid0 && !sliceValid1)
                 {
                     // only slice0 is valid, sample its color
                     col = col0;
@@ -211,8 +229,7 @@ Shader"PreRendering/PostRasterization"
                 }
     
                 // return tex2D(_Depth1, i.uv);
-                return col;
-                
+                return MIX_COL_UI_BY_ALPHA(col, ui);
             }
             ENDCG
         }
