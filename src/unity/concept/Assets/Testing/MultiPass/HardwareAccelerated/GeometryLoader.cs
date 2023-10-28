@@ -8,7 +8,6 @@ namespace PreRendering
         [Serializable]
         public struct Map
         {
-            public int imageWidth, imageHeight;
             public float nClip, fClip;
         }
 
@@ -28,6 +27,7 @@ namespace PreRendering
 
         public readonly RenderTexture motionVectors;
         public ComputeShader computeShader;
+        private Resolution inputResolution;
         private Resolution[] projectionResolutions, rasterizationResolutions;
         private UnityEngine.Rendering.LocalKeyword usePreviousPassComputeShaderKeyword;
         private int calculateMotionVectorsGroupSizeX, calculateMotionVectorsGroupSizeY;
@@ -36,16 +36,17 @@ namespace PreRendering
         private bool isInputInitialized;
         private bool _validateNeighbors = false;
 
-        public GeometryLoader(int bufferSize, Map map, ComputeShader computeShader, Resolution[] projectionResolutions, Resolution[] rasterizationResolutions)
+        public GeometryLoader(int bufferSize, Map map, ComputeShader computeShader, Resolution inputResolution, Resolution motionVectorResolution, Resolution[] projectionResolutions, Resolution[] rasterizationResolutions)
         {
             this.bufferSize = bufferSize;
             this.computeShader = computeShader;
+            this.inputResolution = inputResolution;
             this.projectionResolutions = projectionResolutions;
             this.rasterizationResolutions = rasterizationResolutions;
 
             // input dimensions
             motionVectors = new RenderTexture(
-                map.imageWidth, map.imageHeight, 0,
+                motionVectorResolution.width, motionVectorResolution.height, 0,
                 RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear
             );
             motionVectors.dimension = UnityEngine.Rendering.TextureDimension.Tex2DArray;
@@ -58,8 +59,8 @@ namespace PreRendering
             usePreviousPassComputeShaderKeyword = new UnityEngine.Rendering.LocalKeyword(computeShader, "USE_PREVIOUS_PASS");
 
             computeShader.GetKernelThreadGroupSizes(calculateMotionVectorsKernelId, out uint threadGroupSizeX, out uint threadGroupSizeY, out _);
-            calculateMotionVectorsGroupSizeX = map.imageWidth / (int)threadGroupSizeX;
-            calculateMotionVectorsGroupSizeY = map.imageHeight / (int)threadGroupSizeY;
+            calculateMotionVectorsGroupSizeX = motionVectors.width / (int)threadGroupSizeX;
+            calculateMotionVectorsGroupSizeY = motionVectors.height / (int)threadGroupSizeY;
 
             computeShader.GetKernelThreadGroupSizes(loadTexelsToBufferKernelId, out threadGroupSizeX, out threadGroupSizeY, out _);
             loadTexelsToBufferGroupSizesX = new int[projectionResolutions.Length];
@@ -75,7 +76,8 @@ namespace PreRendering
             computeShader.SetFloat("PI2", Mathf.PI * 2);
             computeShader.SetFloat("NCLIP", map.nClip);
             computeShader.SetFloat("FCLIP", map.fClip);
-            computeShader.SetVector("INPUT_RESOLUTION", new Vector2(map.imageWidth, map.imageHeight));
+            computeShader.SetVector("INPUT_RESOLUTION", inputResolution.ToVector2());
+            computeShader.SetVector("MOTION_VECTOR_RESOLUTION", motionVectorResolution.ToVector2());
             computeShader.SetTexture(calculateMotionVectorsKernelId, "_MotionVectorsWrite", motionVectors);
             computeShader.SetTexture(loadTexelsToBufferKernelId, "_MotionVectors", motionVectors);
         }
@@ -88,16 +90,11 @@ namespace PreRendering
                 Debug.LogError($"Not enough images provided (buffer has size {bufferSize}, provided {images.Length} images).");
                 return;
             }
-            if (images[0].width != motionVectors.width || images[0].height != motionVectors.height)
-            {
-                Debug.LogError("Incorrect input image dimensions.");
-                return;
-            }
 
             for (int slice = 0; slice < bufferSize; slice++)
             {
                 // calculate motion vectors
-                computeShader.SetInt("TEXTURE_INDEX", slice);
+                computeShader.SetInt("SLICE", slice);
                 computeShader.SetTexture(calculateMotionVectorsKernelId, "_Input", images[slice]);
                 computeShader.Dispatch(calculateMotionVectorsKernelId, calculateMotionVectorsGroupSizeX, calculateMotionVectorsGroupSizeY, 1);
             }
@@ -142,7 +139,7 @@ namespace PreRendering
             // TODO: all slices in single dispatch call
             for (int slice = 0; slice < slices; slice++)
             {
-                computeShader.SetInt("TEXTURE_INDEX", slice);
+                computeShader.SetInt("SLICE", slice);
                 computeShader.SetBuffer(loadTexelsToBufferKernelId, "_Triangles", renderBuffer.triangles[slice]);
                 computeShader.SetBuffer(loadTexelsToBufferKernelId, "_Positions", renderBuffer.positions[slice]);
                 computeShader.SetBuffer(loadTexelsToBufferKernelId, "_UVs", renderBuffer.uvs[slice]);

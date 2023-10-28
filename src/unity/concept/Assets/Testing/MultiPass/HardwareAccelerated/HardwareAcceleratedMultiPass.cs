@@ -13,10 +13,11 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     public Shader rasterizationShader, postRasterizationShader;
     public GeometryLoader.Map map;
     public bool validateNeighbors, performanceLogging, uiDebuggerState;
-    public float maxCircumference, interpolationRange, depthOffset, maxDifference;
+    public float interpolationRange, depthOffset, maxDifference;
+    public float[] maxCircumferences;
     public int fieldOfViewOffset = 10;
     public int[] dimensions;
-    public Vector2Int projectionResolution, rasterizationResolution;
+    public Vector2Int motionVectorResolution, projectionResolution, rasterizationResolution;
     public AnimationCurve projectionResolutionCurve, rasterizationResolutionCurve;
     public Camera uiCamera;
     public TextMeshProUGUI uiDebugger;
@@ -31,7 +32,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     public Mesh colliderMesh;
 
     private bool previousUIDebuggerState = false;
-    private int passes;
+    private int passes, totalTriangles;
     private Camera originalCamera;
     private RenderTexture uiTexture;
     private Material postRasterizationMaterial;
@@ -65,19 +66,30 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         Debug.Log(SystemInfo.supportedRenderTargetCount);
         originalCamera = GetComponent<Camera>();
         passes = dimensions.Length;
-        
+
         // initialize resolution arrays
         projectionResolutions = new Resolution[passes];
         rasterizationResolutions = new Resolution[passes];
-
+        var inputResolution = new Resolution()
+        {
+            width = inputImages[0].width,
+            height = inputImages[0].height
+        };
+        var _motionVectorResolution = new Resolution()
+        {
+            width = motionVectorResolution.x,
+            height = motionVectorResolution.y
+        };
+        
         for (int pass = 0; pass < passes; pass++)
         {
             projectionResolutions[pass] = CalculatePassResolutionFromCurve(pass, projectionResolution, projectionResolutionCurve);
             rasterizationResolutions[pass] = CalculatePassResolutionFromCurve(pass, rasterizationResolution, rasterizationResolutionCurve);
+            totalTriangles += projectionResolutions[pass].width * projectionResolutions[pass].height * dimensions[pass] * 2;
         }
 
         // create geometry loader and populate first mesh buffer, as that one will not change
-        geometryLoader = new GeometryLoader(dimensions[0], map, computeShader, projectionResolutions, rasterizationResolutions);
+        geometryLoader = new GeometryLoader(dimensions[0], map, computeShader, inputResolution, _motionVectorResolution, projectionResolutions, rasterizationResolutions);
         geometryLoader.computeShader.SetFloat("MAX_DIFFERENCE", maxDifference);
         geometryLoader.CalculateMotionVectors(inputImages);
 
@@ -133,7 +145,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
                 rasterized[pass * dimensions[0] * 2 + slice * 2 + 1] = depth[slice];
             }
         }
-
+        
         // colliderMesh = renderBuffers[0].CreateColliderMesh(0);
         uiTexture = new RenderTexture(Screen.width, Screen.height, 0);
         uiCamera.targetTexture = uiTexture;
@@ -179,8 +191,12 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         if (uiDebuggerState)
         {
             uiDebugger.text = $"3D Position:\t\t\t\t{transform.position}\r\n" +
+                $"Screen Resolution:\t\t{Screen.width}x{Screen.height}\r\n" +
+                $"Input Resolution:\t\t\t{inputImages[0].width}x{inputImages[0].height}\r\n" +
+                $"Motion Vector Resolution:\t{motionVectorResolution.x}x{motionVectorResolution.y}\r\n" +
                 $"Projection Resolutions:\t\t[{string.Join(", ", projectionResolutions.Select(res => $"{res.width}x{res.height}"))}]\r\n" +
                 $"Rasterization Resolutions:\t[{string.Join(", ", rasterizationResolutions.Select(res => $"{res.width}x{res.height}"))}]\r\n" +
+                $"Estimated Triangle Count:\t{totalTriangles}\r\n" +
                 $"Debugging Mode:\t\t\t{debugMode}\r\n" +
                 $"Debugging Pass:\t\t\t{debugPass + 1} / {passes}\r\n" +
                 $"Debugging Slice:\t\t\t{debugSlice + 1} / {dimensions[debugPass]}";
@@ -202,7 +218,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
 
             startTime = Time.realtimeSinceStartupAsDouble;
             // renderBuffers[pass].meshTranslations = meshTranslations;
-            renderBuffers[pass].UpdateParamsAndRenderToBuffer(debugMode, debugSlice, maxCircumference, pass == passes - 1 ? 0 : fieldOfViewOffset);
+            renderBuffers[pass].UpdateParamsAndRenderToBuffer(debugMode, debugSlice, maxCircumferences[pass], pass == passes - 1 ? 0 : fieldOfViewOffset);
             renderTime += Time.realtimeSinceStartupAsDouble - startTime;
         }
         
@@ -214,7 +230,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
 
         postRasterizationMaterial.SetInt("DEBUG_MODE", (int)debugMode);
         postRasterizationMaterial.SetFloat("INTERPOLATION_RANGE", interpolationRange);
-        postRasterizationMaterial.SetFloat("MAX_CIRCUMFERENCE", maxCircumference);
+        postRasterizationMaterial.SetFloat("MAX_CIRCUMFERENCE", maxCircumferences[passes - 1]);
         postRasterizationMaterial.SetFloat("DEPTH_OFFSET", depthOffset);
     }
 

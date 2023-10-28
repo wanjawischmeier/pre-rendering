@@ -186,11 +186,13 @@ Shader"PreRendering/PostRasterization"
                 
                 if (sliceValid0)
                 {
+                    col0 = float4(1, 0, 0, 1);
                     SAMPLE_PSEUDO_ARRAY(_Input, slice0.xy, index0, col0);
                     sliceValid0 = sliceValid0 && col0.a < 1;
                 }
                 if (sliceValid1)
                 {
+                    col1 = float4(0, 1, 0, 1);
                     SAMPLE_PSEUDO_ARRAY(_Input, slice1.xy, index1, col1);
                     sliceValid1 = sliceValid1 && col1.a < 1;
                 }

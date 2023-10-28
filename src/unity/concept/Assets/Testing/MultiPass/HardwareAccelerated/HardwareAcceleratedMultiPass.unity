@@ -263,8 +263,10 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "3D Position:\t\t\t\t-\nProjection Resolutions:\t\t-\nRasterization Resolutions:\t-\nDebugging
-    Mode:\t\t\t-\nDebugging Pass:\t\t\t-\nDebugging Slice:\t\t\t-"
+  m_text: "3D Position:\t\t\t\t-\nScreen Resolution:\t\t-\nInput Resolution:\t\t\t-\nMotion
+    Vector Resolution:\t-\nProjection Resolutions:\t\t-\nRasterization Resolutions:\t-\nEstimated
+    Triangle Count:\t-\nDebugging Mode:\t\t\t-\nDebugging Pass:\t\t\t-\nDebugging
+    Slice:\t\t\t-"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -1118,12 +1120,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   inputImages:
-  - {fileID: 2800000, guid: aebf9a324a7d10e419bcf52eb2cecfd5, type: 3}
-  - {fileID: 2800000, guid: 458ba5abcf875a543a22d23f7fa43456, type: 3}
-  - {fileID: 2800000, guid: 0a8d6694a2466e543abd19b5a4981689, type: 3}
-  - {fileID: 2800000, guid: 59c058d9038913f47afcffe1afdd53c6, type: 3}
-  - {fileID: 2800000, guid: c35c77f6155708942afbb80d8a75f876, type: 3}
-  - {fileID: 2800000, guid: 689402d03b1ed4b46a3b119f120bffbb, type: 3}
+  - {fileID: 2800000, guid: 9c1c59e88a4d1f047859fee2c01ebe55, type: 3}
+  - {fileID: 2800000, guid: 4f99dc73ce6329849ae22841edfc8646, type: 3}
+  - {fileID: 2800000, guid: 56d9d9ca1544df44dbdc35fcc4581f61, type: 3}
+  - {fileID: 2800000, guid: e1a0f79ae123bb04ab13d53819d403cd, type: 3}
+  - {fileID: 2800000, guid: 48541422617aafa4e811756fbb175ade, type: 3}
+  - {fileID: 2800000, guid: 1215824936236584bafe6f0cdb992cbd, type: 3}
   meshTranslations:
   - {x: -10, y: 0, z: -10}
   - {x: -10, y: -3.8, z: -10}
@@ -1135,20 +1137,21 @@ MonoBehaviour:
   rasterizationShader: {fileID: 4800000, guid: ff3af3d092bd8fa48b9b61e5d11b7769, type: 3}
   postRasterizationShader: {fileID: 4800000, guid: fe60f4afcc71ebb48af2270059806d05, type: 3}
   map:
-    imageWidth: 4096
-    imageHeight: 1024
     nClip: 0.1
     fClip: 30
   validateNeighbors: 0
   performanceLogging: 0
   uiDebuggerState: 1
-  maxCircumference: 2
   interpolationRange: 0.5
   depthOffset: 0
   maxDifference: 1
+  maxCircumferences:
+  - 1
+  - 0.5
   fieldOfViewOffset: 10
-  dimensions: 0600000001000000
-  projectionResolution: {x: 1000, y: 500}
+  dimensions: 0600000002000000
+  motionVectorResolution: {x: 2048, y: 1024}
+  projectionResolution: {x: 960, y: 540}
   rasterizationResolution: {x: 1920, y: 1080}
   projectionResolutionCurve:
     serializedVersion: 2
@@ -1156,18 +1159,18 @@ MonoBehaviour:
     - serializedVersion: 3
       time: 0
       value: 0
-      inSlope: 1
-      outSlope: 1
-      tangentMode: 34
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
       weightedMode: 0
       inWeight: 0
       outWeight: 0
     - serializedVersion: 3
       time: 1
       value: 1
-      inSlope: 1
-      outSlope: 1
-      tangentMode: 34
+      inSlope: 2
+      outSlope: 2
+      tangentMode: 0
       weightedMode: 0
       inWeight: 0
       outWeight: 0

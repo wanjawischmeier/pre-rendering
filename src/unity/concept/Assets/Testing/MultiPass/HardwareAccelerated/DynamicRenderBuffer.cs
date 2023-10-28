@@ -98,7 +98,6 @@ namespace PreRendering
                     rasterizationResolution.width, rasterizationResolution.height, 24,
                     RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear
                 );
-                targetTextures[slice].filterMode = FilterMode.Bilinear;
 
                 // targetTextures[slice].filterMode = FilterMode.Point;
                 depthTextures[slice] = new RenderTexture(
@@ -154,7 +153,7 @@ namespace PreRendering
                 renderCameras[slice].fieldOfView = originalCamera.fieldOfView + fieldOfViewOffset;
                 
                 // update render params
-                renderParams[slice].matProps.SetInteger("DEBUG_MODE", slice == debugSlice ? (int)debugMode : 0);
+                renderParams[slice].matProps.SetInteger("DEBUG_MODE", (int)debugMode);
                 renderParams[slice].matProps.SetFloat("TIMESTEP", Time.time);
                 renderParams[slice].matProps.SetFloat("MAX_CIRCUMFERENCE", maxCircumference);
 

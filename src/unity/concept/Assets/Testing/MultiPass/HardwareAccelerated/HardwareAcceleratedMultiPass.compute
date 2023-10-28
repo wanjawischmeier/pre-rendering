@@ -14,72 +14,35 @@
     _MotionVectorsWrite[uint3(tc, index)] = float4(0, 0, 0, 0); \
     return;
 
-#define READ_PSEUDO_ARRAY(array, tc, slice, result)                 \
-    switch (slice) {                                                \
-        case 0:                                                     \
-            result = array##0[tc];                                  \
-            break;                                                  \
-        case 1:                                                     \
-            result = array##1[tc];                                  \
-            break;                                                  \
-        case 2:                                                     \
-            result = array##2[tc];                                  \
-            break;                                                  \
-        case 3:                                                     \
-            result = array##3[tc];                                  \
-            break;                                                  \
-        case 4:                                                     \
-            result = array##4[tc];                                  \
-            break;                                                  \
-        case 5:                                                     \
-            result = array##5[tc];                                  \
-            break;                                                  \
-        case 6:                                                     \
-            result = array##6[tc];                                  \
-            break;                                                  \
-        case 7:                                                     \
-            result = array##7[tc];                                  \
-            break;                                                  \
-        default:                                                    \
-            result = float4(1, 0, 1, 1);                            \
-            break;                                                  \
-    }
-
-#define SAMPLE_PSEUDO_ARRAY(array, uv, slice, result)               \
-    switch (slice) {                                                \
-        case 0:                                                     \
-            result = array##0.SampleLevel(sampler_linear_repeat, uv, 0);    \
-            break;                                                  \
-        case 1:                                                     \
-            result = array##1.SampleLevel(sampler_linear_repeat, uv, 0);    \
-            break;                                                  \
-        case 2:                                                     \
-            result = array##2.SampleLevel(sampler_linear_repeat, uv, 0);    \
-            break;                                                  \
-        case 3:                                                     \
-            result = array##3.SampleLevel(sampler_linear_repeat, uv, 0);    \
-            break;                                                  \
-        case 4:                                                     \
-            result = array##4.SampleLevel(sampler_linear_repeat, uv, 0);    \
-            break;                                                  \
-        case 5:                                                     \
-            result = array##5.SampleLevel(sampler_linear_repeat, uv, 0);    \
-            break;                                                  \
-        case 6:                                                     \
-            result = array##6.SampleLevel(sampler_linear_repeat, uv, 0);    \
-            break;                                                  \
-        case 7:                                                     \
-            result = array##7.SampleLevel(sampler_linear_repeat, uv, 0);    \
-            break;                                                  \
-        default:                                                    \
-            result = float4(1, 0, 1, 1);                            \
-            break;                                                  \
+#define READ_PSEUDO_ARRAY(array, tc, slice, result)             \
+    switch (slice) {                                            \
+        case 0:                                                 \
+            result = array##0[tc];                              \
+            break;                                              \
+        case 1:                                                 \
+            result = array##1[tc];                              \
+            break;                                              \
+        case 2:                                                 \
+            result = array##2[tc];                              \
+            break;                                              \
+        case 3:                                                 \
+            result = array##3[tc];                              \
+            break;                                              \
+        case 4:                                                 \
+            result = array##4[tc];                              \
+            break;                                              \
+        case 5:                                                 \
+            result = array##5[tc];                              \
+            break;                                              \
+        default:                                                \
+            result = float4(1, 0, 1, 1);                        \
+            break;                                              \
     }
 
 uniform bool VALIDATE_NEIGHBORS;
-int TEXTURE_INDEX, NUM_PREVIOUS_SLICES;
+int SLICE, NUM_PREVIOUS_SLICES;
 uniform float PI, PI2, NCLIP, FCLIP, MAX_DIFFERENCE;
-uniform float2 INPUT_RESOLUTION, PROJECTION_RESOLUTION, PREVIOUS_RASTERIZATION_RESOLUTION;
+uniform float2 INPUT_RESOLUTION, MOTION_VECTOR_RESOLUTION, PROJECTION_RESOLUTION, PREVIOUS_RASTERIZATION_RESOLUTION;
 
 #pragma kernel CalculateMotionVectors
 
@@ -90,17 +53,18 @@ RWTexture2DArray<float4> _MotionVectorsWrite;
 void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
 {
     uint2 off = uint2(1, 0);
-    float2 uv = NORMALIZE_RANGE(id.xy, INPUT_RESOLUTION);
-    float d = _Input[id.xy].a;
-    float dl = _Input[id.xy - off].a;
-    float dr = _Input[id.xy + off].a;
-    float dt = _Input[id.xy - off.yx].a;
-    float db = _Input[id.xy + off.yx].a;
+    float2 uv = NORMALIZE_RANGE(id.xy, MOTION_VECTOR_RESOLUTION);
+    uint2 tc = MAP_TO_RANGE(uv, INPUT_RESOLUTION);
+    float d = _Input[tc].a;
+    float dl = _Input[tc - off].a;
+    float dr = _Input[tc + off].a;
+    float dt = _Input[tc - off.yx].a;
+    float db = _Input[tc + off.yx].a;
 
     // invalidate skybox verticies
     if (d == 1 || dl == 1 || dr == 1 || dt == 1 || db == 1)
     {
-        MARK_VERTEX_INVALID(id.xy, TEXTURE_INDEX);
+        MARK_VERTEX_INVALID(id.xy, SLICE);
     }
 
     float sl = abs(d - dl);
@@ -111,7 +75,7 @@ void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
     // invalidate steep angles
     if (sl > MAX_DIFFERENCE || sr > MAX_DIFFERENCE || st > MAX_DIFFERENCE || sb > MAX_DIFFERENCE)
     {
-        MARK_VERTEX_INVALID(id.xy, TEXTURE_INDEX);
+        MARK_VERTEX_INVALID(id.xy, SLICE);
     }
         
     float2 ll1 = uv.yx;
@@ -127,7 +91,7 @@ void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
         CP * cos(ll1.y) * sin(ll1.x)
     );
     
-    _MotionVectorsWrite[uint3(id.xy, TEXTURE_INDEX)] = float4(P, 1);
+    _MotionVectorsWrite[uint3(id.xy, SLICE)] = float4(P, 1);
 }
 
 
@@ -135,10 +99,10 @@ void CalculateMotionVectors(uint3 id : SV_DispatchThreadID)
 #pragma kernel LoadTexelsToBuffer
 
 Texture2DArray<float4> _MotionVectors;
+SamplerState sampler_linear_repeat;
 #ifdef USE_PREVIOUS_PASS
 Texture2D<float4> _PreviousPass0, _PreviousPass1, _PreviousPass2, _PreviousPass3, _PreviousPass4, _PreviousPass5, _PreviousPass6, _PreviousPass7;
 Texture2D<float4> _PreviousDepth0, _PreviousDepth1, _PreviousDepth2, _PreviousDepth3, _PreviousDepth4, _PreviousDepth5, _PreviousDepth6, _PreviousDepth7;
-SamplerState sampler_linear_repeat;
 #endif
 
 RWStructuredBuffer<int> _Triangles;
@@ -152,31 +116,30 @@ float4 GetWorldSpacePositionAndTransformUV(inout float2 uv, inout int s)
 #ifdef USE_PREVIOUS_PASS
     float d, d0 = 0;
     float2 rc = MAP_TO_RANGE(uv, PREVIOUS_RASTERIZATION_RESOLUTION);
-    float4 tmp;
-    float4 pc = float4(0, 0, MAX_INT_CONST, 0);
+    float4 pc0 = float4(0, 0, MAX_INT_CONST, 0);
+    float4 tmp, pc, pc1;
     
-    for (int slice = 0; slice < 5; slice++)
+    for (int slice = 0; slice < NUM_PREVIOUS_SLICES; slice++)
     {
         READ_PSEUDO_ARRAY(_PreviousPass, rc, slice, tmp);
-        // SAMPLE_PSEUDO_ARRAY(_PreviousPass, uv, slice, tmp);
-        if (tmp.z != 0 && tmp.z < pc.z)                             // tmp.a == 0 ??
+        if (tmp.z != 0 && tmp.z < pc0.z)    // tmp.a == 0 ??
         {
             READ_PSEUDO_ARRAY(_PreviousDepth, rc, slice, d);
             if (d > d0)
             {
                 d0 = d;
-                pc = tmp;
-                s = tmp.w - 1;
+                pc1 = pc0;
+                pc0 = tmp;
             }
         }
     }
     
+    pc = SLICE == 0 ? pc0 : pc1;
     s = pc.w - 1;
     uv = pc.xy;
 #endif
     
-    uint3 tc = uint3(MAP_TO_RANGE(uv, INPUT_RESOLUTION), s);
-    return _MotionVectors[tc];
+    return _MotionVectors.SampleLevel(sampler_linear_repeat, float3(uv, s), 0);
 }
 
 bool neighborsValid(float2 uv, int s)
@@ -213,14 +176,9 @@ void LoadTexelsToBuffer(uint3 id : SV_DispatchThreadID)
     uint triIndex = i00 * 6;
     
     float2 uv = NORMALIZE_RANGE(id.xy, PROJECTION_RESOLUTION);
+    int slice = SLICE;
     
-#ifdef USE_PREVIOUS_PASS
-    int s = 2;
-#else
-    int s = TEXTURE_INDEX;
-#endif
-    
-    float4 P = GetWorldSpacePositionAndTransformUV(uv, s);
+    float4 P = GetWorldSpacePositionAndTransformUV(uv, slice);
     if (P.w == 0)
     {
         // skip invalid verticies
@@ -234,7 +192,7 @@ void LoadTexelsToBuffer(uint3 id : SV_DispatchThreadID)
     }
     */
     _Positions[i00] = P.xyz;
-    _UVs[i00] = float3(uv, s);
+    _UVs[i00] = float3(uv, slice);
     
     _Triangles[triIndex + 0] = i00;
     _Triangles[triIndex + 1] = i11;

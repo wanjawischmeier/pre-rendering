@@ -27,8 +27,8 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
 
             struct ShaderOutput
             {
-                half4 color : COLOR;
-                half depth : TEXCOORD0;
+                float4 color : COLOR;
+                float depth : TEXCOORD0;
             };
 
             #define VALIDATION_ITERATIONS 1

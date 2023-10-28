@@ -5,7 +5,7 @@ using UnityEngine;
 public class FPSCounter : MonoBehaviour
 {
     private TextMeshProUGUI text;
-    private const float CounterFps = 1 / 30f;
+    private const float CounterRefreshFrequency = 1 / 15f;
     private int framesPassed = 0;
     private float lastUpdate = 0;
     private float fpsTotal = 0;
@@ -19,7 +19,7 @@ public class FPSCounter : MonoBehaviour
         fpsTotal += fps;
         framesPassed++;
 
-        if (Time.realtimeSinceStartup - lastUpdate > CounterFps)
+        if (Time.realtimeSinceStartup - lastUpdate > CounterRefreshFrequency)
         {
             text.text = $"FPS: {Mathf.Round(fpsTotal / framesPassed * 100 / 100)}\t({Mathf.Round(Time.unscaledDeltaTime * 100000) / 100}ms)";
 
