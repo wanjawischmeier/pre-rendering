@@ -1,12 +1,11 @@
 using UnityEngine;
-using PreRendering;
-using System;
 
 [RequireComponent(typeof(CharacterController))]
 public class FlyMovementController : MonoBehaviour
 {
     public float flySpeed = 5f;
     public float rotationSpeed = 2f;
+    public DynamicJoystick moveJoystick, viewJoystick;
 
     private CharacterController characterController;
 
@@ -16,7 +15,16 @@ public class FlyMovementController : MonoBehaviour
     private void Start()
     {
         characterController = GetComponent<CharacterController>();
-        Cursor.lockState = CursorLockMode.Locked; // Lock cursor to the center of the screen
+        if (Application.isMobilePlatform)
+        {
+            Cursor.lockState = CursorLockMode.None;
+        }
+        else
+        {
+            moveJoystick.gameObject.SetActive(true);
+            viewJoystick.gameObject.SetActive(true);
+            Cursor.lockState = CursorLockMode.Locked;
+        }
     }
 
     private void Update()
@@ -33,12 +41,21 @@ public class FlyMovementController : MonoBehaviour
         float speed = Input.GetKey(KeyCode.LeftShift) ? flySpeed / 10 : flySpeed;
 
         // Handle rotation (looking around)
-        float mouseX = Input.GetAxis("Mouse X") * rotationSpeed;
-        float mouseY = -Input.GetAxis("Mouse Y") * rotationSpeed; // Invert Y-axis for natural camera movement
+        float mouseX = Input.GetAxis("Mouse X");
+        float mouseY = -Input.GetAxis("Mouse Y");
+        if (viewJoystick.Horizontal != 0 || viewJoystick.Vertical != 0)
+        {
+            mouseX = viewJoystick.Horizontal;
+            mouseY = viewJoystick.Vertical;
+        }
+        else if (moveJoystick.Horizontal != 0 || moveJoystick.Vertical != 0)
+        {
+            mouseX = mouseY = 0;
+        }
 
         // Apply vertical rotation to the camera
-        horizontalRotation += mouseX;
-        verticalRotation += mouseY;
+        horizontalRotation += mouseX * rotationSpeed;
+        verticalRotation += -mouseY * rotationSpeed;    // Invert Y-axis for natural camera movement
         verticalRotation = Mathf.Clamp(verticalRotation, -90f, 90f);
         transform.localRotation = Quaternion.Euler(verticalRotation, horizontalRotation, 0);
 
@@ -47,7 +64,11 @@ public class FlyMovementController : MonoBehaviour
         float verticalInput = 0f;
         float upDownInput = 0f;
 
-        if (Input.GetKey(KeyCode.A))
+        if (moveJoystick.Horizontal != 0)
+        {
+            horizontalInput = moveJoystick.Horizontal;
+        }
+        else if (Input.GetKey(KeyCode.A))
         {
             horizontalInput = -1f;
         }
@@ -56,7 +77,11 @@ public class FlyMovementController : MonoBehaviour
             horizontalInput = 1f;
         }
 
-        if (Input.GetKey(KeyCode.S))
+        if (moveJoystick.Vertical != 0)
+        {
+            verticalInput = moveJoystick.Vertical;
+        }
+        else if (Input.GetKey(KeyCode.S))
         {
             verticalInput = -1f;
         }
