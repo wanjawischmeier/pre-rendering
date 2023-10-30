@@ -151,9 +151,16 @@ Shader"PreRendering/PostRasterization"
             {
                 /*
                 float4 uv = _Coordinates0.Sample(sampler_linear_repeat, i.uv);
-                float4 col2;
-                SAMPLE_PSEUDO_ARRAY(_Input, uv.xy, 1, col2);
-                return uv;
+                if (uv.w >= 1)
+                {
+                    float4 col2;
+                    SAMPLE_PSEUDO_ARRAY(_Input, uv.xy, uv.w - 1, col2);
+                    return col2;
+                }
+                else
+                {
+                    return _MainTex.Sample(sampler_linear_repeat, i.uv);
+                }
                 */
                 fixed4 ui;
                 if (UI_DEBUGGER == 1)

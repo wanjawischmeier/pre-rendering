@@ -91,9 +91,8 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
             {
                 v2f o;
                 int index = _Triangles[v.vertexID + _StartIndex] + _BaseVertexIndex;
-                
-                // TODO: calculate indicies instead of sampling
                 /*
+                // TODO: calculate indicies instead of sampling
                 int index0 = v.vertexID - (v.vertexID % 3);     // i00
                 int index1, index2;
                 if ((index0 + 1) % 6)
@@ -108,29 +107,39 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 }
                 */
                 int baseIndex = v.vertexID - v.vertexID % 3;
+                int offset = PROJECTION_RESOLUTION.x * PROJECTION_RESOLUTION.y;
                 int index0 = _Triangles[baseIndex + 0 + _StartIndex] + _BaseVertexIndex;
                 int index1 = _Triangles[baseIndex + 1 + _StartIndex] + _BaseVertexIndex;
                 int index2 = _Triangles[baseIndex + 2 + _StartIndex] + _BaseVertexIndex;
     
-                float3 uv = _UVs[index];
-                float3 uv0 = _UVs[index0];
-                float3 uv1 = _UVs[index1];
-                float3 uv2 = _UVs[index2];
-                if (uv0.z == -1 || uv1.z == -1 || uv2.z == -1)
+                float3 uv0 = _UVs[index];
+                float3 uv0_n0 = _UVs[index0];
+                float3 uv0_n1 = _UVs[index1];
+                float3 uv0_n2 = _UVs[index2];
+                if (uv0_n0.z == -1 || uv0_n1.z == -1 || uv0_n2.z == -1)
                 {
                     o.pos = float4(0, 0, 0, 0);
                     o.uv = float3(0, 0, 0);
                     return o;
                 }
-        
-                int slice = uv.z;
+    
+                float3 uv1 = _UVs[index + offset];
+                float3 uv1_n0 = _UVs[index0 + offset];
+                float3 uv1_n1 = _UVs[index1 + offset];
+                float3 uv1_n2 = _UVs[index2 + offset];
+                if (uv1_n0.z == -1 || uv1_n1.z == -1 || uv1_n2.z == -1)
+                {
+                    uv1.z = -1;
+                }
                 
+                int slice = uv0.z;
+                /*
                 #if VALIDATION_ITERATIONS > 0
                 if (RENDER_PASS == 0)
                 {
-                    uint2 tc0 = (uv0.xy % 1) * INPUT_RESOLUTION;
-                    uint2 tc1 = (uv1.xy % 1) * INPUT_RESOLUTION;
-                    uint2 tc2 = (uv2.xy % 1) * INPUT_RESOLUTION;
+                    uint2 tc0 = (uvn0.xy % 1) * INPUT_RESOLUTION;
+                    uint2 tc1 = (uvn1.xy % 1) * INPUT_RESOLUTION;
+                    uint2 tc2 = (uvn2.xy % 1) * INPUT_RESOLUTION;
                 
                     if (!validLine(tc0, tc1, slice) || !validLine(tc0, tc2, slice))
                     {
@@ -140,7 +149,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                     }
                 }
                 #endif
-                
+                */
                 float3 pos = _Positions[index];
                 float3 pos0 = _Positions[index0];
                 float3 pos1 = _Positions[index1];
@@ -149,10 +158,10 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 float l1 = length(pos1 - pos2);
                 float l2 = length(pos2 - pos0);
                 
-                if (uv.x > 1)
+                if (uv0.x > 1)
                 {
                     o.perimeter = 1;
-                    uv.x %= 1;
+                    uv0.x %= 1;
                 }
                 else
                 {
@@ -170,12 +179,12 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
     
                 if (DEBUG_MODE == 1 && RENDER_PASS != 0 && length(wpos.xyz - float3(-4, 0, -5)) < 20) // zSineFilled
                 {
-                    wpos.y += sin(TIMESTEP * 2) * sin(length(wpos)) * sin(wpos.x);
+                    wpos.y += sin(TIMESTEP * 2) * sin(length(wpos)) * cos(sin(wpos.x * 10));
                 }
     
                 o.depth = length(wpos);
                 o.pos = mul(UNITY_MATRIX_VP, wpos);
-                o.uv = uv;
+                o.uv = RENDER_PASS == 0 ? uv0 : uv1;
                 return o;
             }
 
