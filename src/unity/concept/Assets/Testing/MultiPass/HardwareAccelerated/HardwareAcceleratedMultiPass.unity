@@ -1164,8 +1164,8 @@ MonoBehaviour:
   depthOffset: 0
   maxDifference: 1
   maxCircumferences:
-  - 1
-  - 0.5
+  - 1.5
+  - 3
   fieldOfViewOffset: 10
   dimensions: 0600000001000000
   motionVectorResolution: {x: 2048, y: 1024}
@@ -1221,8 +1221,8 @@ MonoBehaviour:
     m_RotationOrder: 4
   uiCamera: {fileID: 164921930}
   uiDebugger: {fileID: 257802692}
-  debugMode: 0
-  debugPass: 0
+  debugMode: 5
+  debugPass: 1
   debugSlice: 0
   motionVectors: {fileID: 0}
   rasterized: []

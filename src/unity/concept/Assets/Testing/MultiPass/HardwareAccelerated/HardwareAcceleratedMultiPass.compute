@@ -108,9 +108,10 @@ Texture2D<float4> _PreviousDepth0, _PreviousDepth1, _PreviousDepth2, _PreviousDe
 
 RWStructuredBuffer<int> _Triangles;
 RWStructuredBuffer<float3> _Positions;
-RWStructuredBuffer<float3> _UVs;
+// x: u, y: v, z: perimeter, w: slice
+RWStructuredBuffer<float4> _UVs;
 
-float4 GetWorldSpacePositionAndTransformUV(inout float3 uv0, out float3 uv1)
+float4 GetWorldSpacePositionAndTransformUV(inout float4 uv0, out float4 uv1)
 {
     float4 pos;
     
@@ -118,53 +119,87 @@ float4 GetWorldSpacePositionAndTransformUV(inout float3 uv0, out float3 uv1)
     float d0, d1 = 0;
     float2 rc = MAP_TO_RANGE(uv0.xy, PREVIOUS_RASTERIZATION_RESOLUTION);
     float4 pc0 = float4(0, 0, MAX_INT_CONST, 0);
-    float4 tmp, pc1;
+    float4 tmp, pc1 = pc0;
     
-    for (int slice = 0; slice < NUM_PREVIOUS_SLICES; slice++)
+    for (int slice = 0; slice < 6; slice++)
     {
-        READ_PSEUDO_ARRAY(_PreviousDepth, rc, slice, d0);
+        READ_PSEUDO_ARRAY(_PreviousPass, rc, slice, tmp);
         
-        // sort using depth layers
-        if (d0 > d1 + DEPTH_TOLERANCE)
+        // check if the slice is valid
+        if (tmp.w >= 1)
         {
-            // new closest layer, clear least blurry slices
-            d1 = d0;
-            pc0 = tmp;
-            pc1 = float4(0, 0, 0, 0);
-        }
-        else if (d0 > d1 - DEPTH_TOLERANCE)
-        {
-            // pixel is in current layer, compare blurryness values            
-            READ_PSEUDO_ARRAY(_PreviousPass, rc, slice, tmp);
-            if (tmp.z == 0) continue;
-            else if (tmp.z < pc0.z)    // tmp.a == 0 ??
+            READ_PSEUDO_ARRAY(_PreviousDepth, rc, slice, d0);
+            
+            // sort using depth layers
+            if (d0 > d1 + DEPTH_TOLERANCE)
             {
-                pc1 = pc0;
+                // new closest layer, clear least blurry slices
                 pc0 = tmp;
+                pc1 = float4(0, 0, MAX_INT_CONST, 0);
+                d1 = d0;
             }
-            else if (tmp.z < pc1.z)
+            else if (d0 > d1 - DEPTH_TOLERANCE)
             {
-                pc1 = tmp;
+                // pixel is in current layer, compare blurryness values
+                if (tmp.z < pc0.z)
+                {
+                    pc1 = pc0;
+                    pc0 = tmp;
+                }
+                else if (tmp.z < pc1.z)
+                {
+                    pc1 = tmp;
+                }
             }
         }
     }
+    /*
+    READ_PSEUDO_ARRAY(_PreviousPass, rc, 2, pc0);
+    READ_PSEUDO_ARRAY(_PreviousPass, rc, 5, pc1);
+    if (pc1.z < pc0.z)
+    {
+        pc0 = tmp;
+        pc0 = pc1;
+        pc1 = tmp;
+    }
+    */
+    if (pc1.w == 0 || (pc1.w != 0 && pc0.w < pc1.w))
+    {
+        uv0 = pc0;
+        uv1 = pc1;
+    }
+    else
+    {
+        uv0 = pc1;
+        uv1 = pc0;
+    }
     
-    uv0.xy = pc0.xy;
-    uv1.xy = pc1.xy;
-    uv0.z = pc0.w - 1;
-    uv1.z = pc1.w - 1;
+    uv0.w -= 1;
+    uv1.w -= 1;
     
-    float4 P = _MotionVectors.SampleLevel(sampler_linear_repeat, uv1, 0);
+    
+    
+    float4 P = _MotionVectors.SampleLevel(sampler_linear_repeat, uv1, 0);   // TODO: sample needed? no
     if (P.w == 0)
     {
         // skip invalid verticies
-        uv1.z = -1;
+        // uv1.z = -1;
     }
 #else
-    uv1 = float3(0, 0, -1);
+    uv1 = float4(0, 0, 0, -1);
 #endif
     
-    return _MotionVectors.SampleLevel(sampler_linear_repeat, uv0, 0);
+    float4 uv;
+    if (uv1.w == -1)
+    {
+        uv = uv0;
+    }
+    else
+    {
+        uv = uv0.w < uv1.w ? uv0 : uv1;
+    }
+
+    return _MotionVectors.SampleLevel(sampler_linear_repeat, uv.xyw, 0);
 }
 
 bool neighborsValid(float2 uv, int s)
@@ -201,15 +236,17 @@ void LoadTexelsToBuffer(uint3 id : SV_DispatchThreadID)
     uint i20 = i00 + PROJECTION_RESOLUTION.x * PROJECTION_RESOLUTION.y;
     uint triIndex = i00 * 6;
     
-    float3 uv1, uv0 = float3(NORMALIZE_RANGE(id.xy, PROJECTION_RESOLUTION), SLICE);
+    float4 uv1, uv0 = float4(NORMALIZE_RANGE(id.xy, PROJECTION_RESOLUTION), 0, SLICE);
     
     float4 P = GetWorldSpacePositionAndTransformUV(uv0, uv1);
-    if (P.w == 0)
+    #ifndef USE_PREVIOUS_PASS
+    if (P.w == 0 && false)  // TODO: not needed?
     {
         // skip invalid verticies
-        _UVs[i00] = float3(0, 0, -1);
+        _UVs[i00] = float4(0, 0, 0, -1);
         return;
     }
+    #endif
     /*
     if (VALIDATE_NEIGHBORS && !neighborsValid(uv0, s))
     {

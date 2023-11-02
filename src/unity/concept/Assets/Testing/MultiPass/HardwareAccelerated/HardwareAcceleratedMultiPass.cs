@@ -103,7 +103,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
 
             renderBuffers[pass] = new DynamicRenderBuffer(
                 pass, dimensions[pass], meshTranslations, transform, originalCamera, geometryLoader.motionVectors,
-                projectionResolutions[pass], rasterizationResolutions[pass], rasterizationShader
+                projectionResolutions[pass], rasterizationResolutions[pass], rasterizationShader, inputImages
             );
         }
 
@@ -217,8 +217,8 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             }
 
             startTime = Time.realtimeSinceStartupAsDouble;
-            // renderBuffers[pass].meshTranslations = meshTranslations;
-            renderBuffers[pass].UpdateParamsAndRenderToBuffer(debugMode, debugSlice, maxCircumferences[pass], pass == passes - 1 ? 0 : fieldOfViewOffset);
+            renderBuffers[pass].meshTranslations = meshTranslations;    // only for debugging purposes
+            renderBuffers[pass].UpdateParamsAndRenderToBuffer(debugMode, maxCircumferences[pass], interpolationRange, pass == passes - 1 ? 0 : fieldOfViewOffset);
             renderTime += Time.realtimeSinceStartupAsDouble - startTime;
         }
         
@@ -229,7 +229,6 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         }
 
         postRasterizationMaterial.SetInt("DEBUG_MODE", (int)debugMode);
-        postRasterizationMaterial.SetFloat("INTERPOLATION_RANGE", interpolationRange);
         postRasterizationMaterial.SetFloat("MAX_CIRCUMFERENCE", maxCircumferences[passes - 1]);
         postRasterizationMaterial.SetFloat("DEPTH_OFFSET", depthOffset);
     }

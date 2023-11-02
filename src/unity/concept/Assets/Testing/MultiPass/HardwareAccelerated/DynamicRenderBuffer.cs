@@ -47,7 +47,7 @@ namespace PreRendering
         private const int MaximumShaderSupportedSlices = 8;
 
 
-        public DynamicRenderBuffer(int pass, int slices, Vector3[] meshTranslations, Transform parentTransform, Camera originalCamera, RenderTexture motionVectors, Resolution projectionResolution, Resolution rasterizationResolution, Shader rasterizationShader)
+        public DynamicRenderBuffer(int pass, int slices, Vector3[] meshTranslations, Transform parentTransform, Camera originalCamera, RenderTexture motionVectors, Resolution projectionResolution, Resolution rasterizationResolution, Shader rasterizationShader, Texture2D[] inputImages)
         {
             if (slices > MaximumShaderSupportedSlices)
             {
@@ -77,9 +77,16 @@ namespace PreRendering
             var rasterizationMaterial = new Material(rasterizationShader);
             rasterizationMaterial.SetInt("RENDER_PASS", pass);
             rasterizationMaterial.SetVector("PROJECTION_RESOLUTION", new Vector2(projectionResolution.width, projectionResolution.height));
-            rasterizationMaterial.SetVector("INPUT_RESOLUTION", new Vector2(motionVectors.width, motionVectors.height));
+            rasterizationMaterial.SetVector("MOTION_VECTOR_RESOLUTION", new Vector2(motionVectors.width, motionVectors.height));
             rasterizationMaterial.SetMatrixArray("_ObjectToWorldMatricies", matricies);
             rasterizationMaterial.SetTexture("_MotionVectors", motionVectors);
+            if (pass != 0)
+            {
+                for (int slice = 0; slice < inputImages.Length; slice++)
+                {
+                    rasterizationMaterial.SetTexture($"_Input{slice}", inputImages[slice]);
+                }
+            }
 
             // calculate buffer constants
             cullingMaskLayer = LayerMask.NameToLayer(CullingMaskLayerName);
@@ -91,7 +98,7 @@ namespace PreRendering
                 // create graphics buffers
                 triangles[slice] = new GraphicsBuffer(GraphicsBuffer.Target.Structured, indicies, sizeof(int));
                 positions[slice] = new GraphicsBuffer(GraphicsBuffer.Target.Structured, verticies, 3 * sizeof(float));
-                uvs[slice] = new GraphicsBuffer(GraphicsBuffer.Target.Structured, verticies * 2, 3 * sizeof(float));
+                uvs[slice] = new GraphicsBuffer(GraphicsBuffer.Target.Structured, verticies * 2, 4 * sizeof(float));
 
                 // create target texture
                 targetTextures[slice] = new RenderTexture(
@@ -143,7 +150,7 @@ namespace PreRendering
             }
         }
 
-        public void UpdateParamsAndRenderToBuffer(DebugMode debugMode, int debugSlice, float maxCircumference, float fieldOfViewOffset = 0)
+        public void UpdateParamsAndRenderToBuffer(DebugMode debugMode, float maxCircumference, float interpolationRange, float fieldOfViewOffset = 0)
         {
             for (int slice = 0; slice < slices; slice++)
             {
@@ -156,6 +163,7 @@ namespace PreRendering
                 renderParams[slice].matProps.SetInteger("DEBUG_MODE", (int)debugMode);
                 renderParams[slice].matProps.SetFloat("TIMESTEP", Time.time);
                 renderParams[slice].matProps.SetFloat("MAX_CIRCUMFERENCE", maxCircumference);
+                renderParams[slice].matProps.SetFloat("INTERPOLATION_RANGE", interpolationRange);
 
                 Graphics.RenderPrimitives(renderParams[slice], MeshTopology.Triangles, indicies);
             }
