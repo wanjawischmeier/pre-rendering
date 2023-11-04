@@ -248,7 +248,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
                 Graphics.Blit(renderBuffers.GetTexture(debugPass, debugSlice), destination, postRasterizationMaterial);
                 break;
             default:
-                Graphics.Blit(source, destination, postRasterizationMaterial);
+                Graphics.Blit(renderBuffers.GetTexture(passes - 1, 0), destination, postRasterizationMaterial);
                 break;
         }
     }

@@ -134,72 +134,7 @@ Shader"PreRendering/PostRasterization"
                     }
                 }
     
-                if (DEBUG_MODE > 2)
-                {
-                    float4 col = _MainTex.Sample(sampler_linear_repeat, i.uv);
-                    return MIX_COL_UI_BY_ALPHA(col, ui);
-                }
-    
-                float d;
-                float4 col, col0, col1, slice0, slice1;
-                sampleLeastBlurrySlices(i.uv, slice0, slice1, d);
-    
-                // correct initial texture index offset
-                int index0 = slice0.w;
-                int index1 = slice1.w;
-    
-                bool sliceValid0 = index0 >= 0;
-                bool sliceValid1 = index1 >= 0;
-                // return (d * 3).xxxx;
-                // return fixed4(slice0.w / 2, slice1.w / 2, 0, 1);
-                
-                if (sliceValid0)
-                {
-                    col0 = float4(1, 0, 0, 1);
-                    SAMPLE_PSEUDO_ARRAY(_Input, slice0.xy, index0, col0);
-                    sliceValid0 = sliceValid0 && col0.a < 1;
-                }
-                if (sliceValid1)
-                {
-                    col1 = float4(0, 1, 0, 1);
-                    SAMPLE_PSEUDO_ARRAY(_Input, slice1.xy, index1, col1);
-                    sliceValid1 = sliceValid1 && col1.a < 1;
-                }
-    
-                if (DEBUG_MODE == 2)
-                {
-                    col = normalize(float4(slice0.b, slice1.b, slice1.b / 2, 1));
-                }
-                else if (sliceValid0 && !sliceValid1)
-                {
-                    // only slice0 is valid, sample its color
-                    col = col0;
-                }
-                else if (!sliceValid0 && sliceValid1)
-                {
-                    // only slice1 is valid, sample its color
-                    col = col1;
-                }
-                else if (sliceValid0 && sliceValid1)
-                {
-                    // both slices are valid, interpolate between them
-                    if (slice0.w < slice1.w)
-                    {
-                        col = interpolateColors(col0, col1, slice0.z, slice1.z);
-                    }
-                    else
-                    {
-                        col = interpolateColors(col1, col0, slice1.z, slice0.z);
-                    }
-                    // col = fixed4(0, 1, 0, 1);
-                }
-                else
-                {
-                    // no slice is valid, sample skybox / urp render
-                    col = _MainTex.Sample(sampler_linear_repeat, i.uv);
-                }
-    
-                // return tex2D(_Depth1, i.uv);
+                float4 col = _MainTex.Sample(sampler_linear_repeat, i.uv);
                 return MIX_COL_UI_BY_ALPHA(col, ui);
             }
             ENDCG

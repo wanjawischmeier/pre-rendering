@@ -79,15 +79,15 @@ RWStructuredBuffer<float3> _Positions;
 // x: u, y: v, z: perimeter, w: slice
 RWStructuredBuffer<float4> _UVs;
 
-float4 GetWorldSpacePositionAndTransformUV(inout float4 uv0, out float4 uv1)
+float4 GetWorldSpacePositionAndTransformUV(inout float4 uv)
 {
-    float4 pos, uv;
+    float4 pos;
     
 #ifdef USE_PREVIOUS_PASS
     float d0, d1 = 0;
-    float2 rc = MAP_TO_RANGE(uv0.xy, PREVIOUS_RASTERIZATION_RESOLUTION);
-    float4 tmp, pc0 = float4(0, 0, MAX_INT_CONST, -1);
-    float4 pc1 = pc0;
+    float2 rc = MAP_TO_RANGE(uv.xy, PREVIOUS_RASTERIZATION_RESOLUTION);
+    float4 tmp;
+    uv = float4(0, 0, MAX_INT_CONST, -1);
     
     // some weirdness (why does the compiler hate me) caused slice to increase above NUM_PREVIOUS_SLICES
     // unrolling the loop appears to have fixed that, although I don't see how that makes any sense
@@ -101,67 +101,21 @@ float4 GetWorldSpacePositionAndTransformUV(inout float4 uv0, out float4 uv1)
         {
             continue;
         }
-        
+    
         READ_PSEUDO_ARRAY(_PreviousPass, rc, slice, tmp);
         
         // sort using depth layers
-        if (d0 > d1 + DEPTH_TOLERANCE)
+        if (d0 > d1 + DEPTH_TOLERANCE || tmp.z < uv.z)
         {
             // new closest layer, clear least blurry slices
-            pc0 = tmp;
-            pc1 = float4(0, 0, MAX_INT_CONST, -1);
+            // pixel is in current layer, compare blurryness values
+            uv = tmp;
             d1 = d0;
         }
-        else
-        {
-            // pixel is in current layer, compare blurryness values
-            if (tmp.z < pc0.z)
-            {
-                pc1 = pc0;
-                pc0 = tmp;
-            }
-            else if (tmp.z < pc1.z)
-            {
-                pc1 = tmp;
-            }
-        }
     }
-    
-    uv0 = pc0;
-    uv1 = pc1;
-    
-    /*
-    READ_PSEUDO_ARRAY(_PreviousPass, rc, 2, uv0);
-    READ_PSEUDO_ARRAY(_PreviousPass, rc, 2, uv1);
-    
-    if (uv0.z > uv1.z)
-    {
-        tmp = uv0;
-        uv0 = uv1;
-        uv1 = tmp;
-    }
-    else
-    {
-        uv0 = pc1;
-        uv1 = pc0;
-    }
-    
-    uv0.w -= 1;
-    uv1.w -= 1;
-    uv1 = uv0;
-
-    float4 P = _MotionVectors.SampleLevel(sampler_linear_repeat, uv1, 0);
-    if (P.w == 0)
-    {
-        // skip invalid verticies
-        uv1.w = -1;
-    }
-    */
-#else
-    uv1 = float4(0, 0, 0, -1);
 #endif
     
-    return _MotionVectors.SampleLevel(sampler_linear_repeat, uv0.xyw, 0);
+    return _MotionVectors.SampleLevel(sampler_linear_repeat, uv.xyw, 0);
 }
 
 bool neighborsValid(float2 uv, int s)
@@ -195,29 +149,28 @@ void LoadTexelsToBuffer(uint3 id : SV_DispatchThreadID)
     uint i10 = i00 + 1;
     uint i01 = i00 + PROJECTION_RESOLUTION.x;
     uint i11 = i01 + 1;
-    uint i20 = i00 + PROJECTION_RESOLUTION.x * PROJECTION_RESOLUTION.y;
     uint triIndex = i00 * 6;
     
-    float4 uv1, uv0 = float4(NORMALIZE_RANGE(id.xy, PROJECTION_RESOLUTION), 0, SLICE);
+    float4 uv = float4(NORMALIZE_RANGE(id.xy, PROJECTION_RESOLUTION), 0, SLICE);
+    float4 P = GetWorldSpacePositionAndTransformUV(uv);
     
-    float4 P = GetWorldSpacePositionAndTransformUV(uv0, uv1);
-    #ifndef USE_PREVIOUS_PASS
+#ifndef USE_PREVIOUS_PASS
     if (P.w == 0 && false)  // TODO: not needed?
     {
         // skip invalid verticies
         _UVs[i00] = float4(0, 0, 0, -1);
         return;
     }
-    #endif
     /*
-    if (VALIDATE_NEIGHBORS && !neighborsValid(uv0, s))
+    if (VALIDATE_NEIGHBORS && !neighborsValid(uv.xy, uv.w))
     {
         uv.x += 1;
     }
     */
+#endif
+    
     _Positions[i00] = P.xyz;
-    _UVs[i00] = uv0;
-    _UVs[i20] = uv1;
+    _UVs[i00] = uv;
     
     _Triangles[triIndex + 0] = i00;
     _Triangles[triIndex + 1] = i11;

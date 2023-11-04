@@ -21,7 +21,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
             struct v2f
             {
                 float4 pos : SV_POSITION;
-                float4 uv0 : TEXCOORD0;
+                float4 uv : TEXCOORD0;
                 bool differingSlice : TEXCOORD1;
                 float depth : SV_Depth;
             };
@@ -83,22 +83,6 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 #endif
             }
 
-            float4 interpolateColors(float4 color0, float4 color1, float blurriness0, float blurriness1)
-            {
-                float deltaBlurriness = blurriness0 - blurriness1;
-                if (abs(deltaBlurriness) <= INTERPOLATION_RANGE)
-                {
-                    // interpolate between color0 and color1 based on the difference in blurriness values
-                    float t = saturate(deltaBlurriness / INTERPOLATION_RANGE);
-                    return lerp(color0, color1, t);
-                }
-                else
-                {
-                    // if the difference is outside the range, select the color with the least blurryness
-                    return (blurriness0 < blurriness1) ? color0 : color1;
-                }
-            }
-
             v2f vert(appdata v)
             {
                 v2f o;
@@ -124,35 +108,8 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 int index1 = _Triangles[baseIndex + 1 + _StartIndex] + _BaseVertexIndex;
                 int index2 = _Triangles[baseIndex + 2 + _StartIndex] + _BaseVertexIndex;
     
-                float4 uv1 = _UVs[index + offset];
-                /*
-                float4 uv1_n0 = _UVs[index0 + offset];
-                float4 uv1_n1 = _UVs[index1 + offset];
-                float4 uv1_n2 = _UVs[index2 + offset];
-                if (uv1_n0.w == -1 || uv1_n1.w == -1 || uv1_n2.w == -1)
-                {
-                    uv1.w = -1;
-                }
-                */
-                /*
-                int slice = uv0.z;
-                #if VALIDATION_ITERATIONS > 0
-                if (RENDER_PASS == 0)
-                {
-                    uint2 tc0 = (uv0_n0.xy % 1) * MOTION_VECTOR_RESOLUTION;
-                    uint2 tc1 = (uv0_n1.xy % 1) * MOTION_VECTOR_RESOLUTION;
-                    uint2 tc2 = (uv0_n2.xy % 1) * MOTION_VECTOR_RESOLUTION;
-                
-                    if (!validLine(tc0, tc1, uv0.z) || !validLine(tc0, tc2, uv0.z))
-                    {
-                        o.pos = float4(0, 0, 0, 0);
-                        o.uv0 = float4(0, 0, 0, -1);
-                        return o;
-                    }
-                }
-                #endif
-                */
-                float4 uv0 = _UVs[index];
+                o.uv = _UVs[index];
+                int slice = o.uv.w;
                 float3 pos = _Positions[index];
                 float3 pos0 = _Positions[index0];
                 float3 pos1 = _Positions[index1];
@@ -160,89 +117,92 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 float l0 = length(pos0 - pos1);
                 float l1 = length(pos1 - pos2);
                 float l2 = length(pos2 - pos0);
-                /*
-                if (uv0.x > 1)
-                {
-                    uv0.z = 1;
-                    uv0.x %= 1;
-                }
-                else
-                {
-                    uv0.z = l0 + l1 + l2;
-                }
-                */
     
                 if (RENDER_PASS == 0)
                 {
-                    uv0.z = l0 + l1 + l2;
+                    o.uv.z = l0 + l1 + l2;
         
                     if (l0 > MAX_CIRCUMFERENCE || l1 > MAX_CIRCUMFERENCE || l2 > MAX_CIRCUMFERENCE)
                     {
                         RETURN_INVALID_VERTEX();
                     }
                 }
-                else if (uv0.z > MAX_CIRCUMFERENCE)
+                else if (o.uv.z > MAX_CIRCUMFERENCE)
                 {
                     RETURN_INVALID_VERTEX();
-                }
-    
-                int slice = uv0.w;
-                if (RENDER_PASS == 0)
-                {
-                    o.differingSlice = false;
-                }
-                else
-                {
-                    float4 uv0_n0 = _UVs[index0];
-                    float4 uv0_n1 = _UVs[index1];
-                    float4 uv0_n2 = _UVs[index2];
-                    if (uv0_n0.w == -1 || uv0_n1.w == -1 || uv0_n2.w == -1)
-                    {
-                        RETURN_INVALID_VERTEX();
-                    }
-        
-                    if (slice != uv0_n0.w || slice != uv0_n1.w || slice != uv0_n2.w)
-                    {
-                        SAMPLE_PSEUDO_ARRAY(_Input, uv0.xy, slice, uv0);
-                        o.differingSlice = true;
-                    }
-                    else
-                    {
-                        o.differingSlice = false;
-                    }
                 }
     
                 float4 wpos = mul(_ObjectToWorldMatricies[slice], float4(pos, 1.0f));
     
                 if (DEBUG_MODE == 1 && RENDER_PASS != 0 && length(wpos.xyz - float3(-4, 0, -5)) < 20) // zSineFilled
                 {
-                    wpos.y += sin(TIMESTEP * 2) * sin(length(wpos)) * cos(sin(wpos.x * 10));
+                    wpos.y += sin(TIMESTEP) * sin(length(wpos)) * (sin(wpos.x * 10) > 0.5);
+                    float4 col;
+                    SAMPLE_PSEUDO_ARRAY(_Input, o.uv.xy, slice, col);
+                    wpos.yz += col.r / 4;
+                }
+    
+                if (RENDER_PASS == 0)
+                {
+                    o.differingSlice = false;
+                }
+                else
+                {
+                    float4 uv_n0 = _UVs[index0];
+                    float4 uv_n1 = _UVs[index1];
+                    float4 uv_n2 = _UVs[index2];
+                    if (uv_n0.w == -1 || uv_n1.w == -1 || uv_n2.w == -1)
+                    {
+                        RETURN_INVALID_VERTEX();
+                    }
+        
+                    if (length(uv_n0.xy - uv_n1.xy) > MAX_CIRCUMFERENCE || length(uv_n1.xy - uv_n2.xy) > MAX_CIRCUMFERENCE || length(uv_n2.xy - uv_n1.xy) > MAX_CIRCUMFERENCE)
+                    {
+                        RETURN_INVALID_VERTEX();
+                    }
+        
+                    if (slice != uv_n0.w || slice != uv_n1.w || slice != uv_n2.w)
+                    {
+                        SAMPLE_PSEUDO_ARRAY(_Input, o.uv.xy, slice, o.uv);
+                        o.differingSlice = true;
+                    }
+                    else
+                    {
+                        o.differingSlice = false;
+                    }
+        
+                #if VALIDATION_ITERATIONS > 0
+                    
+                    uint2 tc0 = (uv_n0.xy % 1) * MOTION_VECTOR_RESOLUTION;
+                    uint2 tc1 = (uv_n1.xy % 1) * MOTION_VECTOR_RESOLUTION;
+                    uint2 tc2 = (uv_n2.xy % 1) * MOTION_VECTOR_RESOLUTION;
+                
+                    if (!validLine(tc0, tc1, slice) || !validLine(tc0, tc2, slice))
+                    {
+                        RETURN_INVALID_VERTEX();
+                    }
+                #endif
                 }
     
                 o.depth = length(wpos);
                 o.pos = mul(UNITY_MATRIX_VP, wpos);
-                o.uv0 = uv0;
                 return o;
             }
 
             ShaderOutput frag(v2f i) : SV_Target
             {
                 ShaderOutput o;
-                if (i.uv0.w == -1)
+                if (i.uv.w == -1)
                 {
                     o.color = float4(0, 0, 0, -1);
                 }
-                else if (RENDER_PASS == 0)
+                else if (RENDER_PASS == 0 || DEBUG_MODE == 5 || i.differingSlice)
                 {
-                    o.color = float4(i.uv0.xyz, i.uv0.w);
-                }
-                else if (i.differingSlice)
-                {
-                    o.color = i.uv0;
+                    o.color = i.uv;
                 }
                 else
                 {
-                    SAMPLE_PSEUDO_ARRAY(_Input, i.uv0.xy, i.uv0.w, o.color);
+                    SAMPLE_PSEUDO_ARRAY(_Input, i.uv.xy, i.uv.w, o.color);
                 }
                 o.depth = i.depth;
                 return o;

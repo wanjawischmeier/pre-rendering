@@ -2,7 +2,7 @@
 #define MAX_INT_CONST 9999
 #define VERTICIES_PER_QUAD 6
 #define DEPTH_TOLERANCE 0.0001
-#define VALIDATION_ITERATIONS 1
+#define VALIDATION_ITERATIONS 0
 
 #define MAP_TO_RANGE(tc, targetRange)                                       \
     (tc) * ((targetRange) - 1)
@@ -16,7 +16,7 @@
 
 #define RETURN_INVALID_VERTEX()                                             \
     o.pos = float4(0, 0, 0, 0);                                             \
-    o.uv0 = float4(0, 0, 0, -1);                                            \
+    o.uv = float4(0, 0, 0, -1);                                             \
     o.depth = 0;                                                            \
     return o;
 

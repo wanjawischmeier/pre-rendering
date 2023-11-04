@@ -98,7 +98,7 @@ namespace PreRendering
                 // create graphics buffers
                 triangles[slice] = new GraphicsBuffer(GraphicsBuffer.Target.Structured, indicies, sizeof(int));
                 positions[slice] = new GraphicsBuffer(GraphicsBuffer.Target.Structured, verticies, 3 * sizeof(float));
-                uvs[slice] = new GraphicsBuffer(GraphicsBuffer.Target.Structured, verticies * 2, 4 * sizeof(float));
+                uvs[slice] = new GraphicsBuffer(GraphicsBuffer.Target.Structured, verticies, 4 * sizeof(float));
 
                 // create target texture
                 targetTextures[slice] = new RenderTexture(
