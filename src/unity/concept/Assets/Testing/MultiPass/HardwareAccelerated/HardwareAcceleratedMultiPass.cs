@@ -80,7 +80,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             width = motionVectorResolution.x,
             height = motionVectorResolution.y
         };
-        
+
         for (int pass = 0; pass < passes; pass++)
         {
             projectionResolutions[pass] = CalculatePassResolutionFromCurve(pass, projectionResolution, projectionResolutionCurve);
@@ -95,7 +95,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
 
         // initialize render buffers
         renderBuffers = new DynamicRenderBuffer[passes];
-        
+
         for (int pass = 0; pass < passes; pass++)
         {
             Debug.Log($"Projection Resolution {pass}: {projectionResolutions[pass]}");
@@ -145,7 +145,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
                 rasterized[pass * dimensions[0] * 2 + slice * 2 + 1] = depth[slice];
             }
         }
-        
+
         // colliderMesh = renderBuffers[0].CreateColliderMesh(0);
         uiTexture = new RenderTexture(Screen.width, Screen.height, 0);
         uiCamera.targetTexture = uiTexture;
@@ -221,7 +221,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             renderBuffers[pass].UpdateParamsAndRenderToBuffer(debugMode, maxCircumferences[pass], interpolationRange, pass == passes - 1 ? 0 : fieldOfViewOffset);
             renderTime += Time.realtimeSinceStartupAsDouble - startTime;
         }
-        
+
         if (performanceLogging)
         {
             Debug.Log($"Populating mesh buffers took {populateTime}s");

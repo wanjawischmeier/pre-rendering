@@ -1164,8 +1164,8 @@ MonoBehaviour:
   depthOffset: 0
   maxDifference: 1
   maxCircumferences:
-  - 1.5
-  - 3
+  - 1
+  - 1.7
   fieldOfViewOffset: 10
   dimensions: 0600000001000000
   motionVectorResolution: {x: 2048, y: 1024}

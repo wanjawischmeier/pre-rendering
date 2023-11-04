@@ -6,7 +6,7 @@ Shader"PreRendering/PostRasterization"
     }
     SubShader
     {
-        // No culling or depth
+        // no culling or depth
         Cull Off ZWrite Off ZTest Off
 
         Pass
@@ -16,6 +16,7 @@ Shader"PreRendering/PostRasterization"
             #pragma fragment frag
 
             #include "UnityCG.cginc"
+            #include "Macros.cginc"
 
             struct appdata
             {
@@ -36,9 +37,6 @@ Shader"PreRendering/PostRasterization"
                 o.uv = v.uv;
                 return o;
             }
-            
-            #define DEPTH_TOLERANCE 0.0001
-            #define MAX_SLICES 8
 
             uniform int NUM_SLICES, DEBUG_MODE, UI_DEBUGGER, SLICE, MAX_CIRCUMFERENCE;
             uniform float INTERPOLATION_RANGE, DEPTH_OFFSET;
@@ -49,42 +47,6 @@ Shader"PreRendering/PostRasterization"
             Texture2D _Input0, _Input1, _Input2, _Input3, _Input4, _Input5, _Input6, _Input7;
             Texture2D _Coordinates0, _Coordinates1, _Coordinates2, _Coordinates3, _Coordinates4, _Coordinates5, _Coordinates6, _Coordinates7;
             Texture2D _Depth0, _Depth1, _Depth2, _Depth3, _Depth4, _Depth5, _Depth6, _Depth7;
-            
-            // propably violating the genova convention
-            // the camera refused to render onto multiple slices, so this has to exist :/
-            #define SAMPLE_PSEUDO_ARRAY(array, uv, slice, result)               \
-                switch (slice) {                                                \
-                    case 0:                                                     \
-                        result = array##0.Sample(sampler_linear_repeat, uv);    \
-                        break;                                                  \
-                    case 1:                                                     \
-                        result = array##1.Sample(sampler_linear_repeat, uv);    \
-                        break;                                                  \
-                    case 2:                                                     \
-                        result = array##2.Sample(sampler_linear_repeat, uv);    \
-                        break;                                                  \
-                    case 3:                                                     \
-                        result = array##3.Sample(sampler_linear_repeat, uv);    \
-                        break;                                                  \
-                    case 4:                                                     \
-                        result = array##4.Sample(sampler_linear_repeat, uv);    \
-                        break;                                                  \
-                    case 5:                                                     \
-                        result = array##5.Sample(sampler_linear_repeat, uv);    \
-                        break;                                                  \
-                    case 6:                                                     \
-                        result = array##6.Sample(sampler_linear_repeat, uv);    \
-                        break;                                                  \
-                    case 7:                                                     \
-                        result = array##7.Sample(sampler_linear_repeat, uv);    \
-                        break;                                                  \
-                    default:                                                    \
-                        result = float4(1, 0, 1, 1);                            \
-                        break;                                                  \
-                }
-
-            #define MIX_COL_UI_BY_ALPHA(col, ui) \
-                UI_DEBUGGER == 1 ? col * (1 - ui.g) + ui.rrrr * ui.g : col
 
             float4 interpolateColors(float4 color0, float4 color1, float blurriness0, float blurriness1)
             {
@@ -183,8 +145,8 @@ Shader"PreRendering/PostRasterization"
                 sampleLeastBlurrySlices(i.uv, slice0, slice1, d);
     
                 // correct initial texture index offset
-                int index0 = slice0.w - 1;
-                int index1 = slice1.w - 1;
+                int index0 = slice0.w;
+                int index1 = slice1.w;
     
                 bool sliceValid0 = index0 >= 0;
                 bool sliceValid1 = index1 >= 0;

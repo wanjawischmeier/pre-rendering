@@ -1,49 +1,17 @@
 #include "UnityCG.cginc"
+#include "Macros.cginc"
 #pragma multi_compile __ USE_PREVIOUS_PASS
 
-#define MAP_TO_RANGE(tc, targetRange)                           \
-    (tc) * ((targetRange) - 1)
 
-#define NORMALIZE_RANGE(tc, sourceRange)                        \
-    (tc) / ((sourceRange) - 1)
 
-#define VERTICIES_PER_QUAD 6
-#define MAX_INT_CONST 9999
-#define DEPTH_TOLERANCE 0.01
-
-#define MARK_VERTEX_INVALID(tc, index)                          \
-    _MotionVectorsWrite[uint3(tc, index)] = float4(0, 0, 0, 0); \
-    return;
-
-#define READ_PSEUDO_ARRAY(array, tc, slice, result)             \
-    switch (slice) {                                            \
-        case 0:                                                 \
-            result = array##0[tc];                              \
-            break;                                              \
-        case 1:                                                 \
-            result = array##1[tc];                              \
-            break;                                              \
-        case 2:                                                 \
-            result = array##2[tc];                              \
-            break;                                              \
-        case 3:                                                 \
-            result = array##3[tc];                              \
-            break;                                              \
-        case 4:                                                 \
-            result = array##4[tc];                              \
-            break;                                              \
-        case 5:                                                 \
-            result = array##5[tc];                              \
-            break;                                              \
-        default:                                                \
-            result = float4(1, 0, 1, 1);                        \
-            break;                                              \
-    }
 
 uniform bool VALIDATE_NEIGHBORS;
-int SLICE, NUM_PREVIOUS_SLICES;
+uniform int SLICE, NUM_PREVIOUS_SLICES;
 uniform float PI, PI2, NCLIP, FCLIP, MAX_DIFFERENCE;
 uniform float2 INPUT_RESOLUTION, MOTION_VECTOR_RESOLUTION, PROJECTION_RESOLUTION, PREVIOUS_RASTERIZATION_RESOLUTION;
+
+
+
 
 #pragma kernel CalculateMotionVectors
 
@@ -118,55 +86,59 @@ float4 GetWorldSpacePositionAndTransformUV(inout float4 uv0, out float4 uv1)
 #ifdef USE_PREVIOUS_PASS
     float d0, d1 = 0;
     float2 rc = MAP_TO_RANGE(uv0.xy, PREVIOUS_RASTERIZATION_RESOLUTION);
-    float4 pc0 = float4(0, 0, MAX_INT_CONST, 0);
-    float4 tmp, pc1 = pc0;
+    float4 tmp, pc0 = float4(0, 0, MAX_INT_CONST, -1);
+    float4 pc1 = pc0;
     
+    // some weirdness (why does the compiler hate me) caused slice to increase above NUM_PREVIOUS_SLICES
+    // unrolling the loop appears to have fixed that, although I don't see how that makes any sense
+    [unroll(MAX_SLICES)]
     for (int slice = 0; slice < 6; slice++)
     {
+        READ_PSEUDO_ARRAY(_PreviousDepth, rc, slice, d0);
+        
+        // check if slice is invalid or behind the current layer
+        if (d0 == 0 || d0 < d1 - DEPTH_TOLERANCE)
+        {
+            continue;
+        }
+        
         READ_PSEUDO_ARRAY(_PreviousPass, rc, slice, tmp);
         
-        // check if the slice is valid
-        if (tmp.w >= 1)
+        // sort using depth layers
+        if (d0 > d1 + DEPTH_TOLERANCE)
         {
-            READ_PSEUDO_ARRAY(_PreviousDepth, rc, slice, d0);
-            
-            // sort using depth layers
-            if (d0 > d1 + DEPTH_TOLERANCE)
+            // new closest layer, clear least blurry slices
+            pc0 = tmp;
+            pc1 = float4(0, 0, MAX_INT_CONST, -1);
+            d1 = d0;
+        }
+        else
+        {
+            // pixel is in current layer, compare blurryness values
+            if (tmp.z < pc0.z)
             {
-                // new closest layer, clear least blurry slices
+                pc1 = pc0;
                 pc0 = tmp;
-                pc1 = float4(0, 0, MAX_INT_CONST, 0);
-                d1 = d0;
             }
-            else if (d0 > d1 - DEPTH_TOLERANCE)
+            else if (tmp.z < pc1.z)
             {
-                // pixel is in current layer, compare blurryness values
-                if (tmp.z < pc0.z)
-                {
-                    pc1 = pc0;
-                    pc0 = tmp;
-                }
-                else if (tmp.z < pc1.z)
-                {
-                    pc1 = tmp;
-                }
+                pc1 = tmp;
             }
         }
     }
+    
+    uv0 = pc0;
+    uv1 = pc1;
+    
     /*
-    READ_PSEUDO_ARRAY(_PreviousPass, rc, 2, pc0);
-    READ_PSEUDO_ARRAY(_PreviousPass, rc, 5, pc1);
-    if (pc1.z < pc0.z)
+    READ_PSEUDO_ARRAY(_PreviousPass, rc, 2, uv0);
+    READ_PSEUDO_ARRAY(_PreviousPass, rc, 2, uv1);
+    
+    if (uv0.z > uv1.z)
     {
-        pc0 = tmp;
-        pc0 = pc1;
-        pc1 = tmp;
-    }
-    */
-    if (pc1.w == 0 || (pc1.w != 0 && pc0.w < pc1.w))
-    {
-        uv0 = pc0;
-        uv1 = pc1;
+        tmp = uv0;
+        uv0 = uv1;
+        uv1 = tmp;
     }
     else
     {
@@ -176,30 +148,20 @@ float4 GetWorldSpacePositionAndTransformUV(inout float4 uv0, out float4 uv1)
     
     uv0.w -= 1;
     uv1.w -= 1;
-    
-    
-    
-    float4 P = _MotionVectors.SampleLevel(sampler_linear_repeat, uv1, 0);   // TODO: sample needed? no
+    uv1 = uv0;
+
+    float4 P = _MotionVectors.SampleLevel(sampler_linear_repeat, uv1, 0);
     if (P.w == 0)
     {
         // skip invalid verticies
-        // uv1.z = -1;
+        uv1.w = -1;
     }
-    
-    if (uv1.w == -1)
-    {
-        uv = uv0;
-    }
-    else
-    {
-        uv = uv0.w < uv1.w ? uv0 : uv1;
-    }
+    */
 #else
-    uv = uv0;
     uv1 = float4(0, 0, 0, -1);
 #endif
     
-    return _MotionVectors.SampleLevel(sampler_linear_repeat, uv.xyw, 0);
+    return _MotionVectors.SampleLevel(sampler_linear_repeat, uv0.xyw, 0);
 }
 
 bool neighborsValid(float2 uv, int s)

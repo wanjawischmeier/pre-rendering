@@ -9,6 +9,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
             #pragma fragment frag
 
             #include "UnityCG.cginc"
+            #include "Macros.cginc"
 
             struct appdata
             {
@@ -21,54 +22,15 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
             {
                 float4 pos : SV_POSITION;
                 float4 uv0 : TEXCOORD0;
-                float4 uv1 : TEXCOORD1;
+                bool differingSlice : TEXCOORD1;
                 float depth : SV_Depth;
             };
 
             struct ShaderOutput
             {
-                float4 color : COLOR;
-                float depth : TEXCOORD0;
+                float4 color : SV_Target;
+                float depth : SV_Depth;
             };
-
-            #define VALIDATION_ITERATIONS 1
-            #define MARK_VERTEX_INVALID()   \
-                o.pos = float4(0, 0, 0, 0); \
-                o.uv = float3(0, 0, 0);     \
-                return o;
-
-            // propably violating the genova convention
-            // the camera refused to render onto multiple slices, so this has to exist :/
-            #define SAMPLE_PSEUDO_ARRAY(array, uv, slice, result)               \
-                switch (slice) {                                                \
-                    case 0:                                                     \
-                        result = array##0.Sample(sampler_linear_repeat, uv);    \
-                        break;                                                  \
-                    case 1:                                                     \
-                        result = array##1.Sample(sampler_linear_repeat, uv);    \
-                        break;                                                  \
-                    case 2:                                                     \
-                        result = array##2.Sample(sampler_linear_repeat, uv);    \
-                        break;                                                  \
-                    case 3:                                                     \
-                        result = array##3.Sample(sampler_linear_repeat, uv);    \
-                        break;                                                  \
-                    case 4:                                                     \
-                        result = array##4.Sample(sampler_linear_repeat, uv);    \
-                        break;                                                  \
-                    case 5:                                                     \
-                        result = array##5.Sample(sampler_linear_repeat, uv);    \
-                        break;                                                  \
-                    case 6:                                                     \
-                        result = array##6.Sample(sampler_linear_repeat, uv);    \
-                        break;                                                  \
-                    case 7:                                                     \
-                        result = array##7.Sample(sampler_linear_repeat, uv);    \
-                        break;                                                  \
-                    default:                                                    \
-                        result = float4(1, 0, 1, 1);                            \
-                        break;                                                  \
-                }                
 
             SamplerState sampler_linear_repeat;
             Texture2D _Input0, _Input1, _Input2, _Input3, _Input4, _Input5, _Input6, _Input7;
@@ -82,7 +44,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
             uniform float2 PROJECTION_RESOLUTION, MOTION_VECTOR_RESOLUTION;
             uniform uint _StartIndex;
             uniform uint _BaseVertexIndex;
-            uniform float4x4 _ObjectToWorldMatricies[8];
+            uniform float4x4 _ObjectToWorldMatricies[MAX_SLICES];
 
             bool validLine(uint2 tc0, uint2 tc1, int slice)
             {
@@ -162,16 +124,8 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 int index1 = _Triangles[baseIndex + 1 + _StartIndex] + _BaseVertexIndex;
                 int index2 = _Triangles[baseIndex + 2 + _StartIndex] + _BaseVertexIndex;
     
-                float4 uv0 = _UVs[index];
-                float4 uv0_n0 = _UVs[index0];
-                float4 uv0_n1 = _UVs[index1];
-                float4 uv0_n2 = _UVs[index2];
-                if (uv0_n0.w == -1 || uv0_n1.w == -1 || uv0_n2.w == -1)
-                {
-                    uv0.w = -1;
-                }
-    
                 float4 uv1 = _UVs[index + offset];
+                /*
                 float4 uv1_n0 = _UVs[index0 + offset];
                 float4 uv1_n1 = _UVs[index1 + offset];
                 float4 uv1_n2 = _UVs[index2 + offset];
@@ -179,14 +133,9 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 {
                     uv1.w = -1;
                 }
-    
-                if (uv0.w == -1 && uv1.w == -1)
-                {
-                    o.pos = float4(0, 0, 0, 0);
-                    o.uv0 = o.uv1 = uv0;
-                    return o;
-                }
-                
+                */
+                /*
+                int slice = uv0.z;
                 #if VALIDATION_ITERATIONS > 0
                 if (RENDER_PASS == 0)
                 {
@@ -202,28 +151,15 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                     }
                 }
                 #endif
-                
+                */
+                float4 uv0 = _UVs[index];
                 float3 pos = _Positions[index];
-                float l0, l1, l2;
-                if (RENDER_PASS == 0)
-                {
-                    float3 pos0 = _Positions[index0];
-                    float3 pos1 = _Positions[index1];
-                    float3 pos2 = _Positions[index2];
-                    l0 = length(pos0 - pos1);
-                    l1 = length(pos1 - pos2);
-                    l2 = length(pos2 - pos0);
-                    
-                    // if (l0 > MAX_CIRCUMFERENCE || l1 > MAX_CIRCUMFERENCE || l2 > MAX_CIRCUMFERENCE)
-                    if (l0 + l1 + l2 > MAX_CIRCUMFERENCE && false)
-                    {
-                        o.pos = float4(0, 0, 0, 0);
-                        o.uv0 = o.uv1 = float4(0, 0, 0, -1);
-                        return o;
-                    }
-        
-                    uv0.z = l0 + l1 + l2;
-                }
+                float3 pos0 = _Positions[index0];
+                float3 pos1 = _Positions[index1];
+                float3 pos2 = _Positions[index2];
+                float l0 = length(pos0 - pos1);
+                float l1 = length(pos1 - pos2);
+                float l2 = length(pos2 - pos0);
                 /*
                 if (uv0.x > 1)
                 {
@@ -235,14 +171,48 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                     uv0.z = l0 + l1 + l2;
                 }
                 */
-                if (uv0.z > MAX_CIRCUMFERENCE)
+    
+                if (RENDER_PASS == 0)
                 {
-                    o.pos = float4(0, 0, 0, 0);
-                    o.uv0 = o.uv1 = float4(0, 0, 0, -1);
-                    return o;
+                    uv0.z = l0 + l1 + l2;
+        
+                    if (l0 > MAX_CIRCUMFERENCE || l1 > MAX_CIRCUMFERENCE || l2 > MAX_CIRCUMFERENCE)
+                    {
+                        RETURN_INVALID_VERTEX();
+                    }
                 }
-                
-                float4 wpos = mul(_ObjectToWorldMatricies[uv0.w], float4(pos, 1.0f));
+                else if (uv0.z > MAX_CIRCUMFERENCE)
+                {
+                    RETURN_INVALID_VERTEX();
+                }
+    
+                int slice = uv0.w;
+                if (RENDER_PASS == 0)
+                {
+                    o.differingSlice = false;
+                }
+                else
+                {
+                    float4 uv0_n0 = _UVs[index0];
+                    float4 uv0_n1 = _UVs[index1];
+                    float4 uv0_n2 = _UVs[index2];
+                    if (uv0_n0.w == -1 || uv0_n1.w == -1 || uv0_n2.w == -1)
+                    {
+                        RETURN_INVALID_VERTEX();
+                    }
+        
+                    if (slice != uv0_n0.w || slice != uv0_n1.w || slice != uv0_n2.w)
+                    {
+                        SAMPLE_PSEUDO_ARRAY(_Input, uv0.xy, slice, uv0);
+                        o.differingSlice = true;
+                    }
+                    else
+                    {
+                        o.differingSlice = false;
+                    }
+                }
+    
+                float4 wpos = mul(_ObjectToWorldMatricies[slice], float4(pos, 1.0f));
     
                 if (DEBUG_MODE == 1 && RENDER_PASS != 0 && length(wpos.xyz - float3(-4, 0, -5)) < 20) // zSineFilled
                 {
@@ -252,63 +222,28 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 o.depth = length(wpos);
                 o.pos = mul(UNITY_MATRIX_VP, wpos);
                 o.uv0 = uv0;
-                o.uv1 = uv1;
-                // o.uv = RENDER_PASS == 0 ? uv0 : float3(0.5, 1, 0);
-                /*
-                if (uv0.w != uv0_n0.w || uv0.w != uv0_n1.w || uv0.w != uv0_n2.w)
-                {
-                    // not all verticies share texture index, interpolate colors
-                    o.uv0 = float4(uv0.w < uv1.w, 0, 1, 1);
-                }
-                
-                if (uv0.w != -1 && uv1.w != -1)
-                {
-                    if (uv0.w != uv0_n0.w || uv0.w != uv0_n1.w || uv0.w != uv0_n2.w)
-                    {
-                        o.uv0 = float4(uv0.w < uv1.w, 0, 1, 1);
-                    }
-                    if (uv1.w != uv1_n0.w || uv1.w != uv1_n1.w || uv1.w != uv1_n2.w)
-                    {
-                        o.uv1 = float4(uv0.w < uv1.w, 0, 1, 1);
-                    }
-
-                }
-                */
                 return o;
             }
 
             ShaderOutput frag(v2f i) : SV_Target
             {
                 ShaderOutput o;
-                if (RENDER_PASS == 0)
+                if (i.uv0.w == -1)
                 {
-                    o.color = float4(i.uv0.xyz, i.uv0.w + 1);
+                    o.color = float4(0, 0, 0, -1);
                 }
-                else if (true)
+                else if (RENDER_PASS == 0)
                 {
-                    o.color = i.uv0.z == -1 ? i.uv1.xyww : i.uv0.xyww;
+                    o.color = float4(i.uv0.xyz, i.uv0.w);
                 }
-                else if(i.uv0.w == -1)
+                else if (i.differingSlice)
                 {
-                    SAMPLE_PSEUDO_ARRAY(_Input, i.uv1.xy, i.uv1.w, o.color);
+                    o.color = i.uv0;
                 }
-                else if(i.uv1.w == -1)
-                {
-                    SAMPLE_PSEUDO_ARRAY(_Input, i.uv0.xy, i.uv0.w, o.color);
-                }   // TODO: extra cases (z0 < z1 etc.)
                 else
                 {
-                    float4 col0, col1;
-                    SAMPLE_PSEUDO_ARRAY(_Input, i.uv0.xy, i.uv0.w, col0);
-                    SAMPLE_PSEUDO_ARRAY(_Input, i.uv1.xy, i.uv1.w, col1);
-                    // o.color = interpolateColors(i.uv0.xyww, i.uv1.xyww, i.uv0.z, i.uv1.z);
-                    // o.color = interpolateColors(col0, col1, i.uv0.z, i.uv1.z);
-                    // o.color = i.uv0.z < i.uv1.z ? col0 : col1;
-                    // o.color = i.uv0.z > i.uv1.z ? i.uv0.xyww : i.uv1.xyww;
-                    o.color = i.uv0;
-                    // o.color = i.uv0.zzzz / 10;
+                    SAMPLE_PSEUDO_ARRAY(_Input, i.uv0.xy, i.uv0.w, o.color);
                 }
-    
                 o.depth = i.depth;
                 return o;
             }

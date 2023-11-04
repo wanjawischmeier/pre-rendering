@@ -158,7 +158,7 @@ namespace PreRendering
                 renderCameras[slice].nearClipPlane = originalCamera.nearClipPlane;
                 renderCameras[slice].farClipPlane = originalCamera.farClipPlane;
                 renderCameras[slice].fieldOfView = originalCamera.fieldOfView + fieldOfViewOffset;
-                
+
                 // update render params
                 renderParams[slice].matProps.SetInteger("DEBUG_MODE", (int)debugMode);
                 renderParams[slice].matProps.SetFloat("TIMESTEP", Time.time);
@@ -176,7 +176,7 @@ namespace PreRendering
                 triangles[slice].Dispose();
                 positions[slice].Dispose();
                 uvs[slice].Dispose();
-                
+
                 UnityEngine.Object.Destroy(renderCameras[slice].gameObject);
                 targetTextures[slice].Release();
             }
