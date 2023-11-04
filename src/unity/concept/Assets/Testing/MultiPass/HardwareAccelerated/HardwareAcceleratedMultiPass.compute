@@ -113,7 +113,7 @@ RWStructuredBuffer<float4> _UVs;
 
 float4 GetWorldSpacePositionAndTransformUV(inout float4 uv0, out float4 uv1)
 {
-    float4 pos;
+    float4 pos, uv;
     
 #ifdef USE_PREVIOUS_PASS
     float d0, d1 = 0;
@@ -185,11 +185,7 @@ float4 GetWorldSpacePositionAndTransformUV(inout float4 uv0, out float4 uv1)
         // skip invalid verticies
         // uv1.z = -1;
     }
-#else
-    uv1 = float4(0, 0, 0, -1);
-#endif
     
-    float4 uv;
     if (uv1.w == -1)
     {
         uv = uv0;
@@ -198,7 +194,11 @@ float4 GetWorldSpacePositionAndTransformUV(inout float4 uv0, out float4 uv1)
     {
         uv = uv0.w < uv1.w ? uv0 : uv1;
     }
-
+#else
+    uv = uv0;
+    uv1 = float4(0, 0, 0, -1);
+#endif
+    
     return _MotionVectors.SampleLevel(sampler_linear_repeat, uv.xyw, 0);
 }
 

@@ -213,8 +213,9 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                     l0 = length(pos0 - pos1);
                     l1 = length(pos1 - pos2);
                     l2 = length(pos2 - pos0);
-        
-                    if (l0 > MAX_CIRCUMFERENCE || l1 > MAX_CIRCUMFERENCE || l2 > MAX_CIRCUMFERENCE)
+                    
+                    // if (l0 > MAX_CIRCUMFERENCE || l1 > MAX_CIRCUMFERENCE || l2 > MAX_CIRCUMFERENCE)
+                    if (l0 + l1 + l2 > MAX_CIRCUMFERENCE && false)
                     {
                         o.pos = float4(0, 0, 0, 0);
                         o.uv0 = o.uv1 = float4(0, 0, 0, -1);
