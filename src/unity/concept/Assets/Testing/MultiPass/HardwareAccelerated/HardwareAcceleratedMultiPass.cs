@@ -19,7 +19,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     public int[] dimensions;
     public Vector2Int motionVectorResolution, projectionResolution, rasterizationResolution;
     public AnimationCurve projectionResolutionCurve, rasterizationResolutionCurve;
-    public Camera uiCamera;
+    public Camera uiCamera, backgroundCamera;
     public TextMeshProUGUI uiDebugger;
 
     [Header("Debugging")]
@@ -34,7 +34,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     private bool previousUIDebuggerState = false;
     private int passes, totalTriangles;
     private Camera originalCamera;
-    private RenderTexture uiTexture;
+    private RenderTexture uiTexture, backgroundTexture;
     private Material postRasterizationMaterial;
     private GeometryLoader geometryLoader;
     private DynamicRenderBuffer[] renderBuffers;
@@ -113,6 +113,13 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         postRasterizationMaterial = new Material(postRasterizationShader);
         postRasterizationMaterial.SetInt("NUM_SLICES", renderBuffers[passes - 1].slices);
         postRasterizationMaterial.SetVector("RESOLUTION", rasterizationResolution.ToVector2());
+;
+        uiTexture = new RenderTexture(Screen.width, Screen.height, 0);
+        uiCamera.targetTexture = uiTexture;
+        postRasterizationMaterial.SetTexture("_UI", uiTexture);
+        backgroundTexture = new RenderTexture(uiTexture);
+        backgroundCamera.targetTexture = backgroundTexture;
+        postRasterizationMaterial.SetTexture("_CameraTex", backgroundTexture);
 
         for (int imageIndex = 0; imageIndex < inputImages.Length; imageIndex++)
         {
@@ -147,9 +154,6 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         }
 
         // colliderMesh = renderBuffers[0].CreateColliderMesh(0);
-        uiTexture = new RenderTexture(Screen.width, Screen.height, 0);
-        uiCamera.targetTexture = uiTexture;
-        postRasterizationMaterial.SetTexture("_UI", uiTexture);
     }
 
     private void Update()

@@ -107,19 +107,18 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 int index0 = _Triangles[baseIndex + 0 + _StartIndex] + _BaseVertexIndex;
                 int index1 = _Triangles[baseIndex + 1 + _StartIndex] + _BaseVertexIndex;
                 int index2 = _Triangles[baseIndex + 2 + _StartIndex] + _BaseVertexIndex;
-    
+                
                 o.uv = _UVs[index];
                 int slice = o.uv.w;
                 float3 pos = _Positions[index];
-                float3 pos0 = _Positions[index0];
-                float3 pos1 = _Positions[index1];
-                float3 pos2 = _Positions[index2];
-                float l0 = length(pos0 - pos1);
-                float l1 = length(pos1 - pos2);
-                float l2 = length(pos2 - pos0);
-    
                 if (RENDER_PASS == 0)
                 {
+                    float3 pos0 = _Positions[index0];
+                    float3 pos1 = _Positions[index1];
+                    float3 pos2 = _Positions[index2];
+                    float l0 = length(pos0 - pos1);
+                    float l1 = length(pos1 - pos2);
+                    float l2 = length(pos2 - pos0);
                     o.uv.z = l0 + l1 + l2;
         
                     if (l0 > MAX_CIRCUMFERENCE || l1 > MAX_CIRCUMFERENCE || l2 > MAX_CIRCUMFERENCE)
@@ -172,7 +171,6 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                     }
         
                 #if VALIDATION_ITERATIONS > 0
-                    
                     uint2 tc0 = (uv_n0.xy % 1) * MOTION_VECTOR_RESOLUTION;
                     uint2 tc1 = (uv_n1.xy % 1) * MOTION_VECTOR_RESOLUTION;
                     uint2 tc2 = (uv_n2.xy % 1) * MOTION_VECTOR_RESOLUTION;
@@ -194,7 +192,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 ShaderOutput o;
                 if (i.uv.w == -1)
                 {
-                    o.color = float4(0, 0, 0, -1);
+                    o.color = float4(0, 0, 0, 0);
                 }
                 else if (RENDER_PASS == 0 || DEBUG_MODE == 5 || i.differingSlice)
                 {

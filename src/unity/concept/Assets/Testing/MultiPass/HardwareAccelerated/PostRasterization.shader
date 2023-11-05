@@ -43,7 +43,7 @@ Shader"PreRendering/PostRasterization"
             uniform float2 RESOLUTION;
             
             SamplerState sampler_linear_repeat;
-            Texture2D _MainTex, _UI;
+            Texture2D _MainTex, _CameraTex, _UI;
             Texture2D _Input0, _Input1, _Input2, _Input3, _Input4, _Input5, _Input6, _Input7;
             Texture2D _Coordinates0, _Coordinates1, _Coordinates2, _Coordinates3, _Coordinates4, _Coordinates5, _Coordinates6, _Coordinates7;
             Texture2D _Depth0, _Depth1, _Depth2, _Depth3, _Depth4, _Depth5, _Depth6, _Depth7;
@@ -135,6 +135,11 @@ Shader"PreRendering/PostRasterization"
                 }
     
                 float4 col = _MainTex.Sample(sampler_linear_repeat, i.uv);
+                if (col.a == 0)
+                {
+                    col = _CameraTex.Sample(sampler_linear_repeat, i.uv);
+                }
+    
                 return MIX_COL_UI_BY_ALPHA(col, ui);
             }
             ENDCG
