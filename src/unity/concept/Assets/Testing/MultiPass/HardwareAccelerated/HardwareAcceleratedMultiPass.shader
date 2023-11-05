@@ -109,37 +109,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 int index2 = _Triangles[baseIndex + 2 + _StartIndex] + _BaseVertexIndex;
                 
                 o.uv = _UVs[index];
-                int slice = o.uv.w;
-                float3 pos = _Positions[index];
-                if (RENDER_PASS == 0)
-                {
-                    float3 pos0 = _Positions[index0];
-                    float3 pos1 = _Positions[index1];
-                    float3 pos2 = _Positions[index2];
-                    float l0 = length(pos0 - pos1);
-                    float l1 = length(pos1 - pos2);
-                    float l2 = length(pos2 - pos0);
-                    o.uv.z = l0 + l1 + l2;
-        
-                    if (l0 > MAX_CIRCUMFERENCE || l1 > MAX_CIRCUMFERENCE || l2 > MAX_CIRCUMFERENCE)
-                    {
-                        RETURN_INVALID_VERTEX();
-                    }
-                }
-                else if (o.uv.z > MAX_CIRCUMFERENCE)
-                {
-                    RETURN_INVALID_VERTEX();
-                }
-    
-                float4 wpos = mul(_ObjectToWorldMatricies[slice], float4(pos, 1.0f));
-    
-                if (DEBUG_MODE == 1 && RENDER_PASS != 0 && length(wpos.xyz - float3(-4, 0, -5)) < 20) // zSineFilled
-                {
-                    wpos.y += sin(TIMESTEP) * sin(length(wpos)) * (sin(wpos.x * 10) > 0.5);
-                    float4 col;
-                    SAMPLE_PSEUDO_ARRAY(_Input, o.uv.xy, slice, col);
-                    wpos.yz += col.r / 4;
-                }
+                int slice0, slice1, slice2, slice = o.uv.w;
     
                 if (RENDER_PASS == 0)
                 {
@@ -150,17 +120,16 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                     float4 uv_n0 = _UVs[index0];
                     float4 uv_n1 = _UVs[index1];
                     float4 uv_n2 = _UVs[index2];
-                    if (uv_n0.w == -1 || uv_n1.w == -1 || uv_n2.w == -1)
+                    slice0 = uv_n0.w;
+                    slice1 = uv_n1.w;
+                    slice2 = uv_n2.w;
+                    
+                    if (slice0 == -1 || slice1 == -1 || slice2 == -1)
                     {
                         RETURN_INVALID_VERTEX();
                     }
         
-                    if (length(uv_n0.xy - uv_n1.xy) > MAX_CIRCUMFERENCE || length(uv_n1.xy - uv_n2.xy) > MAX_CIRCUMFERENCE || length(uv_n2.xy - uv_n1.xy) > MAX_CIRCUMFERENCE)
-                    {
-                        RETURN_INVALID_VERTEX();
-                    }
-        
-                    if (slice != uv_n0.w || slice != uv_n1.w || slice != uv_n2.w)
+                    if (slice0 != slice || slice1 != slice || slice2 != slice)
                     {
                         SAMPLE_PSEUDO_ARRAY(_Input, o.uv.xy, slice, o.uv);
                         o.differingSlice = true;
@@ -182,6 +151,39 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 #endif
                 }
     
+                float3 pos = _Positions[index];
+                float3 pos0 = _Positions[index0];
+                float3 pos1 = _Positions[index1];
+                float3 pos2 = _Positions[index2];
+    
+                if (RENDER_PASS != 0)
+                {
+                    pos0 = mul(_ObjectToWorldMatricies[slice0], float4(pos0, 1.0f));
+                    pos1 = mul(_ObjectToWorldMatricies[slice1], float4(pos1, 1.0f));
+                    pos2 = mul(_ObjectToWorldMatricies[slice2], float4(pos2, 1.0f));
+                }
+    
+                float l0 = length(pos0 - pos1);
+                float l1 = length(pos1 - pos2);
+                float l2 = length(pos2 - pos0);
+    
+                if (RENDER_PASS == 0)
+                {
+                    o.uv.z = l0 + l1 + l2;
+                }
+        
+                if (l0 > MAX_CIRCUMFERENCE || l1 > MAX_CIRCUMFERENCE || l2 > MAX_CIRCUMFERENCE)
+                {
+                    RETURN_INVALID_VERTEX();
+                }
+    
+                float4 wpos = mul(_ObjectToWorldMatricies[slice], float4(pos, 1.0f));
+    
+                if (DEBUG_MODE == 1 && RENDER_PASS != 0) // zSineFilled
+                {
+                    wpos.y += sin(TIMESTEP) * sin(length(wpos) * 8) * (4 / length(wpos));
+                }
+    
                 o.depth = length(wpos);
                 o.pos = mul(UNITY_MATRIX_VP, wpos);
                 return o;
@@ -197,6 +199,10 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 else if (RENDER_PASS == 0 || DEBUG_MODE == 5 || i.differingSlice)
                 {
                     o.color = i.uv;
+                }
+                else if (DEBUG_MODE == 2)
+                {
+                    o.color = float4(i.uv.zzz, 1);
                 }
                 else
                 {

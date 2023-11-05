@@ -32,7 +32,8 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     public Mesh colliderMesh;
 
     private bool previousUIDebuggerState = false;
-    private int passes, totalTriangles;
+    private int passes;
+    private string compressionInfo;
     private Camera originalCamera;
     private RenderTexture uiTexture, backgroundTexture;
     private Material postRasterizationMaterial;
@@ -61,6 +62,24 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         };
     }
 
+    public static string FormatLargeInteger(int number)
+    {
+        if (number < 1000)
+        {
+            return number.ToString();
+        }
+        else if (number < 1000000)
+        {
+            double formattedNumber = Math.Round((double)number / 1000, 1);
+            return $"{formattedNumber}k";
+        }
+        else
+        {
+            double formattedNumber = Math.Round((double)number / 1000000, 1);
+            return $"{formattedNumber}M";
+        }
+    }
+
     private void Start()
     {
         Debug.Log(SystemInfo.supportedRenderTargetCount);
@@ -81,12 +100,15 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             height = motionVectorResolution.y
         };
 
+        int uncompressedTriangles = motionVectorResolution.x * motionVectorResolution.y;
+        int compressedTriangles = 0;
         for (int pass = 0; pass < passes; pass++)
         {
             projectionResolutions[pass] = CalculatePassResolutionFromCurve(pass, projectionResolution, projectionResolutionCurve);
             rasterizationResolutions[pass] = CalculatePassResolutionFromCurve(pass, rasterizationResolution, rasterizationResolutionCurve);
-            totalTriangles += projectionResolutions[pass].width * projectionResolutions[pass].height * dimensions[pass] * 2;
+            compressedTriangles += projectionResolutions[pass].width * projectionResolutions[pass].height * dimensions[pass] * 2;
         }
+        compressionInfo = $"{FormatLargeInteger(uncompressedTriangles)} -> {FormatLargeInteger(compressedTriangles)}\t{100 - Math.Round(compressedTriangles / (float)uncompressedTriangles, 2) * 100}%";
 
         // create geometry loader and populate first mesh buffer, as that one will not change
         geometryLoader = new GeometryLoader(dimensions[0], map, computeShader, inputResolution, _motionVectorResolution, projectionResolutions, rasterizationResolutions);
@@ -200,7 +222,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
                 $"Motion Vector Resolution:\t{motionVectorResolution.x}x{motionVectorResolution.y}\r\n" +
                 $"Projection Resolutions:\t\t[{string.Join(", ", projectionResolutions.Select(res => $"{res.width}x{res.height}"))}]\r\n" +
                 $"Rasterization Resolutions:\t[{string.Join(", ", rasterizationResolutions.Select(res => $"{res.width}x{res.height}"))}]\r\n" +
-                $"Estimated Triangle Count:\t{totalTriangles}\r\n" +
+                $"Estimated Triangle Count:\t{compressionInfo}\r\n" +
                 $"Debugging Mode:\t\t\t{debugMode}\r\n" +
                 $"Debugging Pass:\t\t\t{debugPass + 1} / {passes}\r\n" +
                 $"Debugging Slice:\t\t\t{debugSlice + 1} / {dimensions[debugPass]}";

@@ -1166,10 +1166,10 @@ MonoBehaviour:
   maxDifference: 1
   maxCircumferences:
   - 1
-  - 1.7
+  - 0.5
   fieldOfViewOffset: 10
   dimensions: 0600000001000000
-  motionVectorResolution: {x: 2048, y: 1024}
+  motionVectorResolution: {x: 4096, y: 2048}
   projectionResolution: {x: 960, y: 540}
   rasterizationResolution: {x: 1920, y: 1080}
   projectionResolutionCurve:
@@ -1223,8 +1223,8 @@ MonoBehaviour:
   uiCamera: {fileID: 164921930}
   backgroundCamera: {fileID: 2043079906}
   uiDebugger: {fileID: 257802692}
-  debugMode: 5
-  debugPass: 1
+  debugMode: 0
+  debugPass: 0
   debugSlice: 0
   motionVectors: {fileID: 0}
   rasterized: []
@@ -1267,7 +1267,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1294e014c405bac4a86ffd9f1f87b9f2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  flySpeed: 5
+  flySpeed: 8
   rotationSpeed: 2
   moveJoystick: {fileID: 986326506}
   viewJoystick: {fileID: 1498703755}

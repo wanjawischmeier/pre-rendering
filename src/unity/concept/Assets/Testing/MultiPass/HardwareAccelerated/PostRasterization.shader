@@ -135,7 +135,7 @@ Shader"PreRendering/PostRasterization"
                 }
     
                 float4 col = _MainTex.Sample(sampler_linear_repeat, i.uv);
-                if (col.a == 0)
+                if (col.a == 0 && DEBUG_MODE != 4 && DEBUG_MODE != 5)
                 {
                     col = _CameraTex.Sample(sampler_linear_repeat, i.uv);
                 }
