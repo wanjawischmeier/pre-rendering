@@ -26,14 +26,18 @@ Shader"PreRendering/PostRasterization"
 
             struct v2f
             {
-                float2 uv : TEXCOORD0;
                 float4 vertex : SV_POSITION;
+                float4 projPos : TEXCOORD0;
+                float3 camRelativeWorldPos : TEXCOORD1;
+                float2 uv : TEXCOORD2;
             };
 
             v2f vert (appdata v)
             {
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
+                o.projPos = ComputeScreenPos(o.vertex);
+                o.camRelativeWorldPos = mul(unity_ObjectToWorld, float4(v.vertex.xyz, 1.0)).xyz - _WorldSpaceCameraPos;
                 o.uv = v.uv;
                 return o;
             }
@@ -41,6 +45,7 @@ Shader"PreRendering/PostRasterization"
             uniform int NUM_SLICES, DEBUG_MODE, UI_DEBUGGER, SLICE, MAX_CIRCUMFERENCE;
             uniform float INTERPOLATION_RANGE, DEPTH_OFFSET;
             uniform float2 RESOLUTION;
+            float4x4 VP_I;
             
             SamplerState sampler_linear_repeat;
             Texture2D _MainTex, _CameraTex, _UI;
@@ -108,6 +113,29 @@ Shader"PreRendering/PostRasterization"
                     }
                 }
             }
+
+            float3 getViewDirection(v2f i)
+            {
+                float4 clipPos = float4(i.uv * 2.0 - 1.0, 1.0, 1.0);
+
+                // Apply the inverse projection matrix to get the camera space position
+                float4 camPos = mul(VP_I, clipPos);
+
+                // Divide by the w component to get the direction vector in camera space
+                return camPos.xyz / camPos.w;
+
+                // Transform the direction from camera space to world space
+                // return mul((float3x3)unity_WorldToCamera, direction);
+            }
+
+            // point to the view ray starting at the coordinate origin
+            // https://mathworld.wolfram.com/Point-LineDistance3-Dimensional.html
+            // x0: p, x1: (0, 0, 0), x2: d
+            float getDistancePointToViewRay(float3 p, float3 d)
+            {
+                float numerator = abs(cross(p, p - d));
+                return numerator / length(d);
+            }
             
             fixed4 frag (v2f i) : SV_Target
             {
@@ -124,6 +152,14 @@ Shader"PreRendering/PostRasterization"
                     return _MainTex.Sample(sampler_linear_repeat, i.uv);
                 }
                 */
+                float4 clipPos = float4(i.uv * 2.0 - 1.0, 1.0, 1.0);
+                float4 worldPos = mul(VP_I, clipPos);
+                float3 P = worldPos.xyz / worldPos.w;
+                // direction = ComputeWorldSpacePosition(i.uv, 1, UNITY_MATRIX_I_VP);
+                // float distance = getDistancePointToViewRay(float3(1, 1, 1), direction);
+    
+                // return fixed4(P, 1);
+    
                 fixed4 ui;
                 if (UI_DEBUGGER == 1)
                 {

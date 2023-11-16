@@ -4,11 +4,12 @@ using UnityEngine;
 public class UnityRP : MonoBehaviour
 {
     public ComputeShader loadTexels;
-    public Shader shader, computeWorldSpacePosition;
+    public Shader shader, computeWorldSpacePositionShader;
     public Material finalMaterial;
     public Camera renderCamera;
     public Vector2Int projectionResolution;
     public Vector3 meshTranslation;
+    public Transform point0, point1, point2;
     public DynamicRenderBuffer.DebugMode debugMode;
 
     private int loadTexelsKernelId, verticies, indicies, cullingMaskLayer;
@@ -29,15 +30,14 @@ public class UnityRP : MonoBehaviour
 
         cullingMaskLayer = LayerMask.NameToLayer(CullingMaskLayerName);
         material = new Material(shader);
-        computeWorldSpacePositionMaterial = new Material(computeWorldSpacePosition);
-        target = new RenderTexture(projectionResolution.x, projectionResolution.y, 0);
+        computeWorldSpacePositionMaterial = new Material(computeWorldSpacePositionShader);
+        target = new RenderTexture(projectionResolution.x, projectionResolution.y, 24);
         target.format = RenderTextureFormat.Depth;
         mainCamera = Camera.main;
-        mainCamera.targetTexture = target;
-        mainCamera.depthTextureMode = DepthTextureMode.Depth;
+        renderCamera.targetTexture = target;
+        renderCamera.depthTextureMode = DepthTextureMode.Depth;
 
         projMat = GL.GetGPUProjectionMatrix(mainCamera.projectionMatrix, false);
-        viewMat = mainCamera.worldToCameraMatrix;
 
         triangles = new GraphicsBuffer(GraphicsBuffer.Target.Structured, indicies, sizeof(int));
         positions = new GraphicsBuffer(GraphicsBuffer.Target.Structured, verticies, 3 * sizeof(float));
@@ -72,12 +72,17 @@ public class UnityRP : MonoBehaviour
 
     void Update()
     {
+        viewMat = mainCamera.worldToCameraMatrix;
         Matrix4x4 objToWorldMat = Matrix4x4.Translate(meshTranslation);
-        // viewMat = Matrix4x4.identity;
         Matrix4x4 viewProjInvMat = (projMat * viewMat).inverse;
         loadTexels.SetMatrix("_ObjectToWorld", objToWorldMat);
         loadTexels.SetMatrix("_ViewProjInv", viewProjInvMat);
         computeWorldSpacePositionMaterial.SetMatrix("_ViewProjInv", viewProjInvMat);
+
+        computeWorldSpacePositionMaterial.SetVector("P0", point0.position);
+        computeWorldSpacePositionMaterial.SetVector("P1", point1.position);
+        computeWorldSpacePositionMaterial.SetVector("P2", point2.position);
+        computeWorldSpacePositionMaterial.SetVector("PCAM", mainCamera.transform.position);
 
         loadTexels.SetFloat("TIMESTEP", Time.time);
         loadTexels.Dispatch(loadTexelsKernelId, loadTexelsToBufferGroupSizeX, loadTexelsToBufferGroupSizeY, 1);

@@ -100,7 +100,6 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             height = motionVectorResolution.y
         };
 
-        int uncompressedTriangles = motionVectorResolution.x * motionVectorResolution.y;
         int compressedTriangles = 0;
         for (int pass = 0; pass < passes; pass++)
         {
@@ -108,7 +107,11 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             rasterizationResolutions[pass] = CalculatePassResolutionFromCurve(pass, rasterizationResolution, rasterizationResolutionCurve);
             compressedTriangles += projectionResolutions[pass].width * projectionResolutions[pass].height * dimensions[pass] * 2;
         }
-        compressionInfo = $"{FormatLargeInteger(uncompressedTriangles)} -> {FormatLargeInteger(compressedTriangles)}\t{100 - Math.Round(compressedTriangles / (float)uncompressedTriangles, 2) * 100}%";
+        int compressedFinalTriangles = projectionResolutions[passes - 1].width * projectionResolutions[passes - 1].height;
+        int uncompressedTriangles = motionVectorResolution.x * motionVectorResolution.y;
+        compressionInfo = $"{FormatLargeInteger(uncompressedTriangles)} -> " +
+            $"{FormatLargeInteger(compressedTriangles)} ({FormatLargeInteger(compressedFinalTriangles)})\t" +
+            $"{100 - Math.Round(compressedTriangles / (float)uncompressedTriangles, 2) * 100}%";
 
         // create geometry loader and populate first mesh buffer, as that one will not change
         geometryLoader = new GeometryLoader(dimensions[0], map, computeShader, inputResolution, _motionVectorResolution, projectionResolutions, rasterizationResolutions);
@@ -124,7 +127,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             Debug.Log($"Rasterization Resolution {pass}: {rasterizationResolutions[pass]}");
 
             renderBuffers[pass] = new DynamicRenderBuffer(
-                pass, dimensions[pass], meshTranslations, transform, originalCamera, geometryLoader.motionVectors,
+                pass, passes, dimensions[pass], meshTranslations, transform, originalCamera, geometryLoader.motionVectors,
                 projectionResolutions[pass], rasterizationResolutions[pass], rasterizationShader, inputImages
             );
         }
@@ -227,6 +230,11 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
                 $"Debugging Pass:\t\t\t{debugPass + 1} / {passes}\r\n" +
                 $"Debugging Slice:\t\t\t{debugSlice + 1} / {dimensions[debugPass]}";
         }
+
+        Matrix4x4 projMat = GL.GetGPUProjectionMatrix(backgroundCamera.projectionMatrix, false);
+        Matrix4x4 viewMat = backgroundCamera.worldToCameraMatrix;
+        Matrix4x4 viewProjInvMat = (projMat * viewMat).inverse;
+        postRasterizationMaterial.SetMatrix("VP_I", viewProjInvMat);
 
         double startTime;
         double populateTime = 0;

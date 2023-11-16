@@ -21,8 +21,8 @@ public class FlyMovementController : MonoBehaviour
         }
         else
         {
-            moveJoystick.gameObject.SetActive(true);
-            viewJoystick.gameObject.SetActive(true);
+            moveJoystick?.gameObject.SetActive(true);
+            viewJoystick?.gameObject.SetActive(true);
             Cursor.lockState = CursorLockMode.Locked;
         }
     }
@@ -43,12 +43,12 @@ public class FlyMovementController : MonoBehaviour
         // Handle rotation (looking around)
         float mouseX = Input.GetAxis("Mouse X");
         float mouseY = -Input.GetAxis("Mouse Y");
-        if (viewJoystick.Horizontal != 0 || viewJoystick.Vertical != 0)
+        if (viewJoystick != null && (viewJoystick.Horizontal != 0 || viewJoystick.Vertical != 0))
         {
             mouseX = viewJoystick.Horizontal;
             mouseY = viewJoystick.Vertical;
         }
-        else if (moveJoystick.Horizontal != 0 || moveJoystick.Vertical != 0)
+        else if (moveJoystick != null && (moveJoystick.Horizontal != 0 || moveJoystick.Vertical != 0))
         {
             mouseX = mouseY = 0;
         }
@@ -64,7 +64,7 @@ public class FlyMovementController : MonoBehaviour
         float verticalInput = 0f;
         float upDownInput = 0f;
 
-        if (moveJoystick.Horizontal != 0)
+        if ((moveJoystick?.Horizontal ?? 0) != 0)
         {
             horizontalInput = moveJoystick.Horizontal;
         }
@@ -77,7 +77,7 @@ public class FlyMovementController : MonoBehaviour
             horizontalInput = 1f;
         }
 
-        if (moveJoystick.Vertical != 0)
+        if ((moveJoystick?.Vertical ?? 0) != 0)
         {
             verticalInput = moveJoystick.Vertical;
         }
