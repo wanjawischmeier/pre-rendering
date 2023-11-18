@@ -7,9 +7,10 @@ public class UnityRP : MonoBehaviour
     public Shader shader, computeWorldSpacePositionShader;
     public Material finalMaterial;
     public Camera renderCamera;
+    public Texture input0, input1, input2;
     public Vector2Int projectionResolution;
     public Vector3 meshTranslation;
-    public Transform point0, point1, point2;
+    public Transform[] pointTransforms;
     public DynamicRenderBuffer.DebugMode debugMode;
 
     private int loadTexelsKernelId, verticies, indicies, cullingMaskLayer;
@@ -20,6 +21,7 @@ public class UnityRP : MonoBehaviour
     private GraphicsBuffer triangles, positions, uvs;
     private RenderParams renderParams;
     private Matrix4x4 projMat, viewMat;
+    private Vector4[] points;
 
     private const string CullingMaskLayerName = "Rasterized";
 
@@ -28,9 +30,16 @@ public class UnityRP : MonoBehaviour
         verticies = projectionResolution.x * projectionResolution.y;
         indicies = verticies * 6;
 
+        points = new Vector4[pointTransforms.Length];
+
         cullingMaskLayer = LayerMask.NameToLayer(CullingMaskLayerName);
         material = new Material(shader);
         computeWorldSpacePositionMaterial = new Material(computeWorldSpacePositionShader);
+        computeWorldSpacePositionMaterial.SetFloat("PI", Mathf.PI);
+        computeWorldSpacePositionMaterial.SetTexture("_Input0", input0);
+        computeWorldSpacePositionMaterial.SetTexture("_Input1", input1);
+        computeWorldSpacePositionMaterial.SetTexture("_Input2", input2);
+
         target = new RenderTexture(projectionResolution.x, projectionResolution.y, 24);
         target.format = RenderTextureFormat.Depth;
         mainCamera = Camera.main;
@@ -79,9 +88,11 @@ public class UnityRP : MonoBehaviour
         loadTexels.SetMatrix("_ViewProjInv", viewProjInvMat);
         computeWorldSpacePositionMaterial.SetMatrix("_ViewProjInv", viewProjInvMat);
 
-        computeWorldSpacePositionMaterial.SetVector("P0", point0.position);
-        computeWorldSpacePositionMaterial.SetVector("P1", point1.position);
-        computeWorldSpacePositionMaterial.SetVector("P2", point2.position);
+        for (int i = 0; i < points.Length; i++)
+        {
+            points[i] = pointTransforms[i].position;
+        }
+        computeWorldSpacePositionMaterial.SetVectorArray("POINTS", points);
         computeWorldSpacePositionMaterial.SetVector("PCAM", mainCamera.transform.position);
 
         loadTexels.SetFloat("TIMESTEP", Time.time);

@@ -236,11 +236,15 @@ MonoBehaviour:
   computeWorldSpacePositionShader: {fileID: 4800000, guid: b1b12979c91a8e34799bfcdc62447878, type: 3}
   finalMaterial: {fileID: 2100000, guid: b4cf052477bbd734585c20307e411ffa, type: 2}
   renderCamera: {fileID: 1590483296}
+  input0: {fileID: 2800000, guid: 303d9b8aa84e50f40a48535137b69197, type: 3}
+  input1: {fileID: 2800000, guid: 1e62187e002109942b046a0ad4e7cfd9, type: 3}
+  input2: {fileID: 2800000, guid: b2b1f4d315aea3a46892414bd8983516, type: 3}
   projectionResolution: {x: 1000, y: 500}
   meshTranslation: {x: 0, y: 0, z: 0}
-  point0: {fileID: 1037240197}
-  point1: {fileID: 2070451452}
-  point2: {fileID: 2016274116}
+  pointTransforms:
+  - {fileID: 1037240197}
+  - {fileID: 2070451452}
+  - {fileID: 2016274116}
   debugMode: 0
 --- !u!114 &404776969
 MonoBehaviour:
@@ -477,7 +481,7 @@ Transform:
   m_GameObject: {fileID: 1037240193}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -2, y: 0, z: 0}
+  m_LocalPosition: {x: -10, y: 0, z: -10}
   m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -665,7 +669,7 @@ Transform:
   m_GameObject: {fileID: 2016274112}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2, y: 1, z: 1}
+  m_LocalPosition: {x: 9, y: 0, z: 2}
   m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -770,7 +774,7 @@ Transform:
   m_GameObject: {fileID: 2070451448}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -1, z: 2}
+  m_LocalPosition: {x: -2, y: 0, z: -10}
   m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
   m_ConstrainProportionsScale: 0
   m_Children: []
