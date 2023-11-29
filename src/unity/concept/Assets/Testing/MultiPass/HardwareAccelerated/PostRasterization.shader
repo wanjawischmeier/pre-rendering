@@ -45,13 +45,18 @@ Shader"PreRendering/PostRasterization"
             uniform int NUM_SLICES, DEBUG_MODE, UI_DEBUGGER, SLICE, MAX_CIRCUMFERENCE;
             uniform float INTERPOLATION_RANGE, DEPTH_OFFSET;
             uniform float2 RESOLUTION;
-            float4x4 VP_I;
+            uniform float4 CAMERA_POSITION;
+            uniform float4 CUBE_POSITIONS[2];
+            uniform float4x4 VP_I;
+            uniform float4x4 ORIENTATION_MATRICIES[6];
+            uniform float4x4 INVERSE_ORIENTATION_MATRICIES[6];
             
             SamplerState sampler_linear_repeat;
             Texture2D _MainTex, _CameraTex, _UI;
             Texture2D _Input0, _Input1, _Input2, _Input3, _Input4, _Input5, _Input6, _Input7;
             Texture2D _Coordinates0, _Coordinates1, _Coordinates2, _Coordinates3, _Coordinates4, _Coordinates5, _Coordinates6, _Coordinates7;
             Texture2D _Depth0, _Depth1, _Depth2, _Depth3, _Depth4, _Depth5, _Depth6, _Depth7;
+            Texture2DArray _CubemapFaces;
 
             float4 interpolateColors(float4 color0, float4 color1, float blurriness0, float blurriness1)
             {
@@ -136,9 +141,66 @@ Shader"PreRendering/PostRasterization"
                 float numerator = abs(cross(p, p - d));
                 return numerator / length(d);
             }
+
+            int IntersectViewRayWithCubemapFaces(float3 viewDirection, float4 cubePosition, out float3 intersectionPoint)
+            {
+                [unroll]
+                for (int faceIndex = 0; faceIndex < 6; faceIndex++)
+                {
+                    float4x4 invOrientationMatrix = INVERSE_ORIENTATION_MATRICIES[faceIndex];
+                    
+                    float3 cameraPositionFaceSpace = mul(invOrientationMatrix, CAMERA_POSITION - cubePosition).xyz;
+                    float3 viewDirectionFaceSpace = mul(invOrientationMatrix, float4(viewDirection, 1)).xyz;
+                    
+                    // shift cube faces one unit away from origin (along face normal)
+                    cameraPositionFaceSpace.z -= 1;
+        
+                    // avoid potential precision issues by checking if the ray is close to parallel to the face
+                    if (viewDirectionFaceSpace.z > 0.0001)
+                    {
+                        float t = -cameraPositionFaceSpace.z / viewDirectionFaceSpace.z;
+                        intersectionPoint = cameraPositionFaceSpace + t * viewDirectionFaceSpace;
+
+                        if (all(abs(intersectionPoint) <= 1) && t > 0)
+                        {
+                            return faceIndex;
+                        }
+                    }
+                }
+
+                intersectionPoint = float3(0, 0, 0);
+                return -1;
+            }
+
+            float3 ScreenUVToCubemapUV(float2 screenUV, float4 cubePosition)
+            {
+                float4 viewRayClip = float4(screenUV * 2.0 - 1.0, 0, 1);
+                float4 viewRayWorld = mul(VP_I, viewRayClip);
+                float3 viewDirection = normalize(viewRayWorld.xyz);
+                
+                float3 intersectionPoint;
+                int faceIndex = IntersectViewRayWithCubemapFaces(viewDirection, cubePosition, intersectionPoint);
+                if (faceIndex == -1)
+                {
+                    return float3(-1, -1, -1);
+                }
+                
+                return float3(intersectionPoint.xy / 2 + 0.5, faceIndex);
+            }
             
             fixed4 frag (v2f i) : SV_Target
             {
+                float depth = 1;
+                float2 viewSpace = float2(2 * i.uv.x - 1, 1 - 2 * i.uv.y) * depth;
+                float4 pos = float4(viewSpace, depth, 1);
+                // pos = float4(1, 2, 3, 4);
+                float4 pos2 = mul(ORIENTATION_MATRICIES[0], pos);
+                // return fixed4(all(pos2 == float4(-1, 2, -3, 4)).xxx, 1);
+                // return pos2;
+    
+                float3 cubemapUV = ScreenUVToCubemapUV(i.uv, CUBE_POSITIONS[0]);
+                // return fixed4(cubemapUV.xy, cubemapUV.z / 5.0, 1);
+                return _CubemapFaces.Sample(sampler_linear_repeat, cubemapUV);
                 /*
                 float4 uv = _Coordinates0.Sample(sampler_linear_repeat, i.uv);
                 if (uv.w >= 1)
