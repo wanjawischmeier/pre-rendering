@@ -46,7 +46,7 @@ Shader"PreRendering/PostRasterization"
             uniform float INTERPOLATION_RANGE, DEPTH_OFFSET;
             uniform float2 RESOLUTION;
             uniform float4 CAMERA_POSITION;
-            uniform float4 CUBE_POSITIONS[2];
+            uniform float4 CUBE_POSITIONS[3];
             uniform float4x4 VP_I;
             uniform float4x4 ORIENTATION_MATRICIES[6];
             uniform float4x4 INVERSE_ORIENTATION_MATRICIES[6];
@@ -142,50 +142,80 @@ Shader"PreRendering/PostRasterization"
                 return numerator / length(d);
             }
 
-            int IntersectViewRayWithCubemapFaces(float3 viewDirection, float4 cubePosition, out float3 intersectionPoint)
+            float3 IntersectViewRayWithCubemaps(float3 viewDirection, out int faceIndex, out int cubemapIndex)
             {
+                int currentCubemapIndex, closestFaceIndex, closestCubemapIndex;
+                float t, closestFaceDistance = MAX_INT_CONST;
+                float closestCubeDistance = closestFaceDistance;
+                float3 intersectionPoint, closestFaceIntersection, closestCubeIntersection = float3(0, 0, 0);
+                float3 cameraPositionFaceSpace, viewDirectionFaceSpace;
+                float4 cubePosition;
+                float4x4 invOrientationMatrix;
+    
+                faceIndex = -1;
+                cubemapIndex = -1;
+        
                 [unroll]
-                for (int faceIndex = 0; faceIndex < 6; faceIndex++)
+                for (int currentFaceIndex = 0; currentFaceIndex < CUBEMAP_FACE_COUNT; currentFaceIndex++)
                 {
-                    float4x4 invOrientationMatrix = INVERSE_ORIENTATION_MATRICIES[faceIndex];
-                    
-                    float3 cameraPositionFaceSpace = mul(invOrientationMatrix, CAMERA_POSITION - cubePosition).xyz;
-                    float3 viewDirectionFaceSpace = mul(invOrientationMatrix, float4(viewDirection, 1)).xyz;
-                    
-                    // shift cube faces one unit away from origin (along face normal)
-                    cameraPositionFaceSpace.z -= 1;
+                    // transform the view ray to face space
+                    invOrientationMatrix = INVERSE_ORIENTATION_MATRICIES[currentFaceIndex];
+                    viewDirectionFaceSpace = mul(invOrientationMatrix, float4(viewDirection, 1)).xyz;
         
                     // avoid potential precision issues by checking if the ray is close to parallel to the face
                     if (viewDirectionFaceSpace.z > 0.0001)
                     {
-                        float t = -cameraPositionFaceSpace.z / viewDirectionFaceSpace.z;
-                        intersectionPoint = cameraPositionFaceSpace + t * viewDirectionFaceSpace;
-
-                        if (all(abs(intersectionPoint) <= 1) && t > 0)
+                        [unroll]
+                        for (currentCubemapIndex = 0; currentCubemapIndex < 3; currentCubemapIndex++)
                         {
-                            return faceIndex;
+                            // transform the camera position to face space
+                            cubePosition = CUBE_POSITIONS[currentCubemapIndex];
+                            cameraPositionFaceSpace = mul(invOrientationMatrix, CAMERA_POSITION - cubePosition).xyz;
+            
+                            // shift cube faces one unit away from origin (along face normal)
+                            cameraPositionFaceSpace.z -= CUBEMAP_SCALE;
+                
+                            // intersect the current face of all cubes with the view ray
+                            t = -cameraPositionFaceSpace.z / viewDirectionFaceSpace.z;
+                            intersectionPoint = cameraPositionFaceSpace + t * viewDirectionFaceSpace;
+
+                            // get the closest intersecting point
+                            if (all(abs(intersectionPoint) <= CUBEMAP_SCALE) && t > 0 && t < closestFaceDistance)
+                            {
+                                closestFaceDistance = t;
+                                closestFaceIntersection = intersectionPoint;
+                                closestCubemapIndex = currentCubemapIndex;
+                            }
+                        }
+    
+                        if (closestFaceDistance < closestCubeDistance)
+                        {
+                            // the initial or a closer face intersects with the view ray
+                            closestCubeDistance = closestFaceDistance;
+                            closestCubeIntersection = closestFaceIntersection;
+                            faceIndex = currentFaceIndex;
+                            cubemapIndex = closestCubemapIndex;
                         }
                     }
                 }
-
-                intersectionPoint = float3(0, 0, 0);
-                return -1;
+    
+                return closestCubeIntersection;
             }
 
-            float3 ScreenUVToCubemapUV(float2 screenUV, float4 cubePosition)
+            float4 ScreenUVToCubemapUV(float2 screenUV)
             {
                 float4 viewRayClip = float4(screenUV * 2.0 - 1.0, 0, 1);
                 float4 viewRayWorld = mul(VP_I, viewRayClip);
-                float3 viewDirection = normalize(viewRayWorld.xyz);
+                float3 viewDirection = normalize(viewRayWorld.xyz); // TODO: redundant?
                 
-                float3 intersectionPoint;
-                int faceIndex = IntersectViewRayWithCubemapFaces(viewDirection, cubePosition, intersectionPoint);
+                int faceIndex, cubemapIndex;
+                float3 intersectionPoint = IntersectViewRayWithCubemaps(viewDirection, faceIndex, cubemapIndex);
                 if (faceIndex == -1)
                 {
-                    return float3(-1, -1, -1);
+                    return float4(-1, -1, -1, -1);
                 }
                 
-                return float3(intersectionPoint.xy / 2 + 0.5, faceIndex);
+                return float4(intersectionPoint.xy / 2 / CUBEMAP_SCALE + 0.5, faceIndex, cubemapIndex);
             }
             
             fixed4 frag (v2f i) : SV_Target
@@ -198,7 +228,7 @@ Shader"PreRendering/PostRasterization"
                 // return fixed4(all(pos2 == float4(-1, 2, -3, 4)).xxx, 1);
                 // return pos2;
     
-                float3 cubemapUV = ScreenUVToCubemapUV(i.uv, CUBE_POSITIONS[0]);
+                float3 cubemapUV = ScreenUVToCubemapUV(i.uv);
                 // return fixed4(cubemapUV.xy, cubemapUV.z / 5.0, 1);
                 return _CubemapFaces.Sample(sampler_linear_repeat, cubemapUV);
                 /*

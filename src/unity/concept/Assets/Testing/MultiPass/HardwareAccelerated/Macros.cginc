@@ -3,6 +3,9 @@
 #define VERTICIES_PER_QUAD 6
 #define DEPTH_TOLERANCE 0.0001
 #define VALIDATION_ITERATIONS 0
+#define CUBEMAP_FACE_COUNT 6
+#define CUBEMAP_SCALE 5 // TODO: equivalent to FCLIP?
+
 
 #define MAP_TO_RANGE(tc, targetRange)                                       \
     (tc) * ((targetRange) - 1)
