@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.44657874, g: 0.49641275, b: 0.5748171, a: 1}
+  m_IndirectSpecularColor: {r: 0.44657826, g: 0.49641263, b: 0.57481676, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -1165,12 +1165,12 @@ MonoBehaviour:
   depthOffset: 0
   maxDifference: 1
   maxCircumferences:
-  - 1
+  - 1.6
   - 0.5
   fieldOfViewOffset: 10
   dimensions: 0600000001000000
-  motionVectorResolution: {x: 4096, y: 2048}
-  projectionResolution: {x: 960, y: 540}
+  motionVectorResolution: {x: 2048, y: 1024}
+  projectionResolution: {x: 480, y: 270}
   rasterizationResolution: {x: 1920, y: 1080}
   projectionResolutionCurve:
     serializedVersion: 2
