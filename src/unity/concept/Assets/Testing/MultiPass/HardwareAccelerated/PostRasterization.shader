@@ -26,14 +26,18 @@ Shader"PreRendering/PostRasterization"
 
             struct v2f
             {
-                float2 uv : TEXCOORD0;
                 float4 vertex : SV_POSITION;
+                float4 projPos : TEXCOORD0;
+                float3 camRelativeWorldPos : TEXCOORD1;
+                float2 uv : TEXCOORD2;
             };
 
             v2f vert (appdata v)
             {
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
+                o.projPos = ComputeScreenPos(o.vertex);
+                o.camRelativeWorldPos = mul(unity_ObjectToWorld, float4(v.vertex.xyz, 1.0)).xyz - _WorldSpaceCameraPos;
                 o.uv = v.uv;
                 return o;
             }
@@ -41,12 +45,18 @@ Shader"PreRendering/PostRasterization"
             uniform int NUM_SLICES, DEBUG_MODE, UI_DEBUGGER, SLICE, MAX_CIRCUMFERENCE;
             uniform float INTERPOLATION_RANGE, DEPTH_OFFSET;
             uniform float2 RESOLUTION;
+            uniform float4 CAMERA_POSITION;
+            uniform float4 CUBE_POSITIONS[3];
+            uniform float4x4 VP_I;
+            uniform float4x4 ORIENTATION_MATRICIES[6];
+            uniform float4x4 INVERSE_ORIENTATION_MATRICIES[6];
             
             SamplerState sampler_linear_repeat;
             Texture2D _MainTex, _CameraTex, _UI;
             Texture2D _Input0, _Input1, _Input2, _Input3, _Input4, _Input5, _Input6, _Input7;
             Texture2D _Coordinates0, _Coordinates1, _Coordinates2, _Coordinates3, _Coordinates4, _Coordinates5, _Coordinates6, _Coordinates7;
             Texture2D _Depth0, _Depth1, _Depth2, _Depth3, _Depth4, _Depth5, _Depth6, _Depth7;
+            Texture2DArray _CubemapFaces;
 
             float4 interpolateColors(float4 color0, float4 color1, float blurriness0, float blurriness1)
             {
@@ -108,9 +118,119 @@ Shader"PreRendering/PostRasterization"
                     }
                 }
             }
+
+            float3 getViewDirection(v2f i)
+            {
+                float4 clipPos = float4(i.uv * 2.0 - 1.0, 1.0, 1.0);
+
+                // Apply the inverse projection matrix to get the camera space position
+                float4 camPos = mul(VP_I, clipPos);
+
+                // Divide by the w component to get the direction vector in camera space
+                return camPos.xyz / camPos.w;
+
+                // Transform the direction from camera space to world space
+                // return mul((float3x3)unity_WorldToCamera, direction);
+            }
+
+            // point to the view ray starting at the coordinate origin
+            // https://mathworld.wolfram.com/Point-LineDistance3-Dimensional.html
+            // x0: p, x1: (0, 0, 0), x2: d
+            float getDistancePointToViewRay(float3 p, float3 d)
+            {
+                float numerator = abs(cross(p, p - d));
+                return numerator / length(d);
+            }
+
+            float3 IntersectViewRayWithCubemaps(float3 viewDirection, out int faceIndex, out int cubemapIndex)
+            {
+                int currentCubemapIndex, closestFaceIndex, closestCubemapIndex;
+                float t, closestFaceDistance = MAX_INT_CONST;
+                float closestCubeDistance = closestFaceDistance;
+                float3 intersectionPoint, closestFaceIntersection, closestCubeIntersection = float3(0, 0, 0);
+                float3 cameraPositionFaceSpace, viewDirectionFaceSpace;
+                float4 cubePosition;
+                float4x4 invOrientationMatrix;
+    
+                faceIndex = -1;
+                cubemapIndex = -1;
+        
+                [unroll]
+                for (int currentFaceIndex = 0; currentFaceIndex < CUBEMAP_FACE_COUNT; currentFaceIndex++)
+                {
+                    // transform the view ray to face space
+                    invOrientationMatrix = INVERSE_ORIENTATION_MATRICIES[currentFaceIndex];
+                    viewDirectionFaceSpace = mul(invOrientationMatrix, float4(viewDirection, 1)).xyz;
+        
+                    // avoid potential precision issues by checking if the ray is close to parallel to the face
+                    if (viewDirectionFaceSpace.z > 0.0001)
+                    {
+                        [unroll]
+                        for (currentCubemapIndex = 0; currentCubemapIndex < 3; currentCubemapIndex++)
+                        {
+                            // transform the camera position to face space
+                            cubePosition = CUBE_POSITIONS[currentCubemapIndex];
+                            cameraPositionFaceSpace = mul(invOrientationMatrix, CAMERA_POSITION - cubePosition).xyz;
+            
+                            // shift cube faces one unit away from origin (along face normal)
+                            cameraPositionFaceSpace.z -= CUBEMAP_SCALE;
+                
+                            // intersect the current face of all cubes with the view ray
+                            t = -cameraPositionFaceSpace.z / viewDirectionFaceSpace.z;
+                            intersectionPoint = cameraPositionFaceSpace + t * viewDirectionFaceSpace;
+
+                            // get the closest intersecting point
+                            if (all(abs(intersectionPoint) <= CUBEMAP_SCALE) && t > 0 && t < closestFaceDistance)
+                            {
+                                closestFaceDistance = t;
+                                closestFaceIntersection = intersectionPoint;
+                                closestCubemapIndex = currentCubemapIndex;
+                            }
+                        }
+    
+                        if (closestFaceDistance < closestCubeDistance)
+                        {
+                            // the initial or a closer face intersects with the view ray
+                            closestCubeDistance = closestFaceDistance;
+                            closestCubeIntersection = closestFaceIntersection;
+                            faceIndex = currentFaceIndex;
+                            cubemapIndex = closestCubemapIndex;
+                        }
+                    }
+                }
+    
+                return closestCubeIntersection;
+            }
+
+            float4 ScreenUVToCubemapUV(float2 screenUV)
+            {
+                float4 viewRayClip = float4(screenUV * 2.0 - 1.0, 0, 1);
+                float4 viewRayWorld = mul(VP_I, viewRayClip);
+                float3 viewDirection = normalize(viewRayWorld.xyz); // TODO: redundant?
+                
+                int faceIndex, cubemapIndex;
+                float3 intersectionPoint = IntersectViewRayWithCubemaps(viewDirection, faceIndex, cubemapIndex);
+                if (faceIndex == -1)
+                {
+                    return float4(-1, -1, -1, -1);
+                }
+                
+                return float4(intersectionPoint.xy / 2 / CUBEMAP_SCALE + 0.5, faceIndex, cubemapIndex);
+            }
             
             fixed4 frag (v2f i) : SV_Target
             {
+                float depth = 1;
+                float2 viewSpace = float2(2 * i.uv.x - 1, 1 - 2 * i.uv.y) * depth;
+                float4 pos = float4(viewSpace, depth, 1);
+                // pos = float4(1, 2, 3, 4);
+                float4 pos2 = mul(ORIENTATION_MATRICIES[0], pos);
+                // return fixed4(all(pos2 == float4(-1, 2, -3, 4)).xxx, 1);
+                // return pos2;
+    
+                float3 cubemapUV = ScreenUVToCubemapUV(i.uv);
+                // return fixed4(cubemapUV.xy, cubemapUV.z / 5.0, 1);
+                return _CubemapFaces.Sample(sampler_linear_repeat, cubemapUV);
                 /*
                 float4 uv = _Coordinates0.Sample(sampler_linear_repeat, i.uv);
                 if (uv.w >= 1)
@@ -124,6 +244,14 @@ Shader"PreRendering/PostRasterization"
                     return _MainTex.Sample(sampler_linear_repeat, i.uv);
                 }
                 */
+                float4 clipPos = float4(i.uv * 2.0 - 1.0, 1.0, 1.0);
+                float4 worldPos = mul(VP_I, clipPos);
+                float3 P = worldPos.xyz / worldPos.w;
+                // direction = ComputeWorldSpacePosition(i.uv, 1, UNITY_MATRIX_I_VP);
+                // float distance = getDistancePointToViewRay(float3(1, 1, 1), direction);
+    
+                // return fixed4(P, 1);
+    
                 fixed4 ui;
                 if (UI_DEBUGGER == 1)
                 {

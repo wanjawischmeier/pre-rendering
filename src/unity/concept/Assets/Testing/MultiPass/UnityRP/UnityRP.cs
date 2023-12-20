@@ -4,11 +4,13 @@ using UnityEngine;
 public class UnityRP : MonoBehaviour
 {
     public ComputeShader loadTexels;
-    public Shader shader, computeWorldSpacePosition;
+    public Shader shader, computeWorldSpacePositionShader;
     public Material finalMaterial;
     public Camera renderCamera;
+    public Texture input0, input1, input2;
     public Vector2Int projectionResolution;
     public Vector3 meshTranslation;
+    public Transform[] pointTransforms;
     public DynamicRenderBuffer.DebugMode debugMode;
 
     private int loadTexelsKernelId, verticies, indicies, cullingMaskLayer;
@@ -19,6 +21,7 @@ public class UnityRP : MonoBehaviour
     private GraphicsBuffer triangles, positions, uvs;
     private RenderParams renderParams;
     private Matrix4x4 projMat, viewMat;
+    private Vector4[] points;
 
     private const string CullingMaskLayerName = "Rasterized";
 
@@ -27,17 +30,23 @@ public class UnityRP : MonoBehaviour
         verticies = projectionResolution.x * projectionResolution.y;
         indicies = verticies * 6;
 
+        points = new Vector4[pointTransforms.Length];
+
         cullingMaskLayer = LayerMask.NameToLayer(CullingMaskLayerName);
         material = new Material(shader);
-        computeWorldSpacePositionMaterial = new Material(computeWorldSpacePosition);
-        target = new RenderTexture(projectionResolution.x, projectionResolution.y, 0);
+        computeWorldSpacePositionMaterial = new Material(computeWorldSpacePositionShader);
+        computeWorldSpacePositionMaterial.SetFloat("PI", Mathf.PI);
+        computeWorldSpacePositionMaterial.SetTexture("_Input0", input0);
+        computeWorldSpacePositionMaterial.SetTexture("_Input1", input1);
+        computeWorldSpacePositionMaterial.SetTexture("_Input2", input2);
+
+        target = new RenderTexture(projectionResolution.x, projectionResolution.y, 24);
         target.format = RenderTextureFormat.Depth;
         mainCamera = Camera.main;
-        mainCamera.targetTexture = target;
-        mainCamera.depthTextureMode = DepthTextureMode.Depth;
+        renderCamera.targetTexture = target;
+        renderCamera.depthTextureMode = DepthTextureMode.Depth;
 
         projMat = GL.GetGPUProjectionMatrix(mainCamera.projectionMatrix, false);
-        viewMat = mainCamera.worldToCameraMatrix;
 
         triangles = new GraphicsBuffer(GraphicsBuffer.Target.Structured, indicies, sizeof(int));
         positions = new GraphicsBuffer(GraphicsBuffer.Target.Structured, verticies, 3 * sizeof(float));
@@ -72,12 +81,19 @@ public class UnityRP : MonoBehaviour
 
     void Update()
     {
+        viewMat = mainCamera.worldToCameraMatrix;
         Matrix4x4 objToWorldMat = Matrix4x4.Translate(meshTranslation);
-        // viewMat = Matrix4x4.identity;
         Matrix4x4 viewProjInvMat = (projMat * viewMat).inverse;
         loadTexels.SetMatrix("_ObjectToWorld", objToWorldMat);
         loadTexels.SetMatrix("_ViewProjInv", viewProjInvMat);
         computeWorldSpacePositionMaterial.SetMatrix("_ViewProjInv", viewProjInvMat);
+
+        for (int i = 0; i < points.Length; i++)
+        {
+            points[i] = pointTransforms[i].position;
+        }
+        computeWorldSpacePositionMaterial.SetVectorArray("POINTS", points);
+        computeWorldSpacePositionMaterial.SetVector("PCAM", mainCamera.transform.position);
 
         loadTexels.SetFloat("TIMESTEP", Time.time);
         loadTexels.Dispatch(loadTexelsKernelId, loadTexelsToBufferGroupSizeX, loadTexelsToBufferGroupSizeY, 1);

@@ -47,7 +47,7 @@ namespace PreRendering
         private const int MaximumShaderSupportedSlices = 8;
 
 
-        public DynamicRenderBuffer(int pass, int slices, Vector3[] meshTranslations, Transform parentTransform, Camera originalCamera, RenderTexture motionVectors, Resolution projectionResolution, Resolution rasterizationResolution, Shader rasterizationShader, Texture2D[] inputImages)
+        public DynamicRenderBuffer(int pass, int passes, int slices, Vector3[] meshTranslations, Transform parentTransform, Camera originalCamera, RenderTexture motionVectors, Resolution projectionResolution, Resolution rasterizationResolution, Shader rasterizationShader, Texture2D[] inputImages)
         {
             if (slices > MaximumShaderSupportedSlices)
             {
@@ -127,10 +127,18 @@ namespace PreRendering
                     depthTextures[slice].depthBuffer
                 );
 
+                if (pass != passes - 1)
+                {
+                    renderCameras[slice].allowMSAA = false;
+                }
+                else
+                {
+                    renderCameras[slice].allowMSAA = originalCamera.allowMSAA;
+                }
+
                 // copy some flags for comfort
-                renderCameras[slice].useOcclusionCulling = originalCamera.useOcclusionCulling;
                 renderCameras[slice].allowHDR = originalCamera.allowHDR;
-                renderCameras[slice].allowMSAA = originalCamera.allowMSAA;
+                renderCameras[slice].useOcclusionCulling = originalCamera.useOcclusionCulling;
                 renderCameras[slice].allowDynamicResolution = originalCamera.allowDynamicResolution;
 
                 // set render material properties

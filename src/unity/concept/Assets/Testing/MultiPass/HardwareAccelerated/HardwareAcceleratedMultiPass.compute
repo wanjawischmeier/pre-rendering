@@ -3,14 +3,12 @@
 #pragma multi_compile __ USE_PREVIOUS_PASS
 
 
-
-
 uniform bool VALIDATE_NEIGHBORS;
 uniform int SLICE, NUM_PREVIOUS_SLICES;
 uniform float PI, PI2, NCLIP, FCLIP, MAX_DIFFERENCE;
 uniform float2 INPUT_RESOLUTION, MOTION_VECTOR_RESOLUTION, PROJECTION_RESOLUTION, PREVIOUS_RASTERIZATION_RESOLUTION;
-
-
+uniform float3 P_CAM;
+uniform float4x4 VP_I;
 
 
 #pragma kernel CalculateMotionVectors
@@ -141,6 +139,30 @@ bool neighborsValid(float2 uv, int s)
     return true;
 }
 
+float2 vectorToUV(float3 vec)
+{
+    return float2(
+        atan2(vec.x, vec.z),
+        -acos(vec.y / length(vec))
+    ) / float2(PI2, PI) + float2(0.5, 0);
+}
+            
+float getRaySphereDistance(float3 a, float3 b, float3 c)
+{
+    float numerator = length(cross(c - a, c - b));
+    return numerator / length(b - a);
+}
+
+float3 approximateClosestSliceUV(inout float4 uv)
+{
+    float4 clipPos = float4(uv.xy * 2.0 - 1.0, 1, 1.0);
+    float4 worldPos = mul(VP_I, clipPos);
+    float3 P = worldPos.xyz / worldPos.w;
+    float2 tc = vectorToUV(P - P_CAM);
+    uv = float4(uv.xyz, uv.w);
+    return P - P_CAM;
+}
+
 [numthreads(1, 1, 1)]
 void LoadTexelsToBuffer(uint3 id : SV_DispatchThreadID)
 {
@@ -152,15 +174,19 @@ void LoadTexelsToBuffer(uint3 id : SV_DispatchThreadID)
     uint triIndex = i00 * 6;
     
     float4 uv = float4(NORMALIZE_RANGE(id.xy, PROJECTION_RESOLUTION), 0, SLICE);
-    float4 P = GetWorldSpacePositionAndTransformUV(uv);
-    
+    float3 P_tmp;
 #ifndef USE_PREVIOUS_PASS
-    if (P.w == 0 && false)  // TODO: not needed?
+    if (id.x > 150)
     {
-        // skip invalid verticies
-        _UVs[i00] = float4(0, 0, 0, -1);
-        return;
+        // P_tmp.xyz = approximateClosestSliceUV(uv);
+        
     }
+    uv.w = id.x > 150;
+#endif
+    
+    float4 P = GetWorldSpacePositionAndTransformUV(uv);
+#ifndef USE_PREVIOUS_PASS
+    // P = id.x > 150 ? P_tmp.xyzz : P;
     /*
     if (VALIDATE_NEIGHBORS && !neighborsValid(uv.xy, uv.w))
     {

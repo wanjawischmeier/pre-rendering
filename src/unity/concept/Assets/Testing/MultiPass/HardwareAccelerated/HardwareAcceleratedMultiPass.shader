@@ -176,7 +176,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 {
                     RETURN_INVALID_VERTEX();
                 }
-    
+                
                 float4 wpos = mul(_ObjectToWorldMatricies[slice], float4(pos, 1.0f));
     
                 if (DEBUG_MODE == 1 && RENDER_PASS != 0) // zSineFilled
@@ -192,7 +192,7 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
             ShaderOutput frag(v2f i) : SV_Target
             {
                 ShaderOutput o;
-                if (i.uv.w == -1)
+                if (i.uv.w == -1) // TODO: condition redundant?
                 {
                     o.color = float4(0, 0, 0, 0);
                 }

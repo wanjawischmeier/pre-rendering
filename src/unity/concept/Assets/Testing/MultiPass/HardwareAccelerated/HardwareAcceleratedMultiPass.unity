@@ -1044,6 +1044,7 @@ GameObject:
   - component: {fileID: 1481361356}
   - component: {fileID: 1481361358}
   - component: {fileID: 1481361357}
+  - component: {fileID: 1481361359}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -1103,8 +1104,8 @@ Camera:
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
   m_TargetEye: 3
-  m_HDR: 0
-  m_AllowMSAA: 0
+  m_HDR: 1
+  m_AllowMSAA: 1
   m_AllowDynamicResolution: 0
   m_ForceIntoRT: 0
   m_OcclusionCulling: 0
@@ -1168,9 +1169,9 @@ MonoBehaviour:
   - 1.6
   - 0.5
   fieldOfViewOffset: 10
-  dimensions: 0600000001000000
-  motionVectorResolution: {x: 2048, y: 1024}
-  projectionResolution: {x: 480, y: 270}
+  dimensions: 0200000001000000
+  motionVectorResolution: {x: 4096, y: 2048}
+  projectionResolution: {x: 960, y: 540}
   rasterizationResolution: {x: 1920, y: 1080}
   projectionResolutionCurve:
     serializedVersion: 2
@@ -1223,12 +1224,23 @@ MonoBehaviour:
   uiCamera: {fileID: 164921930}
   backgroundCamera: {fileID: 2043079906}
   uiDebugger: {fileID: 257802692}
-  debugMode: 0
+  rawCubemapFaceImages:
+  - {fileID: 2800000, guid: 18de664248b3fab40a34cce0a4683662, type: 3}
+  - {fileID: 2800000, guid: 565544ec3843002468ff55dc24cca6d8, type: 3}
+  - {fileID: 2800000, guid: 15dee280719cb374e9e1a7b65e1a2a04, type: 3}
+  - {fileID: 2800000, guid: 6310d48d0d18d2e46919af030259ecb5, type: 3}
+  - {fileID: 2800000, guid: 96c897eb2257ed048942b34408a75fcb, type: 3}
+  - {fileID: 2800000, guid: 0dc7171c53bdee742b86b92a761ec3d7, type: 3}
+  debugMode: 5
   debugPass: 0
   debugSlice: 0
   motionVectors: {fileID: 0}
   rasterized: []
   colliderMesh: {fileID: 0}
+  cubemapFaceImages: {fileID: 0}
+  cubePositions:
+  - {x: 0, y: 0, z: 0, w: 0}
+  - {x: 0, y: 0, z: 0, w: 0}
 --- !u!143 &1481361357
 CharacterController:
   m_ObjectHideFlags: 0
@@ -1271,6 +1283,23 @@ MonoBehaviour:
   rotationSpeed: 2
   moveJoystick: {fileID: 986326506}
   viewJoystick: {fileID: 1498703755}
+--- !u!114 &1481361359
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1481361352}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 33c1ddd61f2e3714e8143a2518738656, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  uv: {x: 0.6666667, y: 0.1666666}
+  depth: 3
+  faceIndex: 0
+  viewSpace: {x: 1.0000001, y: 2.0000005}
+  P: {x: 0, y: 0, z: 0, w: 0}
 --- !u!224 &1498703754 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 8135886326569738822, guid: 56fae09712773584fb63896d473a98ee, type: 3}
@@ -1469,7 +1498,7 @@ Transform:
   m_GameObject: {fileID: 2043079904}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -144.11533, y: 84.073, z: 2.3219614}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

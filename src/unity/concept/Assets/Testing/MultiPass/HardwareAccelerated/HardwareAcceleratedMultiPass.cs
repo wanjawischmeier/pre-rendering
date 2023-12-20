@@ -21,6 +21,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     public AnimationCurve projectionResolutionCurve, rasterizationResolutionCurve;
     public Camera uiCamera, backgroundCamera;
     public TextMeshProUGUI uiDebugger;
+    public Texture2D[] rawCubemapFaceImages;
 
     [Header("Debugging")]
     public DynamicRenderBuffer.DebugMode debugMode;
@@ -36,11 +37,68 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     private string compressionInfo;
     private Camera originalCamera;
     private RenderTexture uiTexture, backgroundTexture;
+    public Texture2DArray cubemapFaceImages;
     private Material postRasterizationMaterial;
     private GeometryLoader geometryLoader;
     private DynamicRenderBuffer[] renderBuffers;
     private Resolution[] projectionResolutions, rasterizationResolutions;
+    private Matrix4x4 projMat, viewMat, viewProjInvMat;
     private int debugModeCount = Enum.GetValues(typeof(DynamicRenderBuffer.DebugMode)).Length;
+
+    Matrix4x4[] orientationMatricies = new Matrix4x4[]
+    {
+        // positive x face (Depth, ViewY, -ViewX)
+        new Matrix4x4(
+            new Vector4(0, 0, -1, 0),
+            new Vector4(0, 1,  0, 0),
+            new Vector4(1, 0,  0, 0),
+            new Vector4(0, 0,  0, 1)
+        ),
+
+        // negative x face (-Depth, ViewY, ViewX)
+        new Matrix4x4(
+            new Vector4(0, 0, 1, 0),
+            new Vector4(0, 1, 0, 0),
+            new Vector4(-1, 0, 0, 0),
+            new Vector4(0, 0, 0, 1)
+        ),
+
+        // positive y face (ViewX, Depth, -ViewY)
+        new Matrix4x4(
+            new Vector4(1, 0, 0, 0),
+            new Vector4(0, 0, -1, 0),
+            new Vector4(0, 1, 0, 0),
+            new Vector4(0, 0, 0, 1)
+        ),
+
+        // negative y face (ViewX, -Depth, ViewY)
+        new Matrix4x4(
+            new Vector4(1, 0, 0, 0),
+            new Vector4(0, 0, 1, 0),
+            new Vector4(0, -1, 0, 0),
+            new Vector4(0, 0, 0, 1)
+        ),
+
+        // positive z face (ViewX, ViewY, Depth)
+        new Matrix4x4(
+            new Vector4(1, 0, 0, 0),
+            new Vector4(0, 1, 0, 0),
+            new Vector4(0, 0, 1, 0),
+            new Vector4(0, 0, 0, 1)
+        ),
+
+        // negative z face (-ViewX, ViewY, -Depth)
+        new Matrix4x4(
+            new Vector4(-1, 0, 0, 0),
+            new Vector4(0, 1, 0, 0),
+            new Vector4(0, 0, -1, 0),
+            new Vector4(0, 0, 0, 1)
+        )
+    };
+
+    public Vector4[] cubePositions = new Vector4[2];
+
+    Matrix4x4[] inverseOrientationMatricies;
 
 
     private Resolution CalculatePassResolutionFromCurve(int pass, Vector2Int inputResolution, AnimationCurve curve)
@@ -86,6 +144,8 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         originalCamera = GetComponent<Camera>();
         passes = dimensions.Length;
 
+        projMat = GL.GetGPUProjectionMatrix(backgroundCamera.projectionMatrix, false);
+
         // initialize resolution arrays
         projectionResolutions = new Resolution[passes];
         rasterizationResolutions = new Resolution[passes];
@@ -100,7 +160,19 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             height = motionVectorResolution.y
         };
 
-        int uncompressedTriangles = motionVectorResolution.x * motionVectorResolution.y;
+        inverseOrientationMatricies = new Matrix4x4[orientationMatricies.Length];
+        for (int faceIndex = 0; faceIndex < orientationMatricies.Length; faceIndex++)
+        {
+            inverseOrientationMatricies[faceIndex] = orientationMatricies[faceIndex].inverse;
+        }
+
+        var sampleTexture = rawCubemapFaceImages[0];
+        cubemapFaceImages = new Texture2DArray(sampleTexture.width, sampleTexture.height, rawCubemapFaceImages.Length, TextureFormat.RGBA64, false);
+        for (int faceIndex = 0; faceIndex < rawCubemapFaceImages.Length; faceIndex++)
+        {
+            Graphics.CopyTexture(rawCubemapFaceImages[faceIndex], 0, cubemapFaceImages, faceIndex);
+        }
+
         int compressedTriangles = 0;
         for (int pass = 0; pass < passes; pass++)
         {
@@ -108,7 +180,11 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             rasterizationResolutions[pass] = CalculatePassResolutionFromCurve(pass, rasterizationResolution, rasterizationResolutionCurve);
             compressedTriangles += projectionResolutions[pass].width * projectionResolutions[pass].height * dimensions[pass] * 2;
         }
-        compressionInfo = $"{FormatLargeInteger(uncompressedTriangles)} -> {FormatLargeInteger(compressedTriangles)}\t{100 - Math.Round(compressedTriangles / (float)uncompressedTriangles, 2) * 100}%";
+        int compressedFinalTriangles = projectionResolutions[passes - 1].width * projectionResolutions[passes - 1].height;
+        int uncompressedTriangles = motionVectorResolution.x * motionVectorResolution.y;
+        compressionInfo = $"{FormatLargeInteger(uncompressedTriangles)} -> " +
+            $"{FormatLargeInteger(compressedTriangles)} ({FormatLargeInteger(compressedFinalTriangles)})\t" +
+            $"{100 - Math.Round(compressedTriangles / (float)uncompressedTriangles, 2) * 100}%";
 
         // create geometry loader and populate first mesh buffer, as that one will not change
         geometryLoader = new GeometryLoader(dimensions[0], map, computeShader, inputResolution, _motionVectorResolution, projectionResolutions, rasterizationResolutions);
@@ -124,7 +200,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             Debug.Log($"Rasterization Resolution {pass}: {rasterizationResolutions[pass]}");
 
             renderBuffers[pass] = new DynamicRenderBuffer(
-                pass, dimensions[pass], meshTranslations, transform, originalCamera, geometryLoader.motionVectors,
+                pass, passes, dimensions[pass], meshTranslations, transform, originalCamera, geometryLoader.motionVectors,
                 projectionResolutions[pass], rasterizationResolutions[pass], rasterizationShader, inputImages
             );
         }
@@ -135,7 +211,10 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         postRasterizationMaterial = new Material(postRasterizationShader);
         postRasterizationMaterial.SetInt("NUM_SLICES", renderBuffers[passes - 1].slices);
         postRasterizationMaterial.SetVector("RESOLUTION", rasterizationResolution.ToVector2());
-;
+        postRasterizationMaterial.SetMatrixArray("ORIENTATION_MATRICIES", orientationMatricies);
+        postRasterizationMaterial.SetMatrixArray("INVERSE_ORIENTATION_MATRICIES", inverseOrientationMatricies);
+        postRasterizationMaterial.SetTexture("_CubemapFaces", cubemapFaceImages);
+
         uiTexture = new RenderTexture(Screen.width, Screen.height, 0);
         uiCamera.targetTexture = uiTexture;
         postRasterizationMaterial.SetTexture("_UI", uiTexture);
@@ -228,6 +307,11 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
                 $"Debugging Slice:\t\t\t{debugSlice + 1} / {dimensions[debugPass]}";
         }
 
+        viewMat = backgroundCamera.worldToCameraMatrix;
+        viewProjInvMat = (projMat * viewMat).inverse;
+        Shader.SetGlobalMatrix("VP_I", viewProjInvMat);         // 1st pass load texel kernels also need the inverse vp matrix
+        Shader.SetGlobalVector("P_CAM", transform.position);    // TODO: set this locally!
+        
         double startTime;
         double populateTime = 0;
         double renderTime = 0;
@@ -257,6 +341,8 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         postRasterizationMaterial.SetInt("DEBUG_MODE", (int)debugMode);
         postRasterizationMaterial.SetFloat("MAX_CIRCUMFERENCE", maxCircumferences[passes - 1]);
         postRasterizationMaterial.SetFloat("DEPTH_OFFSET", depthOffset);
+        postRasterizationMaterial.SetVector("CAMERA_POSITION", new Vector4(transform.position.x, transform.position.y, transform.position.z, 1));
+        postRasterizationMaterial.SetVectorArray("CUBE_POSITIONS", cubePositions);
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
