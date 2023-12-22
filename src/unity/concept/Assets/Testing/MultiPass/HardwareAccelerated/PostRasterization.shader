@@ -41,6 +41,9 @@ Shader"PreRendering/PostRasterization"
                 o.uv = v.uv;
                 return o;
             }
+            
+            #define FCLIP 30
+            #define NCLIP 0.1
 
             uniform int NUM_SLICES, DEBUG_MODE, UI_DEBUGGER, SLICE, MAX_CIRCUMFERENCE;
             uniform float INTERPOLATION_RANGE, DEPTH_OFFSET;
@@ -56,7 +59,7 @@ Shader"PreRendering/PostRasterization"
             Texture2D _Input0, _Input1, _Input2, _Input3, _Input4, _Input5, _Input6, _Input7;
             Texture2D _Coordinates0, _Coordinates1, _Coordinates2, _Coordinates3, _Coordinates4, _Coordinates5, _Coordinates6, _Coordinates7;
             Texture2D _Depth0, _Depth1, _Depth2, _Depth3, _Depth4, _Depth5, _Depth6, _Depth7;
-            Texture2DArray _CubemapFaces;
+            Texture2DArray<float4> _CubemapFaces;
 
             float4 interpolateColors(float4 color0, float4 color1, float blurriness0, float blurriness1)
             {
@@ -166,7 +169,7 @@ Shader"PreRendering/PostRasterization"
                     if (viewDirectionFaceSpace.z > 0.0001)
                     {
                         [unroll]
-                        for (currentCubemapIndex = 0; currentCubemapIndex < 3; currentCubemapIndex++)
+                        for (currentCubemapIndex = 0; currentCubemapIndex < 2; currentCubemapIndex++)
                         {
                             // transform the camera position to face space
                             cubePosition = CUBE_POSITIONS[currentCubemapIndex];
@@ -202,24 +205,37 @@ Shader"PreRendering/PostRasterization"
                 return closestCubeIntersection;
             }
 
-            float4 ScreenUVToCubemapUV(float2 screenUV)
+            float3 ScreenUVToCubemapUV(float2 screenUV)
             {
-                float4 viewRayClip = float4(screenUV * 2.0 - 1.0, 0, 1);
-                float4 viewRayWorld = mul(VP_I, viewRayClip);
-                float3 viewDirection = normalize(viewRayWorld.xyz); // TODO: redundant?
+                float4 viewRayClip = float4(screenUV * 2 - 1, 0, 1);
+                float3 viewRayWorld = mul(VP_I, viewRayClip).xyz;
                 
                 int faceIndex, cubemapIndex;
-                float3 intersectionPoint = IntersectViewRayWithCubemaps(viewDirection, faceIndex, cubemapIndex);
+                float3 intersectionPoint = IntersectViewRayWithCubemaps(viewRayWorld, faceIndex, cubemapIndex);
                 if (faceIndex == -1)
                 {
-                    return float4(-1, -1, -1, -1);
+                    return float3(-1, -1, -1);
                 }
                 
-                return float4(intersectionPoint.xy / 2 / CUBEMAP_SCALE + 0.5, faceIndex, cubemapIndex);
+                return float3(intersectionPoint.xy / CUBEMAP_SCALE / 2 + 0.5, CUBEMAP_FACE_COUNT * cubemapIndex + faceIndex);
+            }
+
+            float3 GetCubemapWorldSpacePosition(float3 cubemapUV)
+            {
+                int faceIndex = cubemapUV.z % CUBEMAP_FACE_COUNT;
+                int cubemapIndex = (cubemapUV.z - faceIndex) / CUBEMAP_FACE_COUNT;
+                float depth = _CubemapFaces.Sample(sampler_linear_repeat, cubemapUV).a;
+                depth = depth * (FCLIP - NCLIP) + NCLIP;
+    
+                float2 viewSpace = (cubemapUV * 2 - 1) * depth;
+                float4 pos = float4(viewSpace, depth, 1);
+                pos = mul(ORIENTATION_MATRICIES[faceIndex], pos);
+                return pos + 0 * CUBE_POSITIONS[cubemapIndex];
             }
             
             fixed4 frag (v2f i) : SV_Target
             {
+                /*
                 float depth = 1;
                 float2 viewSpace = float2(2 * i.uv.x - 1, 1 - 2 * i.uv.y) * depth;
                 float4 pos = float4(viewSpace, depth, 1);
@@ -227,10 +243,17 @@ Shader"PreRendering/PostRasterization"
                 float4 pos2 = mul(ORIENTATION_MATRICIES[0], pos);
                 // return fixed4(all(pos2 == float4(-1, 2, -3, 4)).xxx, 1);
                 // return pos2;
-    
+                */
                 float3 cubemapUV = ScreenUVToCubemapUV(i.uv);
+                if (cubemapUV.z == -1)
+                {
+                    return fixed4(0, 0, 0, 1);
+                }
+                
+                float3 pos = GetCubemapWorldSpacePosition(cubemapUV);
+                // return fixed4(pos, 1);
                 // return fixed4(cubemapUV.xy, cubemapUV.z / 5.0, 1);
-                return _CubemapFaces.Sample(sampler_linear_repeat, cubemapUV);
+                // return _CubemapFaces.Sample(sampler_linear_repeat, cubemapUV).aaaa;
                 /*
                 float4 uv = _Coordinates0.Sample(sampler_linear_repeat, i.uv);
                 if (uv.w >= 1)

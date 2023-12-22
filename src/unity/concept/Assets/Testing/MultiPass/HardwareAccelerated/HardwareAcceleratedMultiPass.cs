@@ -211,9 +211,12 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         postRasterizationMaterial = new Material(postRasterizationShader);
         postRasterizationMaterial.SetInt("NUM_SLICES", renderBuffers[passes - 1].slices);
         postRasterizationMaterial.SetVector("RESOLUTION", rasterizationResolution.ToVector2());
-        postRasterizationMaterial.SetMatrixArray("ORIENTATION_MATRICIES", orientationMatricies);
-        postRasterizationMaterial.SetMatrixArray("INVERSE_ORIENTATION_MATRICIES", inverseOrientationMatricies);
-        postRasterizationMaterial.SetTexture("_CubemapFaces", cubemapFaceImages);
+        // postRasterizationMaterial.SetMatrixArray("ORIENTATION_MATRICIES", orientationMatricies);
+        // postRasterizationMaterial.SetMatrixArray("INVERSE_ORIENTATION_MATRICIES", inverseOrientationMatricies);
+        // postRasterizationMaterial.SetTexture("_CubemapFaces", cubemapFaceImages);
+        Shader.SetGlobalMatrixArray("ORIENTATION_MATRICIES", orientationMatricies);
+        Shader.SetGlobalMatrixArray("INVERSE_ORIENTATION_MATRICIES", inverseOrientationMatricies);
+        Shader.SetGlobalTexture("_CubemapFaces", cubemapFaceImages);
 
         uiTexture = new RenderTexture(Screen.width, Screen.height, 0);
         uiCamera.targetTexture = uiTexture;
@@ -309,8 +312,8 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
 
         viewMat = backgroundCamera.worldToCameraMatrix;
         viewProjInvMat = (projMat * viewMat).inverse;
-        Shader.SetGlobalMatrix("VP_I", viewProjInvMat);         // 1st pass load texel kernels also need the inverse vp matrix
-        Shader.SetGlobalVector("P_CAM", transform.position);    // TODO: set this locally!
+        Shader.SetGlobalMatrix("VP_I", viewProjInvMat); // 1st pass load texel kernels also need the inverse vp matrix
+        Shader.SetGlobalVector("P_CAM", new Vector4(transform.position.x, transform.position.y, transform.position.z, 1));  // TODO: set this locally!
         
         double startTime;
         double populateTime = 0;

@@ -1231,6 +1231,12 @@ MonoBehaviour:
   - {fileID: 2800000, guid: 6310d48d0d18d2e46919af030259ecb5, type: 3}
   - {fileID: 2800000, guid: 96c897eb2257ed048942b34408a75fcb, type: 3}
   - {fileID: 2800000, guid: 0dc7171c53bdee742b86b92a761ec3d7, type: 3}
+  - {fileID: 2800000, guid: 48caaa22aa1ff3043b4b9f0e785e0dd5, type: 3}
+  - {fileID: 2800000, guid: 2f104c07bb6b4e84289261e1ddfce462, type: 3}
+  - {fileID: 2800000, guid: 51b65635d5de1df4ca02e025626a2c64, type: 3}
+  - {fileID: 2800000, guid: f6af4f67c4d13c144945e8bceced2f3c, type: 3}
+  - {fileID: 2800000, guid: 65b2a89d7d25f8b418e6eade79e322c1, type: 3}
+  - {fileID: 2800000, guid: fd139163e68544744b4006006744a778, type: 3}
   debugMode: 5
   debugPass: 0
   debugSlice: 0
@@ -1239,8 +1245,8 @@ MonoBehaviour:
   colliderMesh: {fileID: 0}
   cubemapFaceImages: {fileID: 0}
   cubePositions:
-  - {x: 0, y: 0, z: 0, w: 0}
-  - {x: 0, y: 0, z: 0, w: 0}
+  - {x: -2, y: 0, z: -10, w: 0}
+  - {x: 9, y: 0, z: 2, w: 0}
 --- !u!143 &1481361357
 CharacterController:
   m_ObjectHideFlags: 0

@@ -4,7 +4,7 @@
 #define DEPTH_TOLERANCE 0.0001
 #define VALIDATION_ITERATIONS 0
 #define CUBEMAP_FACE_COUNT 6
-#define CUBEMAP_SCALE 5 // TODO: equivalent to FCLIP?
+#define CUBEMAP_SCALE 10 // TODO: equivalent to FCLIP?
 
 
 #define MAP_TO_RANGE(tc, targetRange)                                       \
