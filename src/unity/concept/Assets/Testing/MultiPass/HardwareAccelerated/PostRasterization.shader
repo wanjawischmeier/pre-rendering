@@ -244,6 +244,7 @@ Shader"PreRendering/PostRasterization"
                 // return fixed4(all(pos2 == float4(-1, 2, -3, 4)).xxx, 1);
                 // return pos2;
                 */
+                /*
                 float3 cubemapUV = ScreenUVToCubemapUV(i.uv);
                 if (cubemapUV.z == -1)
                 {
@@ -251,6 +252,7 @@ Shader"PreRendering/PostRasterization"
                 }
                 
                 float3 pos = GetCubemapWorldSpacePosition(cubemapUV);
+                */
                 // return fixed4(pos, 1);
                 // return fixed4(cubemapUV.xy, cubemapUV.z / 5.0, 1);
                 // return _CubemapFaces.Sample(sampler_linear_repeat, cubemapUV).aaaa;

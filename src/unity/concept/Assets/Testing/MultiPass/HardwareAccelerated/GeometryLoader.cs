@@ -27,6 +27,7 @@ namespace PreRendering
 
         public readonly RenderTexture motionVectors;
         public ComputeShader computeShader;
+        private Texture2DArray cubemapFaceImages;
         private Resolution inputResolution;
         private Resolution[] projectionResolutions, rasterizationResolutions;
         private UnityEngine.Rendering.LocalKeyword usePreviousPassComputeShaderKeyword;
@@ -82,7 +83,7 @@ namespace PreRendering
             computeShader.SetTexture(loadTexelsToBufferKernelId, "_MotionVectors", motionVectors);
         }
 
-        public void CalculateMotionVectors(Texture2D[] images)
+        public void CalculateMotionVectors(Texture2D[] images, Texture2D[] rawCubemapFaceImages)
         {
             // check texture compatability with buffer
             if (images.Length < bufferSize)
@@ -90,6 +91,14 @@ namespace PreRendering
                 Debug.LogError($"Not enough images provided (buffer has size {bufferSize}, provided {images.Length} images).");
                 return;
             }
+
+            var sampleTexture = rawCubemapFaceImages[0];
+            cubemapFaceImages = new Texture2DArray(sampleTexture.width, sampleTexture.height, rawCubemapFaceImages.Length, TextureFormat.RGBA64, false);
+            for (int faceIndex = 0; faceIndex < rawCubemapFaceImages.Length; faceIndex++)
+            {
+                Graphics.CopyTexture(rawCubemapFaceImages[faceIndex], 0, cubemapFaceImages, faceIndex);
+            }
+            computeShader.SetTexture(loadTexelsToBufferKernelId, "_CubemapFaces", cubemapFaceImages);
 
             for (int slice = 0; slice < bufferSize; slice++)
             {
@@ -121,6 +130,7 @@ namespace PreRendering
             computeShader.SetInt("RENDER_PASS", pass);
             computeShader.SetVector("PROJECTION_RESOLUTION", projectionResolutions[pass].ToVector2());
             computeShader.SetKeyword(usePreviousPassComputeShaderKeyword, pass != 0);
+
             if (pass != 0)
             {
                 Vector3 previousRasterizationResolution = rasterizationResolutions[pass - 1].ToVector2();
@@ -147,7 +157,8 @@ namespace PreRendering
                 computeShader.Dispatch(
                     loadTexelsToBufferKernelId,
                     loadTexelsToBufferGroupSizesX[pass],
-                    loadTexelsToBufferGroupSizesY[pass], 1
+                    loadTexelsToBufferGroupSizesY[pass],
+                    6
                 );
             }
         }

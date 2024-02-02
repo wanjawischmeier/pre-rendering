@@ -103,7 +103,6 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 }
                 */
                 int baseIndex = v.vertexID - v.vertexID % 3;
-                int offset = PROJECTION_RESOLUTION.x * PROJECTION_RESOLUTION.y;
                 int index0 = _Triangles[baseIndex + 0 + _StartIndex] + _BaseVertexIndex;
                 int index1 = _Triangles[baseIndex + 1 + _StartIndex] + _BaseVertexIndex;
                 int index2 = _Triangles[baseIndex + 2 + _StartIndex] + _BaseVertexIndex;
@@ -178,7 +177,9 @@ Shader"PreRendering/HardwareAcceleratedMultiPass"
                 }
                 
                 // float4 wpos = mul(_ObjectToWorldMatricies[slice], float4(pos, 1.0f));
-                float4 wpos = float4(pos, 1.0f);
+                float4 wpos = mul(_ObjectToWorldMatricies[0], float4(pos, 1.0f));
+                // float4 wpos = pos;
+                // float4 wpos = float4(pos, 1.0f);
                 if (DEBUG_MODE == 1 && RENDER_PASS != 0) // zSineFilled
                 {
                     wpos.y += sin(TIMESTEP) * sin(length(wpos) * 8) * (4 / length(wpos));

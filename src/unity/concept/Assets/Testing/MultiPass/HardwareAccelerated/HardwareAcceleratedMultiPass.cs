@@ -37,7 +37,6 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     private string compressionInfo;
     private Camera originalCamera;
     private RenderTexture uiTexture, backgroundTexture;
-    public Texture2DArray cubemapFaceImages;
     private Material postRasterizationMaterial;
     private GeometryLoader geometryLoader;
     private DynamicRenderBuffer[] renderBuffers;
@@ -166,13 +165,6 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             inverseOrientationMatricies[faceIndex] = orientationMatricies[faceIndex].inverse;
         }
 
-        var sampleTexture = rawCubemapFaceImages[0];
-        cubemapFaceImages = new Texture2DArray(sampleTexture.width, sampleTexture.height, rawCubemapFaceImages.Length, TextureFormat.RGBA64, false);
-        for (int faceIndex = 0; faceIndex < rawCubemapFaceImages.Length; faceIndex++)
-        {
-            Graphics.CopyTexture(rawCubemapFaceImages[faceIndex], 0, cubemapFaceImages, faceIndex);
-        }
-
         int compressedTriangles = 0;
         for (int pass = 0; pass < passes; pass++)
         {
@@ -189,7 +181,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         // create geometry loader and populate first mesh buffer, as that one will not change
         geometryLoader = new GeometryLoader(dimensions[0], map, computeShader, inputResolution, _motionVectorResolution, projectionResolutions, rasterizationResolutions);
         geometryLoader.computeShader.SetFloat("MAX_DIFFERENCE", maxDifference);
-        geometryLoader.CalculateMotionVectors(inputImages);
+        geometryLoader.CalculateMotionVectors(inputImages, rawCubemapFaceImages);
 
         // initialize render buffers
         renderBuffers = new DynamicRenderBuffer[passes];
@@ -216,7 +208,6 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         // postRasterizationMaterial.SetTexture("_CubemapFaces", cubemapFaceImages);
         Shader.SetGlobalMatrixArray("ORIENTATION_MATRICIES", orientationMatricies);
         Shader.SetGlobalMatrixArray("INVERSE_ORIENTATION_MATRICIES", inverseOrientationMatricies);
-        Shader.SetGlobalTexture("_CubemapFaces", cubemapFaceImages);
 
         uiTexture = new RenderTexture(Screen.width, Screen.height, 0);
         uiCamera.targetTexture = uiTexture;

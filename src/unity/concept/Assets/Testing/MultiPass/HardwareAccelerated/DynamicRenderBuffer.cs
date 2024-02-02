@@ -45,6 +45,8 @@ namespace PreRendering
 
         private const string CullingMaskLayerName = "Rasterized";
         private const int MaximumShaderSupportedSlices = 8;
+        private const int CubemapFaceCount = 6;
+        private const int TriangulationVertexRatio = 6;
 
 
         public DynamicRenderBuffer(int pass, int passes, int slices, Vector3[] meshTranslations, Transform parentTransform, Camera originalCamera, RenderTexture motionVectors, Resolution projectionResolution, Resolution rasterizationResolution, Shader rasterizationShader, Texture2D[] inputImages)
@@ -90,8 +92,8 @@ namespace PreRendering
 
             // calculate buffer constants
             cullingMaskLayer = LayerMask.NameToLayer(CullingMaskLayerName);
-            verticies = projectionResolution.width * projectionResolution.height;
-            indicies = verticies * 6;
+            verticies = projectionResolution.width * projectionResolution.height * CubemapFaceCount;
+            indicies = verticies * TriangulationVertexRatio;
 
             for (int slice = 0; slice < slices; slice++)
             {

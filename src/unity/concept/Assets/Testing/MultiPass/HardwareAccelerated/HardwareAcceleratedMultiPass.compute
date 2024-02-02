@@ -161,7 +161,10 @@ float4 GetCubemapWorldSpacePosition(float3 cubemapUV)
 {
     int faceIndex = cubemapUV.z % CUBEMAP_FACE_COUNT;
     int cubemapIndex = (cubemapUV.z - faceIndex) / CUBEMAP_FACE_COUNT;
-    float depth = _CubemapFaces.SampleLevel(sampler_linear_repeat, cubemapUV, 0).a;
+    float depth = _CubemapFaces.SampleLevel(sampler_linear_repeat, float3(cubemapUV.xy, cubemapUV.z + 0), 0).a;
+    // return float4(cubemapUV.xy, depth, 1);
+
+    faceIndex += 0;
     if (depth == 0)
     {
         return float4(0, 0, 0, -1);
@@ -177,6 +180,7 @@ float4 GetCubemapWorldSpacePosition(float3 cubemapUV)
 
 float4 GetWorldSpacePositionAndTransformUV(inout float4 uv)
 {
+    /*
 #ifdef USE_PREVIOUS_PASS
     float d0, d1 = 0;
     float2 rc = MAP_TO_RANGE(uv.xy, PREVIOUS_RASTERIZATION_RESOLUTION);
@@ -208,11 +212,11 @@ float4 GetWorldSpacePositionAndTransformUV(inout float4 uv)
         }
     }
 #else
-    uv.xyw = ScreenToClosestCubemapFaceUV(uv.xy);
+    // uv.xyw = ScreenToClosestCubemapFaceUV(uv.xy);
 #endif
-    
-    return _MotionVectors.SampleLevel(sampler_linear_repeat, uv.xyw, 0);
-    // return GetCubemapWorldSpacePosition(uv.xyw);
+    */
+    // return _MotionVectors.SampleLevel(sampler_linear_repeat, uv.xyw, 0);
+    return GetCubemapWorldSpacePosition(float3(uv.xyw));
 }
 
 bool neighborsValid(float2 uv, int s)
@@ -267,12 +271,13 @@ void LoadTexelsToBuffer(uint3 id : SV_DispatchThreadID)
 {
     // calculate vertex and tri indicies
     uint i00 = id.x + id.y * PROJECTION_RESOLUTION.x;
+    i00 += PROJECTION_RESOLUTION.x * PROJECTION_RESOLUTION.y * id.z;
     uint i10 = i00 + 1;
     uint i01 = i00 + PROJECTION_RESOLUTION.x;
     uint i11 = i01 + 1;
     uint triIndex = i00 * 6;
     
-    float4 uv = float4(NORMALIZE_RANGE(id.xy, PROJECTION_RESOLUTION), 0, SLICE);
+    float4 uv = float4(NORMALIZE_RANGE(id.xy, PROJECTION_RESOLUTION), 0, SLICE + id.z);
     float3 P_tmp;
 #ifndef USE_PREVIOUS_PASS
     if (id.x > 150)
