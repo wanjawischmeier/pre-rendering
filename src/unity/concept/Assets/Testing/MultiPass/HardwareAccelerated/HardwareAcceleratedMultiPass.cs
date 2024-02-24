@@ -17,7 +17,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     public float[] maxCircumferences;
     public int fieldOfViewOffset = 10;
     public int[] dimensions;
-    public Vector2Int motionVectorResolution, projectionResolution, rasterizationResolution;
+    public Vector2Int[] rawProjectionResolutions, rawRasterizationResolutions;
     public AnimationCurve projectionResolutionCurve, rasterizationResolutionCurve;
     public Camera uiCamera, backgroundCamera;
     public TextMeshProUGUI uiDebugger;
@@ -28,9 +28,9 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     public int debugPass, debugSlice;
 
     [Header("Debugging Values")]
-    public RenderTexture motionVectors;
     public RenderTexture[] rasterized;
     public Mesh colliderMesh;
+    public Texture2DArray cubemapFaceImages;
 
     private bool previousUIDebuggerState = false;
     private int passes;
@@ -43,61 +43,8 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
     private Resolution[] projectionResolutions, rasterizationResolutions;
     private Matrix4x4 projMat, viewMat, viewProjInvMat;
     private int debugModeCount = Enum.GetValues(typeof(DynamicRenderBuffer.DebugMode)).Length;
-
-    Matrix4x4[] orientationMatricies = new Matrix4x4[]
-    {
-        // positive x face (Depth, ViewY, -ViewX)
-        new Matrix4x4(
-            new Vector4(0, 0, -1, 0),
-            new Vector4(0, 1,  0, 0),
-            new Vector4(1, 0,  0, 0),
-            new Vector4(0, 0,  0, 1)
-        ),
-
-        // negative x face (-Depth, ViewY, ViewX)
-        new Matrix4x4(
-            new Vector4(0, 0, 1, 0),
-            new Vector4(0, 1, 0, 0),
-            new Vector4(-1, 0, 0, 0),
-            new Vector4(0, 0, 0, 1)
-        ),
-
-        // positive y face (ViewX, Depth, -ViewY)
-        new Matrix4x4(
-            new Vector4(1, 0, 0, 0),
-            new Vector4(0, 0, -1, 0),
-            new Vector4(0, 1, 0, 0),
-            new Vector4(0, 0, 0, 1)
-        ),
-
-        // negative y face (ViewX, -Depth, ViewY)
-        new Matrix4x4(
-            new Vector4(1, 0, 0, 0),
-            new Vector4(0, 0, 1, 0),
-            new Vector4(0, -1, 0, 0),
-            new Vector4(0, 0, 0, 1)
-        ),
-
-        // positive z face (ViewX, ViewY, Depth)
-        new Matrix4x4(
-            new Vector4(1, 0, 0, 0),
-            new Vector4(0, 1, 0, 0),
-            new Vector4(0, 0, 1, 0),
-            new Vector4(0, 0, 0, 1)
-        ),
-
-        // negative z face (-ViewX, ViewY, -Depth)
-        new Matrix4x4(
-            new Vector4(-1, 0, 0, 0),
-            new Vector4(0, 1, 0, 0),
-            new Vector4(0, 0, -1, 0),
-            new Vector4(0, 0, 0, 1)
-        )
-    };
-
-    public Vector4[] cubePositions = new Vector4[2];
-
-    Matrix4x4[] inverseOrientationMatricies;
+    
+    public Vector4[] cubePositions;
 
 
     private Resolution CalculatePassResolutionFromCurve(int pass, Vector2Int inputResolution, AnimationCurve curve)
@@ -153,35 +100,46 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             width = inputImages[0].width,
             height = inputImages[0].height
         };
-        var _motionVectorResolution = new Resolution()
-        {
-            width = motionVectorResolution.x,
-            height = motionVectorResolution.y
-        };
-
-        inverseOrientationMatricies = new Matrix4x4[orientationMatricies.Length];
-        for (int faceIndex = 0; faceIndex < orientationMatricies.Length; faceIndex++)
-        {
-            inverseOrientationMatricies[faceIndex] = orientationMatricies[faceIndex].inverse;
-        }
 
         int compressedTriangles = 0;
         for (int pass = 0; pass < passes; pass++)
         {
-            projectionResolutions[pass] = CalculatePassResolutionFromCurve(pass, projectionResolution, projectionResolutionCurve);
-            rasterizationResolutions[pass] = CalculatePassResolutionFromCurve(pass, rasterizationResolution, rasterizationResolutionCurve);
+            // projectionResolutions[pass] = CalculatePassResolutionFromCurve(pass, projectionResolution, projectionResolutionCurve);
+            // rasterizationResolutions[pass] = CalculatePassResolutionFromCurve(pass, rasterizationResolution, rasterizationResolutionCurve);
+            projectionResolutions[pass] = new Resolution
+            {
+                width = rawProjectionResolutions[pass].x,
+                height = rawProjectionResolutions[pass].y,
+            };
+            rasterizationResolutions[pass] = new Resolution
+            {
+                width = rawRasterizationResolutions[pass].x,
+                height = rawRasterizationResolutions[pass].y,
+            };
             compressedTriangles += projectionResolutions[pass].width * projectionResolutions[pass].height * dimensions[pass] * 2;
         }
+
         int compressedFinalTriangles = projectionResolutions[passes - 1].width * projectionResolutions[passes - 1].height;
-        int uncompressedTriangles = motionVectorResolution.x * motionVectorResolution.y;
+        int uncompressedTriangles = rawCubemapFaceImages[0].width * rawCubemapFaceImages[0].height * rawCubemapFaceImages.Length;
         compressionInfo = $"{FormatLargeInteger(uncompressedTriangles)} -> " +
             $"{FormatLargeInteger(compressedTriangles)} ({FormatLargeInteger(compressedFinalTriangles)})\t" +
             $"{100 - Math.Round(compressedTriangles / (float)uncompressedTriangles, 2) * 100}%";
 
+        var sampleTexture = rawCubemapFaceImages[0];
+        cubemapFaceImages = new Texture2DArray(sampleTexture.width, sampleTexture.height, rawCubemapFaceImages.Length, sampleTexture.format, false);
+        for (int faceIndex = 0; faceIndex < rawCubemapFaceImages.Length; faceIndex++)
+        {
+            Graphics.CopyTexture(rawCubemapFaceImages[faceIndex], 0, cubemapFaceImages, faceIndex);
+            Debug.Log($"Loading Texture: {faceIndex + 1}/{rawCubemapFaceImages.Length}");
+        }
+
         // create geometry loader and populate first mesh buffer, as that one will not change
-        geometryLoader = new GeometryLoader(dimensions[0], map, computeShader, inputResolution, _motionVectorResolution, projectionResolutions, rasterizationResolutions);
+        geometryLoader = new GeometryLoader(
+            dimensions[0], map, computeShader,
+            cubemapFaceImages, projectionResolutions,
+            rasterizationResolutions, cubePositions
+        );
         geometryLoader.computeShader.SetFloat("MAX_DIFFERENCE", maxDifference);
-        geometryLoader.CalculateMotionVectors(inputImages, rawCubemapFaceImages);
 
         // initialize render buffers
         renderBuffers = new DynamicRenderBuffer[passes];
@@ -192,22 +150,17 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             Debug.Log($"Rasterization Resolution {pass}: {rasterizationResolutions[pass]}");
 
             renderBuffers[pass] = new DynamicRenderBuffer(
-                pass, passes, dimensions[pass], meshTranslations, transform, originalCamera, geometryLoader.motionVectors,
-                projectionResolutions[pass], rasterizationResolutions[pass], rasterizationShader, inputImages
+                pass, passes, dimensions[pass], meshTranslations, transform, originalCamera,
+                projectionResolutions[pass], rasterizationResolutions[pass], rasterizationShader, cubemapFaceImages
             );
         }
 
         geometryLoader.validateNeighbors = validateNeighbors;
-        geometryLoader.PopulateMeshBuffer(renderBuffers, 0);
+        geometryLoader.PopulateMeshBuffer(renderBuffers, 0, cubePositions);
 
         postRasterizationMaterial = new Material(postRasterizationShader);
         postRasterizationMaterial.SetInt("NUM_SLICES", renderBuffers[passes - 1].slices);
-        postRasterizationMaterial.SetVector("RESOLUTION", rasterizationResolution.ToVector2());
-        // postRasterizationMaterial.SetMatrixArray("ORIENTATION_MATRICIES", orientationMatricies);
-        // postRasterizationMaterial.SetMatrixArray("INVERSE_ORIENTATION_MATRICIES", inverseOrientationMatricies);
-        // postRasterizationMaterial.SetTexture("_CubemapFaces", cubemapFaceImages);
-        Shader.SetGlobalMatrixArray("ORIENTATION_MATRICIES", orientationMatricies);
-        Shader.SetGlobalMatrixArray("INVERSE_ORIENTATION_MATRICIES", inverseOrientationMatricies);
+        postRasterizationMaterial.SetVector("RESOLUTION", rasterizationResolutions[passes - 1].ToVector2());
 
         uiTexture = new RenderTexture(Screen.width, Screen.height, 0);
         uiCamera.targetTexture = uiTexture;
@@ -222,33 +175,22 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         }
 
         var lastRenderBuffer = renderBuffers[passes - 1];
-        for (int slice = 0; slice < lastRenderBuffer.slices; slice++)
-        {
-            postRasterizationMaterial.SetTexture($"_Coordinates{slice}", lastRenderBuffer.targetTextures[slice]);
-            postRasterizationMaterial.SetTexture($"_Depth{slice}", lastRenderBuffer.depthTextures[slice]);
-        }
+        postRasterizationMaterial.SetTexture($"_Coordinates", lastRenderBuffer.targetTexture);
+        postRasterizationMaterial.SetTexture($"_Depth", lastRenderBuffer.depthTexture);
 
-        // debug values
-        int totalPasses = 0;
-        foreach (int dimension in dimensions)
-        {
-            totalPasses += dimension;
-        }
-
-        motionVectors = geometryLoader.motionVectors;
-        rasterized = new RenderTexture[totalPasses * 2];
+        rasterized = new RenderTexture[dimensions.Length * 3];
         for (int pass = 0; pass < passes; pass++)
         {
-            var color = renderBuffers[pass].targetTextures;
-            var depth = renderBuffers[pass].depthTextures;
-            for (int slice = 0; slice < color.Length; slice++)
-            {
-                rasterized[pass * dimensions[0] * 2 + slice * 2] = color[slice];
-                rasterized[pass * dimensions[0] * 2 + slice * 2 + 1] = depth[slice];
-            }
+            var color = renderBuffers[pass].targetTexture;
+            var background = renderBuffers[pass].backgroundTexture;
+            var depth = renderBuffers[pass].depthTexture;
+
+            rasterized[pass * 2] = color;
+            rasterized[pass * 2 + 1] = background;
+            rasterized[pass * 2 + 2] = depth;
         }
 
-        // colliderMesh = renderBuffers[0].CreateColliderMesh(0);
+        Shader.SetGlobalMatrixArray("INVERSE_ORIENTATION_MATRICIES", CubeMapConversion.alternateInverseOrientationMatricies);
     }
 
     private void Update()
@@ -292,7 +234,6 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             uiDebugger.text = $"3D Position:\t\t\t\t{transform.position}\r\n" +
                 $"Screen Resolution:\t\t{Screen.width}x{Screen.height}\r\n" +
                 $"Input Resolution:\t\t\t{inputImages[0].width}x{inputImages[0].height}\r\n" +
-                $"Motion Vector Resolution:\t{motionVectorResolution.x}x{motionVectorResolution.y}\r\n" +
                 $"Projection Resolutions:\t\t[{string.Join(", ", projectionResolutions.Select(res => $"{res.width}x{res.height}"))}]\r\n" +
                 $"Rasterization Resolutions:\t[{string.Join(", ", rasterizationResolutions.Select(res => $"{res.width}x{res.height}"))}]\r\n" +
                 $"Estimated Triangle Count:\t{compressionInfo}\r\n" +
@@ -316,7 +257,7 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
             if (pass != 0)
             {
                 startTime = Time.realtimeSinceStartupAsDouble;
-                geometryLoader.PopulateMeshBuffer(renderBuffers, pass);
+                geometryLoader.PopulateMeshBuffer(renderBuffers, pass, cubePositions);
                 populateTime += Time.realtimeSinceStartupAsDouble - startTime;
             }
 
@@ -344,17 +285,17 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
         switch (debugMode)
         {
             case DynamicRenderBuffer.DebugMode.inputImages:
-                Graphics.Blit(inputImages[debugSlice], destination, postRasterizationMaterial);
+                Graphics.Blit(rawCubemapFaceImages[debugSlice], destination, postRasterizationMaterial);
                 break;
             case DynamicRenderBuffer.DebugMode.motionVectors:
-                Graphics.Blit(geometryLoader.motionVectors, source, debugSlice, 0); // a bit suboptimal, but oh well...
-                Graphics.Blit(source, destination, postRasterizationMaterial);
+                // Graphics.Blit(geometryLoader.motionVectors, source, debugSlice, 0); // a bit suboptimal, but oh well...
+                Graphics.Blit(source, destination);
                 break;
             case DynamicRenderBuffer.DebugMode.rasterized:
-                Graphics.Blit(renderBuffers.GetTexture(debugPass, debugSlice), destination, postRasterizationMaterial);
+                Graphics.Blit(renderBuffers.GetTexture(debugPass), destination, postRasterizationMaterial);
                 break;
             default:
-                Graphics.Blit(renderBuffers.GetTexture(passes - 1, 0), destination, postRasterizationMaterial);
+                Graphics.Blit(renderBuffers.GetTexture(passes - 1), destination, postRasterizationMaterial);
                 break;
         }
     }
@@ -370,8 +311,6 @@ public class HardwareAcceleratedMultiPass : MonoBehaviour
 
     private void OnDestroy()
     {
-        geometryLoader.Dispose();
-
         for (int pass = 0; pass < passes; pass++)
         {
             renderBuffers[pass].Dispose();
