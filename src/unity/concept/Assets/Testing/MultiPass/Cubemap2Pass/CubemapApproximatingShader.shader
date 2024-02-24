@@ -1,4 +1,4 @@
-Shader "Unlit/ApproximatingShader"
+Shader "Unlit/CubemapApproximatingShader"
 {
     SubShader
     {
@@ -10,9 +10,6 @@ Shader "Unlit/ApproximatingShader"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            // make fog work
-            #pragma multi_compile_fog
-            #define NCLIP 1
 
             #include "UnityCG.cginc"
 
@@ -26,11 +23,11 @@ Shader "Unlit/ApproximatingShader"
             {
                 float2 uv : TEXCOORD0;
                 float3 pos : TEXCOORD1;
-                UNITY_FOG_COORDS(1)
                 float4 vertex : SV_POSITION;
             };
 
-            Texture2DArray<float4> _InputCubemapFaces;
+            int TEXTURE_INDEX;
+            Texture2DArray<float4> _CubemapTextures;
             SamplerState sampler_linear_repeat;
             uniform float4x4 INVERSE_ORIENTATION_MATRICIES[6];
 
@@ -59,27 +56,24 @@ Shader "Unlit/ApproximatingShader"
                 o.vertex = UnityObjectToClipPos(v.vertex);
                 o.pos = v.vertex.xyz;
                 o.uv = v.uv;
-                UNITY_TRANSFER_FOG(o,o.vertex);
                 return o;
             }
 
             fixed4 frag (v2f i) : SV_Target
             {
-                // sample the texture
                 float4 pos = float4(i.pos, 1);
-                // pos = mul(unity_ObjectToWorld, pos);
                 pos.xyz += float3(9, 0, 2);
-                // pos = float4(-pos.z, pos.y, pos.x, 1);
+    
                 int faceIndex = GetCubemapFaceIndex(pos.xyz);
-                pos = mul(INVERSE_ORIENTATION_MATRICIES[0], pos);
+    
+                pos = mul(INVERSE_ORIENTATION_MATRICIES[TEXTURE_INDEX], pos);
                 float2 viewSpace = (pos.xy / pos.z + 1) / 2;
+                
                 fixed4 col = fixed4(viewSpace, 0, 1);
                 if (!(viewSpace.x < 0 || viewSpace.x > 1 || viewSpace.y < 0 || viewSpace.y > 1 || pos.z < 0))
                 {
-                    col = _InputCubemapFaces.Sample(sampler_linear_repeat, float3(viewSpace, 1));
+                    col = _CubemapTextures.Sample(sampler_linear_repeat, float3(viewSpace, 4));
                 }
-                // apply fog
-                // UNITY_APPLY_FOG(i.fogCoord, col);
                 return col;
             }
             ENDCG
