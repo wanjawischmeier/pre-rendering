@@ -1,4 +1,4 @@
-Shader "Unlit/CubemapApproximatingShader"
+Shader "Unlit/CubemapApproximationShader"
 {
     SubShader
     {
@@ -38,15 +38,15 @@ Shader "Unlit/CubemapApproximatingShader"
     
                 if (maxComponent == absPos.x)
                 {
-                    return pos.x < 0 ? 0 : 1; // x: 0, -x: 1
+                    return pos.x > 0 ? 0 : 1; // x: 0, -x: 1
                 }
                 else if (maxComponent == absPos.y)
                 {
-                    return pos.y < 0 ? 2 : 3; // y: 2, -y: 3
+                    return pos.y > 0 ? 2 : 3; // y: 2, -y: 3
                 }
                 else
                 {
-                    return pos.z < 0 ? 4 : 5; // z: 4, -z: 5
+                    return pos.z > 0 ? 4 : 5; // z: 4, -z: 5
                 }
             }
 
@@ -63,18 +63,21 @@ Shader "Unlit/CubemapApproximatingShader"
             {
                 float4 pos = float4(i.pos, 1);
                 pos.xyz += float3(9, 0, 2);
+                pos = mul(unity_ObjectToWorld, pos);
     
                 int faceIndex = GetCubemapFaceIndex(pos.xyz);
     
-                pos = mul(INVERSE_ORIENTATION_MATRICIES[TEXTURE_INDEX], pos);
+                pos = mul(INVERSE_ORIENTATION_MATRICIES[faceIndex], pos);
                 float2 viewSpace = (pos.xy / pos.z + 1) / 2;
                 
                 fixed4 col = fixed4(viewSpace, 0, 1);
                 if (!(viewSpace.x < 0 || viewSpace.x > 1 || viewSpace.y < 0 || viewSpace.y > 1 || pos.z < 0))
                 {
-                    col = _CubemapTextures.Sample(sampler_linear_repeat, float3(viewSpace, 4));
+                    col = _CubemapTextures.Sample(sampler_linear_repeat, float3(viewSpace, faceIndex));
                 }
-                return col;
+                
+                float depth = length(i.pos + _WorldSpaceCameraPos);
+                return float4(viewSpace, faceIndex, depth);
             }
             ENDCG
         }
