@@ -20,7 +20,6 @@ Shader "Unlit/CubemapRasterizationShader"
             {
                 float3 uv : TEXCOORD0;
                 float4 vertex : SV_POSITION;
-                bool render : TEXCOORD1;
             };
 
             float2 SCREEN_RESOLUTION, TARGET_TEXTURE_RESOLUTION;
@@ -141,7 +140,6 @@ Shader "Unlit/CubemapRasterizationShader"
                 // o.vertex = float4(uv00.xy, 1, 1);
                 // o.vertex.xy = uv00.yx;
                 o.uv = coords.xyz;
-                o.render = localIndex < 3;
                 return o;
             }
 

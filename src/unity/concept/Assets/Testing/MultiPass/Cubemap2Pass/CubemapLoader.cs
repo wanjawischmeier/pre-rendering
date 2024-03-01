@@ -1,9 +1,5 @@
 using PreRendering;
-using System.Linq;
-using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
-using UnityEngine.Rendering;
 
 [RequireComponent(typeof(MeshFilter))]
 [RequireComponent(typeof(MeshRenderer))]
@@ -14,6 +10,8 @@ public class CubemapLoader : MonoBehaviour
     public Texture2D[] cubemapTextures;
     public RenderTexture approximationTargetTexture;
     public Camera approximationCamera, rasterizationCamera;
+    [Range(1, 20)]
+    public int approximationDownsamplingRatio = 4;
 
     private RenderParams renderParams;
     private int indicies;
@@ -39,7 +37,11 @@ public class CubemapLoader : MonoBehaviour
             Graphics.CopyTexture(cubemapTextures[textureIndex], 0, cubemapTextureArray, textureIndex);
         }
 
-        var rasterizationResolution = new Vector2Int(Screen.width / 4, Screen.height / 4);
+        var rasterizationResolution = new Vector2Int(Screen.width / approximationDownsamplingRatio, Screen.height / approximationDownsamplingRatio);
+        approximationTargetTexture = new RenderTexture(rasterizationResolution.x, rasterizationResolution.y, 24, RenderTextureFormat.ARGBFloat, 0);
+        approximationTargetTexture.filterMode = FilterMode.Point;
+        approximationCamera.targetTexture = approximationTargetTexture;
+
         Matrix4x4 VP = GL.GetGPUProjectionMatrix(approximationCamera.projectionMatrix, false) * approximationCamera.worldToCameraMatrix;
 
         cubemapApproximationMaterial.SetMatrixArray("INVERSE_ORIENTATION_MATRICIES", CubeMapConversion.inverseOrientationMatricies);

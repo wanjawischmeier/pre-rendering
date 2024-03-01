@@ -344,6 +344,7 @@ MonoBehaviour:
   approximationTargetTexture: {fileID: 8400000, guid: ef807c050283e644fb17d0117e6c0b8f, type: 2}
   approximationCamera: {fileID: 1660955274}
   rasterizationCamera: {fileID: 267136052}
+  approximationDownsamplingRatio: 6
 --- !u!4 &417237532
 Transform:
   m_ObjectHideFlags: 0
