@@ -18,7 +18,7 @@ Shader "Unlit/CubemapRasterizationShader"
 
             struct v2f
             {
-                float3 uv : TEXCOORD0;
+                float4 uv : TEXCOORD0;
                 float4 vertex : SV_POSITION;
             };
 
@@ -27,7 +27,7 @@ Shader "Unlit/CubemapRasterizationShader"
 
             Texture2D<float4> _ApproximationTargetTexture;
             Texture2DArray<float4> _CubemapTextures;
-            SamplerState sampler_linear_repeat;
+            SamplerState sampler_point_clamp, sampler_linear_clamp;
 
             v2f vert (uint id : SV_VertexID)
             {
@@ -66,90 +66,88 @@ Shader "Unlit/CubemapRasterizationShader"
                 float4 uv = tc * texelSize.xyzz;
                 
                 float4 uv00 = float4(x, y, 0, 0) * texelSize.xyzz;
-                float4 coords = _ApproximationTargetTexture.SampleLevel(sampler_linear_repeat, uv00.xy, 0);
-                float depth = coords.a;
-                
-                float4 vertex = float4(tc.x / 20, tc.y / 20 - 6, depth, 1);
-                
-                if (depth == DEPTH_CLEAR_FLAG)
+                float4 coords = _ApproximationTargetTexture.SampleLevel(sampler_point_clamp, uv.xy, 0);
+                o.uv = float4(coords.xyz, 0);
+                float index = coords.z;
+                float depth = coords.w;
+    
+                float2 index_depth = _ApproximationTargetTexture.SampleLevel(sampler_point_clamp, uv00.xy, 0).zw;
+                if (index_depth.x != index) { index = -1; }
+                if (index_depth.y == DEPTH_CLEAR_FLAG)
                 {
-                    vertex.xyz = 0;
+                    o.vertex = float4(0, 0, 0, 1);
+                    return o;
                 }
                 else
                 {
                     float4 uv11 = uv00 + texelSize.xyzz;
-                    float tmp_depth = _ApproximationTargetTexture.SampleLevel(sampler_linear_repeat, uv11.xy, 0).a;
+                    index_depth = _ApproximationTargetTexture.SampleLevel(sampler_point_clamp, uv11.xy, 0).zw;
         
-                    if (tmp_depth == DEPTH_CLEAR_FLAG)
+                    if (index_depth.x != index) { index = -1; }
+                    if (index_depth.y == DEPTH_CLEAR_FLAG)
                     {
-                        vertex.xyz = 0;
+                        o.vertex = float4(0, 0, 0, 1);
+                        return o;
                     }
                     else if (localIndex < 3)
                     {
                         float4 uv10 = uv00 + texelSize.xzzz;
-                        tmp_depth = _ApproximationTargetTexture.SampleLevel(sampler_linear_repeat, uv10.xy, 0).a;
+                        index_depth = _ApproximationTargetTexture.SampleLevel(sampler_point_clamp, uv10.xy, 0).zw;
             
-                        if (tmp_depth == DEPTH_CLEAR_FLAG)
+                        if (index_depth.x != index) { index = -1; }
+                        if (index_depth.y == DEPTH_CLEAR_FLAG)
                         {
-                            vertex.xyz = 0;
+                            o.vertex = float4(0, 0, 0, 1);
+                            return o;
                         }
                     }
                     else
                     {
                         float4 uv01 = uv00 + texelSize.zyzz;
-                        tmp_depth = _ApproximationTargetTexture.SampleLevel(sampler_linear_repeat, uv01.xy, 0).a;
+                        index_depth = _ApproximationTargetTexture.SampleLevel(sampler_point_clamp, uv01.xy, 0).zw;
             
-                        if (tmp_depth == DEPTH_CLEAR_FLAG)
+                        if (index_depth.x != index) { index = -1; }
+                        if (index_depth.y == DEPTH_CLEAR_FLAG)
                         {
-                            vertex.xyz = 0;
+                            o.vertex = float4(0, 0, 0, 1);
+                            return o;
                         }
                     }
                 }
+    
                 
-                // col = fixed4(col.aaa, 1);
-                
-                /*
-                if (id == 0)
+                if (depth == DEPTH_CLEAR_FLAG)
                 {
-                    vertex.xyz = float3(0, 0, 0);
+                    o.vertex = float4(0, 0, 0, 1);
+                    return o;
                 }
-                else if (id == 1)
+                else if (index == -1)
                 {
-                    vertex.xyz = float3(0, 1, 0);
+                    o.uv.xyz = _CubemapTextures.SampleLevel(sampler_linear_clamp, coords.xyz, 0).rgb;
+                    o.uv.w = 1;
                 }
-                else if (id == 2)
-                {
-                    vertex.xyz = float3(1, 1, 0);
-                }
-                else
-                {
-                    vertex.xyz = float3(0, 0, 0);
-                }
-                */
-                // v.vertex.z += 6;
     
                 float2 viewSpace = (uv * 2 - 1) * depth;
                 viewSpace.x *= SCREEN_RESOLUTION.x / SCREEN_RESOLUTION.y;
-                // viewSpace.y *= -1;
                 float4 pos = float4(viewSpace.x + sin(depth) / 10 * 0, viewSpace.y + cos(depth) / 4 * 0, depth, 1);
-                // pos.yz += float3(-24, -7.5, 22).yz;
-                // vertex = mul(VP_I, pos);
-                // vertex.xyz = ComputeWorldSpacePosition(viewSpace, depth, VP_I);
                 
                 o.vertex = UnityObjectToClipPos(pos);
-                // o.vertex = float4(uv00.xy, 1, 1);
-                // o.vertex.xy = uv00.yx;
-                o.uv = coords.xyz;
                 return o;
             }
 
             fixed4 frag (v2f i) : SV_Target
             {
-                // float4 col = _ApproximationTargetTexture.SampleLevel(sampler_linear_repeat, i.uv.xy, 0);
-                fixed4 col = _CubemapTextures.Sample(sampler_linear_repeat, i.uv);
-                // col = fixed4(col.xyz, 1);
-                // fixed4 col = fixed4(i.render ? i.uv : float2(0, 0), 0, i.render ? 1 : 0);
-                // fixed4 col = fixed4(i.uv, 0, 1);
+                fixed4 col;
+                
+                if (i.uv.w == 0)
+                {
+                    col = _CubemapTextures.Sample(sampler_linear_clamp, i.uv.xyz);
+                }
+                else
+                {
+                    col = fixed4(i.uv.rgb, 1);
+                }
+    
                 return col;
             }
             ENDCG

@@ -21,6 +21,9 @@ public class CubemapLoader : MonoBehaviour
 
     private void Start()
     {
+        // lock cursor
+        Cursor.lockState = CursorLockMode.Locked;
+
         // apply material to all rendered meshes
         var meshRenderers = FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None);
         foreach (var renderer in meshRenderers)
@@ -46,15 +49,6 @@ public class CubemapLoader : MonoBehaviour
 
         cubemapApproximationMaterial.SetMatrixArray("INVERSE_ORIENTATION_MATRICIES", CubeMapConversion.inverseOrientationMatricies);
 
-        // int vertexCount = sampleTexture.width * sampleTexture.height;
-        // int[] indices = new int[(sampleTexture.width - 1) * (sampleTexture.height - 1) * 6]; // 6 indices per quad
-
-        /*
-        // assign mesh to MeshFilter component
-        int vertexCount = sampleTexture.width * sampleTexture.height;
-        var meshFilter = GetComponent<MeshFilter>();
-        meshFilter.mesh = GenerateDummyMesh(rasterizationResolution);
-        */
         indicies = (rasterizationResolution.x - 1) * (rasterizationResolution.y - 1) * TriangulationVertexRatio;
 
         // set render params
@@ -80,65 +74,4 @@ public class CubemapLoader : MonoBehaviour
     {
         Graphics.RenderPrimitives(renderParams, MeshTopology.Triangles, indicies);
     }
-
-    private void OnRenderImage(RenderTexture source, RenderTexture destination)
-    {
-        // rasterizationCamera.targetTexture = destination;
-        // Graphics.RenderPrimitives(renderParams, MeshTopology.Triangles, 3);
-        // Graphics.Blit(rasterizationTexture, destination);
-    }
-
-    private void OnDestroy()
-    {
-        
-    }
-    /*
-    private Mesh GenerateDummyMesh(Vector2Int resolution)
-    {
-        int vertexCount = Mathf.RoundToInt((resolution.x - 1) * (resolution.y - 1));
-        // int[] indices = Enumerable.Range(0, vertexCount * TriangulationVertexRatio).ToArray();
-        int[] indices = new int[vertexCount * TriangulationVertexRatio];
-        for (int i = 0; i < indices.Length; i++)
-        {
-            int faceIndex = i % TriangulationVertexRatio;
-            int vertexIndex = (i - faceIndex) / TriangulationVertexRatio;
-
-            switch (faceIndex)
-            {
-                // case 0 stays unmodified (0, 0)
-                case 1:                 // (1, 1)
-                    vertexIndex += resolution.x + 1;
-                    break;
-                case 2:                 // (1, 0)
-                    vertexIndex += 1;
-                    break;
-                case 3:                 // (1, 1)
-                    vertexIndex += resolution.x + 1;
-                    vertexIndex = 0;
-                    break;
-                // case 4 stays unmodified (0, 0)
-                case 4:                 // (1, 1)
-                    vertexIndex = 0;
-                    break;
-                case 5:                 // (0, 1)
-                    vertexIndex += resolution.x;
-                    vertexIndex = 0;
-                    break;
-            }
-
-            if (vertexIndex >= vertexCount && false)
-            {
-                vertexIndex = 0;
-            }
-            indices[i] = vertexIndex;
-        }
-
-        var mesh = new Mesh();
-        mesh.SetVertices(new Vector3[resolution.x * resolution.y]);
-        mesh.SetIndices(indices, MeshTopology.Triangles, 0);
-        mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 10000);
-
-        return mesh;
-    }
-    */
 }
