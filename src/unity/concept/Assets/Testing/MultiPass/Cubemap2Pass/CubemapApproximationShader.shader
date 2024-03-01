@@ -27,8 +27,6 @@ Shader "Unlit/CubemapApproximationShader"
             };
 
             int TEXTURE_INDEX;
-            Texture2DArray<float4> _CubemapTextures;
-            SamplerState sampler_linear_repeat;
             uniform float4x4 INVERSE_ORIENTATION_MATRICIES[6];
 
             int GetCubemapFaceIndex(float3 pos)
@@ -69,13 +67,13 @@ Shader "Unlit/CubemapApproximationShader"
     
                 pos = mul(INVERSE_ORIENTATION_MATRICIES[faceIndex], pos);
                 float2 viewSpace = (pos.xy / pos.z + 1) / 2;
-                
+                /*
                 fixed4 col = fixed4(viewSpace, 0, 1);
                 if (!(viewSpace.x < 0 || viewSpace.x > 1 || viewSpace.y < 0 || viewSpace.y > 1 || pos.z < 0))
                 {
                     col = _CubemapTextures.Sample(sampler_linear_repeat, float3(viewSpace, faceIndex));
                 }
-                
+                */
                 float depth = length(i.pos + _WorldSpaceCameraPos);
                 return float4(viewSpace, faceIndex, depth);
             }

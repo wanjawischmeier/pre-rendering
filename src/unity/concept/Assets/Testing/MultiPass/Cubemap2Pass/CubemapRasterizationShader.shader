@@ -18,14 +18,17 @@ Shader "Unlit/CubemapRasterizationShader"
 
             struct v2f
             {
-                float2 uv : TEXCOORD0;
+                float3 uv : TEXCOORD0;
                 float4 vertex : SV_POSITION;
                 bool render : TEXCOORD1;
             };
 
-            float2 TARGET_TEXTURE_RESOLUTION;
+            float2 SCREEN_RESOLUTION, TARGET_TEXTURE_RESOLUTION;
             float4x4 VP_I;
-            sampler2D _ApproximationTargetTexture;
+
+            Texture2D<float4> _ApproximationTargetTexture;
+            Texture2DArray<float4> _CubemapTextures;
+            SamplerState sampler_linear_repeat;
 
             v2f vert (uint id : SV_VertexID)
             {
@@ -64,7 +67,8 @@ Shader "Unlit/CubemapRasterizationShader"
                 float4 uv = tc * texelSize.xyzz;
                 
                 float4 uv00 = float4(x, y, 0, 0) * texelSize.xyzz;
-                float depth = tex2Dlod(_ApproximationTargetTexture, uv00);
+                float4 coords = _ApproximationTargetTexture.SampleLevel(sampler_linear_repeat, uv00.xy, 0);
+                float depth = coords.a;
                 
                 float4 vertex = float4(tc.x / 20, tc.y / 20 - 6, depth, 1);
                 
@@ -75,18 +79,18 @@ Shader "Unlit/CubemapRasterizationShader"
                 else
                 {
                     float4 uv11 = uv00 + texelSize.xyzz;
-                    depth = tex2Dlod(_ApproximationTargetTexture, uv11);
+                    float tmp_depth = _ApproximationTargetTexture.SampleLevel(sampler_linear_repeat, uv11.xy, 0).a;
         
-                    if (depth == DEPTH_CLEAR_FLAG)
+                    if (tmp_depth == DEPTH_CLEAR_FLAG)
                     {
                         vertex.xyz = 0;
                     }
                     else if (localIndex < 3)
                     {
                         float4 uv10 = uv00 + texelSize.xzzz;
-                        depth = tex2Dlod(_ApproximationTargetTexture, uv10);
+                        tmp_depth = _ApproximationTargetTexture.SampleLevel(sampler_linear_repeat, uv10.xy, 0).a;
             
-                        if (depth == DEPTH_CLEAR_FLAG)
+                        if (tmp_depth == DEPTH_CLEAR_FLAG)
                         {
                             vertex.xyz = 0;
                         }
@@ -94,9 +98,9 @@ Shader "Unlit/CubemapRasterizationShader"
                     else
                     {
                         float4 uv01 = uv00 + texelSize.zyzz;
-                        depth = tex2Dlod(_ApproximationTargetTexture, uv01);
+                        tmp_depth = _ApproximationTargetTexture.SampleLevel(sampler_linear_repeat, uv01.xy, 0).a;
             
-                        if (depth == DEPTH_CLEAR_FLAG)
+                        if (tmp_depth == DEPTH_CLEAR_FLAG)
                         {
                             vertex.xyz = 0;
                         }
@@ -125,23 +129,26 @@ Shader "Unlit/CubemapRasterizationShader"
                 */
                 // v.vertex.z += 6;
     
-                float2 viewSpace = (uv00 * 2 - 1);
+                float2 viewSpace = (uv * 2 - 1) * depth;
+                viewSpace.x *= SCREEN_RESOLUTION.x / SCREEN_RESOLUTION.y;
                 // viewSpace.y *= -1;
-                float4 pos = float4(viewSpace, depth, 1);
+                float4 pos = float4(viewSpace.x + sin(depth) / 10 * 0, viewSpace.y + cos(depth) / 4 * 0, depth, 1);
+                // pos.yz += float3(-24, -7.5, 22).yz;
                 // vertex = mul(VP_I, pos);
                 // vertex.xyz = ComputeWorldSpacePosition(viewSpace, depth, VP_I);
                 
-                o.vertex = UnityObjectToClipPos(vertex);
+                o.vertex = UnityObjectToClipPos(pos);
                 // o.vertex = float4(uv00.xy, 1, 1);
                 // o.vertex.xy = uv00.yx;
-                o.uv = uv;
+                o.uv = coords.xyz;
                 o.render = localIndex < 3;
                 return o;
             }
 
             fixed4 frag (v2f i) : SV_Target
             {
-                float4 col = tex2D(_ApproximationTargetTexture, i.uv);
+                // float4 col = _ApproximationTargetTexture.SampleLevel(sampler_linear_repeat, i.uv.xy, 0);
+                fixed4 col = _CubemapTextures.Sample(sampler_linear_repeat, i.uv);
                 // col = fixed4(col.xyz, 1);
                 // fixed4 col = fixed4(i.render ? i.uv : float2(0, 0), 0, i.render ? 1 : 0);
                 // fixed4 col = fixed4(i.uv, 0, 1);

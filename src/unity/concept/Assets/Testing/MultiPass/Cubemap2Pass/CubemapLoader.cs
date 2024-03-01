@@ -39,11 +39,10 @@ public class CubemapLoader : MonoBehaviour
             Graphics.CopyTexture(cubemapTextures[textureIndex], 0, cubemapTextureArray, textureIndex);
         }
 
-        var rasterizationResolution = new Vector2Int(Screen.width / 10, Screen.height / 10);
+        var rasterizationResolution = new Vector2Int(Screen.width / 4, Screen.height / 4);
         Matrix4x4 VP = GL.GetGPUProjectionMatrix(approximationCamera.projectionMatrix, false) * approximationCamera.worldToCameraMatrix;
 
         cubemapApproximationMaterial.SetMatrixArray("INVERSE_ORIENTATION_MATRICIES", CubeMapConversion.inverseOrientationMatricies);
-        cubemapApproximationMaterial.SetTexture("_CubemapTextures", cubemapTextureArray);
 
         // int vertexCount = sampleTexture.width * sampleTexture.height;
         // int[] indices = new int[(sampleTexture.width - 1) * (sampleTexture.height - 1) * 6]; // 6 indices per quad
@@ -58,9 +57,11 @@ public class CubemapLoader : MonoBehaviour
 
         // set render params
         var renderMatProps = new MaterialPropertyBlock();
+        renderMatProps.SetVector("SCREEN_RESOLUTION", new Vector2(Screen.width, Screen.height));
         renderMatProps.SetVector("TARGET_TEXTURE_RESOLUTION", rasterizationResolution.ToVector2());
         renderMatProps.SetMatrix("VP_I", VP.inverse);
         renderMatProps.SetTexture("_ApproximationTargetTexture", approximationTargetTexture);
+        renderMatProps.SetTexture("_CubemapTextures", cubemapTextureArray);
 
         int cullingMaskLayer = LayerMask.NameToLayer(CullingMaskLayerName);
 
