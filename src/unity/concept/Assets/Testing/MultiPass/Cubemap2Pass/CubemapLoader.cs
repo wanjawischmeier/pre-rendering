@@ -10,6 +10,9 @@ public class CubemapLoader : MonoBehaviour
     public Camera approximationCamera, rasterizationCamera;
     [Range(1, 20)]
     public int approximationDownsamplingRatio = 4;
+    public float maxDepthDifference;
+    public Vector3 mapOffset;
+    public Vector4[] cubePositions;
 
     private RenderParams renderParams;
     private int indicies;
@@ -26,8 +29,7 @@ public class CubemapLoader : MonoBehaviour
         var meshRenderers = FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None);
         foreach (var renderer in meshRenderers)
         {
-            if (renderer.tag == "GameController") continue;
-            renderer.material = cubemapApproximationMaterial;
+            // renderer.material = cubemapApproximationMaterial;
         }
         
         // load cubemap textures to gpu
@@ -54,6 +56,7 @@ public class CubemapLoader : MonoBehaviour
         renderMatProps.SetVector("SCREEN_RESOLUTION", new Vector2(Screen.width, Screen.height));
         renderMatProps.SetVector("TARGET_TEXTURE_RESOLUTION", rasterizationResolution.ToVector2());
         renderMatProps.SetMatrix("VP_I", VP.inverse);
+        renderMatProps.SetMatrixArray("ORIENTATION_MATRICIES", CubeMapConversion.orientationMatricies);
         renderMatProps.SetTexture("_ApproximationTargetTexture", approximationTargetTexture);
         renderMatProps.SetTexture("_CubemapTextures", cubemapTextureArray);
 
@@ -61,7 +64,7 @@ public class CubemapLoader : MonoBehaviour
 
         renderParams = new RenderParams(cubemapRasterizationMaterial)
         {
-            worldBounds = new Bounds(Vector3.zero, 10000 * Vector3.one), // use tighter bounds
+            worldBounds = new Bounds(Vector3.zero, 100 * Vector3.one), // use tighter bounds
             camera = rasterizationCamera,
             matProps = renderMatProps,
             layer = cullingMaskLayer
@@ -70,6 +73,10 @@ public class CubemapLoader : MonoBehaviour
 
     private void Update()
     {
+        cubemapApproximationMaterial.SetVector("OFF", mapOffset);
+        renderParams.matProps.SetFloat("MAX_DEPTH_DIFFERENCE", maxDepthDifference);
+        renderParams.matProps.SetVectorArray("CUBE_POSITIONS", cubePositions);
+
         Graphics.RenderPrimitives(renderParams, MeshTopology.Triangles, indicies);
     }
 }

@@ -27,6 +27,7 @@ Shader "Unlit/CubemapApproximationShader"
             };
 
             int TEXTURE_INDEX;
+            float3 OFF;
             uniform float4x4 INVERSE_ORIENTATION_MATRICIES[6];
 
             int GetCubemapFaceIndex(float3 pos)
@@ -60,22 +61,29 @@ Shader "Unlit/CubemapApproximationShader"
             fixed4 frag (v2f i) : SV_Target
             {
                 float4 pos = float4(i.pos, 1);
-                pos.xyz += float3(9, 0, 2);
                 pos = mul(unity_ObjectToWorld, pos);
+    
+                float3 off0 = float3(1, -2, 0);
+                float3 off1 = float3(1, -2, -4);
+                
+                int indexOff = 0;
+                if (length((pos.xyz + off0) - _WorldSpaceCameraPos) < length((pos.xyz + off1) - _WorldSpaceCameraPos) || true)
+                {
+                    pos.xyz += off0;
+                }
+                else
+                {
+                    pos.xyz += off1;
+                    indexOff = 6;
+                }
     
                 int faceIndex = GetCubemapFaceIndex(pos.xyz);
     
                 pos = mul(INVERSE_ORIENTATION_MATRICIES[faceIndex], pos);
                 float2 viewSpace = (pos.xy / pos.z + 1) / 2;
-                /*
-                fixed4 col = fixed4(viewSpace, 0, 1);
-                if (!(viewSpace.x < 0 || viewSpace.x > 1 || viewSpace.y < 0 || viewSpace.y > 1 || pos.z < 0))
-                {
-                    col = _CubemapTextures.Sample(sampler_linear_repeat, float3(viewSpace, faceIndex));
-                }
-                */
+    
                 float depth = length(i.pos + _WorldSpaceCameraPos);
-                return float4(viewSpace, faceIndex, depth);
+                return float4(viewSpace, faceIndex + indexOff, depth);
             }
             ENDCG
         }
