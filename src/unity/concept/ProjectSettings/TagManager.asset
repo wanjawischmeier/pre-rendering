@@ -11,17 +11,18 @@ TagManager:
   - FPSDebugger
   - ShaderDebugger
   - CinemachineTarget
+  - RenderTarget
   layers:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - Rasterized
+  - Rasterization Pass
   - Water
   - UI
-  - 
-  - 
-  - 
-  - 
+  - Approximation Pass 0
+  - Approximation Pass 1
+  - Approximation Pass 2
+  - Approximation Pass 3
   - 
   - 
   - 

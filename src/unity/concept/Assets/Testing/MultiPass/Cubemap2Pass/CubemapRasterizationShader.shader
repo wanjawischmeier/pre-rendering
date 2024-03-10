@@ -23,12 +23,12 @@ Shader "Unlit/CubemapRasterizationShader"
                 float4 vertex : SV_POSITION;
             };
 
-            uniform float MAX_DEPTH_DIFFERENCE;
+            uniform float MAX_DEPTH_DIFFERENCE, PROJ_DIFF;
             uniform float2 SCREEN_RESOLUTION, TARGET_TEXTURE_RESOLUTION;
             uniform float3 CUBE_POSITIONS[2];
             uniform float4x4 VP_I, ORIENTATION_MATRICIES[6];
 
-            Texture2D<float4> _ApproximationTargetTexture;
+            Texture2D<float4> _ApproximationTexture0, _ApproximationTexture1, _ApproximationTexture2, _ApproximationTexture3;
             Texture2DArray<float4> _CubemapTextures;
             SamplerState sampler_point_clamp, sampler_linear_clamp;
 
@@ -69,7 +69,7 @@ Shader "Unlit/CubemapRasterizationShader"
                     if (index < 3)
                     {
                         // validate vertex 2: (1, 0)
-                        float4 c10 = _ApproximationTargetTexture.SampleLevel(sampler_point_clamp, tc + off.xy, 0);
+                        float4 c10 = _ApproximationTexture0.SampleLevel(sampler_point_clamp, tc + off.xy, 0);
                         if (c10.w == DEPTH_CLEAR_FLAG)
                         {
                             o.x = false;
@@ -83,7 +83,7 @@ Shader "Unlit/CubemapRasterizationShader"
                     else
                     {
                         // validate vertex 2: (0, 1)
-                        float4 c01 = _ApproximationTargetTexture.SampleLevel(sampler_point_clamp, tc + off.yx, 0);
+                        float4 c01 = _ApproximationTexture0.SampleLevel(sampler_point_clamp, tc + off.yx, 0);
                         if (c01.w == DEPTH_CLEAR_FLAG)
                         {
                             o.x = false;
@@ -100,7 +100,7 @@ Shader "Unlit/CubemapRasterizationShader"
                     // triangulation order 1
         
                     // validate vertex 0: (0, 1)
-                    float4 c01 = _ApproximationTargetTexture.SampleLevel(sampler_point_clamp, tc + off.yx, 0);
+                    float4 c01 = _ApproximationTexture0.SampleLevel(sampler_point_clamp, tc + off.yx, 0);
                     if (c01.w == DEPTH_CLEAR_FLAG)
                     {
                         o.x = false;
@@ -112,7 +112,7 @@ Shader "Unlit/CubemapRasterizationShader"
                     }
         
                     // validate vertex 1: (1, 0)
-                    float4 c10 = _ApproximationTargetTexture.SampleLevel(sampler_point_clamp, tc + off.xy, 0);
+                    float4 c10 = _ApproximationTexture0.SampleLevel(sampler_point_clamp, tc + off.xy, 0);
                     if (c10.w == DEPTH_CLEAR_FLAG)
                     {
                         o.x = false;
@@ -238,6 +238,11 @@ Shader "Unlit/CubemapRasterizationShader"
                 return pos;
             }
 
+            void ProjectQuad(inout v2f data)
+{
+    
+}
+
             v2f vert (uint id : SV_VertexID)
             {
                 v2f o;
@@ -250,30 +255,30 @@ Shader "Unlit/CubemapRasterizationShader"
                 float2 texelSize = 1 / TARGET_TEXTURE_RESOLUTION;
                 float2 uv_origin = float2(x, y) * texelSize;
     
-                float4 c00 = _ApproximationTargetTexture.SampleLevel(sampler_point_clamp, uv_origin, 0);
-                float4 c11 = _ApproximationTargetTexture.SampleLevel(sampler_point_clamp, uv_origin + texelSize, 0);
+                float4 c00 = _ApproximationTexture0.SampleLevel(sampler_point_clamp, uv_origin, 0);
+                float4 c11 = _ApproximationTexture0.SampleLevel(sampler_point_clamp, uv_origin + texelSize, 0);
     
                 bool i00_eq_i11 = c00.z == c11.z;
     
                 float2 tc = TriangulateQuad(x, y, localIndex, i00_eq_i11);
                 float2 uv = tc * texelSize;
     
-                float4 c_current = _ApproximationTargetTexture.SampleLevel(sampler_point_clamp, uv, 0);
+                float4 c_current = _ApproximationTexture0.SampleLevel(sampler_point_clamp, uv, 0);
                 if (c_current.w == DEPTH_CLEAR_FLAG)
                 {
-                    // o.vertex = float4(0, 0, 0, 0);
-                    // return o;
+                    o.vertex = float4(0, 0, 0, 0);
+                    return o;
                 }
-    
+                /*
                 bool2 quadValid = ValidateQuad(c_current, c00, c11, i00_eq_i11, tc, localIndex);
                 if (!quadValid.x)
                 {
                     // o.vertex = float4(0, 0, 0, 0);
                     // return o;
                 }
-    
+                */
                 float4 col = _CubemapTextures.SampleLevel(sampler_linear_clamp, c_current.xyz, 0);
-                if (quadValid.y || true)
+                if (/* quadValid.y || */ true)
                 {
                     o.uv = c_current;
                 }
@@ -285,15 +290,15 @@ Shader "Unlit/CubemapRasterizationShader"
     
                 // -- only a temporary check!
                 // this is horrible for performance, never do this!!!
-                float4 c10 = _ApproximationTargetTexture.SampleLevel(sampler_point_clamp, float2(uv_origin.x + texelSize.x, uv_origin.y), 0);
-                float4 c01 = _ApproximationTargetTexture.SampleLevel(sampler_point_clamp, float2(uv_origin.x, uv_origin.y + texelSize.y), 0);
+                float4 c10 = _ApproximationTexture0.SampleLevel(sampler_point_clamp, float2(uv_origin.x + texelSize.x, uv_origin.y), 0);
+                float4 c01 = _ApproximationTexture0.SampleLevel(sampler_point_clamp, float2(uv_origin.x, uv_origin.y + texelSize.y), 0);
     
                 float4 col00 = _CubemapTextures.SampleLevel(sampler_linear_clamp, c00.xyz, 0);
                 float4 col10 = _CubemapTextures.SampleLevel(sampler_linear_clamp, c10.xyz, 0);
                 float4 col01 = _CubemapTextures.SampleLevel(sampler_linear_clamp, c01.xyz, 0);
                 float4 col11 = _CubemapTextures.SampleLevel(sampler_linear_clamp, c11.xyz, 0);
     
-                if (abs(col.a - col00.a) > 0.005 || abs(col.a - col10.a) > 0.005 || abs(col.a - col01.a) > 0.005 || abs(col.a - col11.a) > 0.005)
+                if (abs(col.a - col00.a) > MAX_DEPTH_DIFFERENCE || abs(col.a - col10.a) > MAX_DEPTH_DIFFERENCE || abs(col.a - col01.a) > MAX_DEPTH_DIFFERENCE || abs(col.a - col11.a) > MAX_DEPTH_DIFFERENCE)
                 {
                     o.vertex = float4(0, 0, 0, 0);
                     return o;
@@ -301,13 +306,25 @@ Shader "Unlit/CubemapRasterizationShader"
     
                 // -- end of this monstrosity
     
-                float depth = col.a * (30 - 0.1) + 0.1;
+                // float depth = col.a * (30 - 0.1) + 0.1;
                 // float2 viewSpace = (uv * 2 - 1) * depth;
                 // viewSpace.x *= SCREEN_RESOLUTION.x / SCREEN_RESOLUTION.y;
                 // float4 pos = float4(viewSpace.x + sin(depth) / 10 * 0, viewSpace.y + cos(depth) / 4 * 0, depth, 1);
-                
+                // o.uv = c00.wwww;
+                // o.uv.w = -1;
                 float4 pos = GetCubemapWorldSpacePosition(c_current.xyz, col.a);
+                // float4 pos_pass2 = GetCubemapWorldSpacePosition(c_current_pass2.xyz, col_pass2.a);
                 o.vertex = UnityObjectToClipPos(pos);
+                /*
+                float4 vertex_pass2 = UnityObjectToClipPos(pos_pass2);
+                if (c_current_pass2.w != 0 && col_pass2.a < 0.9 && o.vertex.w - c_current.w > vertex_pass2.w - c_current.w + PROJ_DIFF)
+                {
+                    o.uv.xyz = col_pass2.rgb;
+                    o.uv.w = -1;
+                    o.vertex = vertex_pass2;
+                    return o;
+                }
+                */
                 return o;
             }
 
