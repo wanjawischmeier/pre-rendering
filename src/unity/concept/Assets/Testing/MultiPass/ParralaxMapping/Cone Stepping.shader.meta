@@ -1,0 +1,13 @@
+fileFormatVersion: 2
+guid: 9eb1a74fba5ffe24eb5120ccf4fe4a8f
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures:
+  - color_map: {instanceID: 0}
+  - cone_relief_map: {instanceID: 0}
+  - quadcone_relief_map: {instanceID: 0}
+  - relaxedcone_relief_map: {instanceID: 0}
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

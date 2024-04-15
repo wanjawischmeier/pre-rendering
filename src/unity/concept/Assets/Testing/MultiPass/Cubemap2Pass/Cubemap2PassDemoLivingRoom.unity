@@ -350,7 +350,7 @@ MonoBehaviour:
   rasterizationCamera: {fileID: 267136052}
   approximationCameras: []
   approximationLayers: 2
-  approximationDownsamplingRatio: 1
+  approximationDownsamplingRatio: 2
   maxDepthDifference: 0.01
   projectionDifference: 0
   cubePositions:
@@ -426,7 +426,7 @@ PrefabInstance:
     - target: {fileID: -7635826562936255635, guid: 22d2682c9a057604b8e415c9028269aa, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
-      objectReference: {fileID: 2100000, guid: c14ad3527483e3a499eba4134072b67b, type: 2}
+      objectReference: {fileID: -3033667219593020291, guid: 22d2682c9a057604b8e415c9028269aa, type: 3}
     - target: {fileID: 919132149155446097, guid: 22d2682c9a057604b8e415c9028269aa, type: 3}
       propertyPath: m_Name
       value: living_room_colision
@@ -572,11 +572,11 @@ GameObject:
   - component: {fileID: 1177502970}
   m_Layer: 4
   m_Name: Cube
-  m_TagString: Untagged
+  m_TagString: RenderTarget
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!23 &1177502970
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -599,7 +599,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: d02d55f6b8f43364aa864177f0eefeaa, type: 2}
+  - {fileID: -3033667219593020291, guid: 22d2682c9a057604b8e415c9028269aa, type: 3}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

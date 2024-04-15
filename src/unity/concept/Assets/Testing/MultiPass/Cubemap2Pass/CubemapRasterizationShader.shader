@@ -228,20 +228,13 @@ Shader "Unlit/CubemapRasterizationShader"
     
                 depth = depth * (30 - 0.1) + 0.1;
                 float2 viewSpace = (cubemapUV * 2 - 1) * depth;
+    
                 float4 pos = float4(viewSpace, depth, 1);
                 pos = mul(ORIENTATION_MATRICIES[faceIndex], pos);
-                float3 off0 = float3(1, -2, 0);
-                // pos.xyz -= CAMERA_POS;
-                // pos = mul(UNITY_MATRIX_VP, pos);
-                // pos.xyz += CUBE_POSITIONS[cubemapIndex].xyz;
                 pos.xyz -= CUBE_POSITIONS[cubemapIndex];
+    
                 return pos;
             }
-
-            void ProjectQuad(inout v2f data)
-{
-    
-}
 
             v2f vert (uint id : SV_VertexID)
             {
@@ -278,7 +271,7 @@ Shader "Unlit/CubemapRasterizationShader"
                 }
                 */
                 float4 col = _CubemapTextures.SampleLevel(sampler_linear_clamp, c_current.xyz, 0);
-                if (/* quadValid.y || */ true)
+                if (/* quadValid.y || */ false)
                 {
                     o.uv = c_current;
                 }
@@ -300,8 +293,8 @@ Shader "Unlit/CubemapRasterizationShader"
     
                 if (abs(col.a - col00.a) > MAX_DEPTH_DIFFERENCE || abs(col.a - col10.a) > MAX_DEPTH_DIFFERENCE || abs(col.a - col01.a) > MAX_DEPTH_DIFFERENCE || abs(col.a - col11.a) > MAX_DEPTH_DIFFERENCE)
                 {
-                    o.vertex = float4(0, 0, 0, 0);
-                    return o;
+                    // o.vertex = float4(0, 0, 0, 0);
+                    // return o;
                 }
     
                 // -- end of this monstrosity
@@ -313,6 +306,10 @@ Shader "Unlit/CubemapRasterizationShader"
                 // o.uv = c00.wwww;
                 // o.uv.w = -1;
                 float4 pos = GetCubemapWorldSpacePosition(c_current.xyz, col.a);
+                
+                float2 viewSpace = (uv * 2 - 1) * c_current.w;
+                viewSpace.x *= SCREEN_RESOLUTION.x / SCREEN_RESOLUTION.y;
+                pos = float4(viewSpace, c_current.w, 1);
                 // float4 pos_pass2 = GetCubemapWorldSpacePosition(c_current_pass2.xyz, col_pass2.a);
                 o.vertex = UnityObjectToClipPos(pos);
                 /*

@@ -90,7 +90,7 @@ public class CubemapLoader : MonoBehaviour
                 // reset transform
                 layerRenderer.transform.position = renderer.transform.position;
                 layerRenderer.transform.rotation = renderer.transform.rotation;
-                layerRenderer.transform.parent = renderer.transform.parent;
+                layerRenderer.transform.parent = renderer.transform;
 
                 // apply material
                 layerRenderer.material = approximationMaterials[i];
@@ -114,7 +114,7 @@ public class CubemapLoader : MonoBehaviour
 
         // set render params
         var renderMatProps = new MaterialPropertyBlock();
-        renderMatProps.SetVector("SCREEN_RESOLUTION", new Vector2(Screen.width, Screen.height));
+        renderMatProps.SetVector("SCREEN_RESOLUTION", new Vector2(rasterizationResolution.x, rasterizationResolution.y));
         renderMatProps.SetVector("TARGET_TEXTURE_RESOLUTION", rasterizationResolution.ToVector2());
         renderMatProps.SetMatrix("VP_I", VP.inverse);
         renderMatProps.SetMatrixArray("ORIENTATION_MATRICIES", CubeMapConversion.orientationMatricies);
