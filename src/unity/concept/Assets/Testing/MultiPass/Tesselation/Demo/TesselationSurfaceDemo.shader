@@ -39,14 +39,16 @@ Shader "Custom/TesselationSurfaceDemo"
 
         float4 tessDistance(appdata_full v0, appdata_full v1, appdata_full v2)
         {
-            float minDist = 10.0;
-            float maxDist = 25.0;
-            return UnityDistanceBasedTess(v0.vertex, v1.vertex, v2.vertex, minDist, maxDist, _Tess);
+            float minDist = 1.0;
+            float maxDist = 250.0;
+            // return UnityDistanceBasedTess(v0.vertex, v1.vertex, v2.vertex, minDist, maxDist, _Tess);
+            return _Tess;
         }
 
         void vert(inout appdata_full v)
         {
-            v.vertex.y += sin(length(v.vertex) * _Amount) * 0.25;
+            // v.id == 0;
+            // v.vertex.y += sin(length(v.vertex) * _Amount) * 0.25;
         }
 
         void surf (Input IN, inout SurfaceOutputStandard o)
