@@ -309,6 +309,7 @@ MonoBehaviour:
   computeShader: {fileID: 7200000, guid: d3a00c4d221a3e54caa34becbacdda36, type: 3}
   downsampledResolution: {x: 256, y: 256}
   cubemapSlice: 0
+  positionBufferSize: 2
   input: {fileID: 0}
   inputOutput: {fileID: 0}
   downsampled: {fileID: 0}

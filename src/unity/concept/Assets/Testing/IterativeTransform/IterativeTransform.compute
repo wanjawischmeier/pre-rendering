@@ -5,9 +5,11 @@
 
 uniform float4x4 ORIENTATION_MATRICIES[6];
 uniform float4x4 INVERSE_ORIENTATION_MATRICIES[6];
-uniform float3 CUBE_POSITIONS[1];
-uniform float3 POSITION, PREVIOUS_POSITION;
-uniform uint2 INOUT_RESOLUTION, DOWNSAMPLED_RESOLUTION;
+uniform float3 CUBE_POSITIONS[1], POSITION_BUFFER[100];
+uniform float3 POSITION;
+uniform bool IGNORE_BUFFER_OVERFLOW;
+uniform int POSITION_BUFFER_SIZE, POSITION_BUFFER_INDEX;
+uniform int2 INOUT_RESOLUTION, DOWNSAMPLED_RESOLUTION;
 
 RWTexture2DArray<float4> Input, InputOutput, Downsampled;
 
@@ -20,7 +22,7 @@ float3 UVToWorldSpacePosition(float2 cubemapUV, float depth, int faceIndex, int 
     float3 pos = dir * depth; // Scale direction by depth
 
     float4 worldPos = mul(ORIENTATION_MATRICIES[faceIndex], float4(pos, 1)); // World space position
-    return worldPos.xyz / worldPos.w + PREVIOUS_POSITION;
+    return worldPos.xyz / worldPos.w;
 }
 
 [numthreads(8, 8, 1)]
@@ -31,16 +33,25 @@ void IterativeTransform(uint3 id : SV_DispatchThreadID)
     int cubemapIndex = (id.z - faceIndex) / CUBEMAP_FACE_COUNT;
     
     float4 sampled = InputOutput[id.xyz];
-    float depth = sampled.a * (FCLIP - NCLIP) + NCLIP;
-    float3 worldPos = UVToWorldSpacePosition(uv, depth, faceIndex, cubemapIndex);
+    float normalizedDepth = sampled.a % 1;
+    float depth = normalizedDepth * (FCLIP - NCLIP) + NCLIP;
+    int sampledPositionBufferIndex = sampled.a - normalizedDepth;
+    if (!IGNORE_BUFFER_OVERFLOW && sampledPositionBufferIndex == POSITION_BUFFER_INDEX)
+    {
+        // the circular buffer has wrapped back around
+        // and the sampled index has been overwritten
+        InputOutput[id.xyz] = half4(0, 0, 0, 0);
+        return;
+    }
     
-    // float4 worldPos = GetCubemapWorldSpacePosition(uv, faceIndex, cubemapIndex, sampled.a);
-
-    worldPos -= POSITION;
+    float3 worldPos = UVToWorldSpacePosition(uv, depth, faceIndex, cubemapIndex);
+    worldPos -= POSITION_BUFFER[sampledPositionBufferIndex] + POSITION;
+    
     float4 transformedUV = WorldSpaceToCubemapUV(worldPos, cubemapIndex);
     
     // uint3 downsampledId = uint3((float) id.xy / (DOWNSAMPLED_RESOLUTION / INOUT_RESOLUTION), id.z);
     
     // InputOutput[id.xyz] = worldPos;
+    sampled.a += POSITION_BUFFER_INDEX;
     InputOutput[uint3(transformedUV.xy * INOUT_RESOLUTION, transformedUV.w)] = sampled;
 }

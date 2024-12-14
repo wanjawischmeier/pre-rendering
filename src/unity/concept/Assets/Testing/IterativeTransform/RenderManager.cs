@@ -8,33 +8,16 @@ public class RenderManager : MonoBehaviour
     public ComputeShader computeShader;
     public Vector2Int downsampledResolution;
     public int cubemapSlice = 0;
+    [Range(2, maxPositionBufferSize)]
+    public int positionBufferSize = 10;
 
     public RenderTexture input, inputOutput, downsampled, cubemap;
+    int positionBufferIndex = -1;
     int iterativeTransformKernelId, dispatchWidth, dispatchHeight;
     uint threadGroupsX, threadGroupsY;
-    Vector3 previousPosition = Vector3.zero;
+    Vector4[] positionBuffer;
 
-    private RenderTexture CopyTexturesToCubemap(Texture2D[] textures)
-    {
-        if (textures.Length != 6)
-        {
-            Debug.LogError("You must provide exactly 6 Texture2D objects for a cubemap.");
-            return null;
-        }
-
-        var cubemap = new RenderTexture(dispatchWidth, dispatchHeight, 0);
-        cubemap.dimension = UnityEngine.Rendering.TextureDimension.Cube;
-        cubemap.format = RenderTextureFormat.ARGBHalf;
-        cubemap.enableRandomWrite = true;
-        cubemap.volumeDepth = 6;
-
-        for (int faceIndex = 0; faceIndex < 6; faceIndex++)
-        {
-            Graphics.CopyTexture(textures[faceIndex], 0, cubemap, faceIndex);
-        }
-
-        return cubemap;
-    }
+    const int maxPositionBufferSize = 100;
 
     private void Start()
     {
@@ -62,14 +45,15 @@ public class RenderManager : MonoBehaviour
         downsampled.enableRandomWrite = true;
         downsampled.volumeDepth = 6;
 
-        cubemap = CopyTexturesToCubemap(inputImages);
-
         for (int i = 0; i < Mathf.Min(inputOutput.volumeDepth, inputImages.Length); i++)
         {
             Graphics.Blit(inputImages[i], input, 0, i);
             Graphics.Blit(inputImages[i], inputOutput, 0, i);
         }
+        
+        positionBuffer = new Vector4[positionBufferSize];
 
+        computeShader.SetInt("POSITION_BUFFER_SIZE", positionBufferSize);
         computeShader.SetVector("INOUT_RESOLUTION", new Vector2(dispatchWidth, dispatchHeight));
         computeShader.SetVector("DOWNSAMPLED_RESOLUTION", new Vector2(downsampledResolution.x, downsampledResolution.y));
         computeShader.SetVectorArray("CUBE_POSITIONS", cubemapPositions);
@@ -88,9 +72,28 @@ public class RenderManager : MonoBehaviour
 
     private void Update()
     {
+        Matrix4x4 viewToWorldMatrix = Camera.main.cameraToWorldMatrix;
+        Matrix4x4 invProjMatrix = Camera.main.projectionMatrix.inverse;
+
+        cubemapScreenBlitMaterial.SetMatrix("_InvProjectionMatrix", invProjMatrix);
+        cubemapScreenBlitMaterial.SetMatrix("_ViewToWorldMatrix", viewToWorldMatrix);
+
+        bool isInitialSetupFrame = positionBufferIndex == -1;
+        if (!isInitialSetupFrame && transform.position.Equals(positionBuffer[positionBufferIndex]))
+        {
+            return;
+        }
+
         computeShader.SetVector("POSITION", transform.position);
-        computeShader.SetVector("PREVIOUS_POSITION", previousPosition);
         computeShader.SetVectorArray("CUBE_POSITIONS", cubemapPositions);
+
+        if (isInitialSetupFrame)
+        {
+            // the buffer will detect an overflow by default
+            computeShader.SetBool("IGNORE_BUFFER_OVERFLOW", true);
+            positionBufferIndex++;
+        }
+        computeShader.SetInt("POSITION_BUFFER_INDEX", positionBufferIndex);
 
         RenderTexture rt = RenderTexture.active;
         for (int faceIndex = 0; faceIndex < 6; faceIndex++)
@@ -100,21 +103,22 @@ public class RenderManager : MonoBehaviour
         }
         RenderTexture.active = rt;
 
-        Matrix4x4 viewToWorldMatrix = Camera.main.cameraToWorldMatrix;
-        Matrix4x4 invProjMatrix = Camera.main.projectionMatrix.inverse;
-
-        cubemapScreenBlitMaterial.SetMatrix("_InvProjectionMatrix", invProjMatrix);
-        cubemapScreenBlitMaterial.SetMatrix("_ViewToWorldMatrix", viewToWorldMatrix);
-
         computeShader.Dispatch(iterativeTransformKernelId, dispatchWidth / (int)threadGroupsX, dispatchHeight / (int)threadGroupsY, 6);
 
-        previousPosition = transform.position;
+        if (isInitialSetupFrame)
+        {
+            // reenable buffer overflow detection
+            computeShader.SetBool("IGNORE_BUFFER_OVERFLOW", false);
+        }
+
+        // push current position to circular buffer
+        positionBuffer[positionBufferIndex] = transform.position;
+        positionBufferIndex = (positionBufferIndex + 1) % positionBufferSize;
+        computeShader.SetVectorArray("POSITION_BUFFER", positionBuffer);
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
-        // TODO: custom frag shader
-        // Graphics.Blit(inputOutput, destination, cubemapSlice, 0);
         Graphics.Blit(source, destination, cubemapScreenBlitMaterial);
     }
 }
