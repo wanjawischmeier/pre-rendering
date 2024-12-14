@@ -12,6 +12,7 @@ public class RenderManager : MonoBehaviour
     public RenderTexture input, inputOutput, downsampled, cubemap;
     int iterativeTransformKernelId, dispatchWidth, dispatchHeight;
     uint threadGroupsX, threadGroupsY;
+    Vector3 previousPosition = Vector3.zero;
 
     private RenderTexture CopyTexturesToCubemap(Texture2D[] textures)
     {
@@ -81,7 +82,6 @@ public class RenderManager : MonoBehaviour
         cubemapScreenBlitMaterial.SetVectorArray("CUBE_POSITIONS", cubemapPositions);
 
         computeShader.SetTexture(iterativeTransformKernelId, "Input", input);
-        computeShader.SetTexture(iterativeTransformKernelId, "Cube", cubemap);
         computeShader.SetTexture(iterativeTransformKernelId, "InputOutput", inputOutput);
         computeShader.SetTexture(iterativeTransformKernelId, "Downsampled", downsampled);
     }
@@ -89,10 +89,15 @@ public class RenderManager : MonoBehaviour
     private void Update()
     {
         computeShader.SetVector("POSITION", transform.position);
+        computeShader.SetVector("PREVIOUS_POSITION", previousPosition);
+        computeShader.SetVectorArray("CUBE_POSITIONS", cubemapPositions);
 
         RenderTexture rt = RenderTexture.active;
-        RenderTexture.active = inputOutput;
-        // GL.Clear(true, true, Color.black);
+        for (int faceIndex = 0; faceIndex < 6; faceIndex++)
+        {
+            Graphics.SetRenderTarget(inputOutput, 0, CubemapFace.Unknown, faceIndex);
+            // GL.Clear(true, true, Color.black);
+        }
         RenderTexture.active = rt;
 
         Matrix4x4 viewToWorldMatrix = Camera.main.cameraToWorldMatrix;
@@ -101,13 +106,15 @@ public class RenderManager : MonoBehaviour
         cubemapScreenBlitMaterial.SetMatrix("_InvProjectionMatrix", invProjMatrix);
         cubemapScreenBlitMaterial.SetMatrix("_ViewToWorldMatrix", viewToWorldMatrix);
 
-        // computeShader.Dispatch(iterativeTransformKernelId, dispatchWidth / (int)threadGroupsX, dispatchHeight / (int)threadGroupsY, 6);
+        computeShader.Dispatch(iterativeTransformKernelId, dispatchWidth / (int)threadGroupsX, dispatchHeight / (int)threadGroupsY, 6);
+
+        previousPosition = transform.position;
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         // TODO: custom frag shader
         // Graphics.Blit(inputOutput, destination, cubemapSlice, 0);
-        Graphics.Blit(inputOutput, destination, cubemapScreenBlitMaterial);
+        Graphics.Blit(source, destination, cubemapScreenBlitMaterial);
     }
 }

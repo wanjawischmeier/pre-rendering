@@ -17,13 +17,8 @@ public class FlyMovementController : MonoBehaviour
         characterController = GetComponent<CharacterController>();
         if (Application.isMobilePlatform)
         {
-            Cursor.lockState = CursorLockMode.None;
-        }
-        else
-        {
             moveJoystick?.gameObject.SetActive(true);
             viewJoystick?.gameObject.SetActive(true);
-            Cursor.lockState = CursorLockMode.Locked;
         }
     }
 

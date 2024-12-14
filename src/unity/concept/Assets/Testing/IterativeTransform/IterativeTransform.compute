@@ -6,54 +6,22 @@
 uniform float4x4 ORIENTATION_MATRICIES[6];
 uniform float4x4 INVERSE_ORIENTATION_MATRICIES[6];
 uniform float3 CUBE_POSITIONS[1];
-uniform float3 POSITION;
+uniform float3 POSITION, PREVIOUS_POSITION;
 uniform uint2 INOUT_RESOLUTION, DOWNSAMPLED_RESOLUTION;
 
 RWTexture2DArray<float4> Input, InputOutput, Downsampled;
-TextureCube<float4> Cube;
 
-SamplerState _LinearClamp;
+#include "IterativeTransformUtility.cginc"
 
-float4 GetCubemapWorldSpacePosition(float2 cubemapUV, int faceIndex, int cubemapIndex, float depth)
+float3 UVToWorldSpacePosition(float2 cubemapUV, float depth, int faceIndex, int cubemapIndex)
 {
-    depth = depth * (FCLIP - NCLIP) + NCLIP;
-    float2 viewSpace = (cubemapUV * 2 - 1) * depth;
-    
-    float4 pos = float4(viewSpace, depth, 1);
-    pos = mul(ORIENTATION_MATRICIES[faceIndex], pos);
-    pos.xyz -= CUBE_POSITIONS[cubemapIndex];
-    
-    return pos;
+    float2 viewSpace = cubemapUV * 2 - 1; // [-1, 1] NDC
+    float3 dir = float3(viewSpace, 1); // Assume direction vector
+    float3 pos = dir * depth; // Scale direction by depth
+
+    float4 worldPos = mul(ORIENTATION_MATRICIES[faceIndex], float4(pos, 1)); // World space position
+    return worldPos.xyz / worldPos.w + PREVIOUS_POSITION;
 }
-
-float4 UVToWorldSpacePosition(float2 cubemapUV, int faceIndex)
-{
-    float2 viewSpace = cubemapUV * 2 - 1;
-    float4 pos = float4(viewSpace, 1, 1);
-    return mul(ORIENTATION_MATRICIES[faceIndex], pos);
-}
-
-float4 WorldSpaceToCubemapUV(float4 worldPosition, int cubemapIndex)
-{
-    float3 localPosition = worldPosition.xyz - CUBE_POSITIONS[cubemapIndex];
-
-    // determine the face index by evaluating the dominant axis of the position
-    int faceIndex;
-    float3 absPos = abs(localPosition);
-    if (absPos.x >= absPos.y && absPos.x >= absPos.z)
-        faceIndex = (localPosition.x > 0) ? 0 : 1; // +x or -x
-    else if (absPos.y >= absPos.x && absPos.y >= absPos.z)
-        faceIndex = (localPosition.y > 0) ? 2 : 3; // +y or -y
-    else
-        faceIndex = (localPosition.z > 0) ? 4 : 5; // +z or -z
-
-    float4 viewSpace = mul(INVERSE_ORIENTATION_MATRICIES[faceIndex], float4(localPosition, 1));
-    float depth = length(viewSpace.xyz);
-    float2 cubemapUV = (viewSpace.xy / depth) * 0.5 + 0.5;
-
-    return float4(cubemapUV, depth, faceIndex);
-}
-
 
 [numthreads(8, 8, 1)]
 void IterativeTransform(uint3 id : SV_DispatchThreadID)
@@ -62,17 +30,17 @@ void IterativeTransform(uint3 id : SV_DispatchThreadID)
     int faceIndex = id.z % CUBEMAP_FACE_COUNT;
     int cubemapIndex = (id.z - faceIndex) / CUBEMAP_FACE_COUNT;
     
-    float4 worldPos = UVToWorldSpacePosition(uv, faceIndex);
-    float4 sampled = Input[id.xyz];
+    float4 sampled = InputOutput[id.xyz];
+    float depth = sampled.a * (FCLIP - NCLIP) + NCLIP;
+    float3 worldPos = UVToWorldSpacePosition(uv, depth, faceIndex, cubemapIndex);
     
     // float4 worldPos = GetCubemapWorldSpacePosition(uv, faceIndex, cubemapIndex, sampled.a);
 
-    worldPos.xyz += POSITION;
+    worldPos -= POSITION;
     float4 transformedUV = WorldSpaceToCubemapUV(worldPos, cubemapIndex);
     
-    // InputOutput[id.xyz] = float4(id.x & id.y, (id.x & 15) / 15.0, (id.y & 15) / 15.0, 0.0);
     // uint3 downsampledId = uint3((float) id.xy / (DOWNSAMPLED_RESOLUTION / INOUT_RESOLUTION), id.z);
     
     // InputOutput[id.xyz] = worldPos;
-    InputOutput[uint3(transformedUV.xy * INOUT_RESOLUTION, transformedUV.w)] = Cube.SampleLevel(_LinearClamp, worldPos.xyz, 0);
+    InputOutput[uint3(transformedUV.xy * INOUT_RESOLUTION, transformedUV.w)] = sampled;
 }
