@@ -4,12 +4,36 @@ public class RenderManager : MonoBehaviour
 {
     public Texture2D[] inputImages;
     public Vector4[] cubemapPositions;
+    public Material cubemapScreenBlitMaterial;
     public ComputeShader computeShader;
     public Vector2Int downsampledResolution;
+    public int cubemapSlice = 0;
 
-    public RenderTexture input, inputOutput, downsampled;
+    public RenderTexture input, inputOutput, downsampled, cubemap;
     int iterativeTransformKernelId, dispatchWidth, dispatchHeight;
     uint threadGroupsX, threadGroupsY;
+
+    private RenderTexture CopyTexturesToCubemap(Texture2D[] textures)
+    {
+        if (textures.Length != 6)
+        {
+            Debug.LogError("You must provide exactly 6 Texture2D objects for a cubemap.");
+            return null;
+        }
+
+        var cubemap = new RenderTexture(dispatchWidth, dispatchHeight, 0);
+        cubemap.dimension = UnityEngine.Rendering.TextureDimension.Cube;
+        cubemap.format = RenderTextureFormat.ARGBHalf;
+        cubemap.enableRandomWrite = true;
+        cubemap.volumeDepth = 6;
+
+        for (int faceIndex = 0; faceIndex < 6; faceIndex++)
+        {
+            Graphics.CopyTexture(textures[faceIndex], 0, cubemap, faceIndex);
+        }
+
+        return cubemap;
+    }
 
     private void Start()
     {
@@ -37,6 +61,8 @@ public class RenderManager : MonoBehaviour
         downsampled.enableRandomWrite = true;
         downsampled.volumeDepth = 6;
 
+        cubemap = CopyTexturesToCubemap(inputImages);
+
         for (int i = 0; i < Mathf.Min(inputOutput.volumeDepth, inputImages.Length); i++)
         {
             Graphics.Blit(inputImages[i], input, 0, i);
@@ -49,7 +75,13 @@ public class RenderManager : MonoBehaviour
         computeShader.SetMatrixArray("ORIENTATION_MATRICIES", CubeMapConversion.orientationMatricies);
         computeShader.SetMatrixArray("INVERSE_ORIENTATION_MATRICIES", CubeMapConversion.inverseOrientationMatricies);
 
+        cubemapScreenBlitMaterial.SetTexture("_Cubemap", cubemap);
+        cubemapScreenBlitMaterial.SetTexture("_InputOutput", inputOutput);
+        cubemapScreenBlitMaterial.SetMatrixArray("INVERSE_ORIENTATION_MATRICIES", CubeMapConversion.inverseOrientationMatricies);
+        cubemapScreenBlitMaterial.SetVectorArray("CUBE_POSITIONS", cubemapPositions);
+
         computeShader.SetTexture(iterativeTransformKernelId, "Input", input);
+        computeShader.SetTexture(iterativeTransformKernelId, "Cube", cubemap);
         computeShader.SetTexture(iterativeTransformKernelId, "InputOutput", inputOutput);
         computeShader.SetTexture(iterativeTransformKernelId, "Downsampled", downsampled);
     }
@@ -57,12 +89,25 @@ public class RenderManager : MonoBehaviour
     private void Update()
     {
         computeShader.SetVector("POSITION", transform.position);
-        computeShader.Dispatch(iterativeTransformKernelId, dispatchWidth / (int)threadGroupsX, dispatchHeight / (int)threadGroupsY, 6);
+
+        RenderTexture rt = RenderTexture.active;
+        RenderTexture.active = inputOutput;
+        // GL.Clear(true, true, Color.black);
+        RenderTexture.active = rt;
+
+        Matrix4x4 viewToWorldMatrix = Camera.main.cameraToWorldMatrix;
+        Matrix4x4 invProjMatrix = Camera.main.projectionMatrix.inverse;
+
+        cubemapScreenBlitMaterial.SetMatrix("_InvProjectionMatrix", invProjMatrix);
+        cubemapScreenBlitMaterial.SetMatrix("_ViewToWorldMatrix", viewToWorldMatrix);
+
+        // computeShader.Dispatch(iterativeTransformKernelId, dispatchWidth / (int)threadGroupsX, dispatchHeight / (int)threadGroupsY, 6);
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         // TODO: custom frag shader
-        Graphics.Blit(source, destination);
+        // Graphics.Blit(inputOutput, destination, cubemapSlice, 0);
+        Graphics.Blit(inputOutput, destination, cubemapScreenBlitMaterial);
     }
 }

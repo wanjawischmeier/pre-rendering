@@ -10,6 +10,9 @@ uniform float3 POSITION;
 uniform uint2 INOUT_RESOLUTION, DOWNSAMPLED_RESOLUTION;
 
 RWTexture2DArray<float4> Input, InputOutput, Downsampled;
+TextureCube<float4> Cube;
+
+SamplerState _LinearClamp;
 
 float4 GetCubemapWorldSpacePosition(float2 cubemapUV, int faceIndex, int cubemapIndex, float depth)
 {
@@ -23,9 +26,16 @@ float4 GetCubemapWorldSpacePosition(float2 cubemapUV, int faceIndex, int cubemap
     return pos;
 }
 
+float4 UVToWorldSpacePosition(float2 cubemapUV, int faceIndex)
+{
+    float2 viewSpace = cubemapUV * 2 - 1;
+    float4 pos = float4(viewSpace, 1, 1);
+    return mul(ORIENTATION_MATRICIES[faceIndex], pos);
+}
+
 float4 WorldSpaceToCubemapUV(float4 worldPosition, int cubemapIndex)
 {
-    float3 localPosition = worldPosition.xyz + CUBE_POSITIONS[cubemapIndex];
+    float3 localPosition = worldPosition.xyz - CUBE_POSITIONS[cubemapIndex];
 
     // determine the face index by evaluating the dominant axis of the position
     int faceIndex;
@@ -52,13 +62,17 @@ void IterativeTransform(uint3 id : SV_DispatchThreadID)
     int faceIndex = id.z % CUBEMAP_FACE_COUNT;
     int cubemapIndex = (id.z - faceIndex) / CUBEMAP_FACE_COUNT;
     
+    float4 worldPos = UVToWorldSpacePosition(uv, faceIndex);
     float4 sampled = Input[id.xyz];
-    float4 worldPos = GetCubemapWorldSpacePosition(uv, faceIndex, cubemapIndex, sampled.a);
-    worldPos.xyz -= POSITION;
+    
+    // float4 worldPos = GetCubemapWorldSpacePosition(uv, faceIndex, cubemapIndex, sampled.a);
+
+    worldPos.xyz += POSITION;
     float4 transformedUV = WorldSpaceToCubemapUV(worldPos, cubemapIndex);
     
     // InputOutput[id.xyz] = float4(id.x & id.y, (id.x & 15) / 15.0, (id.y & 15) / 15.0, 0.0);
     // uint3 downsampledId = uint3((float) id.xy / (DOWNSAMPLED_RESOLUTION / INOUT_RESOLUTION), id.z);
-
-    InputOutput[uint3(transformedUV.xy * INOUT_RESOLUTION, transformedUV.z)] = sampled;
+    
+    // InputOutput[id.xyz] = worldPos;
+    InputOutput[uint3(transformedUV.xy * INOUT_RESOLUTION, transformedUV.w)] = Cube.SampleLevel(_LinearClamp, worldPos.xyz, 0);
 }
