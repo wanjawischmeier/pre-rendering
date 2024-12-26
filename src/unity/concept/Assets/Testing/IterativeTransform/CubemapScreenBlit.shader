@@ -39,7 +39,7 @@ Shader "Hidden/CubemapScreenBlit"
             }
 
             sampler2D _MainTex;
-            Texture2DArray _InputOutput;
+            Texture2DArray _InputOutput, _Downsampled;
             SamplerState point_clamp_sampler; // TODO: implement bilinear cubemap sampling
 
             uniform float3 CUBE_POSITIONS[1];
@@ -63,6 +63,10 @@ Shader "Hidden/CubemapScreenBlit"
                 float4 cubemapUV = WorldSpaceToCubemapUV(localPosition, 0);
 
                 float4 color = _InputOutput.Sample(point_clamp_sampler, cubemapUV.xyw);
+                if (color.a == 0)
+                {
+                    color = _Downsampled.Sample(point_clamp_sampler, cubemapUV.xyw);
+                }
                 // float4 realtime = tex2D(_MainTex, i.uv);
                 return color;
                 // return realtime.a == 0 ? color : realtime; // TODO: implement depth sorting

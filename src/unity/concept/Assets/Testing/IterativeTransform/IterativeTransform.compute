@@ -8,7 +8,7 @@ uniform float4x4 INVERSE_ORIENTATION_MATRICIES[6];
 uniform float3 CUBE_POSITIONS[1];
 uniform float3 POSITION, PREVIOUS_POSITION;
 uniform int2 INOUT_RESOLUTION, DOWNSAMPLED_RESOLUTION;
-uniform int CLEAR_FLAG;
+uniform bool IS_SETUP_FRAME;
 
 RWTexture2DArray<float4> Input, InputOutput, Downsampled;
 
@@ -33,19 +33,27 @@ void IterativeTransform(uint3 id : SV_DispatchThreadID)
     
     float4 sampled = Input[id.xyz];
     float normalizedDepth = sampled.a % 1;
+    
     float4 sampled2 = InputOutput[id.xyz];
-    int sampedClearFlag = sampled2.a - (sampled2.a % 1);
-    if (sampedClearFlag == 0 && CLEAR_FLAG != -1)
+    if (sampled2.a != 0)
     {
-        // no valid texel at current coords
-        return;
-    }
-    else if (sampedClearFlag == CLEAR_FLAG)
-    {
-        // the texel is obsolete and needs to be overwritten
+        // the texel is now obsolete and needs to be overwritten
         InputOutput[id.xyz] = float4(0, 0, 0, 0);
-        return;
     }
+    else if(all(id.xy < DOWNSAMPLED_RESOLUTION))
+    {
+        float4 sampled3 = Downsampled[id.xyz];
+        if (sampled3.a == 0)
+        {
+            // no valid texel at current coords
+            return;
+        }
+        
+        float normalizedDepth3 = sampled3.a % 1;
+        Downsampled[uint3(float2(id.xy) / INOUT_RESOLUTION * DOWNSAMPLED_RESOLUTION, id.z)] = float4(0, 0, 0, 0);
+    }
+    
+    float normalizedDepth2 = sampled2.a % 1;
     
     // the texel is valid
     float depth = normalizedDepth * (FCLIP - NCLIP) + NCLIP;
@@ -59,6 +67,6 @@ void IterativeTransform(uint3 id : SV_DispatchThreadID)
     
     // uint3 downsampledId = uint3((float) id.xy / (DOWNSAMPLED_RESOLUTION / INOUT_RESOLUTION), id.z);
     // InputOutput[id.xyz] = worldPos;
-    sampled.a += CLEAR_FLAG == -1 ? 1 : CLEAR_FLAG;
     InputOutput[uint3(transformedUV.xy * INOUT_RESOLUTION, transformedUV.w)] = sampled;
+    Downsampled[uint3(transformedUV.xy * DOWNSAMPLED_RESOLUTION, transformedUV.w)] = sampled;
 }

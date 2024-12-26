@@ -10,20 +10,18 @@ public class RenderManager : MonoBehaviour
     public int cubemapSlice = 0;
 
     public RenderTexture input, inputOutput, downsampled, cubemap;
-    int iterativeTransformKernelId, dispatchWidth, dispatchHeight;
-    public int positionUpdateIndex = 0;
-    uint threadGroupsX, threadGroupsY;
+    int iterativeTransformKernelId, threadGroupsX, threadGroupsY;
     Vector3 previousPosition = Vector3.zero;
-
-    const int maxPositionBufferSize = 100;
 
     private void Start()
     {
         iterativeTransformKernelId = computeShader.FindKernel("IterativeTransform");
-        computeShader.GetKernelThreadGroupSizes(iterativeTransformKernelId, out threadGroupsX, out threadGroupsY, out uint _);
-        
-        dispatchWidth = inputImages[0].width;
-        dispatchHeight = inputImages[0].height;
+        computeShader.GetKernelThreadGroupSizes(iterativeTransformKernelId, out uint threadsX, out uint threadsY, out uint _);
+
+        int dispatchWidth = inputImages[0].width;
+        int dispatchHeight = inputImages[0].height;
+        threadGroupsX = Mathf.CeilToInt(dispatchWidth / (int)threadsX);
+        threadGroupsY = Mathf.CeilToInt(dispatchHeight / (int)threadsY);
 
         input = new RenderTexture(dispatchWidth, dispatchHeight, 0);
         input.dimension = UnityEngine.Rendering.TextureDimension.Tex2DArray;
@@ -49,7 +47,7 @@ public class RenderManager : MonoBehaviour
             Graphics.Blit(inputImages[i], inputOutput, 0, i);
         }
 
-        computeShader.SetInt("CLEAR_FLAG", -1); // mark initial frame
+        computeShader.SetBool("IS_SETUP_FRAME", true);
         computeShader.SetVector("INOUT_RESOLUTION", new Vector2(dispatchWidth, dispatchHeight));
         computeShader.SetVector("DOWNSAMPLED_RESOLUTION", new Vector2(downsampledResolution.x, downsampledResolution.y));
         computeShader.SetVectorArray("CUBE_POSITIONS", cubemapPositions);
@@ -58,6 +56,7 @@ public class RenderManager : MonoBehaviour
 
         cubemapScreenBlitMaterial.SetTexture("_Cubemap", cubemap);
         cubemapScreenBlitMaterial.SetTexture("_InputOutput", inputOutput);
+        cubemapScreenBlitMaterial.SetTexture("_Downsampled", downsampled);
         cubemapScreenBlitMaterial.SetMatrixArray("INVERSE_ORIENTATION_MATRICIES", CubeMapConversion.inverseOrientationMatricies);
         cubemapScreenBlitMaterial.SetVectorArray("CUBE_POSITIONS", cubemapPositions);
 
@@ -90,11 +89,14 @@ public class RenderManager : MonoBehaviour
         }
         RenderTexture.active = rt;
 
-        computeShader.Dispatch(iterativeTransformKernelId, dispatchWidth / (int)threadGroupsX, dispatchHeight / (int)threadGroupsY, 6);
+        computeShader.Dispatch(iterativeTransformKernelId, threadGroupsX, threadGroupsY, 6);
 
+        if (transform.position != Vector3.zero && previousPosition == Vector3.zero)
+        {
+            computeShader.SetBool("IS_SETUP_FRAME", false);
+        }
         previousPosition = transform.position;
         computeShader.SetVector("PREVIOUS_POSITION", previousPosition);
-        computeShader.SetInt("CLEAR_FLAG", (++positionUpdateIndex % 2) + 1);  // alternates between 1 and 2 for each updated frame
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
