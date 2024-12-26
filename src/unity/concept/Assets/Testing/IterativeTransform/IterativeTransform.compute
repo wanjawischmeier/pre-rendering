@@ -5,11 +5,10 @@
 
 uniform float4x4 ORIENTATION_MATRICIES[6];
 uniform float4x4 INVERSE_ORIENTATION_MATRICIES[6];
-uniform float3 CUBE_POSITIONS[1], POSITION_BUFFER[100];
-uniform float3 POSITION;
-uniform bool IGNORE_BUFFER_OVERFLOW;
-uniform int POSITION_BUFFER_SIZE, POSITION_BUFFER_INDEX;
+uniform float3 CUBE_POSITIONS[1];
+uniform float3 POSITION, PREVIOUS_POSITION;
 uniform int2 INOUT_RESOLUTION, DOWNSAMPLED_RESOLUTION;
+uniform int CLEAR_FLAG;
 
 RWTexture2DArray<float4> Input, InputOutput, Downsampled;
 
@@ -32,26 +31,34 @@ void IterativeTransform(uint3 id : SV_DispatchThreadID)
     int faceIndex = id.z % CUBEMAP_FACE_COUNT;
     int cubemapIndex = (id.z - faceIndex) / CUBEMAP_FACE_COUNT;
     
-    float4 sampled = InputOutput[id.xyz];
+    float4 sampled = Input[id.xyz];
     float normalizedDepth = sampled.a % 1;
-    float depth = normalizedDepth * (FCLIP - NCLIP) + NCLIP;
-    int sampledPositionBufferIndex = sampled.a - normalizedDepth;
-    if (!IGNORE_BUFFER_OVERFLOW && sampledPositionBufferIndex == POSITION_BUFFER_INDEX)
+    float4 sampled2 = InputOutput[id.xyz];
+    int sampedClearFlag = sampled2.a - (sampled2.a % 1);
+    if (sampedClearFlag == 0 && CLEAR_FLAG != -1)
     {
-        // the circular buffer has wrapped back around
-        // and the sampled index has been overwritten
-        InputOutput[id.xyz] = half4(0, 0, 0, 0);
+        // no valid texel at current coords
+        return;
+    }
+    else if (sampedClearFlag == CLEAR_FLAG)
+    {
+        // the texel is obsolete and needs to be overwritten
+        InputOutput[id.xyz] = float4(0, 0, 0, 0);
         return;
     }
     
-    float3 worldPos = UVToWorldSpacePosition(uv, depth, faceIndex, cubemapIndex);
-    worldPos -= POSITION_BUFFER[sampledPositionBufferIndex] + POSITION;
+    // the texel is valid
+    float depth = normalizedDepth * (FCLIP - NCLIP) + NCLIP;
     
-    float4 transformedUV = WorldSpaceToCubemapUV(worldPos, cubemapIndex);
+    float3 worldPosition = UVToWorldSpacePosition(uv, depth, faceIndex, cubemapIndex);
+    worldPosition -= PREVIOUS_POSITION + POSITION;
+    // worldPosition -= POSITION;
+    
+    float3 localPosition = worldPosition + CUBE_POSITIONS[cubemapIndex];
+    float4 transformedUV = WorldSpaceToCubemapUV(localPosition, cubemapIndex);
     
     // uint3 downsampledId = uint3((float) id.xy / (DOWNSAMPLED_RESOLUTION / INOUT_RESOLUTION), id.z);
-    
     // InputOutput[id.xyz] = worldPos;
-    sampled.a += POSITION_BUFFER_INDEX;
+    sampled.a += CLEAR_FLAG == -1 ? 1 : CLEAR_FLAG;
     InputOutput[uint3(transformedUV.xy * INOUT_RESOLUTION, transformedUV.w)] = sampled;
 }

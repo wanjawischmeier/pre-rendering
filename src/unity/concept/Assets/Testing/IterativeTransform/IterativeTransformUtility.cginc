@@ -1,7 +1,5 @@
-float4 WorldSpaceToCubemapUV(float3 worldPosition, int cubemapIndex)
+float4 WorldSpaceToCubemapUV(float3 localPosition, int cubemapIndex)
 {
-    float3 localPosition = worldPosition + CUBE_POSITIONS[cubemapIndex];
-
     // determine the face index based on the dominant axis
     int faceIndex;
     float3 absPos = abs(localPosition);

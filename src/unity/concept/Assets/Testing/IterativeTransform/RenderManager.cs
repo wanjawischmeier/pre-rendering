@@ -8,14 +8,12 @@ public class RenderManager : MonoBehaviour
     public ComputeShader computeShader;
     public Vector2Int downsampledResolution;
     public int cubemapSlice = 0;
-    [Range(2, maxPositionBufferSize)]
-    public int positionBufferSize = 10;
 
     public RenderTexture input, inputOutput, downsampled, cubemap;
-    int positionBufferIndex = -1;
     int iterativeTransformKernelId, dispatchWidth, dispatchHeight;
+    public int positionUpdateIndex = 0;
     uint threadGroupsX, threadGroupsY;
-    Vector4[] positionBuffer;
+    Vector3 previousPosition = Vector3.zero;
 
     const int maxPositionBufferSize = 100;
 
@@ -50,10 +48,8 @@ public class RenderManager : MonoBehaviour
             Graphics.Blit(inputImages[i], input, 0, i);
             Graphics.Blit(inputImages[i], inputOutput, 0, i);
         }
-        
-        positionBuffer = new Vector4[positionBufferSize];
 
-        computeShader.SetInt("POSITION_BUFFER_SIZE", positionBufferSize);
+        computeShader.SetInt("CLEAR_FLAG", -1); // mark initial frame
         computeShader.SetVector("INOUT_RESOLUTION", new Vector2(dispatchWidth, dispatchHeight));
         computeShader.SetVector("DOWNSAMPLED_RESOLUTION", new Vector2(downsampledResolution.x, downsampledResolution.y));
         computeShader.SetVectorArray("CUBE_POSITIONS", cubemapPositions);
@@ -78,22 +74,13 @@ public class RenderManager : MonoBehaviour
         cubemapScreenBlitMaterial.SetMatrix("_InvProjectionMatrix", invProjMatrix);
         cubemapScreenBlitMaterial.SetMatrix("_ViewToWorldMatrix", viewToWorldMatrix);
 
-        bool isInitialSetupFrame = positionBufferIndex == -1;
-        if (!isInitialSetupFrame && transform.position.Equals(positionBuffer[positionBufferIndex]))
+        if (transform.position.Equals(previousPosition))
         {
             return;
         }
 
         computeShader.SetVector("POSITION", transform.position);
         computeShader.SetVectorArray("CUBE_POSITIONS", cubemapPositions);
-
-        if (isInitialSetupFrame)
-        {
-            // the buffer will detect an overflow by default
-            computeShader.SetBool("IGNORE_BUFFER_OVERFLOW", true);
-            positionBufferIndex++;
-        }
-        computeShader.SetInt("POSITION_BUFFER_INDEX", positionBufferIndex);
 
         RenderTexture rt = RenderTexture.active;
         for (int faceIndex = 0; faceIndex < 6; faceIndex++)
@@ -105,16 +92,9 @@ public class RenderManager : MonoBehaviour
 
         computeShader.Dispatch(iterativeTransformKernelId, dispatchWidth / (int)threadGroupsX, dispatchHeight / (int)threadGroupsY, 6);
 
-        if (isInitialSetupFrame)
-        {
-            // reenable buffer overflow detection
-            computeShader.SetBool("IGNORE_BUFFER_OVERFLOW", false);
-        }
-
-        // push current position to circular buffer
-        positionBuffer[positionBufferIndex] = transform.position;
-        positionBufferIndex = (positionBufferIndex + 1) % positionBufferSize;
-        computeShader.SetVectorArray("POSITION_BUFFER", positionBuffer);
+        previousPosition = transform.position;
+        computeShader.SetVector("PREVIOUS_POSITION", previousPosition);
+        computeShader.SetInt("CLEAR_FLAG", (++positionUpdateIndex % 2) + 1);  // alternates between 1 and 2 for each updated frame
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)

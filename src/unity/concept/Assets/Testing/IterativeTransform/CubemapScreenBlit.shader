@@ -58,11 +58,12 @@ Shader "Hidden/CubemapScreenBlit"
                 viewPos /= viewPos.w; // homogeneous divide
 
                 // convert to world-space direction
-                float3 worldDir = mul((float3x3)_ViewToWorldMatrix, viewPos.xyz);
-                float4 cubemapUV = WorldSpaceToCubemapUV(worldDir, 0);
+                float3 worldPosition = mul((float3x3)_ViewToWorldMatrix, viewPos.xyz);
+                float3 localPosition = worldPosition + CUBE_POSITIONS[0];
+                float4 cubemapUV = WorldSpaceToCubemapUV(localPosition, 0);
 
                 float4 color = _InputOutput.Sample(point_clamp_sampler, cubemapUV.xyw);
-                float4 realtime = tex2D(_MainTex, i.uv);
+                // float4 realtime = tex2D(_MainTex, i.uv);
                 return color;
                 // return realtime.a == 0 ? color : realtime; // TODO: implement depth sorting
             }
