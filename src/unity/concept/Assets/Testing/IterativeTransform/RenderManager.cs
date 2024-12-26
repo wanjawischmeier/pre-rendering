@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class RenderManager : MonoBehaviour
+public class RenderManager : MonoBehaviour  
 {
     public Texture2D[] inputImages;
     public Vector4[] cubemapPositions;
@@ -23,7 +23,7 @@ public class RenderManager : MonoBehaviour
     {
         iterativeTransformKernelId = computeShader.FindKernel("IterativeTransform");
         computeShader.GetKernelThreadGroupSizes(iterativeTransformKernelId, out threadGroupsX, out threadGroupsY, out uint _);
-
+        
         dispatchWidth = inputImages[0].width;
         dispatchHeight = inputImages[0].height;
 
