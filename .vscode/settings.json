@@ -1,6 +1,0 @@
-{
-    "python.linting.enabled": false,
-    "python.analysis.diagnosticSeverityOverrides": {
-        "reportMissingImports": "none"
-    }
-}

@@ -1,0 +1,110 @@
+#pragma kernel IterativeTransform
+#define CUBEMAP_FACE_COUNT 6
+#define NCLIP 0.1
+#define FCLIP 30
+
+uniform float4x4 ORIENTATION_MATRICIES[6];
+uniform float4x4 INVERSE_ORIENTATION_MATRICIES[6];
+uniform float3 CUBE_POSITIONS[2];
+uniform float3 POSITION, PREVIOUS_POSITION;
+uniform int2 INOUT_RESOLUTION, DOWNSAMPLED_RESOLUTION;
+uniform bool IS_DOWNSAMPLED_INPUT_AVAILABLE, IS_ABSOLUTE_POSITION, IS_DEPTH_NORMALIZED;
+
+RWTexture2DArray<float4> Input, InputDownsampled, FrontBufferFullRes, FrontBufferDownsampled;
+
+#include "IterativeTransformUtility.cginc"
+
+float3 UVToWorldSpacePosition(float2 cubemapUV, float depth, int faceIndex, int cubemapIndex)
+{
+    float2 viewSpace = cubemapUV * 2 - 1; // [-1, 1] NDC
+    float3 dir = float3(viewSpace, 1); // Assume direction vector
+    float3 pos = dir * depth; // Scale direction by depth
+
+    float4 worldPos = mul(ORIENTATION_MATRICIES[faceIndex], float4(pos, 1)); // World space position
+    return worldPos.xyz / worldPos.w;
+}
+
+[numthreads(8, 8, 1)]
+void IterativeTransform(uint3 id : SV_DispatchThreadID)
+{
+    // compute texel coordinates
+    float2 uv = (float2) id.xy / INOUT_RESOLUTION;
+    int faceIndex = id.z % CUBEMAP_FACE_COUNT;
+    int cubemapIndex = (id.z - faceIndex) / CUBEMAP_FACE_COUNT;
+    
+    // sample and validate the texel
+    float4 sampled = Input[id.xyz];
+    if (sampled.a == 0)
+    {
+        if (IS_DOWNSAMPLED_INPUT_AVAILABLE)
+        {
+            uint3 downsampledId = uint3(uv * DOWNSAMPLED_RESOLUTION, id.z);
+            sampled = InputDownsampled[downsampledId];
+            if (sampled.a == 0)
+            {
+                return;
+            }
+        }
+        else
+        {
+            return;
+        }
+    }
+    
+    /*
+    float4 sampled2 = InputOutput[id.xyz];
+    if (sampled2.a != 0)
+    {
+        // the texel is now obsolete and needs to be overwritten
+        InputOutput[id.xyz] = float4(0, 0, 0, 0);
+    }
+    else if(all(id.xy < DOWNSAMPLED_RESOLUTION))
+    {
+        float4 sampled3 = Downsampled[id.xyz];
+        if (sampled3.a == 0)
+        {
+            // no valid texel at current coords
+            return;
+        }
+        
+        float normalizedDepth3 = sampled3.a % 1;
+        Downsampled[uint3(float2(id.xy) / INOUT_RESOLUTION * DOWNSAMPLED_RESOLUTION, id.z)] = float4(0, 0, 0, 0);
+    }
+    
+    float normalizedDepth2 = sampled2.a % 1;
+    */
+    
+    // calculate world space position
+    float normalizedDepth = sampled.a;
+    float depth = IS_DEPTH_NORMALIZED ? normalizedDepth * (FCLIP - NCLIP) + NCLIP : normalizedDepth;
+    
+    float3 worldPosition = UVToWorldSpacePosition(uv, depth, faceIndex, cubemapIndex);
+    // worldPosition -= PREVIOUS_POSITION + POSITION;
+    if (!IS_ABSOLUTE_POSITION)
+    {
+        worldPosition += CUBE_POSITIONS[cubemapIndex];
+    }
+    
+    sampled.a = length(worldPosition);
+    worldPosition += POSITION;
+    
+    // float3 localPosition = worldPosition + CUBE_POSITIONS[cubemapIndex];
+    float4 transformedUV = WorldSpaceToCubemapUV(worldPosition, cubemapIndex);
+    
+    // uint3 downsampledId = uint3((float) id.xy / (DOWNSAMPLED_RESOLUTION / INOUT_RESOLUTION), id.z);
+    // InputOutput[id.xyz] = worldPos;
+    
+    // get target indices
+    uint3 targetIndex = uint3(transformedUV.xy * INOUT_RESOLUTION, transformedUV.w);
+    uint3 targetIndexDownsampled = uint3(transformedUV.xy * DOWNSAMPLED_RESOLUTION, transformedUV.w);
+    float sampledTargetDepth = FrontBufferFullRes[targetIndex].a;
+    if (sampledTargetDepth != 0 && sampledTargetDepth <= sampled.a)
+    {
+        // texel is already occupied
+        return;
+    }
+    
+    // write to the output buffer
+    FrontBufferFullRes[targetIndex] = sampled;
+    FrontBufferDownsampled[targetIndexDownsampled] = sampled;
+}

@@ -1,9 +1,0 @@
-#pragma kernel GenerateRasterizationMesh
-
-RWStructuredBuffer<uint> IndexBuffer;
-
-[numthreads(8, 1, 1)]
-void GenerateRasterizationMesh (uint3 id : SV_DispatchThreadID)
-{
-    IndexBuffer[id.x] = id.x;
-}
