@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class RenderManager : MonoBehaviour  
+public class RenderManager : MonoBehaviour
 {
     public Texture2D[] inputImages;
     public Vector4[] cubemapPositions;
@@ -8,7 +8,7 @@ public class RenderManager : MonoBehaviour
     public ComputeShader computeShader;
     public Vector2Int downsampledResolution;
     public int cubemapSlice = 0;
-    public bool dispatchInput, dispatchBackBuffer;
+    public bool dispatchInput, dispatchBackBuffer, dispatchDownsampled;
     public RenderTexture[] fbBufferFullRes, fbBufferDownsampled;
     public RenderTexture input, downsampled, cubemap;
 
@@ -57,7 +57,7 @@ public class RenderManager : MonoBehaviour
             Graphics.Blit(inputImages[cubemapIndex], input, 0, cubemapIndex);
             // Graphics.Blit(inputImages[i], inputOutput, 0, i);
         }
-        
+
         computeShader.SetVector("INOUT_RESOLUTION", new Vector2(dispatchWidth, dispatchHeight));
         computeShader.SetVector("DOWNSAMPLED_RESOLUTION", new Vector2(downsampledResolution.x, downsampledResolution.y));
         computeShader.SetVectorArray("CUBE_POSITIONS", cubemapPositions);
@@ -101,6 +101,7 @@ public class RenderManager : MonoBehaviour
             computeShader.SetVector("POSITION", previousPosition - transform.position);
             computeShader.SetBool("IS_DEPTH_NORMALIZED", false);
             computeShader.SetBool("IS_ABSOLUTE_POSITION", true);
+            computeShader.SetBool("ONLY_DISPATCH_DOWNSAMPLED", dispatchDownsampled);
             computeShader.SetBool("IS_DOWNSAMPLED_INPUT_AVAILABLE", true);
             computeShader.SetTexture(iterativeTransformKernelId, "Input", pingPongBufferFullRes.Back);
             computeShader.SetTexture(iterativeTransformKernelId, "InputDownsampled", pingPongBufferDownsampled.Back);
@@ -110,9 +111,7 @@ public class RenderManager : MonoBehaviour
 
         if (dispatchInput)
         {
-            cubemapScreenBlitMaterial.SetVectorArray("CUBE_POSITIONS", cubemapPositions);
-            Vector3 cubemapPosition = cubemapPositions[0];
-            computeShader.SetVector("POSITION", cubemapPosition - transform.position);
+            computeShader.SetVector("POSITION", -transform.position);
             computeShader.SetBool("IS_DEPTH_NORMALIZED", true);
             computeShader.SetBool("IS_ABSOLUTE_POSITION", false);
             computeShader.SetBool("IS_DOWNSAMPLED_INPUT_AVAILABLE", false);

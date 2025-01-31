@@ -46,3 +46,25 @@ float4 WorldSpaceToCubemapUV(float3 localPosition, int cubemapIndex)
     float depth = length(localPosition);
     return float4(uv, depth, faceIndex);
 }
+
+float4 SampleBilinear(RWTexture2DArray<float4> tex, float2 uv, uint2 textureSize, int slice)
+{
+    // Convert normalized UV to texel space
+    float2 texelPos = uv * textureSize;
+    
+    // Get integer and fractional parts
+    uint2 texelBase = (uint2) texelPos; // Top-left texel
+    float2 f = frac(texelPos); // Fractional part for interpolation
+    uint2 off = uint2(1, 0);
+    
+    // Sample four neighboring texels
+    float4 c00 = tex[uint3(texelBase + off.yy, slice)];
+    float4 c10 = tex[uint3(texelBase + off.xy, slice)];
+    float4 c01 = tex[uint3(texelBase + off.yx, slice)];
+    float4 c11 = tex[uint3(texelBase + off.xx, slice)];
+
+    // Bilinear interpolation
+    float4 c0 = lerp(c00, c10, f.x);
+    float4 c1 = lerp(c01, c11, f.x);
+    return lerp(c0, c1, f.y);
+}
