@@ -1,30 +1,41 @@
+using System;
+using System.Linq;
 using UnityEngine;
 
 public class RenderManager : MonoBehaviour
 {
-    public Texture2D[] inputImages;
-    public Vector4[] cubemapPositions;
+    [Serializable]
+    public struct DebugPos
+    {
+        public Vector4[] positions;
+    }
+
+    public MapScriptableObject map;
     public Material cubemapScreenBlitMaterial;
     public ComputeShader computeShader;
     public Vector2Int downsampledResolution;
+    public Vector3Int[] resolutions;    // z stores max number of threads at that resolution
     public int cubemapSlice = 0;
     public bool dispatchInput, dispatchBackBuffer, dispatchDownsampled;
     public RenderTexture[] fbBufferFullRes, fbBufferDownsampled;
-    public RenderTexture input, downsampled, cubemap;
+    public RenderTexture input, inputDownsampled;
+    public DebugPos[] debugPos;
 
-    int iterativeTransformKernelId, threadGroupsX, threadGroupsY;
     Vector3 previousPosition = Vector3.one;
+    int iterativeTransformKernelId;
+    uint threadsX, threadsY;
     PingPongBuffer pingPongBufferFullRes, pingPongBufferDownsampled;
 
     private void Start()
     {
         iterativeTransformKernelId = computeShader.FindKernel("IterativeTransform");
-        computeShader.GetKernelThreadGroupSizes(iterativeTransformKernelId, out uint threadsX, out uint threadsY, out uint _);
+        computeShader.GetKernelThreadGroupSizes(iterativeTransformKernelId, out threadsX, out threadsY, out uint _);
 
-        int dispatchWidth = inputImages[0].width;
-        int dispatchHeight = inputImages[0].height;
-        threadGroupsX = Mathf.CeilToInt(dispatchWidth / (int)threadsX);
-        threadGroupsY = Mathf.CeilToInt(dispatchHeight / (int)threadsY);
+        int lastValidIndex = resolutions
+            .Select((value, index) => value.z == 0 ? int.MaxValue : index)
+            .Min(); // the greatest valid resolution should be used for target textures
+        int dispatchWidth = resolutions[lastValidIndex].x;
+        int dispatchHeight = resolutions[lastValidIndex].y;
 
         pingPongBufferFullRes = new PingPongBuffer(dispatchWidth, dispatchHeight, RenderTextureFormat.ARGBHalf);
         fbBufferFullRes = pingPongBufferFullRes.Textures;
@@ -36,42 +47,34 @@ public class RenderManager : MonoBehaviour
         input.dimension = UnityEngine.Rendering.TextureDimension.Tex2DArray;
         input.format = RenderTextureFormat.ARGBHalf;
         input.enableRandomWrite = true;
-        input.volumeDepth = inputImages.Length; // expected to be multiple of 6
+        input.volumeDepth = map.inputImages.Length; // expected to be multiple of 6
 
-        /*
-        inputOutput = new RenderTexture(dispatchWidth, dispatchHeight, 0);
-        inputOutput.dimension = UnityEngine.Rendering.TextureDimension.Tex2DArray;
-        inputOutput.format = RenderTextureFormat.ARGBHalf;
-        inputOutput.enableRandomWrite = true;
-        inputOutput.volumeDepth = 6
-        
-        downsampled = new RenderTexture(downsampledResolution.x, downsampledResolution.y, 0);
-        downsampled.dimension = UnityEngine.Rendering.TextureDimension.Tex2DArray;
-        downsampled.format = RenderTextureFormat.ARGBHalf;
-        downsampled.enableRandomWrite = true;
-        downsampled.volumeDepth = 6;
-        */
+        inputDownsampled = new RenderTexture(downsampledResolution.x, downsampledResolution.y, 0);
+        inputDownsampled.dimension = UnityEngine.Rendering.TextureDimension.Tex2DArray;
+        inputDownsampled.format = RenderTextureFormat.ARGBHalf;
+        inputDownsampled.enableRandomWrite = true;
+        inputDownsampled.volumeDepth = map.inputImages.Length;
 
+        // copy input textures to tex2darray
         for (int cubemapIndex = 0; cubemapIndex < input.volumeDepth; cubemapIndex++)
         {
-            Graphics.Blit(inputImages[cubemapIndex], input, 0, cubemapIndex);
-            // Graphics.Blit(inputImages[i], inputOutput, 0, i);
+            Graphics.Blit(map.inputImages[cubemapIndex], input, 0, cubemapIndex);
+            Graphics.Blit(map.inputImages[cubemapIndex], inputDownsampled, 0, cubemapIndex);
         }
 
-        computeShader.SetVector("INOUT_RESOLUTION", new Vector2(dispatchWidth, dispatchHeight));
-        computeShader.SetVector("DOWNSAMPLED_RESOLUTION", new Vector2(downsampledResolution.x, downsampledResolution.y));
-        computeShader.SetVectorArray("CUBE_POSITIONS", cubemapPositions);
+        computeShader.SetFloat("NCLIP", map.nearClipPlane);
+        computeShader.SetFloat("FCLIP", map.farClipPlane);
+        computeShader.SetVector("INPUT_RESOLUTION", new Vector2(input.width, input.height));
+        computeShader.SetVector("INPUT_DOWNSAMPLED_RESOLUTION", new Vector2(inputDownsampled.width, inputDownsampled.height));
+        computeShader.SetVector("TARGET_RESOLUTION", new Vector2(dispatchWidth, dispatchHeight));
+        computeShader.SetVector("TARGET_DOWNSAMPLED_RESOLUTION", new Vector2(downsampledResolution.x, downsampledResolution.y));
+
+        computeShader.SetVectorArray("CUBE_POSITIONS", map.cubemapPositions);
         computeShader.SetMatrixArray("ORIENTATION_MATRICIES", CubeMapConversion.orientationMatricies);
         computeShader.SetMatrixArray("INVERSE_ORIENTATION_MATRICIES", CubeMapConversion.inverseOrientationMatricies);
-        // computeShader.SetTexture(iterativeTransformKernelId, "InputOutput", inputOutput);
-        // computeShader.SetTexture(iterativeTransformKernelId, "Downsampled", downsampled);
-
-        cubemapScreenBlitMaterial.SetTexture("_Cubemap", cubemap);
-        cubemapScreenBlitMaterial.SetTexture("_Input", input);
-        // cubemapScreenBlitMaterial.SetTexture("_InputOutput", inputOutput);
-        // cubemapScreenBlitMaterial.SetTexture("_Downsampled", downsampled);
+        
         cubemapScreenBlitMaterial.SetMatrixArray("INVERSE_ORIENTATION_MATRICIES", CubeMapConversion.inverseOrientationMatricies);
-        cubemapScreenBlitMaterial.SetVectorArray("CUBE_POSITIONS", cubemapPositions);
+        cubemapScreenBlitMaterial.SetVectorArray("CUBE_POSITIONS", map.cubemapPositions);
     }
 
     private void Update()
@@ -91,37 +94,48 @@ public class RenderManager : MonoBehaviour
         pingPongBufferFullRes.Swap();
         pingPongBufferDownsampled.Swap();
 
-        // computeShader.SetVector("POSITION", transform.position);
-        computeShader.SetVectorArray("CUBE_POSITIONS", cubemapPositions);
+        computeShader.SetVectorArray("CUBE_POSITIONS", map.cubemapPositions);
         computeShader.SetTexture(iterativeTransformKernelId, "FrontBufferFullRes", pingPongBufferFullRes.Front);
         computeShader.SetTexture(iterativeTransformKernelId, "FrontBufferDownsampled", pingPongBufferDownsampled.Front);
-
+        cubemapScreenBlitMaterial.SetVectorArray("CUBE_POSITIONS", map.cubemapPositions);
+        cubemapScreenBlitMaterial.SetTexture("_FrontBufferFullRes", pingPongBufferFullRes.Front);
+        cubemapScreenBlitMaterial.SetTexture("_FrontBufferDownsampled", pingPongBufferDownsampled.Front);
+        /*
         if (dispatchBackBuffer)
         {
+            int dispatchWidth = pingPongBufferFullRes.Back.width;
+            int dispatchHeight = pingPongBufferFullRes.Back.height;
+            int threadGroupsX = Mathf.CeilToInt(dispatchWidth / (int)threadsX);
+            int threadGroupsY = Mathf.CeilToInt(dispatchHeight / (int)threadsY);
+
             computeShader.SetVector("POSITION", previousPosition - transform.position);
             computeShader.SetBool("IS_DEPTH_NORMALIZED", false);
             computeShader.SetBool("IS_ABSOLUTE_POSITION", true);
             computeShader.SetBool("ONLY_DISPATCH_DOWNSAMPLED", dispatchDownsampled);
-            computeShader.SetBool("IS_DOWNSAMPLED_INPUT_AVAILABLE", true);
             computeShader.SetTexture(iterativeTransformKernelId, "Input", pingPongBufferFullRes.Back);
             computeShader.SetTexture(iterativeTransformKernelId, "InputDownsampled", pingPongBufferDownsampled.Back);
 
             computeShader.Dispatch(iterativeTransformKernelId, threadGroupsX, threadGroupsY, 6);
         }
-
+        
         if (dispatchInput)
         {
             computeShader.SetVector("POSITION", -transform.position);
             computeShader.SetBool("IS_DEPTH_NORMALIZED", true);
             computeShader.SetBool("IS_ABSOLUTE_POSITION", false);
-            computeShader.SetBool("IS_DOWNSAMPLED_INPUT_AVAILABLE", false);
-            computeShader.SetTexture(iterativeTransformKernelId, "Input", input);
 
+            computeShader.SetTexture(iterativeTransformKernelId, "Input", input);
+            computeShader.SetTexture(iterativeTransformKernelId, "InputDownsampled", inputDownsampled);
+
+            int dispatchWidth = input.width;
+            int dispatchHeight = input.height;
+            int threadGroupsX = Mathf.CeilToInt(resolution.x / (int)threadsX);
+            int threadGroupsY = Mathf.CeilToInt(resolution.y / (int)threadsY);
             computeShader.Dispatch(iterativeTransformKernelId, threadGroupsX, threadGroupsY, input.volumeDepth);
         }
-
-        cubemapScreenBlitMaterial.SetTexture("_Front", pingPongBufferFullRes.Front);
-        cubemapScreenBlitMaterial.SetTexture("_Back", pingPongBufferFullRes.Front);
+        */
+        DispatchBackBufferComputeShader();
+        DispatchInputComputeShader();
 
         previousPosition = transform.position;
     }
@@ -129,5 +143,91 @@ public class RenderManager : MonoBehaviour
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         Graphics.Blit(source, destination, cubemapScreenBlitMaterial);
+    }
+
+    private void DispatchBackBufferComputeShader()
+    {
+        if (!dispatchBackBuffer) return;
+
+        int dispatchWidth = pingPongBufferFullRes.Back.width;
+        int dispatchHeight = pingPongBufferFullRes.Back.height;
+        int threadGroupsX = Mathf.CeilToInt(dispatchWidth / (int)threadsX);
+        int threadGroupsY = Mathf.CeilToInt(dispatchHeight / (int)threadsY);
+
+        computeShader.SetBool("IS_DEPTH_NORMALIZED", false);
+        computeShader.SetBool("IS_ABSOLUTE_POSITION", true);
+        computeShader.SetBool("ONLY_DISPATCH_DOWNSAMPLED", dispatchDownsampled);
+        computeShader.SetVector("POSITION", previousPosition - transform.position);
+        computeShader.SetVector("DISPATCH_RESOLUTION", new Vector2(dispatchWidth, dispatchHeight));
+        computeShader.SetTexture(iterativeTransformKernelId, "Input", pingPongBufferFullRes.Back);
+        computeShader.SetTexture(iterativeTransformKernelId, "InputDownsampled", pingPongBufferDownsampled.Back);
+
+        computeShader.Dispatch(iterativeTransformKernelId, threadGroupsX, threadGroupsY, 6);
+    }
+
+    private void DispatchInputComputeShader()
+    {
+        if (!dispatchInput) return;
+
+        // Set global shader parameters
+        computeShader.SetBool("IS_DEPTH_NORMALIZED", true);
+        computeShader.SetBool("IS_ABSOLUTE_POSITION", false);
+        computeShader.SetVector("POSITION", -transform.position);
+        computeShader.SetTexture(iterativeTransformKernelId, "Input", input);
+        computeShader.SetTexture(iterativeTransformKernelId, "InputDownsampled", inputDownsampled);
+
+        // Sort cubemap positions by distance (closest first), then reverse to get furthest first
+        Vector4[] sortedPositions = map.cubemapPositions
+            .Select((pos, index) => new Vector4(pos.x, pos.y, pos.z, index)) // Store original index in 'w'
+            .OrderBy(v => Vector3.Distance((Vector3)v, transform.position))
+            .Reverse() // Reverse to get furthest first
+            .ToArray();
+
+        debugPos = new DebugPos[resolutions.Length];
+
+        int remainingCount = sortedPositions.Length;
+
+        // Iterate over resolutions in order, but take from the back of the array
+        for (int i = 0; i < resolutions.Length; i++)
+        {
+            Vector3Int resolution = resolutions[i];
+            if (resolution.x == 0 || resolution.y == 0 || resolution.z == 0) continue;  // Skip if resolution is zero
+
+            int maxThreads = resolution.z;
+            int count = Mathf.Min(maxThreads, remainingCount);
+
+            if (count == 0) break;  // Stop if no positions remain
+
+            // Take the last 'count' elements (so we start with the furthest in the current batch)
+            Vector4[] selectedPositions = sortedPositions.Skip(remainingCount - count).Take(count).ToArray();
+            debugPos[i] = new DebugPos() { positions = selectedPositions };
+            computeShader.SetVectorArray("CUBE_POSITIONS", selectedPositions);
+            computeShader.SetVector("DISPATCH_RESOLUTION", new Vector2(resolution.x, resolution.y));
+
+            // Compute dispatch size
+            int threadGroupsX = Mathf.CeilToInt(resolution.x / (int)threadsX);
+            int threadGroupsY = Mathf.CeilToInt(resolution.y / (int)threadsY);
+
+            // Dispatch compute shader
+            computeShader.Dispatch(iterativeTransformKernelId, threadGroupsX, threadGroupsY, selectedPositions.Length * 6);
+
+            // Reduce remaining positions
+            remainingCount -= count;
+        }
+
+    }
+
+
+    public void SetMap(MapScriptableObject map)
+    {
+        this.map = map;
+        previousPosition = Vector3.one;
+        Start();
+        Update();
+
+        if (TryGetComponent(out FlyMovementController movementController))
+        {
+            movementController.TryApplyMapSpeedMultiplier();
+        }
     }
 }

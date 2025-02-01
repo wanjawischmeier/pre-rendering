@@ -5,6 +5,7 @@ public class FlyMovementController : MonoBehaviour
 {
     public float flySpeed = 5f;
     public float rotationSpeed = 2f;
+    public GameObject pauseMenuCanvas;
 
     private CharacterController characterController;
 
@@ -14,20 +15,32 @@ public class FlyMovementController : MonoBehaviour
     private void Start()
     {
         characterController = GetComponent<CharacterController>();
+        Cursor.lockState = CursorLockMode.Locked;
+        TryApplyMapSpeedMultiplier();
     }
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Escape))
+        if (Cursor.lockState == CursorLockMode.Locked)
         {
-            Application.Quit();
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                pauseMenuCanvas.SetActive(true);
+                Cursor.lockState = CursorLockMode.None;
+                return;
+            }
         }
-        if (Input.GetKey(KeyCode.LeftControl))
+        else if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            pauseMenuCanvas.SetActive(false);
+            Cursor.lockState = CursorLockMode.Locked;
+        }
+        else if (Cursor.lockState == CursorLockMode.None)
         {
             return;
         }
 
-        float speed = Input.GetKey(KeyCode.LeftShift) ? flySpeed / 10 : flySpeed;
+        float speed = Input.GetKey(KeyCode.LeftShift) ? flySpeed / 4 : flySpeed;
 
         // Handle rotation (looking around)
         float mouseX = Input.GetAxis("Mouse X");
@@ -76,5 +89,15 @@ public class FlyMovementController : MonoBehaviour
         movement *= speed * Time.deltaTime;
 
         characterController.Move(movement);
+    }
+
+    public void Quit() => Application.Quit();
+
+    public void TryApplyMapSpeedMultiplier()
+    {
+        if (TryGetComponent(out RenderManager renderManager))
+        {
+            flySpeed *= renderManager.map.flySpeedMultiplier;
+        }
     }
 }

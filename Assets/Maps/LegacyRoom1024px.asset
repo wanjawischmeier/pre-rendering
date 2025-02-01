@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 198a1d820e3f64440a12f7401a8a8e10, type: 3}
+  m_Name: LegacyRoom1024px
+  m_EditorClassIdentifier: 
+  nearClipPlane: 0.1
+  farClipPlane: 30
+  flySpeedMultiplier: 4
+  inputImages:
+  - {fileID: 2800000, guid: 8b8ad1662a2e25142b9052f3407bf636, type: 3}
+  - {fileID: 2800000, guid: 06bc3c6c94119a84e9ff578ef19703bb, type: 3}
+  - {fileID: 2800000, guid: 6b48a3cb47a80744e8507fc09c037675, type: 3}
+  - {fileID: 2800000, guid: 59f319ec93b6b6345887c8f7db9b70e3, type: 3}
+  - {fileID: 2800000, guid: d757d69ceb92ea742b0e5ad2fe43f3e5, type: 3}
+  - {fileID: 2800000, guid: 246627a67ba97ff4f9fbf763fa81f62e, type: 3}
+  - {fileID: 2800000, guid: 7c65a08b75904a749a0a05b99f648820, type: 3}
+  - {fileID: 2800000, guid: 4aef63a09ac82a54bb925d997ae9ab13, type: 3}
+  - {fileID: 2800000, guid: 0e84aab3966639548916a499891b1c92, type: 3}
+  - {fileID: 2800000, guid: 35e278f225780404f9210b770f421446, type: 3}
+  - {fileID: 2800000, guid: 739c4ef608f537047b876247376cd2d2, type: 3}
+  - {fileID: 2800000, guid: 4cf30fba51885dd4cb6e90b72bf9116e, type: 3}
+  cubemapPositions:
+  - {x: 0, y: 0, z: 0, w: 1}
+  - {x: 17, y: 0, z: 5, w: 1}

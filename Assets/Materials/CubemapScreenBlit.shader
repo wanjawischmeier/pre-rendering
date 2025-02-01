@@ -4,6 +4,8 @@ Shader "Hidden/CubemapScreenBlit"
     {
         _InputOutput ("Input Array", 2DArray) = "black" {}
         _MainTex ("Texture", 2D) = "white" {}
+        _Contrast ("Contrast", Range(0, 2)) = 1
+        _Brightness ("Brightness", Range(0, 1)) = 0.5
     }
     SubShader
     {
@@ -39,9 +41,11 @@ Shader "Hidden/CubemapScreenBlit"
             }
 
             sampler2D _MainTex;
-            Texture2DArray _Front, _Back, _Input;
+            Texture2DArray _FrontBufferFullRes, _FrontBufferDownsampled;
             SamplerState point_clamp_sampler; // TODO: implement bilinear cubemap sampling
+            SamplerState linear_clamp_sampler; // TODO: implement bilinear cubemap sampling
 
+            uniform float _Contrast, _Brightness;
             uniform float3 CUBE_POSITIONS[1];
             uniform float4x4 _ViewToWorldMatrix, _InvProjectionMatrix;
             uniform float4x4 INVERSE_ORIENTATION_MATRICIES[6];
@@ -59,17 +63,21 @@ Shader "Hidden/CubemapScreenBlit"
 
                 // convert to world-space direction
                 float3 worldPosition = mul((float3x3)_ViewToWorldMatrix, viewPos.xyz);
-                float3 localPosition = worldPosition + CUBE_POSITIONS[0];
-                float4 cubemapUV = WorldSpaceToCubemapUV(localPosition, 0);
+                // float3 localPosition = worldPosition + CUBE_POSITIONS[0];
+                float4 cubemapUV = WorldSpaceToCubemapUV(worldPosition);
 
-                float4 color = _Front.Sample(point_clamp_sampler, cubemapUV.xyw);
-                return color;
-                /*
+                float4 color = _FrontBufferFullRes.Sample(point_clamp_sampler, cubemapUV.xyw);
                 if (color.a == 0)
                 {
-                    color = _Downsampled.Sample(point_clamp_sampler, cubemapUV.xyw);
+                    // color = _FrontBufferDownsampled.Sample(point_clamp_sampler, cubemapUV.xyw);
+                    if (color.a == 0)
+                    {
+                        color = float4(1, 0, 1, 1);
+                    }
                 }
-                */
+
+                color.rgb = (color.rgb % 1 - 0.5f) * _Contrast + _Brightness; // contrast
+
                 float4 realtime = tex2D(_MainTex, i.uv);
                 return realtime.a == 0 ? color : realtime; // TODO: implement depth sorting
             }

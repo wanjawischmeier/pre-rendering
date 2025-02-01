@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 198a1d820e3f64440a12f7401a8a8e10, type: 3}
+  m_Name: CubeDioramaP21024px
+  m_EditorClassIdentifier: 
+  nearClipPlane: 0.1
+  farClipPlane: 4
+  inputImages:
+  - {fileID: 2800000, guid: 40ec7685a7caefa40b3eaa9b7df85dd8, type: 3}
+  - {fileID: 2800000, guid: a20b6723c1943b941abd634e9fafed3e, type: 3}
+  - {fileID: 2800000, guid: 9fb2f4ee78350144aa5407c559030af5, type: 3}
+  - {fileID: 2800000, guid: 9def6804ac4288c4a85eefc73313a4a0, type: 3}
+  - {fileID: 2800000, guid: 719f4602bef6cfe448304d20a80f5ed9, type: 3}
+  - {fileID: 2800000, guid: e67bea4bf1a0c8940b4b93496a9e3544, type: 3}
+  - {fileID: 2800000, guid: a101c2232ff6dd548ad4539b083e62be, type: 3}
+  - {fileID: 2800000, guid: 80d8ac7b7cf70604eabb6fda76ec44e7, type: 3}
+  - {fileID: 2800000, guid: 910da5fdc86a9d8419e4e3c205061fd6, type: 3}
+  - {fileID: 2800000, guid: 8f31929990f9c674bb9e5211d2484681, type: 3}
+  - {fileID: 2800000, guid: 055a81066e0d3344da5c2cfd4bde51dc, type: 3}
+  - {fileID: 2800000, guid: 59eab2a57a7d67b4196603b2da12eb6f, type: 3}
+  cubemapPositions:
+  - {x: 0.5, y: 0, z: 0.5, w: 1}
+  - {x: 1, y: 0, z: -1, w: 1}

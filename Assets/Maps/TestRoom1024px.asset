@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 198a1d820e3f64440a12f7401a8a8e10, type: 3}
+  m_Name: TestRoom1024px
+  m_EditorClassIdentifier: 
+  nearClipPlane: 0.1
+  farClipPlane: 30
+  inputImages:
+  - {fileID: 2800000, guid: 588379e2d4ebe6344ab538cbe02166a2, type: 3}
+  - {fileID: 2800000, guid: f6fd52a944547494bbe331efd096fda4, type: 3}
+  - {fileID: 2800000, guid: 641107d77ba1ceb4b93ba5779ff0cfe9, type: 3}
+  - {fileID: 2800000, guid: 881eb809a53534f4abe66c369102c4be, type: 3}
+  - {fileID: 2800000, guid: 6cdbbd14915165e4faa0030740abd101, type: 3}
+  - {fileID: 2800000, guid: bba8981ef11beaa42a9f06001c182d1d, type: 3}
+  cubemapPositions:
+  - {x: 0, y: 0, z: 0, w: 1}
