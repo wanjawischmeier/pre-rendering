@@ -72,7 +72,9 @@ public class RenderManager : MonoBehaviour
         computeShader.SetVectorArray("CUBE_POSITIONS", map.cubemapPositions);
         computeShader.SetMatrixArray("ORIENTATION_MATRICIES", CubeMapConversion.orientationMatricies);
         computeShader.SetMatrixArray("INVERSE_ORIENTATION_MATRICIES", CubeMapConversion.inverseOrientationMatricies);
-        
+
+        cubemapScreenBlitMaterial.SetFloat("FCLIP", map.farClipPlane);
+        cubemapScreenBlitMaterial.SetVector("INPUT_DOWNSAMPLED_RESOLUTION", new Vector2(inputDownsampled.width, inputDownsampled.height));
         cubemapScreenBlitMaterial.SetMatrixArray("INVERSE_ORIENTATION_MATRICIES", CubeMapConversion.inverseOrientationMatricies);
         cubemapScreenBlitMaterial.SetVectorArray("CUBE_POSITIONS", map.cubemapPositions);
     }
@@ -81,7 +83,6 @@ public class RenderManager : MonoBehaviour
     {
         Matrix4x4 viewToWorldMatrix = Camera.main.cameraToWorldMatrix;
         Matrix4x4 invProjMatrix = Camera.main.projectionMatrix.inverse;
-
         cubemapScreenBlitMaterial.SetMatrix("_InvProjectionMatrix", invProjMatrix);
         cubemapScreenBlitMaterial.SetMatrix("_ViewToWorldMatrix", viewToWorldMatrix);
 
@@ -94,10 +95,11 @@ public class RenderManager : MonoBehaviour
         pingPongBufferFullRes.Swap();
         pingPongBufferDownsampled.Swap();
 
+        computeShader.SetBool("ONLY_DISPATCH_DOWNSAMPLED", dispatchDownsampled);
         computeShader.SetVectorArray("CUBE_POSITIONS", map.cubemapPositions);
         computeShader.SetTexture(iterativeTransformKernelId, "FrontBufferFullRes", pingPongBufferFullRes.Front);
         computeShader.SetTexture(iterativeTransformKernelId, "FrontBufferDownsampled", pingPongBufferDownsampled.Front);
-        cubemapScreenBlitMaterial.SetVectorArray("CUBE_POSITIONS", map.cubemapPositions);
+
         cubemapScreenBlitMaterial.SetTexture("_FrontBufferFullRes", pingPongBufferFullRes.Front);
         cubemapScreenBlitMaterial.SetTexture("_FrontBufferDownsampled", pingPongBufferDownsampled.Front);
         /*
@@ -156,7 +158,6 @@ public class RenderManager : MonoBehaviour
 
         computeShader.SetBool("IS_DEPTH_NORMALIZED", false);
         computeShader.SetBool("IS_ABSOLUTE_POSITION", true);
-        computeShader.SetBool("ONLY_DISPATCH_DOWNSAMPLED", dispatchDownsampled);
         computeShader.SetVector("POSITION", previousPosition - transform.position);
         computeShader.SetVector("DISPATCH_RESOLUTION", new Vector2(dispatchWidth, dispatchHeight));
         computeShader.SetTexture(iterativeTransformKernelId, "Input", pingPongBufferFullRes.Back);

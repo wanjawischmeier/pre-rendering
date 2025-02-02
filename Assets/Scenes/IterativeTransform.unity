@@ -703,7 +703,7 @@ MonoBehaviour:
   map: {fileID: 11400000, guid: 5266238bd71580b46951aa638ea0e536, type: 2}
   cubemapScreenBlitMaterial: {fileID: 2100000, guid: 4dbb4d9750275034b86f31dbf7f93b74, type: 2}
   computeShader: {fileID: 7200000, guid: d3a00c4d221a3e54caa34becbacdda36, type: 3}
-  downsampledResolution: {x: 64, y: 64}
+  downsampledResolution: {x: 128, y: 128}
   resolutions:
   - {x: 1024, y: 1024, z: 1}
   - {x: 512, y: 512, z: 1}

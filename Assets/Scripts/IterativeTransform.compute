@@ -1,5 +1,4 @@
 #pragma kernel IterativeTransform
-// #define IS_TEXEL_VALID(texel) (texel.a > 0 && (!IS_DEPTH_NORMALIZED || texel.a < 1) && (IS_DEPTH_NORMALIZED || texel.a <= FCLIP))
 
 uniform int2 DISPATCH_RESOLUTION;
 uniform int2 INPUT_RESOLUTION, INPUT_DOWNSAMPLED_RESOLUTION;
@@ -30,10 +29,9 @@ float3 UVToWorldSpacePosition(float2 cubemapUV, float depth, int faceIndex)
 bool IsTexelValid(RWTexture2DArray<float4> tex, uint3 targetIndex, float4 sampled, bool isDownsampled)
 {
     float4 sampledTarget = tex[targetIndex];
-    float sampledTargetDepth = sampledTarget.a;
     bool isTargetDownsampled = sampledTarget.r > 1;
     
-    if (sampledTargetDepth != 0 && sampledTarget.a != 1)
+    if (sampledTarget.a != 0 && sampledTarget.a != 1)
     {
         // texel is already occupied
         
@@ -52,6 +50,24 @@ bool IsTexelValid(RWTexture2DArray<float4> tex, uint3 targetIndex, float4 sample
     }
     
     return true;
+}
+
+float4 TransformUV(inout float4 sampled, float2 uv, int faceIndex, int cubemapIndex, bool isDownsampled)
+{
+    // calculate world space position
+    float normalizedDepth = sampled.a;
+    float depth = IS_DEPTH_NORMALIZED ? normalizedDepth * (FCLIP - NCLIP) + NCLIP : normalizedDepth;
+    
+    float3 worldPosition = UVToWorldSpacePosition(uv, depth, faceIndex);
+    if (!IS_ABSOLUTE_POSITION)
+    {
+        worldPosition += CUBE_POSITIONS[cubemapIndex].xyz;
+    }
+    
+    worldPosition += POSITION;
+    sampled.a = length(worldPosition);
+    sampled.r = isDownsampled ? sampled.r + 2 : sampled.r; // a red channel value above 1 flags the texel as downsampled
+    return WorldSpaceToCubemapUV(worldPosition);
 }
 
 [numthreads(8, 8, 1)]
@@ -75,71 +91,56 @@ void IterativeTransform(uint3 id : SV_DispatchThreadID)
     // sample and validate the texel
     float4 sampled;
     bool isDownsampled = false;
+    
     if (ONLY_DISPATCH_DOWNSAMPLED)
     {
         // sampled = SampleBilinear(InputDownsampled, uv, INPUT_DOWNSAMPLED_RESOLUTION, inputIndex, FCLIP);
         sampled = InputDownsampled[uint3(uv * INPUT_DOWNSAMPLED_RESOLUTION, inputIndex)];
+        // sampled = downsampled;
         isDownsampled = true;
     }
     else
     {
         uint2 tc = all(DISPATCH_RESOLUTION == INPUT_RESOLUTION) ? id.xy : uv * INPUT_RESOLUTION;
-        sampled = Input[uint3(tc, inputIndex)]; // all(DISPATCH_RESOLUTION == INPUT_RESOLUTION) ? id.xy : 
+        sampled = Input[uint3(tc, inputIndex)];
     }
+    
+    // float4 sampled = SampleBilinear(InputDownsampled, uv, INPUT_DOWNSAMPLED_RESOLUTION, inputIndex, FCLIP);
+    float4 downsampled;
+    bool isDownsampledTexelValid;
+    
     if (!IS_TEXEL_VALID(sampled))
     {
-        sampled = InputDownsampled[uint3(uv * INPUT_DOWNSAMPLED_RESOLUTION, inputIndex)];
-        sampled = SampleBilinear(InputDownsampled, uv, INPUT_DOWNSAMPLED_RESOLUTION, inputIndex, FCLIP);
-        isDownsampled = true;
+        if (ONLY_DISPATCH_DOWNSAMPLED || !IS_ABSOLUTE_POSITION) return;
         
-        if (!IS_TEXEL_VALID(sampled))
+        // sampled = InputDownsampled[uint3(uv * INPUT_DOWNSAMPLED_RESOLUTION, inputIndex)];
+        // sampled = SampleBilinear(InputDownsampled, uv, INPUT_DOWNSAMPLED_RESOLUTION, inputIndex, FCLIP);
+        downsampled = InputDownsampled[uint3(uv * INPUT_DOWNSAMPLED_RESOLUTION, inputIndex)];
+        isDownsampledTexelValid = IS_TEXEL_VALID(downsampled);
+        
+        if (!isDownsampledTexelValid)
         {
+            // no valid texel found
             return;
         }
+        
+        sampled = downsampled;
+        isDownsampled = true;
     }
     
-    // calculate world space position
-    float normalizedDepth = sampled.a;
-    float depth = IS_DEPTH_NORMALIZED ? normalizedDepth * (FCLIP - NCLIP) + NCLIP : normalizedDepth;
+    TransformUV(downsampled, uv, faceIndex, cubemapIndex, isDownsampled);
+    float4 transformedUV = TransformUV(sampled, uv, faceIndex, cubemapIndex, isDownsampled);
     
-    float3 worldPosition = UVToWorldSpacePosition(uv, depth, faceIndex);
-    if (!IS_ABSOLUTE_POSITION)
+    if ((isDownsampledTexelValid && downsampled.a < sampled.a)  || ONLY_DISPATCH_DOWNSAMPLED)
     {
-        worldPosition += CUBE_POSITIONS[cubemapIndex].xyz;
+        sampled = downsampled;
+        isDownsampled = true;
     }
-    
-    worldPosition += POSITION;
-    sampled.a = length(worldPosition);
-    sampled.r = isDownsampled ? sampled.r + 2 : sampled.r;  // a red channel value above 1 flags the texel as downsampled
-    float4 transformedUV = WorldSpaceToCubemapUV(worldPosition);
     
     // get target indices
     uint3 targetIndex = uint3(transformedUV.xy * TARGET_RESOLUTION, transformedUV.w);
     uint3 targetIndexDownsampled = uint3(transformedUV.xy * TARGET_DOWNSAMPLED_RESOLUTION, transformedUV.w);
-    /*
-    float4 sampledTarget = FrontBufferFullRes[targetIndex];
-    float4 downsampledTarget = FrontBufferDownsampled[targetIndexDownsampled];
-    float sampledTargetDepth = sampledTarget.a;
-    bool isTargetDownsampled = sampledTarget.r > 1;
     
-    if (sampledTargetDepth != 0 && sampledTarget.a != 1)
-    {
-        // texel is already occupied
-        
-        if (sampledTarget.a > sampled.a)
-        {
-            // new sample is closer to the player
-        }
-        else if (isTargetDownsampled && !isDownsampled)
-        {
-            // new sample has improved quality
-        }
-        else
-        {
-            return;
-        }
-    }
-    */
     if (IsTexelValid(FrontBufferFullRes, targetIndex, sampled, isDownsampled))
     {
         FrontBufferFullRes[targetIndex] = sampled;

@@ -6,6 +6,7 @@ Shader "Hidden/CubemapScreenBlit"
         _MainTex ("Texture", 2D) = "white" {}
         _Contrast ("Contrast", Range(0, 2)) = 1
         _Brightness ("Brightness", Range(0, 1)) = 0.5
+        _DownsampledMixThreshold ("Downsampled Mix Threshold", Range(0, 1)) = 0.01
     }
     SubShader
     {
@@ -45,8 +46,9 @@ Shader "Hidden/CubemapScreenBlit"
             SamplerState point_clamp_sampler; // TODO: implement bilinear cubemap sampling
             SamplerState linear_clamp_sampler; // TODO: implement bilinear cubemap sampling
 
-            uniform float _Contrast, _Brightness;
-            uniform float3 CUBE_POSITIONS[1];
+            uniform float _Contrast, _Brightness, _DownsampledMixThreshold, FCLIP;
+            uniform int2 INPUT_DOWNSAMPLED_RESOLUTION;
+            // uniform float3 CUBE_POSITIONS[1];
             uniform float4x4 _ViewToWorldMatrix, _InvProjectionMatrix;
             uniform float4x4 INVERSE_ORIENTATION_MATRICIES[6];
 
@@ -63,17 +65,27 @@ Shader "Hidden/CubemapScreenBlit"
 
                 // convert to world-space direction
                 float3 worldPosition = mul((float3x3)_ViewToWorldMatrix, viewPos.xyz);
-                // float3 localPosition = worldPosition + CUBE_POSITIONS[0];
                 float4 cubemapUV = WorldSpaceToCubemapUV(worldPosition);
 
                 float4 color = _FrontBufferFullRes.Sample(point_clamp_sampler, cubemapUV.xyw);
+                // float4 colorDownsampled = _FrontBufferDownsampled.Sample(linear_clamp_sampler, cubemapUV.xyw);
+                float4 colorDownsampled = SampleShaderBilinear(_FrontBufferDownsampled, cubemapUV.xy, INPUT_DOWNSAMPLED_RESOLUTION, cubemapUV.w, FCLIP);
                 if (color.a == 0)
                 {
-                    // color = _FrontBufferDownsampled.Sample(point_clamp_sampler, cubemapUV.xyw);
-                    if (color.a == 0)
+                    if (colorDownsampled.a == 0)
                     {
                         color = float4(1, 0, 1, 1);
                     }
+                    else
+                    {
+                        color = colorDownsampled;
+                        color.r += 0.5;
+                    }
+                }
+                else if (colorDownsampled.a != 0 && colorDownsampled.a + _DownsampledMixThreshold < color.a)
+                {
+                    color = colorDownsampled;
+                    color.r += 0.5;
                 }
 
                 color.rgb = (color.rgb % 1 - 0.5f) * _Contrast + _Brightness; // contrast
