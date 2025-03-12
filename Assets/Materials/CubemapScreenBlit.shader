@@ -66,7 +66,7 @@ Shader "Hidden/CubemapScreenBlit"
                 float3 worldPosition = mul((float3x3)_ViewToWorldMatrix, viewPos.xyz);
                 float4 cubemapUV = WorldSpaceToCubemapUV(worldPosition);
 
-                // return asfloat(_FrontBufferDepth.Sample(point_clamp_sampler, cubemapUV.xyw).rrrr);
+                return asfloat(_FrontBufferDepth.Sample(point_clamp_sampler, cubemapUV.xyw).rrrr);
                 float4 color = _FrontBufferFullRes.Sample(point_clamp_sampler, cubemapUV.xyw);
                 // return color.aaaa;
                 // return color.raaa * float4(1, 1, 0, 1);
