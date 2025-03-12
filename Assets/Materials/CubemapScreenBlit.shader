@@ -42,16 +42,17 @@ Shader "Hidden/CubemapScreenBlit"
             }
 
             sampler2D _MainTex;
-            Texture2DArray _FrontBufferFullRes, _FrontBufferDownsampled, _FrontBufferDepth;
+            Texture2DArray _FrontBufferFullRes, _FrontBufferDownsampled, _FrontDepthBufferFullRes, _FrontDepthBufferDownsampled;
             SamplerState point_clamp_sampler; // TODO: implement bilinear cubemap sampling
             SamplerState linear_clamp_sampler;
 
-            uniform float _Contrast, _Brightness, _DownsampledMixThreshold, FCLIP;
+            uniform float _Contrast, _Brightness, _DownsampledMixThreshold, FCLIP, CAM_FCLIP;
             uniform int2 INPUT_DOWNSAMPLED_RESOLUTION;
             uniform float4x4 _ViewToWorldMatrix, _InvProjectionMatrix;
             uniform float4x4 INVERSE_ORIENTATION_MATRICIES[6];
 
             #include "Assets/Scripts/IterativeTransformUtility.cginc"
+            #define DOWNSAMPLED_DEPTH_OFFSET 0.1    // TODO: change after proper depth calculation?
 
             fixed4 frag (v2f i) : SV_Target
             {
@@ -65,12 +66,46 @@ Shader "Hidden/CubemapScreenBlit"
                 // convert to world-space direction
                 float3 worldPosition = mul((float3x3)_ViewToWorldMatrix, viewPos.xyz);
                 float4 cubemapUV = WorldSpaceToCubemapUV(worldPosition);
+                
+                // return asfloat(_FrontDepthBufferFullRes.Sample(point_clamp_sampler, cubemapUV.xyw)).rrrr;
+                // return asfloat(_FrontDepthBufferDownsampled.Sample(point_clamp_sampler, cubemapUV.xyw)).rrrr;
+                float depthFullRes = asfloat(_FrontDepthBufferFullRes.Sample(point_clamp_sampler, cubemapUV.xyw));
+                float depthDownsampled = asfloat(_FrontDepthBufferDownsampled.Sample(point_clamp_sampler, cubemapUV.xyw));
 
-                return asfloat(_FrontBufferDepth.Sample(point_clamp_sampler, cubemapUV.xyw).rrrr);
-                float4 color = _FrontBufferFullRes.Sample(point_clamp_sampler, cubemapUV.xyw);
+                // return depth.rrrr;
+                if (depthFullRes > 0)
+                {
+                    // full res depth is valid
+                    if (depthDownsampled > 0 && depthFullRes > depthDownsampled + DOWNSAMPLED_DEPTH_OFFSET)
+                    {
+                        // downsampled depth is valid and closer
+                        return float4(depthDownsampled, 0, 0, 1);
+                    }
+                    else
+                    {
+                        // full res depth is closer
+                        return float4(0, depthFullRes, 0, 1);
+                    }
+                }
+                else
+                {
+                    // check downsamled buffer
+                    if (depthDownsampled > 0)
+                    {
+                        // downsamled depth is valid
+                        return float4(depthDownsampled, 0, 0, 1);
+                    }
+                    else
+                    {
+                        // no valid depth
+                        return float4(1, 0, 1, 1);
+                    }
+                }
+
                 // return color.aaaa;
                 // return color.raaa * float4(1, 1, 0, 1);
                 // float4 colorDownsampled = _FrontBufferDownsampled.Sample(linear_clamp_sampler, cubemapUV.xyw);
+                /*
                 float4 colorDownsampled = SampleShaderBilinear(_FrontBufferDownsampled, cubemapUV.xy, INPUT_DOWNSAMPLED_RESOLUTION, cubemapUV.w, FCLIP);
                 if (color.a == 0)
                 {
@@ -94,6 +129,7 @@ Shader "Hidden/CubemapScreenBlit"
 
                 float4 realtime = tex2D(_MainTex, i.uv);
                 return realtime.a == 0 ? color : realtime; // TODO: implement depth sorting
+                */
             }
             ENDCG
         }

@@ -656,8 +656,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: 0.012794962, y: -0.67997783, z: 0.0118690245, w: 0.73302495}
+  m_LocalPosition: {x: 1.4671391, y: -0.01657199, z: -0.65136343}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -703,6 +703,7 @@ MonoBehaviour:
   map: {fileID: 11400000, guid: 5266238bd71580b46951aa638ea0e536, type: 2}
   cubemapScreenBlitMaterial: {fileID: 2100000, guid: 4dbb4d9750275034b86f31dbf7f93b74, type: 2}
   computeShader: {fileID: 7200000, guid: d3a00c4d221a3e54caa34becbacdda36, type: 3}
+  fullResolution: {x: 1024, y: 1024}
   downsampledResolution: {x: 128, y: 128}
   resolutions:
   - {x: 1024, y: 1024, z: 1}
@@ -718,8 +719,10 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 0}
   input: {fileID: 0}
-  inputDownsampled: {fileID: 0}
+  targetTexture: {fileID: 0}
+  targetDepth: {fileID: 0}
   debugPos: []
+  off: 350
 --- !u!114 &330585551
 MonoBehaviour:
   m_ObjectHideFlags: 0

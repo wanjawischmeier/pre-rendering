@@ -42,7 +42,9 @@ float4 WorldSpaceToCubemapUV(float3 localPosition)
         uv = float2(projected.x, projected.y) / abs(localPosition.z);
         depth = abs(projected.z);
     }
-
+    
+    depth = length(localPosition); // TODO: proper depth calculation
+    
     // transform UV to [0, 1] range
     uv = uv * 0.5 + 0.5;
 

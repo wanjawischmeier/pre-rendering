@@ -2,8 +2,8 @@
 
 uniform float OFF;
 uniform int2 DISPATCH_RESOLUTION;
-uniform int2 INPUT_RESOLUTION, INPUT_DOWNSAMPLED_RESOLUTION;
-uniform int2 TARGET_RESOLUTION, TARGET_DOWNSAMPLED_RESOLUTION;
+uniform int2 INPUT_RESOLUTION;
+uniform int2 TARGET_RESOLUTION_FULL, TARGET_RESOLUTION_DOWNSAMPLED;
 uniform bool IS_ABSOLUTE_POSITION, IS_DEPTH_NORMALIZED, ONLY_DISPATCH_DOWNSAMPLED;
 
 uniform float NCLIP, FCLIP, CAM_FCLIP;
@@ -15,8 +15,8 @@ uniform float4x4 INVERSE_ORIENTATION_MATRICIES[6];
 int2 _ScreenSize;
 float4x4 _ViewProj;
 
-RWTexture2DArray<float4> Input, InputDownsampled, FrontBufferFullRes, FrontBufferDownsampled;
-RWTexture2DArray<int> FrontBufferDepth;
+RWTexture2DArray<float4> Input, FrontBufferFullRes, FrontBufferDownsampled;
+RWTexture2DArray<int> FrontDepthBufferFullRes, FrontDepthBufferDownsampled;
 SamplerState samplerInputDownsampled;
 
 #include "IterativeTransformUtility.cginc"
@@ -31,7 +31,7 @@ float3 UVToWorldSpacePosition(float2 cubemapUV, float depth, int faceIndex)
     return worldPos.xyz / worldPos.w;
 }
 
-bool IsTexelValid(RWTexture2DArray<float4> tex, uint3 targetIndex, inout float4 sampled, bool isDownsampled)
+bool IsTexelValid(RWTexture2DArray<float4> tex, float2 uv, uint faceIndex, inout float4 sampled, bool isDownsampled)
 {
     // atomic depth test (on alpha channel)
     float oldDepth, depth = sampled.a;
@@ -42,8 +42,12 @@ bool IsTexelValid(RWTexture2DArray<float4> tex, uint3 targetIndex, inout float4 
     int depthInt = asint(depth);
     int oldDepthInt;
 
-    // perform atomic depth test to prevent race conditions
-    InterlockedMin(FrontBufferDepth[targetIndex], depthInt, oldDepthInt);
+    // perform atomic depth tests to prevent race conditions
+    uint3 targetIndex = uint3(uv * TARGET_RESOLUTION_FULL, faceIndex);
+    InterlockedMin(FrontDepthBufferFullRes[targetIndex], depthInt, oldDepthInt);
+    
+    targetIndex = uint3(uv * TARGET_RESOLUTION_DOWNSAMPLED, faceIndex);
+    InterlockedMin(FrontDepthBufferDownsampled[targetIndex], depthInt, oldDepthInt);
     
     // return true if the new depth is closer to the camera
     return oldDepthInt > depthInt;
@@ -106,10 +110,12 @@ void IterativeTransform(uint3 id : SV_DispatchThreadID)
     
     if (ONLY_DISPATCH_DOWNSAMPLED)
     {
+        /*
         // sampled = SampleBilinear(InputDownsampled, uv, INPUT_DOWNSAMPLED_RESOLUTION, inputIndex, FCLIP);
         sampled = InputDownsampled[uint3(uv * INPUT_DOWNSAMPLED_RESOLUTION, inputIndex)];
         // sampled = downsampled;
         isDownsampled = true;
+        */
     }
     else
     {
@@ -145,6 +151,7 @@ void IterativeTransform(uint3 id : SV_DispatchThreadID)
     TransformUV(downsampled, uv, faceIndex, cubemapIndex, isDownsampled);
     */
     float4 transformedUV = TransformUV(sampled, uv, faceIndex, cubemapIndex, isDownsampled);
+    sampled.a = transformedUV.z;
     // float3 worldPos = Sample2WorldSpace(sampled, uv, faceIndex, cubemapIndex);
     /*
     if ((isDownsampledTexelValid && downsampled.a < sampled.a)  || ONLY_DISPATCH_DOWNSAMPLED)
@@ -154,12 +161,12 @@ void IterativeTransform(uint3 id : SV_DispatchThreadID)
     }
     */
     // get target indices
-    uint3 targetIndex = uint3(transformedUV.xy * TARGET_RESOLUTION, transformedUV.w);
+    // uint3 targetIndex = uint3(transformedUV.xy * TARGET_RESOLUTION, transformedUV.w);
     // uint3 targetIndexDownsampled = uint3(transformedUV.xy * TARGET_DOWNSAMPLED_RESOLUTION, transformedUV.w);
     
-    if (IsTexelValid(FrontBufferFullRes, targetIndex, sampled, isDownsampled))
+    if (IsTexelValid(FrontBufferFullRes, transformedUV.xy, transformedUV.w, sampled, isDownsampled))
     {
-        FrontBufferFullRes[targetIndex] = sampled;
+        // FrontBufferFullRes[targetIndex] = sampled;
     }
     /*
     if (IsTexelValid(FrontBufferDownsampled, targetIndexDownsampled, sampled, isDownsampled))
