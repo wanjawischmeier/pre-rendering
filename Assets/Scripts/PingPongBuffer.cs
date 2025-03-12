@@ -18,21 +18,39 @@ public class PingPongBuffer
         }
     }
 
+    public enum ClearMode
+    {
+        None,
+        ColorBuffer,
+        DepthBuffer
+    }
+
     public RenderTexture[] Textures => textures;
     public RenderTexture Front => textures[currentIndex];
     public RenderTexture Back => textures[1 - currentIndex];
 
-    public void Swap(bool clear = true)
+    public void Swap(ClearMode clearMode = ClearMode.None)
     {
         currentIndex = 1 - currentIndex;
-        if (!clear) return;
+        if (clearMode == ClearMode.None) return;
 
         // clear front texture
         RenderTexture rt = RenderTexture.active;
         for (int faceIndex = 0; faceIndex < 6; faceIndex++)
         {
             Graphics.SetRenderTarget(Front, 0, CubemapFace.Unknown, faceIndex);
-            GL.Clear(true, true, Color.clear);
+
+            switch (clearMode)
+            {
+                case ClearMode.ColorBuffer:
+                    GL.Clear(true, true, Color.clear);
+                    break;
+                case ClearMode.DepthBuffer:
+                    GL.Clear(true, true, new Color(int.MaxValue, 0, 0));    // a bit odd, but InterlockedMin needs a high value as a starting point to find smallest depth
+                    break;
+                default:
+                    break;
+            }
         }
         RenderTexture.active = rt;
     }

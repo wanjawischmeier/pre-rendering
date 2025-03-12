@@ -706,10 +706,10 @@ MonoBehaviour:
   downsampledResolution: {x: 128, y: 128}
   resolutions:
   - {x: 1024, y: 1024, z: 1}
-  - {x: 512, y: 512, z: 1}
+  - {x: 512, y: 512, z: 0}
   cubemapSlice: 0
   dispatchInput: 1
-  dispatchBackBuffer: 1
+  dispatchBackBuffer: 0
   dispatchDownsampled: 0
   fbBufferFullRes:
   - {fileID: 0}

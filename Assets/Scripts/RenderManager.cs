@@ -17,14 +17,15 @@ public class RenderManager : MonoBehaviour
     public Vector3Int[] resolutions;    // z stores max number of threads at that resolution
     public int cubemapSlice = 0;
     public bool dispatchInput, dispatchBackBuffer, dispatchDownsampled;
-    public RenderTexture[] fbBufferFullRes, fbBufferDownsampled;
-    public RenderTexture input, inputDownsampled;
+    public RenderTexture[] fbBufferFullRes, fbBufferDownsampled, fbDepth;
+    public RenderTexture input, inputDownsampled, targetTexture, targetDepth;
     public DebugPos[] debugPos;
+    public float off;
 
     Vector3 previousPosition = Vector3.one;
     int iterativeTransformKernelId;
     uint threadsX, threadsY;
-    PingPongBuffer pingPongBufferFullRes, pingPongBufferDownsampled;
+    PingPongBuffer pingPongBufferFullRes, pingPongBufferDownsampled, pingPongBufferDepth;
 
     private void Start()
     {
@@ -39,6 +40,9 @@ public class RenderManager : MonoBehaviour
 
         pingPongBufferFullRes = new PingPongBuffer(dispatchWidth, dispatchHeight, RenderTextureFormat.ARGBHalf);
         fbBufferFullRes = pingPongBufferFullRes.Textures;
+
+        pingPongBufferDepth = new PingPongBuffer(dispatchWidth, dispatchHeight, RenderTextureFormat.RInt);
+        fbDepth = pingPongBufferDepth.Textures;
 
         pingPongBufferDownsampled = new PingPongBuffer(downsampledResolution.x, downsampledResolution.y, RenderTextureFormat.ARGBHalf);
         fbBufferDownsampled = pingPongBufferDownsampled.Textures;
@@ -55,6 +59,12 @@ public class RenderManager : MonoBehaviour
         inputDownsampled.enableRandomWrite = true;
         inputDownsampled.volumeDepth = map.inputImages.Length;
 
+        targetTexture = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGBHalf);
+        targetTexture.enableRandomWrite = true;
+
+        targetDepth = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.RInt);
+        targetDepth.enableRandomWrite = true;
+
         // copy input textures to tex2darray
         for (int cubemapIndex = 0; cubemapIndex < input.volumeDepth; cubemapIndex++)
         {
@@ -68,6 +78,9 @@ public class RenderManager : MonoBehaviour
         computeShader.SetVector("INPUT_DOWNSAMPLED_RESOLUTION", new Vector2(inputDownsampled.width, inputDownsampled.height));
         computeShader.SetVector("TARGET_RESOLUTION", new Vector2(dispatchWidth, dispatchHeight));
         computeShader.SetVector("TARGET_DOWNSAMPLED_RESOLUTION", new Vector2(downsampledResolution.x, downsampledResolution.y));
+        computeShader.SetVector("_ScreenSize", new Vector2(Screen.width, Screen.height));
+        computeShader.SetTexture(iterativeTransformKernelId, "TARGET_TEXTURE", targetTexture);
+        computeShader.SetTexture(iterativeTransformKernelId, "TARGET_DEPTH", targetDepth);
 
         computeShader.SetVectorArray("CUBE_POSITIONS", map.cubemapPositions);
         computeShader.SetMatrixArray("ORIENTATION_MATRICIES", CubeMapConversion.orientationMatricies);
@@ -88,20 +101,23 @@ public class RenderManager : MonoBehaviour
 
         if (transform.position.Equals(previousPosition))
         {
-            return;
+            // return;
         }
 
         // swap front and back buffers
-        pingPongBufferFullRes.Swap();
+        pingPongBufferFullRes.Swap(PingPongBuffer.ClearMode.ColorBuffer);
+        pingPongBufferDepth.Swap(PingPongBuffer.ClearMode.DepthBuffer);
         pingPongBufferDownsampled.Swap();
 
         computeShader.SetBool("ONLY_DISPATCH_DOWNSAMPLED", dispatchDownsampled);
         computeShader.SetVectorArray("CUBE_POSITIONS", map.cubemapPositions);
         computeShader.SetTexture(iterativeTransformKernelId, "FrontBufferFullRes", pingPongBufferFullRes.Front);
+        computeShader.SetTexture(iterativeTransformKernelId, "FrontBufferDepth", pingPongBufferDepth.Front);
         computeShader.SetTexture(iterativeTransformKernelId, "FrontBufferDownsampled", pingPongBufferDownsampled.Front);
 
         cubemapScreenBlitMaterial.SetTexture("_FrontBufferFullRes", pingPongBufferFullRes.Front);
         cubemapScreenBlitMaterial.SetTexture("_FrontBufferDownsampled", pingPongBufferDownsampled.Front);
+        cubemapScreenBlitMaterial.SetTexture("_FrontBufferDepth", pingPongBufferDepth.Front);
         /*
         if (dispatchBackBuffer)
         {
@@ -136,6 +152,23 @@ public class RenderManager : MonoBehaviour
             computeShader.Dispatch(iterativeTransformKernelId, threadGroupsX, threadGroupsY, input.volumeDepth);
         }
         */
+
+        Camera cam = Camera.main;
+        Matrix4x4 proj = Matrix4x4.Perspective(cam.fieldOfView, cam.aspect, cam.nearClipPlane, cam.farClipPlane);
+        Matrix4x4 view = cam.worldToCameraMatrix;
+        computeShader.SetMatrix("_ViewProj", proj * view);
+        computeShader.SetFloat("OFF", off);
+
+        /*
+        // clear target texture
+        RenderTexture rt = RenderTexture.active;
+        RenderTexture.active = targetTexture;
+        GL.Clear(true, true, Color.clear);
+        RenderTexture.active = targetDepth;
+        GL.Clear(true, true, Color.clear);
+        RenderTexture.active = rt;
+        */
+
         DispatchBackBufferComputeShader();
         DispatchInputComputeShader();
 
@@ -145,6 +178,7 @@ public class RenderManager : MonoBehaviour
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         Graphics.Blit(source, destination, cubemapScreenBlitMaterial);
+        // Graphics.Blit(targetTexture, destination);
     }
 
     private void DispatchBackBufferComputeShader()

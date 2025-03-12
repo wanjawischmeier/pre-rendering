@@ -42,7 +42,7 @@ Shader "Hidden/CubemapScreenBlit"
             }
 
             sampler2D _MainTex;
-            Texture2DArray _FrontBufferFullRes, _FrontBufferDownsampled;
+            Texture2DArray _FrontBufferFullRes, _FrontBufferDownsampled, _FrontBufferDepth;
             SamplerState point_clamp_sampler; // TODO: implement bilinear cubemap sampling
             SamplerState linear_clamp_sampler; // TODO: implement bilinear cubemap sampling
 
@@ -67,7 +67,10 @@ Shader "Hidden/CubemapScreenBlit"
                 float3 worldPosition = mul((float3x3)_ViewToWorldMatrix, viewPos.xyz);
                 float4 cubemapUV = WorldSpaceToCubemapUV(worldPosition);
 
+                return asfloat(_FrontBufferDepth.Sample(point_clamp_sampler, cubemapUV.xyw).rrrr);
                 float4 color = _FrontBufferFullRes.Sample(point_clamp_sampler, cubemapUV.xyw);
+                // return color.aaaa;
+                // return color.raaa * float4(1, 1, 0, 1);
                 // float4 colorDownsampled = _FrontBufferDownsampled.Sample(linear_clamp_sampler, cubemapUV.xyw);
                 float4 colorDownsampled = SampleShaderBilinear(_FrontBufferDownsampled, cubemapUV.xy, INPUT_DOWNSAMPLED_RESOLUTION, cubemapUV.w, FCLIP);
                 if (color.a == 0)

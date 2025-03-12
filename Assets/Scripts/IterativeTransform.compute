@@ -1,5 +1,6 @@
 #pragma kernel IterativeTransform
 
+uniform float OFF;
 uniform int2 DISPATCH_RESOLUTION;
 uniform int2 INPUT_RESOLUTION, INPUT_DOWNSAMPLED_RESOLUTION;
 uniform int2 TARGET_RESOLUTION, TARGET_DOWNSAMPLED_RESOLUTION;
@@ -11,7 +12,13 @@ uniform float4 CUBE_POSITIONS[10];
 uniform float4x4 ORIENTATION_MATRICIES[6];
 uniform float4x4 INVERSE_ORIENTATION_MATRICIES[6];
 
+int2 _ScreenSize;
+float4x4 _ViewProj;
+
 RWTexture2DArray<float4> Input, InputDownsampled, FrontBufferFullRes, FrontBufferDownsampled;
+RWTexture2DArray<int> FrontBufferDepth;
+RWTexture2D<float4> TARGET_TEXTURE;
+RWTexture2D<int> TARGET_DEPTH; // somewhat suboptimal, but there's no RenderTextureFormat.RUint in unity
 SamplerState samplerInputDownsampled;
 
 #include "IterativeTransformUtility.cginc"
@@ -26,10 +33,43 @@ float3 UVToWorldSpacePosition(float2 cubemapUV, float depth, int faceIndex)
     return worldPos.xyz / worldPos.w;
 }
 
-bool IsTexelValid(RWTexture2DArray<float4> tex, uint3 targetIndex, float4 sampled, bool isDownsampled)
+bool IsTexelValid(RWTexture2DArray<float4> tex, uint3 targetIndex, inout float4 sampled, bool isDownsampled)
 {
+    
+    // Atomic depth test (on alpha channel)
+    float oldDepth, depth = sampled.a;
+    
+    // InterlockedMin works only on int, so convert depth to int
+    int depthInt = asint(depth);
+    int oldDepthInt;
+
+    // Perform atomic depth test
+    InterlockedMin(FrontBufferDepth[targetIndex], depthInt, oldDepthInt);
+    
+    if (isnan(asfloat(oldDepthInt)) || isnan(depth) || depth < 0 || depth > 99 || asfloat(oldDepthInt) < 0 || asfloat(oldDepthInt) > 99)
+    {
+        return false;
+    }
+
+    
+    // If we won the depth test, write the new color & depth
+    if (oldDepthInt == 0 || asfloat(oldDepthInt) > depth)
+    {
+        float4 sampledTarget = tex[targetIndex];
+        // sampled.r += sampledTarget.r;
+        // FrontBufferDepth[targetIndex] = depthInt;
+        return true;
+    }
+    // float4 sampledTarget = tex[targetIndex];
+    // sampled.r += sampledTarget.r;
+    // FrontBufferFullRes[targetIndex] = float4(sampled.r, 1, asfloat(oldDepthInt) - depth, depth); // Magenta
+    return false;
+    
+    /*
+    
+    
     float4 sampledTarget = tex[targetIndex];
-    bool isTargetDownsampled = sampledTarget.r > 1;
+    // bool isTargetDownsampled = sampledTarget.r > 1;
     
     if (sampledTarget.a != 0 && sampledTarget.a != 1)
     {
@@ -38,11 +78,14 @@ bool IsTexelValid(RWTexture2DArray<float4> tex, uint3 targetIndex, float4 sample
         if (sampledTarget.a > sampled.a)
         {
             // new sample is closer to the player
+            sampled.r += sampledTarget.r;
         }
+        /*
         else if (isTargetDownsampled && !isDownsampled)
         {
             // new sample has improved quality
         }
+        
         else
         {
             return false;
@@ -50,6 +93,22 @@ bool IsTexelValid(RWTexture2DArray<float4> tex, uint3 targetIndex, float4 sample
     }
     
     return true;
+    */
+}
+
+float3 Sample2WorldSpace(inout float4 sampled, float2 uv, int faceIndex, int cubemapIndex)
+{
+    // calculate world space position
+    float normalizedDepth = sampled.a;
+    float depth = IS_DEPTH_NORMALIZED ? normalizedDepth * (FCLIP - NCLIP) + NCLIP : normalizedDepth;
+    
+    float3 worldPosition = UVToWorldSpacePosition(uv, depth, faceIndex);
+    if (!IS_ABSOLUTE_POSITION)
+    {
+        worldPosition += CUBE_POSITIONS[cubemapIndex].xyz;
+    }
+    
+    return worldPosition + POSITION;
 }
 
 float4 TransformUV(inout float4 sampled, float2 uv, int faceIndex, int cubemapIndex, bool isDownsampled)
@@ -65,7 +124,7 @@ float4 TransformUV(inout float4 sampled, float2 uv, int faceIndex, int cubemapIn
     }
     
     worldPosition += POSITION;
-    sampled.a = length(worldPosition);
+    // sampled.a = length(worldPosition);
     sampled.r = isDownsampled ? sampled.r + 2 : sampled.r; // a red channel value above 1 flags the texel as downsampled
     return WorldSpaceToCubemapUV(worldPosition);
 }
@@ -103,9 +162,11 @@ void IterativeTransform(uint3 id : SV_DispatchThreadID)
     {
         uint2 tc = all(DISPATCH_RESOLUTION == INPUT_RESOLUTION) ? id.xy : uv * INPUT_RESOLUTION;
         sampled = Input[uint3(tc, inputIndex)];
+        sampled.r = 0.3;
     }
     
     // float4 sampled = SampleBilinear(InputDownsampled, uv, INPUT_DOWNSAMPLED_RESOLUTION, inputIndex, FCLIP);
+    /*
     float4 downsampled;
     bool isDownsampledTexelValid;
     
@@ -129,25 +190,70 @@ void IterativeTransform(uint3 id : SV_DispatchThreadID)
     }
     
     TransformUV(downsampled, uv, faceIndex, cubemapIndex, isDownsampled);
+    */
     float4 transformedUV = TransformUV(sampled, uv, faceIndex, cubemapIndex, isDownsampled);
-    
+    // float3 worldPos = Sample2WorldSpace(sampled, uv, faceIndex, cubemapIndex);
+    /*
     if ((isDownsampledTexelValid && downsampled.a < sampled.a)  || ONLY_DISPATCH_DOWNSAMPLED)
     {
         sampled = downsampled;
         isDownsampled = true;
     }
-    
+    */
     // get target indices
     uint3 targetIndex = uint3(transformedUV.xy * TARGET_RESOLUTION, transformedUV.w);
-    uint3 targetIndexDownsampled = uint3(transformedUV.xy * TARGET_DOWNSAMPLED_RESOLUTION, transformedUV.w);
+    // uint3 targetIndexDownsampled = uint3(transformedUV.xy * TARGET_DOWNSAMPLED_RESOLUTION, transformedUV.w);
+    /*
+    // Project to screen space
+    float4 clipPos = mul(_ViewProj, float4(worldPos, 1.0));
+    clipPos.xyz /= clipPos.w;
+    float2 screenUV = 0.5 * clipPos.xy + 0.5;
+    float depth = clipPos.z;
+    if (clipPos.w <= 0) return;
+
+    // Screen pixel coordinates
+    int2 screenPixel = int2(screenUV * _ScreenSize);
+    
+    
+    
+    // Atomic depth test (on alpha channel)
+    float oldDepth;
+    // oldDepth = TARGET_TEXTURE[targetIndex].a;
+    
+    // InterlockedMin works only on uint, so convert depth to uint
+    int depthInt = asint(depth);
+    int oldDepthInt;
+
+    // Perform atomic depth test
+    InterlockedMin(TARGET_DEPTH[screenPixel], depthInt, oldDepthInt);
+    // oldDepthInt = TARGET_DEPTH[screenPixel];
+    
+    
+    // If we won the depth test, write the new color & depth
+    if (oldDepthInt == 0 || asfloat(oldDepthInt) > depth + OFF)
+    {
+        TARGET_TEXTURE[screenPixel] = sampled;
+        TARGET_DEPTH[screenPixel] = depthInt;
+    }
+    */
+    // TARGET_TEXTURE[screenPixel] = sampled;
+    // TARGET_DEPTH[screenPixel] = depthInt;
+    // InterlockedMin(FrontBufferFullRes[targetIndex].a, sampled.a);
+    
     
     if (IsTexelValid(FrontBufferFullRes, targetIndex, sampled, isDownsampled))
     {
+        if (targetIndex.x > OFF && targetIndex.x < OFF + 100)
+        {
+            FrontBufferFullRes[targetIndex] = sampled; // Force red color in a flickering region
+            return;
+        }
         FrontBufferFullRes[targetIndex] = sampled;
     }
-    
+    /*
     if (IsTexelValid(FrontBufferDownsampled, targetIndexDownsampled, sampled, isDownsampled))
     {
         FrontBufferDownsampled[targetIndexDownsampled] = sampled;
     }
+    */
 }

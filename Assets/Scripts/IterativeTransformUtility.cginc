@@ -26,12 +26,22 @@ float4 WorldSpaceToCubemapUV(float3 localPosition)
 
     // calculate UV coordinates relative to the selected face
     float2 uv;
+    float depth;
     if (faceIndex < 2)      // +x or -x
+    {
         uv = float2(-projected.z, projected.y) / abs(localPosition.x);
+        depth = abs(projected.x);
+    }
     else if (faceIndex < 4) // +y or -y
+    {
         uv = float2(projected.x, -projected.z) / abs(localPosition.y);
+        depth = abs(projected.y);
+    }
     else                    // +z or -z
+    {
         uv = float2(projected.x, projected.y) / abs(localPosition.z);
+        depth = abs(projected.z);
+    }
 
     // transform UV to [0, 1] range
     uv = uv * 0.5 + 0.5;
@@ -43,7 +53,7 @@ float4 WorldSpaceToCubemapUV(float3 localPosition)
     if (faceIndex == 5)
         uv.x = 1.0 - uv.x; // -z: flip horizontally
 
-    float depth = length(localPosition);
+    // float depth = length(localPosition);
     return float4(uv, depth, faceIndex);
 }
 /*
