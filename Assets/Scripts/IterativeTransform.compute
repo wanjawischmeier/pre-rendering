@@ -43,19 +43,22 @@ bool IsTexelValid(RWTexture2DArray<float4> tex, uint3 targetIndex, inout float4 
     int depthInt = asint(depth);
     int oldDepthInt;
 
-    // Perform atomic depth test
+    // perform atomic depth test to prevent race conditions
     InterlockedMin(FrontBufferDepth[targetIndex], depthInt, oldDepthInt);
     
+    /*
     if (isnan(asfloat(oldDepthInt)) || isnan(depth) || depth < 0 || depth > 99 || asfloat(oldDepthInt) < 0 || asfloat(oldDepthInt) > 99)
     {
         return false;
     }
-
+    */
     
     // If we won the depth test, write the new color & depth
+    return oldDepthInt > depthInt;
+    /*
     if (oldDepthInt == 0 || asfloat(oldDepthInt) > depth)
     {
-        float4 sampledTarget = tex[targetIndex];
+        // float4 sampledTarget = tex[targetIndex];
         // sampled.r += sampledTarget.r;
         // FrontBufferDepth[targetIndex] = depthInt;
         return true;
@@ -65,7 +68,7 @@ bool IsTexelValid(RWTexture2DArray<float4> tex, uint3 targetIndex, inout float4 
     // FrontBufferFullRes[targetIndex] = float4(sampled.r, 1, asfloat(oldDepthInt) - depth, depth); // Magenta
     return false;
     
-    /*
+    
     
     
     float4 sampledTarget = tex[targetIndex];
@@ -243,11 +246,6 @@ void IterativeTransform(uint3 id : SV_DispatchThreadID)
     
     if (IsTexelValid(FrontBufferFullRes, targetIndex, sampled, isDownsampled))
     {
-        if (targetIndex.x > OFF && targetIndex.x < OFF + 100)
-        {
-            FrontBufferFullRes[targetIndex] = sampled; // Force red color in a flickering region
-            return;
-        }
         FrontBufferFullRes[targetIndex] = sampled;
     }
     /*

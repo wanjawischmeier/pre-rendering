@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.Windows;
 
 public class PingPongBuffer
 {
@@ -46,7 +45,8 @@ public class PingPongBuffer
                     GL.Clear(true, true, Color.clear);
                     break;
                 case ClearMode.DepthBuffer:
-                    GL.Clear(true, true, new Color(int.MaxValue, 0, 0));    // a bit odd, but InterlockedMin needs a high value as a starting point to find smallest depth
+                    // a bit odd, but InterlockedMin needs a high value as a starting point to find smallest depth
+                    GL.Clear(true, true, new Color(int.MaxValue, 0, 0));
                     break;
                 default:
                     break;

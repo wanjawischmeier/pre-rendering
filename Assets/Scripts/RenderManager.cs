@@ -118,59 +118,15 @@ public class RenderManager : MonoBehaviour
         cubemapScreenBlitMaterial.SetTexture("_FrontBufferFullRes", pingPongBufferFullRes.Front);
         cubemapScreenBlitMaterial.SetTexture("_FrontBufferDownsampled", pingPongBufferDownsampled.Front);
         cubemapScreenBlitMaterial.SetTexture("_FrontBufferDepth", pingPongBufferDepth.Front);
-        /*
+
         if (dispatchBackBuffer)
         {
-            int dispatchWidth = pingPongBufferFullRes.Back.width;
-            int dispatchHeight = pingPongBufferFullRes.Back.height;
-            int threadGroupsX = Mathf.CeilToInt(dispatchWidth / (int)threadsX);
-            int threadGroupsY = Mathf.CeilToInt(dispatchHeight / (int)threadsY);
-
-            computeShader.SetVector("POSITION", previousPosition - transform.position);
-            computeShader.SetBool("IS_DEPTH_NORMALIZED", false);
-            computeShader.SetBool("IS_ABSOLUTE_POSITION", true);
-            computeShader.SetBool("ONLY_DISPATCH_DOWNSAMPLED", dispatchDownsampled);
-            computeShader.SetTexture(iterativeTransformKernelId, "Input", pingPongBufferFullRes.Back);
-            computeShader.SetTexture(iterativeTransformKernelId, "InputDownsampled", pingPongBufferDownsampled.Back);
-
-            computeShader.Dispatch(iterativeTransformKernelId, threadGroupsX, threadGroupsY, 6);
+            DispatchBackBufferComputeShader();
         }
-        
         if (dispatchInput)
         {
-            computeShader.SetVector("POSITION", -transform.position);
-            computeShader.SetBool("IS_DEPTH_NORMALIZED", true);
-            computeShader.SetBool("IS_ABSOLUTE_POSITION", false);
-
-            computeShader.SetTexture(iterativeTransformKernelId, "Input", input);
-            computeShader.SetTexture(iterativeTransformKernelId, "InputDownsampled", inputDownsampled);
-
-            int dispatchWidth = input.width;
-            int dispatchHeight = input.height;
-            int threadGroupsX = Mathf.CeilToInt(resolution.x / (int)threadsX);
-            int threadGroupsY = Mathf.CeilToInt(resolution.y / (int)threadsY);
-            computeShader.Dispatch(iterativeTransformKernelId, threadGroupsX, threadGroupsY, input.volumeDepth);
+            DispatchInputComputeShader();
         }
-        */
-
-        Camera cam = Camera.main;
-        Matrix4x4 proj = Matrix4x4.Perspective(cam.fieldOfView, cam.aspect, cam.nearClipPlane, cam.farClipPlane);
-        Matrix4x4 view = cam.worldToCameraMatrix;
-        computeShader.SetMatrix("_ViewProj", proj * view);
-        computeShader.SetFloat("OFF", off);
-
-        /*
-        // clear target texture
-        RenderTexture rt = RenderTexture.active;
-        RenderTexture.active = targetTexture;
-        GL.Clear(true, true, Color.clear);
-        RenderTexture.active = targetDepth;
-        GL.Clear(true, true, Color.clear);
-        RenderTexture.active = rt;
-        */
-
-        DispatchBackBufferComputeShader();
-        DispatchInputComputeShader();
 
         previousPosition = transform.position;
     }
@@ -178,13 +134,10 @@ public class RenderManager : MonoBehaviour
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         Graphics.Blit(source, destination, cubemapScreenBlitMaterial);
-        // Graphics.Blit(targetTexture, destination);
     }
 
     private void DispatchBackBufferComputeShader()
     {
-        if (!dispatchBackBuffer) return;
-
         int dispatchWidth = pingPongBufferFullRes.Back.width;
         int dispatchHeight = pingPongBufferFullRes.Back.height;
         int threadGroupsX = Mathf.CeilToInt(dispatchWidth / (int)threadsX);
@@ -202,8 +155,6 @@ public class RenderManager : MonoBehaviour
 
     private void DispatchInputComputeShader()
     {
-        if (!dispatchInput) return;
-
         // Set global shader parameters
         computeShader.SetBool("IS_DEPTH_NORMALIZED", true);
         computeShader.SetBool("IS_ABSOLUTE_POSITION", false);
