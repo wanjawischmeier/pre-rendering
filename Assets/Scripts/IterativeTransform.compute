@@ -16,33 +16,11 @@ int2 _ScreenSize;
 float4x4 _ViewProj;
 
 RWTexture2DArray<float4> Input, FrontBufferFullRes, FrontBufferDownsampled;
-RWTexture2DArray<int> FrontDepthBufferFullRes, FrontDepthBufferDownsampled;
+RWTexture2DArray<int> FrontDepthBufferFullRes, FrontDepthBufferDownsampledPrimary, FrontDepthBufferDownsampledSecondary;
 SamplerState samplerInputDownsampled;
 
 #include "IterativeTransformUtility.cginc"
 
-
-bool IsTexelValid(RWTexture2DArray<float4> tex, float2 uv, uint faceIndex, inout float4 sampled, bool isDownsampled)
-{
-    // atomic depth test (on alpha channel)
-    float oldDepth, depth = sampled.a;
-    if (isDownsampled)
-        depth += CAM_FCLIP;
-    
-    // InterlockedMin works only on int, so convert depth to int
-    int depthInt = asint(depth);
-    int oldDepthInt;
-
-    // perform atomic depth tests to prevent race conditions
-    uint3 targetIndex = uint3(uv * TARGET_RESOLUTION_FULL, faceIndex);
-    InterlockedMin(FrontDepthBufferFullRes[targetIndex], depthInt, oldDepthInt);
-    
-    targetIndex = uint3(uv * TARGET_RESOLUTION_DOWNSAMPLED, faceIndex);
-    InterlockedMin(FrontDepthBufferDownsampled[targetIndex], depthInt, oldDepthInt);
-    
-    // return true if the new depth is closer to the camera
-    return oldDepthInt > depthInt;
-}
 
 [numthreads(8, 8, 1)]
 void IterativeTransform(uint3 id : SV_DispatchThreadID)
@@ -146,7 +124,8 @@ void IterativeTransform(uint3 id : SV_DispatchThreadID)
     InterlockedMin(FrontDepthBufferFullRes[targetIndex], depthInt, oldDepthInt);
     
     targetIndex.xy = transformedUV.xy * TARGET_RESOLUTION_DOWNSAMPLED;
-    InterlockedMin(FrontDepthBufferDownsampled[targetIndex], depthInt, oldDepthInt);
+    InterlockedMin(FrontDepthBufferDownsampledPrimary[targetIndex], depthInt, oldDepthInt);
+    InterlockedMax(FrontDepthBufferDownsampledSecondary[targetIndex], depthInt, oldDepthInt);
     
     
     /*

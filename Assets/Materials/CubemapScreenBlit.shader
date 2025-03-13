@@ -43,7 +43,7 @@ Shader "Hidden/CubemapScreenBlit"
             }
 
             sampler2D _MainTex;
-            Texture2DArray _Input, _FrontBufferFullRes, _FrontBufferDownsampled, _FrontDepthBufferFullRes, _FrontDepthBufferDownsampled;
+            Texture2DArray _Input, _FrontBufferFullRes, _FrontBufferDownsampled, _FrontDepthBufferFullRes, _FrontDepthBufferDownsampledLayer0, _FrontDepthBufferDownsampledLayer1;
             SamplerState point_clamp_sampler; // TODO: implement bilinear cubemap sampling
             SamplerState linear_clamp_sampler, linear_repeat_sampler;
 
@@ -60,6 +60,44 @@ Shader "Hidden/CubemapScreenBlit"
             #define DOWNSAMPLED_DEPTH_OFFSET 0.1    // TODO: change after proper depth calculation?
             #define NUM_DEPTH_TESTS 2               // expected to not be larger than cubemap count
 
+
+            float4 GetColorFromDepth(float3 localPosition, float depth)
+            {
+                // reconstruct original world position and map it to original cubemap
+                float3 worldPosition = normalize(localPosition) * depth;
+                worldPosition += PLAYER_POSITION;
+
+                float previousDepth = CAM_FCLIP;
+                float3 tmpLocalPosition;
+                float4 tmpColor, cubePosition;
+                float4 uv, color = float4(0, 0, 0, 1);
+
+                [unroll]
+                for (int i = 0; i < 2; i++)
+                {
+                    cubePosition = SORTED_CUBE_POSITIONS[i];
+                    localPosition = worldPosition - cubePosition.xyz;
+                    
+                    uv = WorldSpaceToCubemapUV(localPosition);
+                    uv.w += CUBEMAP_FACE_COUNT * cubePosition.w;
+                
+                    tmpColor = _Input.Sample(linear_repeat_sampler, uv.xyw);
+                    depth = tmpColor.a * (FCLIP - NCLIP) + NCLIP;
+
+                    tmpLocalPosition = UVToWorldSpacePosition(uv.xy, depth, uv.w % CUBEMAP_FACE_COUNT);
+                    tmpColor.a = length(tmpLocalPosition - localPosition); // store depth error in alpha channel
+
+                    if (tmpColor.a < color.a)
+                    {
+                        // layer has less error than previous one
+                        color = tmpColor;
+                        previousDepth = depth;
+                    }
+                }
+
+                return color;
+            }
+
             fixed4 frag (v2f i) : SV_Target
             {
                 // convert screen-space UV to NDC [-1, 1]
@@ -74,10 +112,10 @@ Shader "Hidden/CubemapScreenBlit"
                 float4 cubemapUV = WorldSpaceToCubemapUV(localPosition);
                 
                 // return asfloat(_FrontDepthBufferFullRes.Sample(point_clamp_sampler, cubemapUV.xyw)).rrrr;
-                // return asfloat(_FrontDepthBufferDownsampled.Sample(point_clamp_sampler, cubemapUV.xyw)).rrrr;
+                // return asfloat(_FrontDepthBufferDownsampledLayer0.Sample(point_clamp_sampler, cubemapUV.xyw)).rrrr;
                 float depthFullRes = asfloat(_FrontDepthBufferFullRes.Sample(linear_clamp_sampler, cubemapUV.xyw));
-                float depthDownsampled = asfloat(_FrontDepthBufferDownsampled.Sample(linear_clamp_sampler, cubemapUV.xyw));
-                // float depthDownsampled = asfloat(SampleDepthShaderBilinear(_FrontDepthBufferDownsampled, cubemapUV.xy, TARGET_RESOLUTION_DOWNSAMPLED, cubemapUV.w, FCLIP));
+                float depthDownsampled = asfloat(_FrontDepthBufferDownsampledLayer0.Sample(linear_clamp_sampler, cubemapUV.xyw));
+                // float depthDownsampled = asfloat(SampleDepthShaderBilinear(_FrontDepthBufferDownsampledLayer0, cubemapUV.xy, TARGET_RESOLUTION_DOWNSAMPLED, cubemapUV.w, FCLIP));
                 // return depthDownsampled;
 
                 // return depth.rrrr;
@@ -119,11 +157,14 @@ Shader "Hidden/CubemapScreenBlit"
                     }
                 }
                 
+                float oDepth = depth;
+                float4 color = GetColorFromDepth(localPosition, depth);
+
+                /*
                 // reconstruct original world position and map it to original cubemap
                 float3 worldPosition = normalize(localPosition) * depth;
                 worldPosition += PLAYER_POSITION;
 
-                float oDepth = depth;
                 float previousDepth = CAM_FCLIP;
                 float3 tmpLocalPosition;
                 float4 tmpColor, cubePosition;
@@ -144,17 +185,23 @@ Shader "Hidden/CubemapScreenBlit"
                     tmpLocalPosition = UVToWorldSpacePosition(cubemapUV.xy, depth, cubemapUV.w % CUBEMAP_FACE_COUNT);
                     tmpColor.a = length(tmpLocalPosition - localPosition); // store depth error in alpha channel
 
-                    if (tmpColor.a < color.a - (isDownsampled ? _EdgeDetectionThreshold : 0))
+                    if (tmpColor.a < color.a - (isDownsampled ? 0 : 0))
                     {
                         // layer has less error than previous one
                         color = tmpColor;
                         previousDepth = depth;
                     }
                 }
-                
-                if (isDownsampled && tmpColor.a > _EdgeDetectionThreshold)
+                */
+                if (isDownsampled && color.a > _EdgeDetectionThreshold)
                 {
                     // TODO: major error on downsampled edge detected, apply smooth edges
+                    depth = asfloat(_FrontDepthBufferDownsampledLayer1.Sample(linear_clamp_sampler, cubemapUV.xyw));
+                    // depth = asfloat(SampleDepthShaderBilinear(_FrontDepthBufferDownsampledLayer1, cubemapUV.xy, TARGET_RESOLUTION_DOWNSAMPLED, cubemapUV.w, FCLIP));
+                    color = GetColorFromDepth(localPosition, depth);
+                    
+                    // return float4(depth, 0, 0, 1);
+                    // return float4(1, 0, 0, 1);
                 }
 
 
@@ -162,7 +209,7 @@ Shader "Hidden/CubemapScreenBlit"
                 // return float4(CLOSEST_CUBE_INDEX, 0, float(cubemapUV.w) / 6, 1);
                 if (isDownsampled)
                 {
-                    color.r += 0.5;
+                    // color.r += 0.5;
                 }
                 return color;
                 // return float4(oDepth, 0, isDownsampled ? 0.5 : 0, 1);
