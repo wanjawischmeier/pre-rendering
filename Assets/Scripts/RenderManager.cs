@@ -109,6 +109,7 @@ public class RenderManager : MonoBehaviour
 
         computeShader.SetBool("ONLY_DISPATCH_DOWNSAMPLED", dispatchDownsampled);
         computeShader.SetFloat("CAM_FCLIP", Camera.main.farClipPlane);
+        computeShader.SetFloat("OFF", off);
         computeShader.SetVectorArray("CUBE_POSITIONS", map.cubemapPositions);
         computeShader.SetTexture(iterativeTransformKernelId, "FrontBufferFullRes", pingPongBufferFullRes.Front);
         computeShader.SetTexture(iterativeTransformKernelId, "FrontBufferDownsampled", pingPongBufferDownsampled.Front);

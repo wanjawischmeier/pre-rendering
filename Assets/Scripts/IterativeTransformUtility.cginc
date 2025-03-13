@@ -242,10 +242,10 @@ float SampleDepthShaderBilinear(Texture2DArray tex, float2 uv, uint2 textureSize
     uint2 off = uint2(1, 0);
 
     // Sample four neighboring texels
-    float c00 = asfloat(tex[uint3(texelBase + off.yy, slice)]);
-    float c10 = asfloat(tex[uint3(texelBase + off.xy, slice)]);
-    float c01 = asfloat(tex[uint3(texelBase + off.yx, slice)]);
-    float c11 = asfloat(tex[uint3(texelBase + off.xx, slice)]);
+    float c00 = asfloat(tex[uint3(texelBase + off.yy, slice)].r);
+    float c10 = asfloat(tex[uint3(texelBase + off.xy, slice)].r);
+    float c01 = asfloat(tex[uint3(texelBase + off.yx, slice)].r);
+    float c11 = asfloat(tex[uint3(texelBase + off.xx, slice)].r);
     
     // bool isAnyNotDownsampled = c00.r <= 1 || c10.r <= 1 || c01.r <= 1 || c11.r <= 1;
 

@@ -132,8 +132,10 @@ void IterativeTransform(uint3 id : SV_DispatchThreadID)
     
     // atomic depth test (on alpha channel)
     float oldDepth, depth = sampled.a;
+    /*
     if (isDownsampled)
         depth += CAM_FCLIP;
+    */
     
     // InterlockedMin works only on int, so convert depth to int
     int depthInt = asint(depth);

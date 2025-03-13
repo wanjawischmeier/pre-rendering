@@ -92,11 +92,13 @@ Shader "Hidden/CubemapScreenBlit"
                         depth = depthDownsampled;
                         isDownsampled = true;
                         // return float4(depthDownsampled, 0, 0, 1);
+                        // return float4(0.5, 0, 0, 1);
                     }
                     else
                     {
                         // full res depth is closer (and already set)
                         // return float4(0, depthFullRes, 0, 1);
+                        // return float4(0, 0.5, 0, 1);
                     }
                 }
                 else
@@ -108,6 +110,7 @@ Shader "Hidden/CubemapScreenBlit"
                         depth = depthDownsampled;
                         isDownsampled = true;
                         // return float4(depthDownsampled, 0, 0, 1);
+                        // return float4(1, 0, 0, 1);
                     }
                     else
                     {
@@ -120,6 +123,7 @@ Shader "Hidden/CubemapScreenBlit"
                 float3 worldPosition = normalize(localPosition) * depth;
                 worldPosition += PLAYER_POSITION;
 
+                float oDepth = depth;
                 float previousDepth = CAM_FCLIP;
                 float3 tmpLocalPosition;
                 float4 tmpColor, cubePosition;
@@ -137,10 +141,10 @@ Shader "Hidden/CubemapScreenBlit"
                     tmpColor = _Input.Sample(linear_repeat_sampler, cubemapUV.xyw);
                     depth = tmpColor.a * (FCLIP - NCLIP) + NCLIP;
 
-                    tmpLocalPosition = UVToWorldSpacePosition(cubemapUV.xy, depth, cubemapUV.w % 6);
+                    tmpLocalPosition = UVToWorldSpacePosition(cubemapUV.xy, depth, cubemapUV.w % CUBEMAP_FACE_COUNT);
                     tmpColor.a = length(tmpLocalPosition - localPosition); // store depth error in alpha channel
 
-                    if (tmpColor.a < color.a)
+                    if (tmpColor.a < color.a - (isDownsampled ? _EdgeDetectionThreshold : 0))
                     {
                         // layer has less error than previous one
                         color = tmpColor;
@@ -161,7 +165,7 @@ Shader "Hidden/CubemapScreenBlit"
                     color.r += 0.5;
                 }
                 return color;
-                return float4(depth, 0, 0, 1);
+                // return float4(oDepth, 0, isDownsampled ? 0.5 : 0, 1);
 
 
 

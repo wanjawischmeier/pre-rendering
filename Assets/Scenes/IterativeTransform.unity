@@ -722,7 +722,7 @@ MonoBehaviour:
   targetTexture: {fileID: 0}
   targetDepth: {fileID: 0}
   debugPos: []
-  off: 350
+  off: 0
   offs: {x: 0, y: 0, z: 0}
 --- !u!114 &330585551
 MonoBehaviour:
