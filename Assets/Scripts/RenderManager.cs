@@ -21,6 +21,7 @@ public class RenderManager : MonoBehaviour
     public RenderTexture input, targetTexture, targetDepth;
     public DebugPos[] debugPos;
     public float off;
+    public Vector3 offs;
 
     Vector3 previousPosition = Vector3.one;
     int iterativeTransformKernelId;
@@ -80,9 +81,12 @@ public class RenderManager : MonoBehaviour
         computeShader.SetMatrixArray("ORIENTATION_MATRICIES", CubeMapConversion.orientationMatricies);
         computeShader.SetMatrixArray("INVERSE_ORIENTATION_MATRICIES", CubeMapConversion.inverseOrientationMatricies);
 
+        cubemapScreenBlitMaterial.SetFloat("NCLIP", map.nearClipPlane);
         cubemapScreenBlitMaterial.SetFloat("FCLIP", map.farClipPlane);
+        cubemapScreenBlitMaterial.SetVector("TARGET_RESOLUTION_DOWNSAMPLED", new Vector2(downsampledResolution.x, downsampledResolution.y));
+        cubemapScreenBlitMaterial.SetMatrixArray("ORIENTATION_MATRICIES", CubeMapConversion.orientationMatricies);
         cubemapScreenBlitMaterial.SetMatrixArray("INVERSE_ORIENTATION_MATRICIES", CubeMapConversion.inverseOrientationMatricies);
-        cubemapScreenBlitMaterial.SetVectorArray("CUBE_POSITIONS", map.cubemapPositions);
+        cubemapScreenBlitMaterial.SetTexture("_Input", input);
     }
 
     private void Update()
@@ -157,8 +161,10 @@ public class RenderManager : MonoBehaviour
         // Set global shader parameters
         computeShader.SetBool("IS_DEPTH_NORMALIZED", true);
         computeShader.SetBool("IS_ABSOLUTE_POSITION", false);
-        computeShader.SetVector("POSITION", -transform.position);
+        computeShader.SetVector("PLAYER_POSITION", transform.position);
         computeShader.SetTexture(iterativeTransformKernelId, "Input", input);
+
+        cubemapScreenBlitMaterial.SetVector("PLAYER_POSITION", transform.position);
 
         // Sort cubemap positions by distance (closest first), then reverse to get furthest first
         Vector4[] sortedPositions = map.cubemapPositions
@@ -166,6 +172,9 @@ public class RenderManager : MonoBehaviour
             .OrderBy(v => Vector3.Distance((Vector3)v, transform.position))
             .Reverse() // Reverse to get furthest first
             .ToArray();
+
+        // pass sorted positions to compute shader, closest first
+        cubemapScreenBlitMaterial.SetVectorArray("SORTED_CUBE_POSITIONS", sortedPositions.Reverse().ToArray());
 
         debugPos = new DebugPos[resolutions.Length];
 

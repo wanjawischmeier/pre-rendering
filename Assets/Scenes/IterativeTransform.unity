@@ -707,7 +707,7 @@ MonoBehaviour:
   downsampledResolution: {x: 128, y: 128}
   resolutions:
   - {x: 1024, y: 1024, z: 1}
-  - {x: 512, y: 512, z: 0}
+  - {x: 512, y: 512, z: 1}
   cubemapSlice: 0
   dispatchInput: 1
   dispatchBackBuffer: 0
@@ -723,6 +723,7 @@ MonoBehaviour:
   targetDepth: {fileID: 0}
   debugPos: []
   off: 350
+  offs: {x: 0, y: 0, z: 0}
 --- !u!114 &330585551
 MonoBehaviour:
   m_ObjectHideFlags: 0
