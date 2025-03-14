@@ -28,6 +28,11 @@ public class PingPongBuffer
     public RenderTexture Front => textures[currentIndex];
     public RenderTexture Back => textures[1 - currentIndex];
 
+    /// <summary>
+    /// Swaps front and back buffer.
+    /// Also clears the front buffer if a clearMode is specified.
+    /// </summary>
+    /// <param name="clearMode">If and how the front buffer should be cleared</param>
     public void Swap(ClearMode clearMode = ClearMode.None)
     {
         currentIndex = 1 - currentIndex;

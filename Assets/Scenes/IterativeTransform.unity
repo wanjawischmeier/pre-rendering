@@ -719,8 +719,6 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 0}
   input: {fileID: 0}
-  targetTexture: {fileID: 0}
-  targetDepth: {fileID: 0}
   debugPos: []
   off: 0
   offs: {x: 0, y: 0, z: 0}

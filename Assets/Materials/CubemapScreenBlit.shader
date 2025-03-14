@@ -8,6 +8,7 @@ Shader "Hidden/CubemapScreenBlit"
         _Brightness ("Brightness", Range(0, 1)) = 0.5
         _EdgeDetectionThreshold ("Edge Detection Threshold", Range(0, 1)) = 0.5
         _DownsampledMixThreshold ("Downsampled Mix Threshold", Range(-1, 1)) = 0.01
+        [Toggle] _ShowIterative ("Show Iterative", Float) = 0
     }
     SubShader
     {
@@ -43,12 +44,14 @@ Shader "Hidden/CubemapScreenBlit"
             }
 
             sampler2D _MainTex;
-            Texture2DArray _Input, _FrontBufferFullRes, _FrontBufferDownsampled, _FrontDepthBufferFullRes, _FrontDepthBufferDownsampledLayer0, _FrontDepthBufferDownsampledLayer1;
+            Texture2DArray _Input, _FrontBufferFullRes, _FrontBufferDownsampled;
+            Texture2DArray _FrontDepthBufferFullRes, _FrontDepthBufferIterative;
+            Texture2DArray _FrontDepthBufferDownsampledLayer0, _FrontDepthBufferDownsampledLayer1;
             SamplerState point_clamp_sampler; // TODO: implement bilinear cubemap sampling
             SamplerState linear_clamp_sampler, linear_repeat_sampler;
 
             uniform int CLOSEST_CUBE_INDEX;
-            uniform float _Contrast, _Brightness, _EdgeDetectionThreshold, _DownsampledMixThreshold;
+            uniform float _Contrast, _Brightness, _EdgeDetectionThreshold, _DownsampledMixThreshold, _ShowIterative;
             uniform float NCLIP, FCLIP, CAM_FCLIP;
             uniform float3 PLAYER_POSITION, OFFS;
             uniform int2 TARGET_RESOLUTION_DOWNSAMPLED;
@@ -84,7 +87,7 @@ Shader "Hidden/CubemapScreenBlit"
                     tmpColor = _Input.Sample(linear_repeat_sampler, uv.xyw);
                     depth = tmpColor.a * (FCLIP - NCLIP) + NCLIP;
 
-                    tmpLocalPosition = UVToWorldSpacePosition(uv.xy, depth, uv.w % CUBEMAP_FACE_COUNT);
+                    tmpLocalPosition = UVToWorldSpacePosition(uv.xy, depth, uv.w % CUBEMAP_FACE_COUNT, true);
                     tmpColor.a = length(tmpLocalPosition - localPosition); // store depth error in alpha channel
 
                     if (tmpColor.a < color.a)
@@ -116,14 +119,20 @@ Shader "Hidden/CubemapScreenBlit"
                 float depthFullRes = asfloat(_FrontDepthBufferFullRes.Sample(linear_clamp_sampler, cubemapUV.xyw));
                 float depthDownsampled = asfloat(_FrontDepthBufferDownsampledLayer0.Sample(linear_clamp_sampler, cubemapUV.xyw));
                 // float depthDownsampled = asfloat(SampleDepthShaderBilinear(_FrontDepthBufferDownsampledLayer0, cubemapUV.xy, TARGET_RESOLUTION_DOWNSAMPLED, cubemapUV.w, FCLIP));
-                // return depthDownsampled;
+                // return depthFullRes;
+                if (_ShowIterative == 1)
+                {
+                    depthFullRes = asfloat(_FrontDepthBufferIterative.Sample(linear_clamp_sampler, cubemapUV.xyw));
+                }
 
                 // return depth.rrrr;
                 bool isDownsampled = false;
                 float depth = depthFullRes;
+                
                 if (depthFullRes > 0)
                 {
                     // full res depth is valid
+                    /*
                     if (depthDownsampled > 0 && depthFullRes > depthDownsampled + _DownsampledMixThreshold)
                     {
                         // downsampled depth is valid and closer
@@ -138,10 +147,12 @@ Shader "Hidden/CubemapScreenBlit"
                         // return float4(0, depthFullRes, 0, 1);
                         // return float4(0, 0.5, 0, 1);
                     }
+                    */
                 }
                 else
                 {
                     // check downsamled buffer
+                    /*
                     if (depthDownsampled > 0)
                     {
                         // downsamled depth is valid
@@ -155,9 +166,11 @@ Shader "Hidden/CubemapScreenBlit"
                         // no valid depth
                         return float4(1, 0, 1, 1);
                     }
+                    */
+                    depth = asfloat(_FrontDepthBufferIterative.Sample(linear_clamp_sampler, cubemapUV.xyw));
                 }
                 
-                float oDepth = depth;
+                
                 float4 color = GetColorFromDepth(localPosition, depth);
 
                 /*
@@ -211,6 +224,7 @@ Shader "Hidden/CubemapScreenBlit"
                 {
                     // color.r += 0.5;
                 }
+
                 return color;
                 // return float4(oDepth, 0, isDownsampled ? 0.5 : 0, 1);
 

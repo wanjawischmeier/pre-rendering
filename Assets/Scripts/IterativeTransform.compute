@@ -4,10 +4,10 @@ uniform float OFF;
 uniform int2 DISPATCH_RESOLUTION;
 uniform int2 INPUT_RESOLUTION;
 uniform int2 TARGET_RESOLUTION_FULL, TARGET_RESOLUTION_DOWNSAMPLED;
-uniform bool IS_ABSOLUTE_POSITION, IS_DEPTH_NORMALIZED, ONLY_DISPATCH_DOWNSAMPLED;
+uniform bool ONLY_DISPATCH_DOWNSAMPLED, IS_DISPATCHING_ITERATIVELY;
 
 uniform float NCLIP, FCLIP, CAM_FCLIP;
-uniform float3 PLAYER_POSITION, PREVIOUS_POSITION;
+uniform float3 OFFSET, PREVIOUS_POSITION;
 uniform float4 CUBE_POSITIONS[10];
 uniform float4x4 ORIENTATION_MATRICIES[6];
 uniform float4x4 INVERSE_ORIENTATION_MATRICIES[6];
@@ -17,6 +17,7 @@ float4x4 _ViewProj;
 
 RWTexture2DArray<float4> Input, FrontBufferFullRes, FrontBufferDownsampled;
 RWTexture2DArray<int> FrontDepthBufferFullRes, FrontDepthBufferDownsampledPrimary, FrontDepthBufferDownsampledSecondary;
+RWTexture2DArray<int> BackDepthBufferFullRes, BackDepthBufferDownsampledPrimary;
 SamplerState samplerInputDownsampled;
 
 #include "IterativeTransformUtility.cginc"
@@ -31,7 +32,7 @@ void IterativeTransform(uint3 id : SV_DispatchThreadID)
     int cubemapIndex = (id.z - faceIndex) / CUBEMAP_FACE_COUNT;
     
     int inputIndex;
-    if (IS_ABSOLUTE_POSITION)
+    if (IS_DISPATCHING_ITERATIVELY)
     {
         inputIndex = id.z;
     }
@@ -41,7 +42,7 @@ void IterativeTransform(uint3 id : SV_DispatchThreadID)
     }
     
     // sample and validate the texel
-    float4 sampled;
+    float depth;
     bool isDownsampled = false;
     
     if (ONLY_DISPATCH_DOWNSAMPLED)
@@ -55,9 +56,17 @@ void IterativeTransform(uint3 id : SV_DispatchThreadID)
     }
     else
     {
-        uint2 tc = all(DISPATCH_RESOLUTION == INPUT_RESOLUTION) ? id.xy : uv * INPUT_RESOLUTION;
-        sampled = Input[uint3(tc, inputIndex)];
-        sampled.r = 0.3;
+        if (IS_DISPATCHING_ITERATIVELY)
+        {
+            depth = asfloat(BackDepthBufferFullRes[uint3(id.xy, inputIndex)]);
+        }
+        else
+        {
+            uint2 tc = all(DISPATCH_RESOLUTION == INPUT_RESOLUTION) ? id.xy : uv * INPUT_RESOLUTION;
+            float4 sampled = Input[uint3(tc, inputIndex)];
+            depth = sampled.a * (FCLIP - NCLIP) + NCLIP;
+        }
+        // sampled.r = 0.3;
     }
     
     // float4 sampled = SampleBilinear(InputDownsampled, uv, INPUT_DOWNSAMPLED_RESOLUTION, inputIndex, FCLIP);
@@ -86,14 +95,16 @@ void IterativeTransform(uint3 id : SV_DispatchThreadID)
     
     TransformUV(downsampled, uv, faceIndex, cubemapIndex, isDownsampled);
     */
-    float3 offset = -PLAYER_POSITION;
-    if (!IS_ABSOLUTE_POSITION)
+    float3 offset = -OFFSET;
+    if (!IS_DISPATCHING_ITERATIVELY)
     {
         offset += CUBE_POSITIONS[cubemapIndex].xyz;
     }
     
-    float4 transformedUV = TransformUV(sampled, uv, faceIndex, offset, isDownsampled, IS_DEPTH_NORMALIZED);
-    sampled.a = transformedUV.z;
+    float4 transformedUV = TransformUV(uv, depth, faceIndex, offset, !IS_DISPATCHING_ITERATIVELY);
+    // transformedUV = TransformUV(transformedUV.xy, transformedUV.z, transformedUV.w, float3(0, 0, 0), false);
+    depth = transformedUV.z;
+    
     // float3 worldPos = Sample2WorldSpace(sampled, uv, faceIndex, cubemapIndex);
     /*
     if ((isDownsampledTexelValid && downsampled.a < sampled.a)  || ONLY_DISPATCH_DOWNSAMPLED)
@@ -109,7 +120,7 @@ void IterativeTransform(uint3 id : SV_DispatchThreadID)
     
     
     // atomic depth test (on alpha channel)
-    float oldDepth, depth = sampled.a;
+    float oldDepth;
     /*
     if (isDownsampled)
         depth += CAM_FCLIP;
@@ -120,7 +131,7 @@ void IterativeTransform(uint3 id : SV_DispatchThreadID)
     int oldDepthInt;
 
     // perform atomic depth tests to prevent race conditions
-    uint3 targetIndex = uint3(transformedUV.xy * TARGET_RESOLUTION_FULL, transformedUV.w);
+    uint3 targetIndex = uint3(floor(transformedUV.xy * TARGET_RESOLUTION_FULL), transformedUV.w);
     InterlockedMin(FrontDepthBufferFullRes[targetIndex], depthInt, oldDepthInt);
     
     targetIndex.xy = transformedUV.xy * TARGET_RESOLUTION_DOWNSAMPLED;

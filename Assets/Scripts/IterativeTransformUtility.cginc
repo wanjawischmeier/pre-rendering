@@ -2,11 +2,11 @@
 /// Converts a world space position to cubemap UV coordinates.
 /// Expects float4x4 ORIENTATION_MATRICIES[6] to be defined.
 /// </summary>
-float3 UVToWorldSpacePosition(float2 cubemapUV, float depth, int faceIndex)
+float3 UVToWorldSpacePosition(float2 cubemapUV, float depth, int faceIndex, bool isDepthLinear)
 {
     float2 viewSpace = cubemapUV * 2 - 1; // [-1, 1] NDC
     float3 dir = float3(viewSpace, 1); // Assume direction vector
-    float3 pos = dir * depth; // Scale direction by depth
+    float3 pos = (isDepthLinear ? dir : normalize(dir)) * depth; // Scale direction by depth
 
     float4 worldPos = mul(ORIENTATION_MATRICIES[faceIndex], float4(pos, 1)); // World space position
     return worldPos.xyz / worldPos.w;
@@ -69,8 +69,7 @@ float4 WorldSpaceToCubemapUV(float3 localPosition)
         uv.y = 1.0 - uv.y; // -y: Flip vertically
     if (faceIndex == 5)
         uv.x = 1.0 - uv.x; // -z: flip horizontally
-
-    // float depth = length(localPosition);
+    
     return float4(uv, depth, faceIndex);
 }
 
@@ -79,17 +78,16 @@ float4 WorldSpaceToCubemapUV(float3 localPosition)
 /// Then transforms it back to cubemap UV coordinates.
 /// Expects float NCLIP, FCLIP to be defined.
 /// </summary>
-float4 TransformUV(inout float4 sampled, float2 uv, int faceIndex, float3 offset, bool isDownsampled, bool isDepthNormalized)
+float4 TransformUV(float2 uv, float depth, int faceIndex, float3 offset, bool isDepthLinear)
 {
     // calculate world space position
-    float normalizedDepth = sampled.a;
-    float depth = isDepthNormalized ? normalizedDepth * (FCLIP - NCLIP) + NCLIP : normalizedDepth;
-    
-    float3 worldPosition = UVToWorldSpacePosition(uv, depth, faceIndex);
+    float3 worldPosition = UVToWorldSpacePosition(uv, depth, faceIndex, isDepthLinear);
     worldPosition += offset;
 
-    sampled.r = isDownsampled ? sampled.r + 2 : sampled.r; // a red channel value above 1 flags the texel as downsampled
-    return WorldSpaceToCubemapUV(worldPosition);
+    // sampled.r = isDownsampled ? sampled.r + 2 : sampled.r; // a red channel value above 1 flags the texel as downsampled
+    float4 tc = WorldSpaceToCubemapUV(worldPosition);
+    // tc.z = length(worldPosition); // TODO: proper depth calculation
+    return tc;
 }
 
 
@@ -134,10 +132,10 @@ float4 SampleBilinear(RWTexture2DArray<float4> tex, float2 uv, uint2 textureSize
     uint2 off = uint2(1, 0);
 
     // Sample four neighboring texels
-    float4 c00 = tex[uint3(texelBase + off.yy % textureSize, slice)];
-    float4 c10 = tex[uint3(texelBase + off.xy % textureSize, slice)];
-    float4 c01 = tex[uint3(texelBase + off.yx % textureSize, slice)];
-    float4 c11 = tex[uint3(texelBase + off.xx % textureSize, slice)];
+    float4 c00 = tex[uint3(texelBase + off.yy, slice)];
+    float4 c10 = tex[uint3(texelBase + off.xy, slice)];
+    float4 c01 = tex[uint3(texelBase + off.yx, slice)];
+    float4 c11 = tex[uint3(texelBase + off.xx, slice)];
     
     bool isAnyNotDownsampled = c00.r <= 1 || c10.r <= 1 || c01.r <= 1 || c11.r <= 1;
 
