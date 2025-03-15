@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: CubemapScreenBlitMaterial
-  m_Shader: {fileID: 4800000, guid: 25ded62265766da4cbb419e50e601fd7, type: 3}
+  m_Name: MinimapGrid
+  m_Shader: {fileID: 4800000, guid: 44e62dc80fcec11409f8df185d71cde5, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -27,10 +27,6 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    - _Cubemap:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
     - _DetailAlbedoMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -44,10 +40,6 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _EmissionMap:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    - _InputOutput:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
@@ -69,30 +61,38 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Brightness: 0.42
     - _BumpScale: 1
-    - _Contrast: 1.1
     - _Cutoff: 0.5
     - _DetailNormalMapScale: 1
-    - _DownsampledMixThreshold: 0.02
     - _DstBlend: 0
-    - _EdgeDetectionThreshold: 0.02
     - _GlossMapScale: 1
     - _Glossiness: 0.5
     - _GlossyReflections: 1
+    - _GridSize: 1
+    - _GridThickness: 0.16
     - _Metallic: 0
     - _Mode: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.02
-    - _ShowIterative: 0
+    - _PlayerRotation: 0
+    - _PlayerSize: 0.03
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
     - _UVSec: 0
+    - _ViewConeAngle: 90
+    - _ViewConeLength: 2.2
     - _ZWrite: 1
-    - _isBending: 0
+    - _Zoom: 7.85
     m_Colors:
+    - _BackgroundColor: {r: 0.1792453, g: 0.1792453, b: 0.1792453, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
+    - _GridColor: {r: 0.6792453, g: 0.26593092, b: 0.26593092, a: 1}
+    - _MarkedColor: {r: 1, g: 0, b: 0, a: 1}
+    - _PlayerColor: {r: 0, g: 1, b: 0, a: 1}
+    - _PlayerDirection: {r: -4.91, g: 2.49, b: -8.15, a: 0}
+    - _PlayerPosition: {r: 0, g: 2, b: 0, a: 0}
+    - _ViewConeColor: {r: 1, g: 1, b: 0, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
