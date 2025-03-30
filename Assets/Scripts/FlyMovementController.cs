@@ -6,6 +6,7 @@ public class FlyMovementController : MonoBehaviour
     public float flySpeed = 5f;
     public float rotationSpeed = 2f;
     public GameObject pauseMenuCanvas;
+    public bool lockCursor = true;
 
     private CharacterController characterController;
 
@@ -15,27 +16,34 @@ public class FlyMovementController : MonoBehaviour
     private void Start()
     {
         characterController = GetComponent<CharacterController>();
-        Cursor.lockState = CursorLockMode.Locked;
         TryApplyMapSpeedMultiplier();
+
+        if (lockCursor)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+        }
     }
 
     private void Update()
     {
-        if (Cursor.lockState == CursorLockMode.Locked)
+        if (!pauseMenuCanvas.activeSelf && Input.GetKeyDown(KeyCode.Escape))
         {
-            if (Input.GetKeyDown(KeyCode.Escape))
+            pauseMenuCanvas.SetActive(true);
+            if (lockCursor)
             {
-                pauseMenuCanvas.SetActive(true);
                 Cursor.lockState = CursorLockMode.None;
-                return;
             }
+            return;
         }
         else if (Input.GetKeyDown(KeyCode.Escape))
         {
             pauseMenuCanvas.SetActive(false);
-            Cursor.lockState = CursorLockMode.Locked;
+            if (lockCursor)
+            {
+                Cursor.lockState = CursorLockMode.Locked;
+            }
         }
-        else if (Cursor.lockState == CursorLockMode.None)
+        else if (pauseMenuCanvas.activeSelf)
         {
             return;
         }

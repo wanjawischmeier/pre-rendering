@@ -1,0 +1,51 @@
+#pragma kernel RenderCubemap
+
+uniform bool _WriteDownsampledOutput;
+uniform int _InputType, _InputSliceOffset;
+uniform float _MapNearClip, _MapFarClip;
+uniform int2 _InputResolution, _DispatchResolution, _OutputResolutionFull, _OutputResolutionDownsampled;
+uniform float3 _Offset;
+uniform float4x4 _OrientationMatricies[6];
+
+Texture2DArray<float4> _InputColorBuffer;
+Texture2DArray<int> _InputDepthBuffer;
+RWTexture2DArray<int> RW_OutputDepthBufferFull, RW_OutputDepthBufferDownsampled;
+
+#include "CubemapTransformUtility.cginc"
+
+[numthreads(8, 8, 1)]
+void RenderCubemap(uint3 id : SV_DispatchThreadID)
+{
+    // compute texel coordinates
+    float2 uv = (float2) id.xy / _DispatchResolution;
+    int faceIndex = id.z; // expected to be in range 0 to 5
+    
+    uint2 tc = all(_InputResolution == _DispatchResolution) ? id.xy : uv * _InputResolution;
+    bool isDepthLinear;
+    float depth;
+    if (_InputType == 0)
+    {
+        // input is a color buffer
+        float4 sampled = _InputColorBuffer[uint3(tc, faceIndex + _InputSliceOffset)];
+        depth = sampled.a * (_MapFarClip - _MapNearClip) + _MapNearClip; // rescale depth
+        isDepthLinear = true;
+    }
+    else
+    {
+        // input is a depth buffer
+        depth = asfloat(_InputDepthBuffer[uint3(tc, faceIndex + _InputSliceOffset)]);
+        isDepthLinear = false;
+    }
+    
+    float4 transformedUV = TransformUV(uv, depth, faceIndex, _Offset, isDepthLinear);
+    int depthInt = asint(transformedUV.z); // InterlockedMin works only on int, so convert depth to int
+    int oldDepthInt;
+    // TODO: try different operators than floor
+    uint3 targetIndex = uint3(floor(transformedUV.xy * _OutputResolutionFull), transformedUV.w);
+    InterlockedMin(RW_OutputDepthBufferFull[targetIndex], depthInt, oldDepthInt);
+    
+    if (!_WriteDownsampledOutput) return;
+    
+    targetIndex.xy = transformedUV.xy * _OutputResolutionDownsampled;
+    InterlockedMin(RW_OutputDepthBufferDownsampled[targetIndex], depthInt, oldDepthInt);
+}

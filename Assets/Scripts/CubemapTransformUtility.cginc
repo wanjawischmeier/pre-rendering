@@ -1,6 +1,6 @@
 /// <summary>
 /// Converts a world space position to cubemap UV coordinates.
-/// Expects float4x4 ORIENTATION_MATRICIES[6] to be defined.
+/// Expects float4x4 _OrientationMatricies[6] to be defined.
 /// </summary>
 float3 UVToWorldSpacePosition(float2 cubemapUV, float depth, int faceIndex, bool isDepthLinear)
 {
@@ -8,7 +8,7 @@ float3 UVToWorldSpacePosition(float2 cubemapUV, float depth, int faceIndex, bool
     float3 dir = float3(viewSpace, 1); // Assume direction vector
     float3 pos = (isDepthLinear ? dir : normalize(dir)) * depth; // Scale direction by depth
 
-    float4 worldPos = mul(ORIENTATION_MATRICIES[faceIndex], float4(pos, 1)); // World space position
+    float4 worldPos = mul(_OrientationMatricies[faceIndex], float4(pos, 1)); // World space position
     return worldPos.xyz / worldPos.w;
 }
 

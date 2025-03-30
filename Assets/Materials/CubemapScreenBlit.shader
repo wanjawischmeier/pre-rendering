@@ -57,9 +57,9 @@ Shader "Hidden/CubemapScreenBlit"
             uniform int2 TARGET_RESOLUTION_DOWNSAMPLED;
             uniform float4 SORTED_CUBE_POSITIONS[10];
             uniform float4x4 _ViewToWorldMatrix, _InvProjectionMatrix;
-            uniform float4x4 ORIENTATION_MATRICIES[6], INVERSE_ORIENTATION_MATRICIES[6];
+            uniform float4x4 _OrientationMatricies[6], INVERSE_ORIENTATION_MATRICIES[6];
 
-            #include "Assets/Scripts/IterativeTransformUtility.cginc"
+            #include "Assets/Scripts/CubemapTransformUtility.cginc"
             #define DOWNSAMPLED_DEPTH_OFFSET 0.1    // TODO: change after proper depth calculation?
             #define NUM_DEPTH_TESTS 2               // expected to not be larger than cubemap count
 
@@ -119,7 +119,7 @@ Shader "Hidden/CubemapScreenBlit"
                 float depthFullRes = asfloat(_FrontDepthBufferFullRes.Sample(linear_clamp_sampler, cubemapUV.xyw));
                 float depthDownsampled = asfloat(_FrontDepthBufferDownsampledLayer0.Sample(linear_clamp_sampler, cubemapUV.xyw));
                 // float depthDownsampled = asfloat(SampleDepthShaderBilinear(_FrontDepthBufferDownsampledLayer0, cubemapUV.xy, TARGET_RESOLUTION_DOWNSAMPLED, cubemapUV.w, FCLIP));
-                // return depthFullRes;
+                return depthFullRes.xxxx * 0.2;
                 if (_ShowIterative == 1)
                 {
                     depthFullRes = asfloat(_FrontDepthBufferIterative.Sample(linear_clamp_sampler, cubemapUV.xyw));

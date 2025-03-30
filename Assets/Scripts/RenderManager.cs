@@ -1,6 +1,8 @@
 using System;
+using System.Diagnostics;
 using System.Linq;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 public class RenderManager : MonoBehaviour
 {
@@ -12,7 +14,7 @@ public class RenderManager : MonoBehaviour
 
     public MapScriptableObject map;
     public Material cubemapScreenBlitMaterial;
-    public ComputeShader computeShader;
+    public ComputeShader computeShader, cubemapRenderShader;
     public Vector2Int fullResolution, downsampledResolution;
     public Vector3Int[] resolutions;    // z stores max number of threads at that resolution
     public int cubemapSlice = 0;
@@ -22,29 +24,62 @@ public class RenderManager : MonoBehaviour
     public DebugPos[] debugPos;
     public float off;
     public Vector3 offs;
+    public Material debugTextureMaterial;
 
     Vector3 previousPosition = Vector3.one;
     int iterativeTransformKernelId;
     uint threadsX, threadsY;
     PingPongBuffer pingPongBufferFullRes, pingPongBufferDownsampled, pingPongDepthBufferIterative;
     PingPongBuffer pingPongDepthBufferFullRes, pingPongDepthBufferDownsampledLayer0, pingPongDepthBufferDownsampledLayer1;
+    CubemapRenderer testCubemapRenderer, cubemap0, cubemap1;
+
+
+    public struct CubemapComputeShaderData
+    {
+        public ComputeShader computeShader;
+        public int renderKernelId;
+        public uint renderThreadsX, renderThreadsY;
+    }
+    public static CubemapComputeShaderData cubemapComputeShaderData;
 
     const int CUBEMAP_FACE_COUNT = 6;
 
     private void Start()
     {
+        cubemapComputeShaderData = new CubemapComputeShaderData() { computeShader = cubemapRenderShader };
+        cubemapComputeShaderData.renderKernelId = cubemapRenderShader.FindKernel("RenderCubemap");
+        cubemapRenderShader.GetKernelThreadGroupSizes(cubemapComputeShaderData.renderKernelId,
+                                                      out cubemapComputeShaderData.renderThreadsX,
+                                                      out cubemapComputeShaderData.renderThreadsY,
+                                                      out uint _);
+
+        cubemapRenderShader.SetFloat("_MapNearClip", map.nearClipPlane);
+        cubemapRenderShader.SetFloat("_MapFarClip", map.farClipPlane);
+        cubemapRenderShader.SetMatrixArray("_OrientationMatricies", CubeMapConversion.orientationMatricies);
+
+        CubemapRenderer.RendererConfig rendererConfig = new CubemapRenderer.RendererConfig()
+        {
+            fullResolution = fullResolution.ToResolution(),
+            downsampledResolution = downsampledResolution.ToResolution(),
+            dispatchResolution = fullResolution.ToResolution(), // for now
+        };
+        testCubemapRenderer = new CubemapRenderer(rendererConfig);
+        cubemap0 = new CubemapRenderer(rendererConfig);
+        cubemap1 = new CubemapRenderer(rendererConfig);
+
+
         iterativeTransformKernelId = computeShader.FindKernel("IterativeTransform");
         computeShader.GetKernelThreadGroupSizes(iterativeTransformKernelId, out threadsX, out threadsY, out uint _);
-
-        pingPongBufferFullRes = new PingPongBuffer(fullResolution, CUBEMAP_FACE_COUNT, RenderTextureFormat.ARGBHalf);
+        
+        pingPongBufferFullRes = new PingPongBuffer(fullResolution.ToResolution(), CUBEMAP_FACE_COUNT, RenderTextureFormat.ARGBHalf);
         fbBufferFullRes = pingPongBufferFullRes.Textures;
 
-        pingPongDepthBufferFullRes = new PingPongBuffer(fullResolution, CUBEMAP_FACE_COUNT, RenderTextureFormat.RInt);
-        pingPongDepthBufferIterative = new PingPongBuffer(fullResolution, CUBEMAP_FACE_COUNT, RenderTextureFormat.RInt);    // TODO: normal rt would suffice, back buffer is not used
-        pingPongDepthBufferDownsampledLayer0 = new PingPongBuffer(downsampledResolution, CUBEMAP_FACE_COUNT, RenderTextureFormat.RInt);
-        pingPongDepthBufferDownsampledLayer1 = new PingPongBuffer(downsampledResolution, CUBEMAP_FACE_COUNT, RenderTextureFormat.RInt);
+        pingPongDepthBufferFullRes = new PingPongBuffer(fullResolution.ToResolution(), CUBEMAP_FACE_COUNT, RenderTextureFormat.RInt);
+        pingPongDepthBufferIterative = new PingPongBuffer(fullResolution.ToResolution(), CUBEMAP_FACE_COUNT, RenderTextureFormat.RInt);    // TODO: normal rt would suffice, back buffer is not used
+        pingPongDepthBufferDownsampledLayer0 = new PingPongBuffer(downsampledResolution.ToResolution(), CUBEMAP_FACE_COUNT, RenderTextureFormat.RInt);
+        pingPongDepthBufferDownsampledLayer1 = new PingPongBuffer(downsampledResolution.ToResolution(), CUBEMAP_FACE_COUNT, RenderTextureFormat.RInt);
 
-        pingPongBufferDownsampled = new PingPongBuffer(downsampledResolution, CUBEMAP_FACE_COUNT, RenderTextureFormat.ARGBHalf);
+        pingPongBufferDownsampled = new PingPongBuffer(downsampledResolution.ToResolution(), CUBEMAP_FACE_COUNT, RenderTextureFormat.ARGBHalf);
         fbBufferDownsampled = pingPongBufferDownsampled.Textures;
 
         input = new RenderTexture(map.inputImages[0].width, map.inputImages[0].height, 0);
@@ -66,21 +101,32 @@ public class RenderManager : MonoBehaviour
         computeShader.SetVector("TARGET_RESOLUTION_DOWNSAMPLED", new Vector2(downsampledResolution.x, downsampledResolution.y));
         computeShader.SetVector("_ScreenSize", new Vector2(Screen.width, Screen.height));
 
-        // to prevent null reference exception, although these variables is properly set later
+        // to prevent null reference exception, although these variables are properly set later
         computeShader.SetTexture(iterativeTransformKernelId, "InputSecondary", pingPongBufferDownsampled.Back);
         computeShader.SetTexture(iterativeTransformKernelId, "FrontDepthBufferDownsampledSecondary", pingPongDepthBufferDownsampledLayer1.Front);
         computeShader.SetTexture(iterativeTransformKernelId, "BackDepthBufferFullRes", pingPongDepthBufferFullRes.Back);
 
         computeShader.SetVectorArray("CUBE_POSITIONS", map.cubemapPositions);
-        computeShader.SetMatrixArray("ORIENTATION_MATRICIES", CubeMapConversion.orientationMatricies);
+        computeShader.SetMatrixArray("_OrientationMatricies", CubeMapConversion.orientationMatricies);
         computeShader.SetMatrixArray("INVERSE_ORIENTATION_MATRICIES", CubeMapConversion.inverseOrientationMatricies);
 
         cubemapScreenBlitMaterial.SetFloat("NCLIP", map.nearClipPlane);
         cubemapScreenBlitMaterial.SetFloat("FCLIP", map.farClipPlane);
         cubemapScreenBlitMaterial.SetVector("TARGET_RESOLUTION_DOWNSAMPLED", new Vector2(downsampledResolution.x, downsampledResolution.y));
-        cubemapScreenBlitMaterial.SetMatrixArray("ORIENTATION_MATRICIES", CubeMapConversion.orientationMatricies);
+        cubemapScreenBlitMaterial.SetMatrixArray("_OrientationMatricies", CubeMapConversion.orientationMatricies);
         cubemapScreenBlitMaterial.SetMatrixArray("INVERSE_ORIENTATION_MATRICIES", CubeMapConversion.inverseOrientationMatricies);
         cubemapScreenBlitMaterial.SetTexture("_Input", input);
+
+        for (int i = 0; i < 3; i++) // why thrice?
+        {
+            cubemap0.Render(input, new Vector3(0, 0, 0));
+            cubemap1.Render(input, new Vector3(1, 0, 0));
+        }
+
+        Update();
+        previousPosition = Vector3.one;
+        Update();
+        previousPosition = Vector3.one; // why tf is this necessary?
     }
 
     private void Update()
@@ -133,6 +179,11 @@ public class RenderManager : MonoBehaviour
         cubemapScreenBlitMaterial.SetTexture("_FrontDepthBufferDownsampledLayer1", pingPongDepthBufferDownsampledLayer1.Front);
 
         previousPosition = transform.position;
+
+        testCubemapRenderer.Render(cubemap0.fullResRenderBuffer, -transform.position);
+        // cubemap0.Render(testCubemapRenderer.downsampledRenderBuffer, transform.position, clearBuffer: false);
+        debugTextureMaterial.SetTexture("_Input", cubemap0.fullResRenderBuffer);
+        cubemapScreenBlitMaterial.SetTexture("_FrontDepthBufferFullRes", testCubemapRenderer.downsampledRenderBuffer);
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
@@ -221,5 +272,22 @@ public class RenderManager : MonoBehaviour
         {
             movementController.TryApplyMapSpeedMultiplier();
         }
+    }
+
+    public void UpdateCubemap0()
+    {
+        cubemap0.Render(testCubemapRenderer.downsampledRenderBuffer, transform.position, clearBuffer: false);
+        previousPosition = Vector3.one;
+        Update();
+
+        Debug.Log("Updated cubemap 0");
+    }
+}
+
+public static class Utility
+{
+    public static Resolution ToResolution(this Vector2Int vector)
+    {
+        return new Resolution() { width = vector.x, height = vector.y };
     }
 }

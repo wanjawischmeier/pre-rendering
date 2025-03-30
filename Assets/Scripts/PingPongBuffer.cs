@@ -5,11 +5,11 @@ public class PingPongBuffer
     private RenderTexture[] textures = new RenderTexture[2];
     private int currentIndex = 0;
 
-    public PingPongBuffer(Vector2Int resolution, int volumeDepth, RenderTextureFormat format)
+    public PingPongBuffer(Resolution resolution, int volumeDepth, RenderTextureFormat format)
     {
         for (int i = 0; i < 2; i++)
         {
-            textures[i] = new RenderTexture(resolution.x, resolution.y, 0, format);
+            textures[i] = new RenderTexture(resolution.width, resolution.height, 0, format);
             textures[i].dimension = UnityEngine.Rendering.TextureDimension.Tex2DArray;
             textures[i].enableRandomWrite = true;
             textures[i].volumeDepth = volumeDepth;

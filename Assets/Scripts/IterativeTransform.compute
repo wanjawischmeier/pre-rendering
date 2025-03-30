@@ -9,7 +9,7 @@ uniform bool ONLY_DISPATCH_DOWNSAMPLED, IS_DISPATCHING_ITERATIVELY;
 uniform float NCLIP, FCLIP, CAM_FCLIP;
 uniform float3 OFFSET, PREVIOUS_POSITION;
 uniform float4 CUBE_POSITIONS[10];
-uniform float4x4 ORIENTATION_MATRICIES[6];
+uniform float4x4 _OrientationMatricies[6];
 uniform float4x4 INVERSE_ORIENTATION_MATRICIES[6];
 
 int2 _ScreenSize;
@@ -20,7 +20,7 @@ RWTexture2DArray<int> FrontDepthBufferFullRes, FrontDepthBufferDownsampledPrimar
 RWTexture2DArray<int> BackDepthBufferFullRes, BackDepthBufferDownsampledPrimary;
 SamplerState samplerInputDownsampled;
 
-#include "IterativeTransformUtility.cginc"
+#include "CubemapTransformUtility.cginc"
 
 
 [numthreads(8, 8, 1)]
