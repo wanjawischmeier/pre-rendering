@@ -5,14 +5,13 @@ public class CubemapRenderer
 {
     public readonly RenderTexture fullResRenderBuffer, downsampledRenderBuffer;
 
-    private bool useDownsampledBuffer;
     private RendererConfig rendererConfig;
 
     const int CUBEMAP_FACE_COUNT = 6;
 
     public struct RendererConfig
     {
-        public Resolution fullResolution, downsampledResolution, dispatchResolution;
+        public Resolution fullResolution, downsampledResolution;
     }
 
     public enum DispatchTargetMode
@@ -28,7 +27,6 @@ public class CubemapRenderer
     public CubemapRenderer(RendererConfig rendererConfig, bool createDownsampledBuffer = true)
     {
         this.rendererConfig = rendererConfig;
-        this.useDownsampledBuffer = createDownsampledBuffer;
 
         fullResRenderBuffer = new RenderTexture(rendererConfig.fullResolution.width, rendererConfig.fullResolution.height, 0, RenderTextureFormat.RInt);
         fullResRenderBuffer.dimension = UnityEngine.Rendering.TextureDimension.Tex2DArray;
@@ -48,8 +46,13 @@ public class CubemapRenderer
 
     private void ClearRenderTexture(RenderTexture renderTexture, ClearMode clearMode)
     {
+        if (clearMode == ClearMode.None)
+        {
+            return;
+        }
+
         RenderTexture rt = RenderTexture.active;
-        for (int faceIndex = 0; faceIndex < CUBEMAP_FACE_COUNT; faceIndex++)
+        for (int faceIndex = 0; faceIndex < renderTexture.volumeDepth; faceIndex++)
         {
             Graphics.SetRenderTarget(renderTexture, 0, CubemapFace.Unknown, faceIndex);
 
@@ -63,14 +66,14 @@ public class CubemapRenderer
                     GL.Clear(true, true, new Color(int.MaxValue, 0, 0));
                     break;
                 default:
-                    // for example ClearMode.None, do nothing
+                    Debug.LogError("ClearRenderTexture called with invalid clear mode.");
                     break;
             }
         }
         RenderTexture.active = rt;
     }
 
-    public void Render(RenderTexture source, Vector3 offset, int inputSliceOffset = 0, bool clearBuffer = true, DispatchTargetMode dispatchTargetMode = DispatchTargetMode.Both)
+    public void Render(RenderTexture source, Vector3 offset, Resolution dispatchResolution, int inputSliceOffset = 0, bool clearBuffer = true, DispatchTargetMode dispatchTargetMode = DispatchTargetMode.Both, RenderTexture depthMask = null)
     {
         if (dispatchTargetMode != DispatchTargetMode.FullRes && downsampledRenderBuffer == null)
         {
@@ -78,6 +81,7 @@ public class CubemapRenderer
             return;
         }
 
+        // determine input buffer type
         InputBufferType inputBufferType;
         switch (source.format)
         {
@@ -92,28 +96,30 @@ public class CubemapRenderer
                 return;
         }
 
-        // get render config
+        // convert render config to shader compatible types
         Vector2 inputResolution = new Vector2(source.width, source.height);
-        Vector2 dispatchResolution = new Vector2(rendererConfig.dispatchResolution.width, rendererConfig.dispatchResolution.height);
+        Vector2 _dispatchResolution = new Vector2(dispatchResolution.width, dispatchResolution.height);
         Vector2 outputResolutionFull = new Vector2(rendererConfig.fullResolution.width, rendererConfig.fullResolution.height);
         Vector2 outputResolutionDownsampled = new Vector2(rendererConfig.downsampledResolution.width, rendererConfig.downsampledResolution.height);
 
         // set shader data
         RenderManager.CubemapComputeShaderData shaderData = RenderManager.cubemapComputeShaderData;
         ComputeShader computeShader = shaderData.computeShader;
-        computeShader.SetBool("_WriteDownsampledOutput", useDownsampledBuffer);
+        computeShader.SetBool("_UseDepthMask", depthMask != null);
         computeShader.SetInt("_InputType", (int)inputBufferType);
         computeShader.SetInt("_DispatchTargetMode", (int)dispatchTargetMode);
         computeShader.SetInt("_InputSliceOffset", inputSliceOffset);
+        computeShader.SetFloat("_CamFarClip", Camera.main.farClipPlane);
         computeShader.SetVector("_Offset", offset);
         computeShader.SetVector("_InputResolution", inputResolution);
-        computeShader.SetVector("_DispatchResolution", dispatchResolution);
+        computeShader.SetVector("_DispatchResolution", _dispatchResolution);
         computeShader.SetVector("_OutputResolutionFull", outputResolutionFull);
         computeShader.SetVector("_OutputResolutionDownsampled", outputResolutionDownsampled);
 
-        // set inputs (we have to set both or the cs freaks out)
+        // set inputs (we have to set them all in any case or the cs freaks out)
         computeShader.SetTexture(shaderData.renderKernelId, "_InputColorBuffer", source);
         computeShader.SetTexture(shaderData.renderKernelId, "_InputDepthBuffer", source);
+        computeShader.SetTexture(shaderData.renderKernelId, "_DepthMask", depthMask == null ? source : depthMask);
 
         // set render targets
         ClearMode clearMode = clearBuffer ? ClearMode.DepthBuffer : ClearMode.None;
@@ -123,8 +129,8 @@ public class CubemapRenderer
         computeShader.SetTexture(shaderData.renderKernelId, "RW_OutputDepthBufferDownsampled", downsampledRenderBuffer);
 
         // dispatch compute shader
-        int threadGroupsX = Mathf.CeilToInt(dispatchResolution.x / (int)shaderData.renderThreadsX);
-        int threadGroupsY = Mathf.CeilToInt(dispatchResolution.y / (int)shaderData.renderThreadsY);
+        int threadGroupsX = Mathf.CeilToInt(dispatchResolution.width / (int)shaderData.renderThreadsX);
+        int threadGroupsY = Mathf.CeilToInt(dispatchResolution.height / (int)shaderData.renderThreadsY);
         computeShader.Dispatch(shaderData.renderKernelId, threadGroupsX, threadGroupsY, CUBEMAP_FACE_COUNT);
     }
 }

@@ -46,14 +46,14 @@ Shader "Hidden/CubemapScreenBlit"
             sampler2D _MainTex;
             Texture2DArray _Input, _FrontBufferFullRes, _FrontBufferDownsampled;
             Texture2DArray _FrontDepthBufferFullRes, _FrontDepthBufferIterative;
-            Texture2DArray _FrontDepthBufferDownsampledLayer0, _FrontDepthBufferDownsampledLayer1;
+            Texture2DArray _FrontDepthBufferDownsampledLayer0, _FrontDepthBufferDownsampled;
             SamplerState point_clamp_sampler; // TODO: implement bilinear cubemap sampling
             SamplerState linear_clamp_sampler, linear_repeat_sampler;
 
             uniform int CLOSEST_CUBE_INDEX;
             uniform float _Contrast, _Brightness, _EdgeDetectionThreshold, _DownsampledMixThreshold, _ShowIterative;
             uniform float NCLIP, FCLIP, CAM_FCLIP;
-            uniform float3 PLAYER_POSITION, OFFS;
+            uniform float3 _PlayerPosition, OFFS;
             uniform int2 TARGET_RESOLUTION_DOWNSAMPLED;
             uniform float4 SORTED_CUBE_POSITIONS[10];
             uniform float4x4 _ViewToWorldMatrix, _InvProjectionMatrix;
@@ -68,7 +68,7 @@ Shader "Hidden/CubemapScreenBlit"
             {
                 // reconstruct original world position and map it to original cubemap
                 float3 worldPosition = normalize(localPosition) * depth;
-                worldPosition += PLAYER_POSITION;
+                worldPosition += _PlayerPosition;
 
                 float previousDepth = CAM_FCLIP;
                 float3 tmpLocalPosition;
@@ -117,14 +117,33 @@ Shader "Hidden/CubemapScreenBlit"
                 // return asfloat(_FrontDepthBufferFullRes.Sample(point_clamp_sampler, cubemapUV.xyw)).rrrr;
                 // return asfloat(_FrontDepthBufferDownsampledLayer0.Sample(point_clamp_sampler, cubemapUV.xyw)).rrrr;
                 float depthFullRes = asfloat(_FrontDepthBufferFullRes.Sample(linear_clamp_sampler, cubemapUV.xyw));
-                float depthDownsampled = asfloat(_FrontDepthBufferDownsampledLayer0.Sample(linear_clamp_sampler, cubemapUV.xyw));
+                float depthDownsampled = asfloat(_FrontDepthBufferDownsampled.Sample(linear_clamp_sampler, cubemapUV.xyw));
                 // float depthDownsampled = asfloat(SampleDepthShaderBilinear(_FrontDepthBufferDownsampledLayer0, cubemapUV.xy, TARGET_RESOLUTION_DOWNSAMPLED, cubemapUV.w, FCLIP));
-                return depthFullRes.xxxx * 0.2;
+                /*
+                if (i.uv.x < 0.5)
+                {
+                    if (depthFullRes < 0)
+                    {
+                        return float4(0, 1, 0, 1);
+                    }
+                }
+                else
+                {
+                    if (depthFullRes >= 0) { }
+                    else
+                    {
+                        return float4(0, 1, 0, 1);
+                    }
+                }
+                */
+
+                // return depthFullRes.xxxx * 0.2;
+                /*
                 if (_ShowIterative == 1)
                 {
                     depthFullRes = asfloat(_FrontDepthBufferIterative.Sample(linear_clamp_sampler, cubemapUV.xyw));
                 }
-
+                */
                 // return depth.rrrr;
                 bool isDownsampled = false;
                 float depth = depthFullRes;
@@ -152,7 +171,6 @@ Shader "Hidden/CubemapScreenBlit"
                 else
                 {
                     // check downsamled buffer
-                    /*
                     if (depthDownsampled > 0)
                     {
                         // downsamled depth is valid
@@ -166,8 +184,7 @@ Shader "Hidden/CubemapScreenBlit"
                         // no valid depth
                         return float4(1, 0, 1, 1);
                     }
-                    */
-                    depth = asfloat(_FrontDepthBufferIterative.Sample(linear_clamp_sampler, cubemapUV.xyw));
+                    // depth = asfloat(_FrontDepthBufferIterative.Sample(linear_clamp_sampler, cubemapUV.xyw));
                 }
                 
                 
@@ -176,7 +193,7 @@ Shader "Hidden/CubemapScreenBlit"
                 /*
                 // reconstruct original world position and map it to original cubemap
                 float3 worldPosition = normalize(localPosition) * depth;
-                worldPosition += PLAYER_POSITION;
+                worldPosition += _PlayerPosition;
 
                 float previousDepth = CAM_FCLIP;
                 float3 tmpLocalPosition;
@@ -206,6 +223,7 @@ Shader "Hidden/CubemapScreenBlit"
                     }
                 }
                 */
+                /*
                 if (isDownsampled && color.a > _EdgeDetectionThreshold)
                 {
                     // TODO: major error on downsampled edge detected, apply smooth edges
@@ -216,7 +234,7 @@ Shader "Hidden/CubemapScreenBlit"
                     // return float4(depth, 0, 0, 1);
                     // return float4(1, 0, 0, 1);
                 }
-
+                */
 
                 // return worldPosition.xyzz;
                 // return float4(CLOSEST_CUBE_INDEX, 0, float(cubemapUV.w) / 6, 1);
