@@ -25,7 +25,7 @@ bool ApplyDepthMask(uint3 tc, float depth)
     if (_UseDepthMask)
     {
         float oldDepth = asfloat(_DepthMask[tc]);
-        if (oldDepth > 0 && depth + _CamFarClip >= oldDepth)
+        if (oldDepth > 0 && depth + 0 >= oldDepth)
         {
             // old depth is offset by camera far clip, always renders it behind previous pass
             return false;

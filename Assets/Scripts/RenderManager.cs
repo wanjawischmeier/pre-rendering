@@ -138,7 +138,7 @@ public class RenderManager : MonoBehaviour
         {
             return;
         }
-
+        /*
         // swap front and back buffers
         pingPongBufferFullRes.Swap(PingPongBuffer.ClearMode.ColorBuffer);
         pingPongBufferDownsampled.Swap();
@@ -166,7 +166,7 @@ public class RenderManager : MonoBehaviour
         {
             DispatchInputComputeShader();
         }
-
+        */
         // update screen blit material after textures have been updated
         cubemapScreenBlitMaterial.SetFloat("CAM_FCLIP", Camera.main.farClipPlane);
         cubemapScreenBlitMaterial.SetVector("_PlayerPosition", transform.position);
@@ -179,8 +179,8 @@ public class RenderManager : MonoBehaviour
 
 
         // temp substitution for ping pong buffer
-        RenderTexture previousFrameDownsampled = RenderTexture.GetTemporary(testCubemapRenderer.downsampledRenderBuffer.descriptor);
-        Graphics.CopyTexture(testCubemapRenderer.downsampledRenderBuffer, previousFrameDownsampled);
+        RenderTexture previousFrameFullRes = RenderTexture.GetTemporary(testCubemapRenderer.fullResRenderBuffer.descriptor);
+        Graphics.CopyTexture(testCubemapRenderer.fullResRenderBuffer, previousFrameFullRes);
 
         /*
         RenderTexture rt = RenderTexture.active;
@@ -191,25 +191,33 @@ public class RenderManager : MonoBehaviour
         }
         RenderTexture.active = rt;
         */
-        testCubemapRenderer.Render(input, -transform.position, fullResolution.ToResolution());
+        Vector3 tmpPreviousPosition = new Vector3(previousPosition.x, previousPosition.y, previousPosition.z);
+        if (dispatchInput)
+        {
+            testCubemapRenderer.Render(input, -transform.position, fullResolution.ToResolution());
+            previousPosition = transform.position;
+        }
 
-        RenderTexture depthMaskTexture = RenderTexture.GetTemporary(testCubemapRenderer.downsampledRenderBuffer.descriptor);
-        Graphics.CopyTexture(testCubemapRenderer.downsampledRenderBuffer, depthMaskTexture);
+        if (dispatchBackBuffer)
+        {
+            RenderTexture depthMaskTexture = RenderTexture.GetTemporary(testCubemapRenderer.downsampledRenderBuffer.descriptor);
+            Graphics.CopyTexture(testCubemapRenderer.downsampledRenderBuffer, depthMaskTexture);
 
-        testCubemapRenderer.Render(previousFrameDownsampled, previousPosition - transform.position,
-                                   downsampledResolution.ToResolution(), clearBuffer: false,
-                                   dispatchTargetMode: CubemapRenderer.DispatchTargetMode.Downsampled,
-                                   depthMask: depthMaskTexture);
+            offs = tmpPreviousPosition - transform.position;
+            testCubemapRenderer.Render(previousFrameFullRes, tmpPreviousPosition - transform.position,
+                                       fullResolution.ToResolution(), clearBuffer: false,
+                                       dispatchTargetMode: CubemapRenderer.DispatchTargetMode.Downsampled,
+                                       depthMask: depthMaskTexture);
+
+            depthMaskTexture.Release();
+        }
         
         // cubemap0.Render(testCubemapRenderer.downsampledRenderBuffer, transform.position, clearBuffer: false);
         debugTextureMaterial.SetTexture("_Input", testCubemapRenderer.downsampledRenderBuffer);
         cubemapScreenBlitMaterial.SetTexture("_FrontDepthBufferFullRes", testCubemapRenderer.fullResRenderBuffer);
         cubemapScreenBlitMaterial.SetTexture("_FrontDepthBufferDownsampled", testCubemapRenderer.downsampledRenderBuffer);
 
-        previousFrameDownsampled.Release();
-        depthMaskTexture.Release();
-
-        previousPosition = transform.position;
+        previousFrameFullRes.Release();
     }
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)

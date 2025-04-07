@@ -144,14 +144,13 @@ Shader "Hidden/CubemapScreenBlit"
                     depthFullRes = asfloat(_FrontDepthBufferIterative.Sample(linear_clamp_sampler, cubemapUV.xyw));
                 }
                 */
-                // return depth.rrrr;
                 bool isDownsampled = false;
-                float depth = depthFullRes;
-                
+                float depth = depthDownsampled;
+                return depth.rrrr;
+                /*
                 if (depthFullRes > 0)
                 {
                     // full res depth is valid
-                    /*
                     if (depthDownsampled > 0 && depthFullRes > depthDownsampled + _DownsampledMixThreshold)
                     {
                         // downsampled depth is valid and closer
@@ -166,7 +165,6 @@ Shader "Hidden/CubemapScreenBlit"
                         // return float4(0, depthFullRes, 0, 1);
                         // return float4(0, 0.5, 0, 1);
                     }
-                    */
                 }
                 else
                 {
@@ -186,7 +184,7 @@ Shader "Hidden/CubemapScreenBlit"
                     }
                     // depth = asfloat(_FrontDepthBufferIterative.Sample(linear_clamp_sampler, cubemapUV.xyw));
                 }
-                
+                */
                 
                 float4 color = GetColorFromDepth(localPosition, depth);
 

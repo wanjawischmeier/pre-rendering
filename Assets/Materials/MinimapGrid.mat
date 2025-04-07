@@ -91,8 +91,8 @@ Material:
     - _GridColor: {r: 0.6792453, g: 0.26593092, b: 0.26593092, a: 1}
     - _MarkedColor: {r: 0.6784314, g: 0.26666668, b: 0.26666668, a: 1}
     - _PlayerColor: {r: 0.5058824, g: 0.7372549, b: 0.73333335, a: 1}
-    - _PlayerDirection: {r: 0.11604774, g: 0.83631456, b: 0, a: 0}
-    - _PlayerPosition: {r: -0.737223, g: -0.6736183, b: 0, a: 0}
+    - _PlayerDirection: {r: 0.5070891, g: 0.78084886, b: 0, a: 0}
+    - _PlayerPosition: {r: -1.1641326, g: -0.5757742, b: 0, a: 0}
     - _ViewConeColor: {r: 0.5058824, g: 0.7372549, b: 0.73333335, a: 0.2}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
