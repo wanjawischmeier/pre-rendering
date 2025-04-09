@@ -56,10 +56,10 @@ Shader "Unlit/TileDemoShader"
             {
                 float2 uv = i.uv.xy * _Scale;
 
-                // Calculate the tile index based on the UV coordinates
-                int2 tileCoords = int2(uv * _TileBufferSize); // 64 tiles in each direction
+                // Calculate tile coords based on UV coordinates
+                int2 tileCoords = int2(floor(uv * _TileBufferSize));
 
-                // Calculate the linear index for the tile buffer (assuming 64x64 tiles)
+                // Calculate the linear index for the tile buffer
                 int tileIndex = tileCoords.y * _TileBufferSize + tileCoords.x;
 
                 // Fetch the TileResult from the buffer
@@ -69,15 +69,32 @@ Shader "Unlit/TileDemoShader"
                 // Check if there are any valid texels in this tile (validCount > 0)
                 if (tile.validCount > 0)
                 {
-                    // Use the first valid UV in the tile (index 0)
-                    float2 uv = tile.validUV[0];
+                    float uvDistance, closestUVDistance = 1.0;
+                    float2 tmp, tileUV = float2(0, 0);
 
-                    // Sample the texture at the valid UV coordinates (using _MainTex as example)
+                    [unroll]
+                    for (uint i = 0; i < MAX_VALID_TEXELS; i++)
+                    {
+                        if (i >= tile.validCount)
+                            break;
+
+                        tmp = tile.validUV[i];
+                        uvDistance = length(uv - tmp);
+
+                        if (uvDistance < closestUVDistance)
+                        {
+                            tileUV = tmp;
+                            closestUVDistance = uvDistance;
+                        }
+                    }
+
                     // color = fixed4(0, float(tile.validCount) / MAX_VALID_TEXELS, 0, 1);
-                    color = fixed4(uv, float(tile.validCount) / MAX_VALID_TEXELS, 1);
+                    // color = fixed4(uv, float(tile.validCount) / MAX_VALID_TEXELS, 1);
+                    color = fixed4(closestUVDistance * 2 * _TileBufferSize.xxx, 1);
+                    // return tex2D(_MainTex, tileUV).rrrr;
                 }
                 
-                fixed4 tileUVCol = fixed4(uv * _TileBufferSize % 1, 0, 1);
+                fixed4 tileUVCol = fixed4(floor(uv * _TileBufferSize) % 1, 0, 1);
                 color = lerp(color, tileUVCol, _TileBlendFac);
                 return lerp(color, tex2D(_MainTex, uv).rrrr, _TexBlendFac);
             }

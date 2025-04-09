@@ -1,6 +1,19 @@
-#pragma kernel CSMain
+#pragma kernel GroupTexelsIntoTiles
 
-#define TILE_SIZE 16
+#pragma multi_compile TILE_SIZE_4 TILE_SIZE_8 TILE_SIZE_16 TILE_SIZE_32
+
+#if defined(TILE_SIZE_4)
+    #define TILE_SIZE 4
+#elif defined(TILE_SIZE_8)
+    #define TILE_SIZE 8
+#elif defined(TILE_SIZE_16)
+    #define TILE_SIZE 16
+#elif defined(TILE_SIZE_32)
+    #define TILE_SIZE 32
+#else
+    #define TILE_SIZE 8 // Default value
+#endif
+
 #define MAX_VALID_TEXELS 4
 #define VALIDITY_DETECTION_THRESHOLD 0.01
 
@@ -20,7 +33,7 @@ groupshared float2 localUVs[MAX_VALID_TEXELS];
 groupshared uint localCount;
 
 [numthreads(TILE_SIZE, TILE_SIZE, 1)]
-void CSMain(uint3 id : SV_DispatchThreadID,
+void GroupTexelsIntoTiles(uint3 id : SV_DispatchThreadID,
             uint3 groupID : SV_GroupID,
             uint3 groupThreadID : SV_GroupThreadID)
 {
@@ -33,26 +46,18 @@ void CSMain(uint3 id : SV_DispatchThreadID,
     // Ensure counter is zero before anyone adds
     GroupMemoryBarrierWithGroupSync();
 
-    // Sample texture
     float value = _HighResTexture.Load(int3(id.xy, 0)).r;
     if (value > VALIDITY_DETECTION_THRESHOLD)
     {
-        // Only threads with valid texel attempt to store
+        // Current texel is valid
         uint index = 0;
 
         // Use atomic add on shared counter to get a slot index
         InterlockedAdd(localCount, 1, index);
-        // localCount = 1;
-        /*
-        uint2 tileCoord = float2(id.xy) / _HighResWidth * _LowResWidth;
-        uint tileIndex = tileCoord.y * _LowResWidth + tileCoord.x;
-        TileResult result;
-        result.validCount = 1;
-        _TileBuffer[tileIndex] = result;
-        */
         
         if (index < MAX_VALID_TEXELS)
         {
+            // Store the UV if we have space
             localUVs[index] = uv;
         }
     }
@@ -63,14 +68,13 @@ void CSMain(uint3 id : SV_DispatchThreadID,
     // Let one thread per group write the result to global memory
     if (groupThreadID.x == 0 && groupThreadID.y == 0)
     {
-        uint2 tileCoord = uv * _LowResWidth;
+        uint2 tileCoord = floor(uv * _LowResWidth);
         uint tileIndex = tileCoord.y * _LowResWidth + tileCoord.x;
 
         TileResult result;
         result.validCount = min(localCount, MAX_VALID_TEXELS);
         
-        // Copy up to 4 UVs from shared to global buffer
-        // TODO: possibly optimize completely empty array
+        // Copy UVs from shared to global buffer
         [unroll]
         for (uint i = 0; i < MAX_VALID_TEXELS; i++)
         {
