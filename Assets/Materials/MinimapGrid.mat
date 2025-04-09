@@ -19,7 +19,7 @@ Material:
   m_CustomRenderQueue: -1
   stringTagMap: {}
   disabledShaderPasses: []
-  m_LockedProperties: 
+  m_LockedProperties: _ViewConeLength
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
@@ -62,6 +62,7 @@ Material:
     m_Ints: []
     m_Floats:
     - _BumpScale: 1
+    - _CachedPositionSize: 0.05
     - _Cutoff: 0.5
     - _DetailNormalMapScale: 1
     - _DstBlend: 0
@@ -83,7 +84,7 @@ Material:
     - _ViewConeAngle: 90
     - _ViewConeLength: 2.2
     - _ZWrite: 1
-    - _Zoom: 7.85
+    - _Zoom: 5.4
     m_Colors:
     - _BackgroundColor: {r: 0.15686275, g: 0.15686275, b: 0.15686275, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
@@ -91,8 +92,8 @@ Material:
     - _GridColor: {r: 0.6792453, g: 0.26593092, b: 0.26593092, a: 1}
     - _MarkedColor: {r: 0.6784314, g: 0.26666668, b: 0.26666668, a: 1}
     - _PlayerColor: {r: 0.5058824, g: 0.7372549, b: 0.73333335, a: 1}
-    - _PlayerDirection: {r: 0.5070891, g: 0.78084886, b: 0, a: 0}
-    - _PlayerPosition: {r: -1.1641326, g: -0.5757742, b: 0, a: 0}
+    - _PlayerDirection: {r: -0.2596877, g: 0.34336877, b: 0, a: 0}
+    - _PlayerPosition: {r: -0.081826925, g: 0.023085892, b: 0, a: 0}
     - _ViewConeColor: {r: 0.5058824, g: 0.7372549, b: 0.73333335, a: 0.2}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

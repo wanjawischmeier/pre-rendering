@@ -21,7 +21,8 @@ public class RenderManager : MonoBehaviour
     public RenderTexture[] fbBufferFullRes, fbBufferDownsampled;
     public RenderTexture input;
     public DebugPos[] debugPos;
-    public float off;
+    public float off, frameBufferDistanceThreshold = 0.5f;
+    public int cachedFrames, cachedFramesToUse, reprFrameCount = 0;
     public Vector3 offs;
     public Material debugTextureMaterial;
 
@@ -31,6 +32,7 @@ public class RenderManager : MonoBehaviour
     PingPongBuffer pingPongBufferFullRes, pingPongBufferDownsampled, pingPongDepthBufferIterative;
     PingPongBuffer pingPongDepthBufferFullRes, pingPongDepthBufferDownsampledLayer0, pingPongDepthBufferDownsampledLayer1;
     CubemapRenderer testCubemapRenderer, cubemap0, cubemap1;
+    public CircularFrameBuffer circularBuffer;
 
 
     public struct CubemapComputeShaderData
@@ -63,7 +65,9 @@ public class RenderManager : MonoBehaviour
         };
         testCubemapRenderer = new CubemapRenderer(rendererConfig);
         cubemap0 = new CubemapRenderer(rendererConfig);
-        cubemap1 = new CubemapRenderer(rendererConfig);
+        // cubemap1 = new CubemapRenderer(rendererConfig);
+
+        circularBuffer = new CircularFrameBuffer(cachedFrames, testCubemapRenderer.downsampledRenderBuffer.descriptor);
 
 
         iterativeTransformKernelId = computeShader.FindKernel("IterativeTransform");
@@ -118,7 +122,7 @@ public class RenderManager : MonoBehaviour
         for (int i = 0; i < 3; i++) // why thrice?
         {
             cubemap0.Render(input, new Vector3(0, 0, 0), fullResolution.ToResolution());
-            cubemap1.Render(input, new Vector3(1, 0, 0), fullResolution.ToResolution());
+            // cubemap1.Render(input, new Vector3(1, 0, 0), fullResolution.ToResolution());
         }
 
         Update();
@@ -177,11 +181,11 @@ public class RenderManager : MonoBehaviour
         cubemapScreenBlitMaterial.SetTexture("_FrontDepthBufferDownsampledLayer0", pingPongDepthBufferDownsampledLayer0.Front);
         cubemapScreenBlitMaterial.SetTexture("_FrontDepthBufferDownsampledLayer1", pingPongDepthBufferDownsampledLayer1.Front);
 
-
+        /*
         // temp substitution for ping pong buffer
         RenderTexture previousFrameFullRes = RenderTexture.GetTemporary(testCubemapRenderer.fullResRenderBuffer.descriptor);
         Graphics.CopyTexture(testCubemapRenderer.fullResRenderBuffer, previousFrameFullRes);
-
+        */
         /*
         RenderTexture rt = RenderTexture.active;
         for (int faceIndex = 0; faceIndex < CUBEMAP_FACE_COUNT; faceIndex++)
@@ -191,6 +195,8 @@ public class RenderManager : MonoBehaviour
         }
         RenderTexture.active = rt;
         */
+
+        /*
         Vector3 tmpPreviousPosition = new Vector3(previousPosition.x, previousPosition.y, previousPosition.z);
         if (dispatchInput)
         {
@@ -211,19 +217,55 @@ public class RenderManager : MonoBehaviour
 
             depthMaskTexture.Release();
         }
-        
+        */
+        if (dispatchInput)
+        {
+
+            testCubemapRenderer.Render(input, -transform.position, fullResolution.ToResolution());
+
+            if (circularBuffer.CurrentFrame == null || !circularBuffer.CurrentFrame.Value.isProjected
+                || Vector3.Distance(circularBuffer.CurrentFrame.Value.position, transform.position) > frameBufferDistanceThreshold)
+            {
+                circularBuffer.Push(testCubemapRenderer.downsampledRenderBuffer, transform.position);
+                // Debug.Log($"Pushing {transform.position} to circular buffer at {circularBuffer.CurrentFrameIndex}");
+            }
+        }
+
+        if (dispatchBackBuffer)
+        {
+            if (!dispatchInput)
+            {
+                testCubemapRenderer.Clear();
+            }
+
+            reprFrameCount = 0;
+            for (int i = 0; i < Mathf.Min(circularBuffer.Size, cachedFramesToUse); i++)
+            {
+                var frame = circularBuffer.GetFrame(i);
+                if (frame == null || frame.Value.position == transform.position) continue;
+
+                reprFrameCount++;
+                testCubemapRenderer.Render(frame.Value.texture, frame.Value.position - transform.position,
+                                           downsampledResolution.ToResolution(), clearBuffer: false,
+                                           dispatchTargetMode: CubemapRenderer.DispatchTargetMode.Downsampled);
+            }
+        }
+
         // cubemap0.Render(testCubemapRenderer.downsampledRenderBuffer, transform.position, clearBuffer: false);
         debugTextureMaterial.SetTexture("_Input", testCubemapRenderer.downsampledRenderBuffer);
         cubemapScreenBlitMaterial.SetTexture("_FrontDepthBufferFullRes", testCubemapRenderer.fullResRenderBuffer);
         cubemapScreenBlitMaterial.SetTexture("_FrontDepthBufferDownsampled", testCubemapRenderer.downsampledRenderBuffer);
-
-        previousFrameFullRes.Release();
+        
+        previousPosition = transform.position;
+        // previousFrameFullRes.Release();
     }
 
+    /* no longer needed with raw image mat
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         Graphics.Blit(source, destination, cubemapScreenBlitMaterial);
     }
+    */
 
     private void DispatchBackBufferComputeShader()
     {

@@ -10,6 +10,7 @@ Shader "Custom/MinimapGrid"
         _GridThickness ("Grid Thickness", Float) = 0.1
         _PlayerPosition ("Player Position", Vector) = (0, 0, 0, 0)
         _PlayerSize ("Player Size", Float) = 0.2
+        _CachedPositionSize ("Cached Position Size", Float) = 0.2
         _PlayerDirection ("Player Direction", Vector) = (0, 1, 0, 0)
         _ViewConeAngle ("View Cone Angle", Float) = 45.0
         _ViewConeLength ("View Cone Length", Float) = 2.0
@@ -42,13 +43,15 @@ Shader "Custom/MinimapGrid"
             float4 _ViewConeColor;
             float4 _PlayerPosition;
             float _GridThickness;
-            float _PlayerSize;
+            float _PlayerSize, _CachedPositionSize;
             float2 _PlayerDirection;
             float _ViewConeAngle;
             float _ViewConeLength;
             float _Zoom;
+            int _CachedPositionsUsed;
 
             float4 MarkedCells[10];
+            float4 _CachedPositions[100];
 
             v2f vert (appdata_t v)
             {
@@ -71,8 +74,21 @@ Shader "Custom/MinimapGrid"
 
                 // Base color
                 float4 color = lerp(_BackgroundColor, _GridColor, grid * _GridColor.a);
+                
+                // Mark cached positions in orange
+                for (int k = 0; k < 100; k++)
+                {
+                    float4 cachedPos = -_CachedPositions[k];
+                    if (cachedPos.a == 0) continue;
 
-                // Marked cells as squares
+                    float cachedDist = length(worldPos - cachedPos.xz);
+                    if (cachedDist <= _CachedPositionSize)
+                    {
+                        return float4(1, 0.5, 0, 1);
+                    }
+                }
+
+                // Mark cells as squares
                 for (int j = 0; j < 10; j++)
                 {
                     float2 cellCenter = MarkedCells[j].xy;

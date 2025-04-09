@@ -73,6 +73,19 @@ public class CubemapRenderer
         RenderTexture.active = rt;
     }
 
+    public void Clear(bool clearFullRes = true, bool clearDownsampled = true)
+    {
+        if (clearFullRes)
+        {
+            ClearRenderTexture(fullResRenderBuffer, ClearMode.DepthBuffer);
+        }
+
+        if (clearDownsampled)
+        {
+            ClearRenderTexture(downsampledRenderBuffer, ClearMode.DepthBuffer);
+        }
+    }
+
     public void Render(RenderTexture source, Vector3 offset, Resolution dispatchResolution, int inputSliceOffset = 0, bool clearBuffer = true, DispatchTargetMode dispatchTargetMode = DispatchTargetMode.Both, RenderTexture depthMask = null)
     {
         if (dispatchTargetMode != DispatchTargetMode.FullRes && downsampledRenderBuffer == null)

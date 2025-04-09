@@ -388,6 +388,81 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 21872340}
   m_CullTransparentMesh: 1
+--- !u!1 &22353696
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 22353697}
+  - component: {fileID: 22353699}
+  - component: {fileID: 22353698}
+  m_Layer: 5
+  m_Name: RenderTexture
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &22353697
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 22353696}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 785804006}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &22353698
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 22353696}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Material: {fileID: 2100000, guid: 4dbb4d9750275034b86f31dbf7f93b74, type: 2}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 0}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!222 &22353699
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 22353696}
+  m_CullTransparentMesh: 1
 --- !u!1 &66278135
 GameObject:
   m_ObjectHideFlags: 0
@@ -706,13 +781,13 @@ MonoBehaviour:
   computeShader: {fileID: 7200000, guid: d3a00c4d221a3e54caa34becbacdda36, type: 3}
   cubemapRenderShader: {fileID: 7200000, guid: 08d2a331997638646bc4f4e39d7cbf97, type: 3}
   fullResolution: {x: 1024, y: 1024}
-  downsampledResolution: {x: 256, y: 256}
+  downsampledResolution: {x: 64, y: 64}
   resolutions:
   - {x: 1024, y: 1024, z: 1}
   - {x: 512, y: 512, z: 0}
   cubemapSlice: 0
   dispatchInput: 1
-  dispatchBackBuffer: 0
+  dispatchBackBuffer: 1
   dispatchDownsampled: 0
   fbBufferFullRes:
   - {fileID: 0}
@@ -723,6 +798,10 @@ MonoBehaviour:
   input: {fileID: 0}
   debugPos: []
   off: 0
+  frameBufferDistanceThreshold: 0.01
+  cachedFrames: 40
+  cachedFramesToUse: 40
+  reprFrameCount: 0
   offs: {x: 0, y: 0, z: 0}
   debugTextureMaterial: {fileID: 2100000, guid: 2249be0de26d99b41a848341119204d1, type: 2}
 --- !u!114 &330585551
@@ -1753,6 +1832,7 @@ RectTransform:
   m_LocalScale: {x: 0, y: 0, z: 0}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 22353697}
   - {fileID: 420106404}
   - {fileID: 1392237525}
   - {fileID: 970430116}
@@ -3087,6 +3167,10 @@ PrefabInstance:
       value: FPS Counter (White)
       objectReference: {fileID: 0}
     - target: {fileID: 786967402357734148, guid: fc243675728653a4093f82ccb2e59921, type: 3}
+      propertyPath: m_SortingOrder
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 786967402357734148, guid: fc243675728653a4093f82ccb2e59921, type: 3}
       propertyPath: m_AdditionalShaderChannelsFlag
       value: 25
       objectReference: {fileID: 0}
@@ -3565,7 +3649,7 @@ Canvas:
   m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 1
   m_TargetDisplay: 0
 --- !u!224 &2111522776
 RectTransform:

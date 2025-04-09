@@ -28,5 +28,16 @@ public class MinimapShaderController : MonoBehaviour
         Vector2 playerDir = new Vector2(forward.x, forward.z);
         minimapMaterial.SetVector("_PlayerDirection", new Vector4(playerDir.x, playerDir.y, 0, 0));
         minimapMaterial.SetVectorArray("MarkedCells", markedCells);
+
+        Vector4[] cachedPositions = new Vector4[100];
+        var buffer = renderManager.circularBuffer.RawBuffer;
+        for (int i = 0; i < buffer.Length; i++)
+        {
+            var frame = buffer[i];
+            if (!frame.isProjected) continue;
+
+            cachedPositions[i] = new Vector4(frame.position.x, frame.position.y, frame.position.z, 1);
+        }
+        minimapMaterial.SetVectorArray("_CachedPositions", cachedPositions);
     }
 }
