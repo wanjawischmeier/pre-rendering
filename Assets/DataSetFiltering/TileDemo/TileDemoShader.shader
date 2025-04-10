@@ -24,8 +24,17 @@ Shader "Unlit/TileDemoShader"
             #pragma fragment frag
 
             #include "UnityCG.cginc"
-            
-            #define MAX_VALID_TEXELS 4
+
+            #pragma multi_compile TILE_CAPACITY_4 TILE_CAPACITY_8 TILE_CAPACITY_16
+            #if defined(TILE_CAPACITY_4)
+                #define MAX_VALID_TEXELS 4
+            #elif defined(TILE_CAPACITY_8)
+                #define MAX_VALID_TEXELS 8
+            #elif defined(TILE_CAPACITY_16)
+                #define MAX_VALID_TEXELS 16
+            #else
+                #define MAX_VALID_TEXELS 4 // Default value
+            #endif
 
             struct TileResult
             {
@@ -137,8 +146,14 @@ Shader "Unlit/TileDemoShader"
 
                 float2 closestUV;
                 float closestDist = GetClosestDataValue(uv, tileCoords, closestUV);
-                if (_ShowMarkers == 1.0 && closestDist < _TexelMarkerSize)
+                if (closestDist == 99999.0)
                 {
+                    // No valid texels found, return a default color
+                    return fixed4(0.1, 0, 0, 1);
+                }
+                else if (_ShowMarkers == 1.0 && closestDist < _TexelMarkerSize)
+                {
+                    // Show markers for valid texels
                     return float4(1, 0.5, 0, 1);  // Grayscale output
                 }
                 

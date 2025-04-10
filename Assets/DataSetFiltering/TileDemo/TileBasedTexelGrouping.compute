@@ -1,20 +1,36 @@
 #pragma kernel GroupTexelsIntoTiles
 
 #pragma multi_compile TILE_SIZE_4 TILE_SIZE_8 TILE_SIZE_16 TILE_SIZE_32
-
 #if defined(TILE_SIZE_4)
     #define TILE_SIZE 4
+    // Multiplier must be coprime with TILE_SIZE * TILE_SIZE (i.e., 256 if TILE_SIZE = 16)
+    // or in other words, gcd(COPRIME_MULTIPLIER, sq(TILE_SIZE)) needs to be 1
+    #define COPRIME_MULTIPLIER 3
 #elif defined(TILE_SIZE_8)
     #define TILE_SIZE 8
+    #define COPRIME_MULTIPLIER 11
 #elif defined(TILE_SIZE_16)
     #define TILE_SIZE 16
+    #define COPRIME_MULTIPLIER 109
 #elif defined(TILE_SIZE_32)
     #define TILE_SIZE 32
+    #define COPRIME_MULTIPLIER 311
 #else
     #define TILE_SIZE 8 // Default value
+    #define COPRIME_MULTIPLIER 9
 #endif
 
-#define MAX_VALID_TEXELS 4
+#pragma multi_compile TILE_CAPACITY_4 TILE_CAPACITY_8 TILE_CAPACITY_16
+#if defined(TILE_CAPACITY_4)
+    #define MAX_VALID_TEXELS 4
+#elif defined(TILE_CAPACITY_8)
+    #define MAX_VALID_TEXELS 8
+#elif defined(TILE_CAPACITY_16)
+    #define MAX_VALID_TEXELS 16
+#else
+    #define MAX_VALID_TEXELS 4 // Default value
+#endif
+
 #define VALIDITY_DETECTION_THRESHOLD -0.01
 
 struct TileResult
@@ -32,12 +48,32 @@ Texture2D<float> _HighResTexture;
 groupshared float2 localUVs[MAX_VALID_TEXELS];
 groupshared uint localCount;
 
+// Apply a linear index shuffle
+uint2 ScrambleID_Permuted(uint3 groupID, uint3 groupThreadID)
+{
+    // Flatten 2D local thread ID into 1D index
+    uint flatIndex = groupThreadID.y * TILE_SIZE + groupThreadID.x;
+    const uint tileArea = TILE_SIZE * TILE_SIZE;
+
+    // Apply permutation
+    uint permutedIndex = (flatIndex * COPRIME_MULTIPLIER) % tileArea;
+
+    // Unflatten to 2D
+    uint offsetX = permutedIndex % TILE_SIZE;
+    uint offsetY = permutedIndex / TILE_SIZE;
+
+    // Compute global ID
+    uint2 tileOrigin = groupID.xy * TILE_SIZE;
+    return tileOrigin + uint2(offsetX, offsetY);
+}
+
 [numthreads(TILE_SIZE, TILE_SIZE, 1)]
 void GroupTexelsIntoTiles(uint3 id : SV_DispatchThreadID,
             uint3 groupID : SV_GroupID,
             uint3 groupThreadID : SV_GroupThreadID)
 {
-    float2 uv = float2(id.xy) / _HighResWidth;
+    uint2 scrambledID = ScrambleID_Permuted(groupID, groupThreadID);
+    float2 uv = float2(scrambledID) / _HighResWidth;
     
     // First thread initializes the shared counter
     if (groupThreadID.x == 0 && groupThreadID.y == 0)
@@ -46,13 +82,11 @@ void GroupTexelsIntoTiles(uint3 id : SV_DispatchThreadID,
     // Ensure counter is zero before anyone adds
     GroupMemoryBarrierWithGroupSync();
 
-    float value = _HighResTexture.Load(int3(id.xy, 0)).r;
+    float value = _HighResTexture.Load(int3(scrambledID, 0)).r;
     if (value > VALIDITY_DETECTION_THRESHOLD)
     {
-        // Current texel is valid
+        // Texel is valid, use atomic add on shared counter to get a slot index
         uint index = 0;
-
-        // Use atomic add on shared counter to get a slot index
         InterlockedAdd(localCount, 1, index);
         
         if (index < MAX_VALID_TEXELS)
