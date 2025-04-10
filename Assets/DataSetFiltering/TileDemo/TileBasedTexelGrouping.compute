@@ -68,9 +68,7 @@ uint2 ScrambleID_Permuted(uint3 groupID, uint3 groupThreadID)
 }
 
 [numthreads(TILE_SIZE, TILE_SIZE, 1)]
-void GroupTexelsIntoTiles(uint3 id : SV_DispatchThreadID,
-            uint3 groupID : SV_GroupID,
-            uint3 groupThreadID : SV_GroupThreadID)
+void GroupTexelsIntoTiles(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadID)
 {
     uint2 scrambledID = ScrambleID_Permuted(groupID, groupThreadID);
     float2 uv = float2(scrambledID) / _HighResWidth;

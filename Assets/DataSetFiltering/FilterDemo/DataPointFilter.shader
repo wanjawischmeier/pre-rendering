@@ -5,6 +5,7 @@ Shader "Unlit/DataPointFilter"
         _MainTex ("Texture", 2D) = "white" {}
         _Scale ("Scale", Float) = 1
         _Threshold ("Threshold", Float) = 1
+        _Epsilon ("Epsilon", Float) = 1
     }
     SubShader
     {
@@ -40,7 +41,7 @@ Shader "Unlit/DataPointFilter"
             };
 
             sampler2D _MainTex;
-            float _Scale, _Threshold;
+            float _Scale, _Threshold, _Epsilon;
             float4 _MainTex_ST;
             float4 _DataPoints[10];
 
@@ -108,8 +109,12 @@ Shader "Unlit/DataPointFilter"
                 return float3(u, v, w);
             }
 
+            bool IsNearEdge(float3 bary, float threshold)
+            {
+                return bary.x < threshold || bary.y < threshold || bary.z < threshold;
+            }
 
-
+            
             // Find the closest valid data point
             float GetClosestDataValue(float2 pos, out float closestDist)
             {
@@ -138,7 +143,6 @@ Shader "Unlit/DataPointFilter"
             {
                 float totalWeight = 0.0;
                 float weightedValueSum = 0.0;
-                float epsilon = 0.001;
 
                 for (int i = 0; i < 10; i++)
                 {
@@ -149,7 +153,7 @@ Shader "Unlit/DataPointFilter"
                     if (valueDiff > _Threshold) continue;
 
                     float dist = distance(pos, dp.xy);
-                    float weight = 1.0 / (dist + epsilon);
+                    float weight = 1.0 / pow(dist, _Epsilon);
 
                     weightedValueSum += weight * dp.z;
                     totalWeight += weight;
@@ -171,13 +175,21 @@ Shader "Unlit/DataPointFilter"
 
                 float blendedValue = BlendSimilarDataPoints(pos, closestValue);
                 
-                
+                /*
                 DataPoint p0, p1, p2;
                 FindThreeClosest(pos, p0, p1, p2);
 
                 float3 bary = BarycentricWeights(pos, p0.pos, p1.pos, p2.pos);
-                blendedValue = bary.x * p0.value + bary.y * p1.value + bary.z * p2.value;
                 
+                // Debug: highlight triangle edges
+                float edgeThreshold = 0.001;
+                if (IsNearEdge(bary, edgeThreshold))
+                {
+                    return float4(1, 0, 0, 1); // red for triangle edges
+                }
+                
+                float blendedValue = bary.x * p0.value + bary.y * p1.value + bary.z * p2.value;
+                */
                 return float4(blendedValue.xxx, 1);  // Grayscale output
             }
             /*
