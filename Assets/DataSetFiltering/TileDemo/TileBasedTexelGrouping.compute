@@ -1,50 +1,16 @@
 #pragma kernel GroupTexelsIntoTiles
 
 #pragma multi_compile TILE_SIZE_4 TILE_SIZE_8 TILE_SIZE_16 TILE_SIZE_32
-#if defined(TILE_SIZE_4)
-    #define TILE_SIZE 4
-    // Multiplier must be coprime with TILE_SIZE * TILE_SIZE (i.e., 256 if TILE_SIZE = 16)
-    // or in other words, gcd(COPRIME_MULTIPLIER, sq(TILE_SIZE)) needs to be 1
-    #define COPRIME_MULTIPLIER 3
-#elif defined(TILE_SIZE_8)
-    #define TILE_SIZE 8
-    #define COPRIME_MULTIPLIER 11
-#elif defined(TILE_SIZE_16)
-    #define TILE_SIZE 16
-    #define COPRIME_MULTIPLIER 109
-#elif defined(TILE_SIZE_32)
-    #define TILE_SIZE 32
-    #define COPRIME_MULTIPLIER 311
-#else
-    #define TILE_SIZE 8 // Default value
-    #define COPRIME_MULTIPLIER 9
-#endif
+#pragma multi_compile TILE_CAPACITY_2 TILE_CAPACITY_4 TILE_CAPACITY_8 TILE_CAPACITY_16
 
-#pragma multi_compile TILE_CAPACITY_4 TILE_CAPACITY_8 TILE_CAPACITY_16
-#if defined(TILE_CAPACITY_4)
-    #define MAX_VALID_TEXELS 4
-#elif defined(TILE_CAPACITY_8)
-    #define MAX_VALID_TEXELS 8
-#elif defined(TILE_CAPACITY_16)
-    #define MAX_VALID_TEXELS 16
-#else
-    #define MAX_VALID_TEXELS 4 // Default value
-#endif
-
-#define VALIDITY_DETECTION_THRESHOLD -0.01
-
-struct TileResult
-{
-    float2 validUV[MAX_VALID_TEXELS];
-    uint validCount;
-};
+#include "TileStructure.cginc"
 
 int _HighResWidth, _LowResWidth;
 
-RWStructuredBuffer<TileResult> _TileBuffer;
+RWStructuredBuffer<Tile> _TileBuffer;
 Texture2D<float> _HighResTexture;
 
-// Shared memory for each 16x16 thread group
+// Shared memory for each thread group
 groupshared float2 localUVs[MAX_VALID_TEXELS];
 groupshared uint localCount;
 
@@ -103,14 +69,14 @@ void GroupTexelsIntoTiles(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_G
         uint2 tileCoord = floor(uv * _LowResWidth);
         uint tileIndex = tileCoord.y * _LowResWidth + tileCoord.x;
 
-        TileResult result;
-        result.validCount = min(localCount, MAX_VALID_TEXELS);
+        Tile result;
+        result.pointCount = min(localCount, MAX_VALID_TEXELS);
         
         // Copy UVs from shared to global buffer
         [unroll]
         for (uint i = 0; i < MAX_VALID_TEXELS; i++)
         {
-            result.validUV[i] = localUVs[i];
+            result.uvs[i] = localUVs[i];
         }
         
         _TileBuffer[tileIndex] = result;

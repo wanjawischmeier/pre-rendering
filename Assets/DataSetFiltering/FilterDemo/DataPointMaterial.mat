@@ -94,10 +94,14 @@ Material:
     - _Cutoff: 0.5
     - _DetailAlbedoMapScale: 1
     - _DetailNormalMapScale: 1
+    - _DistWeight: 3.6
+    - _DistWeight2: 20.49
     - _DstBlend: 0
     - _DstBlendAlpha: 0
+    - _EdgeFalloffExp: 15.06
+    - _EdgeFalloffFactor: 2.3
     - _EnvironmentReflections: 1
-    - _Epsilon: 5
+    - _Epsilon: 11.5
     - _GlossMapScale: 0
     - _Glossiness: 0
     - _GlossyReflections: 0
@@ -107,14 +111,15 @@ Material:
     - _QueueControl: 0
     - _QueueOffset: 0
     - _ReceiveShadows: 1
-    - _Scale: 1.78
+    - _Scale: 2.13
     - _Smoothness: 0.5
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
     - _Surface: 0
-    - _Threshold: 0.9
+    - _Threshold: 0.68
+    - _TileInfluenceRadius: 0.9
     - _WorkflowMode: 1
     - _ZWrite: 1
     m_Colors:

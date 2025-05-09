@@ -1,15 +1,19 @@
-Shader "Unlit/TileDemoShader"
+﻿Shader "Unlit/TileDemoShader"
 {
     Properties
     {
         _Scale ("Scale", Float) = 1.0
+        _UVOffset ("UV Offset", Vector) = (0, 0, 0, 0)
         _TileBlendFac ("Tile Blend Factor", Range(0, 1)) = 0.25
         _TexBlendFac ("Texture Blend Factor", Range(0, 1)) = 0.25
         _MaxUVDistance ("Max UV Distance", Range(0, 1)) = 0.1
         _BlendingEpsilon ("Blending Epsilon", Float) = 0.001
+        _BlendingDistWeight ("Blending Distance Weight", Float) = 1
         _BlendingThreshold ("Blending Threshold", Range(0, 1)) = 0.001
+        _SampledValueBlending ("Sampled Value Blending", Range(0, 1)) = 0.2
         _TexelMarkerSize ("Texel Marker Size", Float) = 0.001
         [Toggle] _ShowMarkers ("Show Markers", Float) = 1.0
+        [Toggle] _ShowGrid ("Show Grid", Float) = 1.0
         _MaxBlendedTexels ("Max Blended Texels", Integer) = 3
     }
     SubShader
@@ -25,8 +29,10 @@ Shader "Unlit/TileDemoShader"
 
             #include "UnityCG.cginc"
 
-            #pragma multi_compile TILE_CAPACITY_4 TILE_CAPACITY_8 TILE_CAPACITY_16
-            #if defined(TILE_CAPACITY_4)
+            #pragma multi_compile TILE_CAPACITY_2 TILE_CAPACITY_4 TILE_CAPACITY_8 TILE_CAPACITY_16
+            #if defined(TILE_CAPACITY_2)
+                #define MAX_VALID_TEXELS 2
+            #elif defined(TILE_CAPACITY_4)
                 #define MAX_VALID_TEXELS 4
             #elif defined(TILE_CAPACITY_8)
                 #define MAX_VALID_TEXELS 8
@@ -57,8 +63,9 @@ Shader "Unlit/TileDemoShader"
             sampler2D _MainTex;
             StructuredBuffer<TileResult> _TileBuffer;
             int _TileBufferSize;
-            float _Scale, _TileBlendFac, _TexBlendFac, _MaxUVDistance, _BlendingEpsilon, _BlendingThreshold, _TexelMarkerSize;
-            float _ShowMarkers;
+            float _Scale, _TileBlendFac, _TexBlendFac, _MaxUVDistance, _SampledValueBlending, _ShowGrid;
+            float _BlendingEpsilon, _BlendingDistWeight, _BlendingThreshold, _TexelMarkerSize, _ShowMarkers;
+            float2 _UVOffset;
             int _MaxBlendedTexels;
 
             // Find the closest valid data point
@@ -91,12 +98,72 @@ Shader "Unlit/TileDemoShader"
             }
 
             // Blend values of nearby data points similar in value to the reference
-            float BlendSimilarDataPoints(float2 uv, int2 tileCoords, float refValue)
+            float BlendSimilarDataPoints(float2 uv, int2 tileCoords)
+            {
+                float totalWeight = 0.0;
+                float weightedValueSum = 0.0;
+
+                float closestDist = 99999.0;
+                float secondClosestDist = 99999.0;
+                float closestValue = 0.0;
+                float secondClosestValue = 0.0;
+                
+                [loop]
+                for (int y = -1; y <= 1; y++)
+                {
+                    [loop]
+                    for (int x = -1; x <= 1; x++)
+                    {
+                        int2 neighborCoords = (tileCoords + int2(x, y) + _TileBufferSize) % _TileBufferSize;
+                        int tileIndex = neighborCoords.y * _TileBufferSize + neighborCoords.x;
+                        TileResult tile = _TileBuffer[tileIndex];
+
+                        for (uint i = 0; i < tile.validCount; i++)
+                        {
+                            float2 tileUV = tile.validUV[i];
+                            float value = tex2D(_MainTex, tileUV).r;
+
+                            float dist = distance(uv, tileUV);
+                            if (dist < closestDist)
+                            {
+                                // New closest -> demote old closest to second
+                                secondClosestDist = closestDist;
+                                secondClosestValue = closestValue;
+
+                                closestDist = dist;
+                                closestValue = value;
+                            }
+                            else if (dist < secondClosestDist)
+                            {
+                                // Not closer than the closest, but closer than second
+                                secondClosestDist = dist;
+                                secondClosestValue = value;
+                            }
+
+                            float weight = 1.0 / pow(dist, _BlendingEpsilon + (dist * _BlendingDistWeight));
+
+                            weightedValueSum += weight * value;
+                            totalWeight += weight;
+                        }
+                    }
+                }
+                
+                if (secondClosestValue == 0.0 || abs(closestValue - secondClosestValue) > _BlendingThreshold)
+                {
+                    // No similar data points found, return the closest value
+                    return closestValue;
+                }
+
+                return weightedValueSum / totalWeight;
+            }
+            /*
+            // Blend values of nearby data points similar in value to the reference
+            float BlendSimilarDataPoints2(float2 uv, int2 tileCoords, float refValue)
             {
                 float totalWeight = 0.0;
                 float weightedValueSum = 0.0;
                 int blendedTexels = 1;
-
+                
                 for (int y = -1; y <= 1; y++)
                 {
                     for (int x = -1; x <= 1; x++)
@@ -128,7 +195,7 @@ Shader "Unlit/TileDemoShader"
 
                 return (totalWeight > 0.0) ? (weightedValueSum / totalWeight) : refValue;
             }
-
+            */
             v2f vert (appdata v)
             {
                 v2f o;
@@ -139,13 +206,23 @@ Shader "Unlit/TileDemoShader"
 
             fixed4 frag (v2f i) : SV_Target
             {
-                float2 uv = i.uv.xy * _Scale;
+                float2 uv = (i.uv.xy - 0.5) * 2 * _Scale;
+                uv -= _UVOffset;
+
+                float2 tilePos = frac(uv * _TileBufferSize);
+                float borderWidth = 0.01;
+                if (_ShowGrid == 1.0 && (tilePos.x < borderWidth || tilePos.x > 1.0 - borderWidth || tilePos.y < borderWidth || tilePos.y > 1.0 - borderWidth))
+                {
+                    // Return a color for the border
+                    return float4(1, 0, 0, 1);
+                }
 
                 // Calculate tile coords based on UV coordinates
                 int2 tileCoords = int2(floor(uv * _TileBufferSize));
 
                 float2 closestUV;
                 float closestDist = GetClosestDataValue(uv, tileCoords, closestUV);
+                float closestValue = tex2D(_MainTex, closestUV).r;
                 if (closestDist == 99999.0)
                 {
                     // No valid texels found, return a default color
@@ -154,12 +231,13 @@ Shader "Unlit/TileDemoShader"
                 else if (_ShowMarkers == 1.0 && closestDist < _TexelMarkerSize)
                 {
                     // Show markers for valid texels
-                    return float4(1, 0.5, 0, 1);  // Grayscale output
+                    return float4(1, 0.5, closestValue, 1);  // Grayscale output
                 }
                 
-                float closestValue = tex2D(_MainTex, closestUV).r;
-                float blendedValue = BlendSimilarDataPoints(uv, tileCoords, closestValue);
-                return blendedValue.rrrr;
+                float blendedValue = BlendSimilarDataPoints(uv, tileCoords);
+                // blendedValue = closestValue;
+                float sampledValue = tex2D(_MainTex, uv).r;
+                return (blendedValue * (1.0 - _SampledValueBlending) + sampledValue * _SampledValueBlending).rrrr;
 
                 /*
                 // Initialize variables for closest UV and distance

@@ -26,26 +26,29 @@ public class FlyMovementController : MonoBehaviour
 
     private void Update()
     {
-        if (!pauseMenuCanvas.activeSelf && Input.GetKeyDown(KeyCode.Escape))
+        if (pauseMenuCanvas != null)
         {
-            pauseMenuCanvas.SetActive(true);
-            if (lockCursor)
+            if (!pauseMenuCanvas.activeSelf && Input.GetKeyDown(KeyCode.Escape))
             {
-                Cursor.lockState = CursorLockMode.None;
+                pauseMenuCanvas.SetActive(true);
+                if (lockCursor)
+                {
+                    Cursor.lockState = CursorLockMode.None;
+                }
+                return;
             }
-            return;
-        }
-        else if (Input.GetKeyDown(KeyCode.Escape))
-        {
-            pauseMenuCanvas.SetActive(false);
-            if (lockCursor)
+            else if (Input.GetKeyDown(KeyCode.Escape))
             {
-                Cursor.lockState = CursorLockMode.Locked;
+                pauseMenuCanvas.SetActive(false);
+                if (lockCursor)
+                {
+                    Cursor.lockState = CursorLockMode.Locked;
+                }
             }
-        }
-        else if (pauseMenuCanvas.activeSelf)
-        {
-            return;
+            else if (pauseMenuCanvas.activeSelf)
+            {
+                return;
+            }
         }
 
         float speed = Input.GetKey(KeyCode.LeftShift) ? flySpeed / 4 : flySpeed;
@@ -55,10 +58,13 @@ public class FlyMovementController : MonoBehaviour
         float mouseY = -Input.GetAxis("Mouse Y");
 
         // Apply vertical rotation to the camera
-        horizontalRotation += mouseX * rotationSpeed;
-        verticalRotation += -mouseY * rotationSpeed;    // Invert Y-axis for natural camera movement
-        verticalRotation = Mathf.Clamp(verticalRotation, -90f, 90f);
-        transform.localRotation = Quaternion.Euler(verticalRotation, horizontalRotation, 0);
+        if (rotationSpeed != 0)
+        {
+            horizontalRotation += mouseX * rotationSpeed;
+            verticalRotation += -mouseY * rotationSpeed;    // Invert Y-axis for natural camera movement
+            verticalRotation = Mathf.Clamp(verticalRotation, -90f, 90f);
+            transform.localRotation = Quaternion.Euler(verticalRotation, horizontalRotation, 0);
+        }
 
         // Calculate movement based on user input
         float horizontalInput = 0f;

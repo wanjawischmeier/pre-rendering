@@ -151,9 +151,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   material: {fileID: 2100000, guid: 95176a086d0f81f41ba1983616050084, type: 2}
-  texture: {fileID: 2800000, guid: b541534b9ee3d544ab55a1b0fbc2d0ca, type: 3}
+  texture: {fileID: 2800000, guid: cd37a1c300f0eb5409e330965b2e2d6b, type: 3}
   computeShader: {fileID: 7200000, guid: 0fc098abd676dda44be7f711a2dbe3fe, type: 3}
-  tileSize: 8
+  tileSize: 4
   tileCapacity: 4
 --- !u!23 &1083304879
 MeshRenderer:

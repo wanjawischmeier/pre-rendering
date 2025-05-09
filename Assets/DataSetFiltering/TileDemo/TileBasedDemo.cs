@@ -17,6 +17,7 @@ public class TileBasedDemo : MonoBehaviour
     [Serializable]
     public enum TileCapacity
     {
+        x2 = 2,
         x4 = 4,
         x8 = 8,
         x16 = 16
@@ -32,6 +33,7 @@ public class TileBasedDemo : MonoBehaviour
 
     private Dictionary<TileCapacity, string> tileCapacityKeywords = new Dictionary<TileCapacity, string>()
     {
+        { TileCapacity.x2, "TILE_CAPACITY_2" },
         { TileCapacity.x4, "TILE_CAPACITY_4" },
         { TileCapacity.x8, "TILE_CAPACITY_8" },
         { TileCapacity.x16, "TILE_CAPACITY_16" }
