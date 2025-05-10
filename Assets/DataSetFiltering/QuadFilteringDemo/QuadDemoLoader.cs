@@ -43,7 +43,7 @@ public class QuadDemoLoader : MonoBehaviour
         vertexBuffer = new ComputeBuffer(maxHardwareRasterizedTriangles, 9 * sizeof(float), ComputeBufferType.Append);
         argsBuffer = new ComputeBuffer(1, 4 * sizeof(int), ComputeBufferType.IndirectArguments);
 
-        transformVerticesKernelHandle = computeShader.FindKernel("TranformVertices");
+        transformVerticesKernelHandle = computeShader.FindKernel("TransformVertices");
         renderQuadsKernelHandle = computeShader.FindKernel("RenderQuads");
         computeShader.SetVector("_InputResolution", new Vector2(inputTexture.width, inputTexture.height));
         computeShader.SetVector("_DispatchResolution", new Vector2(dispatchResolution.x, dispatchResolution.y));

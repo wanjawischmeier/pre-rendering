@@ -1,10 +1,10 @@
-#pragma kernel TranformVertices
+#pragma kernel TransformVertices
 
 #define TILE_SIZE 32
 #define IS_DEPTH_VALID(sampled) (sampled.a > 0.001 && sampled.a != 1)
 #define IS_DEPTH_INVALID(sampled) (sampled.a < 0.01 || sampled.a == 1)
 #define IS_TARGET_OUT_OF_BOUNDS(tc) (tc.x < 0 || tc.x >= _OutputResolution.x || tc.y < 0 || tc.y >= _OutputResolution.y)
-#define IS_UV_OUT_OF_BOUNDS(uv) (any(uv < 0.0 || uv >= 1.0))
+#define IS_UV_OUT_OF_BOUNDS(uv) any(uv < 0.0 || uv > 1.2) // Allow some leeway for out-of-bounds UVs, idk wtf
 
 uniform float _MapNearClip, _MapFarClip;
 uniform uint2 _InputResolution, _DispatchResolution, _OutputResolution;
@@ -19,27 +19,20 @@ AppendStructuredBuffer<float3x3> _HardwareVertices;
 
 float3 GetTransformedVertexUV(float2 uv, float normalizedDepth)
 {
-    float depth = normalizedDepth * (_MapFarClip - _MapNearClip) + _MapNearClip; // rescale depth
+    float depth = normalizedDepth * (_MapFarClip - _MapNearClip) + _MapNearClip; // Rescale depth
     
-    float2 viewSpace = uv * 2 - 1; // [-1, 1] NDC
+    float2 viewSpace = uv * 2 - 1; // To [-1, 1] NDC
     float3 dir = float3(viewSpace, 1); // Assume direction vector
     float3 pos = dir * depth; // Scale direction by depth
 
     float4 worldPosition = float4(pos, 1); // World space position
     float4 clipPos = mul(_CameraViewProj, worldPosition);
+    if (clipPos.w <= 0)
+        return float3(0, 0, -1); // Invalid position, return a sentinel value
 
     // Perspective divide
     float3 ndc = clipPos.xyz / clipPos.w;
     return ndc * 0.5 + 0.5; // Map NDC [-1, 1] to UV [0, 1]
-    // Map NDC [-1, 1] to UV [0, 1]
-    uv = ndc.xy * 0.5 + 0.5;
-    /*
-    worldPosition.xyz /= worldPosition.w;
-    worldPosition.xyz += _Offset;
-    */
-    // depth = length(worldPosition);
-    
-    return float3(uv, depth);
 }
 
 void PushTriangleToAdequateRenderPipeline(float3 v0, float3 v1, float3 v2)
@@ -57,57 +50,23 @@ void PushTriangleToAdequateRenderPipeline(float3 v0, float3 v1, float3 v2)
     uint2 tile1 = tc1 / TILE_SIZE;
     uint2 tile2 = tc2 / TILE_SIZE;
     
-    if (all(tile0 == tile1) && all(tile1 == tile2))
-    // if (false)
+    // if (all(tile0 == tile1) && all(tile1 == tile2))
+    if (false)
     {
         // All vertices are in the same tile, so we can push to the software rasterizer
     }
     else
     {
         // Vertices are in different tiles, so we need to push to the hardware rasterizer
-        
-        // v0 = float3(-0.5, -0.5, 0);
-        // v1 = float3(0.5, -0.5, 0);
-        // v2 = float3(0.0, 0.5, 0);
-        // v1 = v0 + float3(0.01, 0, 0);
-        // v2 = v0 + float3(0.005, 0.01, 0);
-        /*
-        float depth = 0.2;
-        v0.z = depth;
-        v1.z = depth;
-        v2.z = depth;
-        */
-        // float3x3 tri = float3x3(v0, v1, v2);
         float3x3 tri = float3x3(v0 * 2 - 1, v1 * 2 - 1, v2 * 2 - 1); // Convert to NDC
         _HardwareVertices.Append(tri);
-        /*
-        _HardwareVertices.Append(float4(v0.xy * 2 - 1 + float2(0, 0), 0, 1)); // Convert to NDC
-        _HardwareVertices.Append(float4(v0.xy * 2 - 1 + float2(0.05, 0), 0, 1));
-        _HardwareVertices.Append(float4(v0.xy * 2 - 1 + float2(0, 0.05), 0, 1));
-        */
     }
 }
 
 
 [numthreads(8, 8, 1)]
-void TranformVertices(uint3 id : SV_DispatchThreadID)
+void TransformVertices(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x == 0 && id.y == 0)
-    {
-        float3 v0 = float3(-0.5, -0.5, 0);
-        float3 v1 = float3(0.5, -0.5, 0);
-        float3 v2 = float3(0.0, 0.5, 0);
-        float3 v3 = float3(0.8, 0.0, 0);
-        float3x3 verts = float3x3(v0, v1, v2);
-        // _HardwareVertices.Append(verts);
-        // _HardwareVertices.Append(float3x3(v1, v3, v2));
-        /*
-        _HardwareVertices.Append(v0);
-        _HardwareVertices.Append(v1);
-        _HardwareVertices.Append(v2);
-        */
-    }
-
     // Check if bottom or right is out of bounds
     if (id.x >= _InputResolution.x - 1 || id.y >= _InputResolution.y - 1)
     {
@@ -116,98 +75,53 @@ void TranformVertices(uint3 id : SV_DispatchThreadID)
     }
     
     // Compute texel coordinates
-    float2 uvOff = 1.0 / _DispatchResolution;
-    float2 uv00 = (float2) id.xy / _DispatchResolution;
-    float2 uv10 = uv00 + float2(uvOff.x, 0);
-    float2 uv01 = uv00 + float2(0, uvOff.y);
+    uint3 tcOff = uint3(_InputResolution / _DispatchResolution, 0);
+    float2 uv00 = float2(id.xy) / _DispatchResolution;
+    uint2 tc00 = all(_InputResolution == _DispatchResolution) ? id.xy : uv00 * _InputResolution;
     
-    uint2 tc = all(_InputResolution == _DispatchResolution) ? id.xy : uv00 * _InputResolution;
-    
-    uint2 tcOff = uint2(1, 0);
-    float4 sampled10 = _InputColorBuffer[tc + tcOff];
+    uint2 tc10 = tc00 + tcOff.xz;
+    float4 sampled10 = _InputColorBuffer[tc10];
     if (!IS_DEPTH_VALID(sampled10))
         return;
     
-    float4 sampled01 = _InputColorBuffer[tc + tcOff.yx];
+    uint2 tc01 = tc00 + tcOff.zy;
+    float4 sampled01 = _InputColorBuffer[tc01];
     if (!IS_DEPTH_VALID(sampled01))
         return;
+    
+    float2 uv10 = float2(tc10) / _InputResolution;
+    float2 uv01 = float2(tc01) / _InputResolution;
     
     float3 transformedVertex10 = GetTransformedVertexUV(uv10, sampled10.a);
     float3 transformedVertex01 = GetTransformedVertexUV(uv01, sampled01.a);
     
-    /*
-    float4 sampled00 = _InputColorBuffer[tc];
-    float4 sampled11 = _InputColorBuffer[tc + off.xx];
-    if (!IS_DEPTH_VALID(sampled00) && !IS_DEPTH_VALID(sampled11))
-        return;
-    
-    float3 transformedVertex00 = GetTransformedVertexUV(uv, sampled00.a);
-    float3 transformedVertex11 = GetTransformedVertexUV(uv, sampled11.a);
-    */
-    float4 sampled00 = _InputColorBuffer[tc];
+    float4 sampled00 = _InputColorBuffer[tc00];
     if (!IS_DEPTH_INVALID(sampled00))
     {
         float3 transformedVertex00 = GetTransformedVertexUV(uv00, sampled00.a);
-        PushTriangleToAdequateRenderPipeline(transformedVertex00, transformedVertex10, transformedVertex01);
-        
-        transformedVertex00.xy += _UVOffset;
+        PushTriangleToAdequateRenderPipeline(transformedVertex01, transformedVertex10, transformedVertex00);
         
         if (IS_UV_OUT_OF_BOUNDS(transformedVertex00))
         {
             // Discard if out of bounds
-            // RW_VertexLookupBuffer[floor(uv * _OutputResolution)] = int2(-1, 0); // TODO: replace with check for default value (0)
             return;
         }
     
         int depthInt = asint(transformedVertex00.z); // InterlockedMin works only on int, so convert depth to int
         int oldDepthInt;
     
-        uint2 targetIndex = floor(transformedVertex00.xy * _OutputResolution);
-    
-        // RW_VertexLookupBuffer[floor(uv * _OutputResolution)] = (int2) targetIndex;
+        uint2 targetIndex = floor(transformedVertex00.xy * _OutputResolution);    
         InterlockedMin(RW_OutputDepthBuffer[targetIndex], depthInt, oldDepthInt);
     }
     
-    
-    float4 sampled11 = _InputColorBuffer[tc + tcOff.xx];
+    uint2 tc11 = tc00 + tcOff.xy;
+    float4 sampled11 = _InputColorBuffer[tc11];
     if (!IS_DEPTH_INVALID(sampled11))
     {
-        float2 uv11 = uv00 + uvOff;
+        float2 uv11 = float2(tc11) / _InputResolution;
         float3 transformedVertex11 = GetTransformedVertexUV(uv11, sampled11.a);
-        PushTriangleToAdequateRenderPipeline(transformedVertex01, transformedVertex10, transformedVertex11);
+        PushTriangleToAdequateRenderPipeline(transformedVertex11, transformedVertex10, transformedVertex01);
     }
-
-    /*
-    float depth = sampled.a * (_MapFarClip - _MapNearClip) + _MapNearClip; // rescale depth
-    
-    float2 viewSpace = uv * 2 - 1; // [-1, 1] NDC
-    float3 dir = float3(viewSpace, 1); // Assume direction vector
-    float3 pos = dir * depth; // Scale direction by depth
-
-    float4 worldPosition = float4(pos, 1); // World space position
-    worldPosition.xyz /= worldPosition.w;
-    worldPosition.xyz += _Offset;
-    
-    float2 transformedUV = worldPosition.xy / worldPosition.z;
-    */
-    
-    /*
-    transformedVertex00.xy += _UVOffset;
-    
-    int depthInt = asint(transformedVertex00.z); // InterlockedMin works only on int, so convert depth to int
-    int oldDepthInt;
-    
-    uint2 targetIndex = floor(transformedVertex00.xy * _OutputResolution);
-    if (targetIndex.x < 0 || targetIndex.x >= _OutputResolution.x || targetIndex.y < 0 || targetIndex.y >= _OutputResolution.y)
-    {
-        // Discard if out of bounds
-        // RW_VertexLookupBuffer[floor(uv * _OutputResolution)] = int2(-1, 0); // TODO: replace with check for default value (0)
-        return;
-    }
-    
-    // RW_VertexLookupBuffer[floor(uv * _OutputResolution)] = (int2) targetIndex;
-    InterlockedMin(RW_OutputDepthBuffer[targetIndex], depthInt, oldDepthInt);
-    */
 }
 
 
