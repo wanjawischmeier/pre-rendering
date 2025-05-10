@@ -11,7 +11,7 @@ Shader "Unlit/HardwareRasterShader_Debug"
             #pragma vertex vert
             #pragma fragment frag
 
-            StructuredBuffer<float4> _Vertices;
+            StructuredBuffer<float3x3> _Vertices;
 
             struct VSOutput
             {
@@ -24,34 +24,24 @@ Shader "Unlit/HardwareRasterShader_Debug"
                 VSOutput o;
 
                 // Assume triangles are laid out consecutively
-                uint triIndex = id / 3;
-                uint vtxIndex = triIndex * 3;
+                uint vtxIndex = id % 3;
+                uint triIndex = (id - vtxIndex) / 3;
+                float3x3 verts = _Vertices[triIndex];
 
-                float4 v0 = _Vertices[vtxIndex + 0];
-                float4 v1 = _Vertices[vtxIndex + 1];
-                float4 v2 = _Vertices[vtxIndex + 2];
+                o.pos = float4(verts[vtxIndex], 1);
+                o.pos.y = -o.pos.y; // Flip Y for NDC
+                o.pos.z = 0;
 
-                uint corner = id % 3;
-                if (corner == 0) {
-                    o.pos = v0;
-                    o.bary = float3(1, 0, 0);
-                }
-                else if (corner == 1) {
-                    o.pos = v1;
-                    o.bary = float3(0, 1, 0);
-                }
-                else {
-                    o.pos = v2;
-                    o.bary = float3(0, 0, 1);
-                }
+                o.bary = float3(vtxIndex == 0, vtxIndex == 1, vtxIndex == 2);
 
                 return o;
             }
 
             float4 frag(VSOutput i) : SV_Target
             {
+                // return float4(0, 1, 0, 1);
                 // Wireframe threshold
-                float edgeThreshold = 0.03;
+                float edgeThreshold = 0.01;
 
                 // Distance from edge (i.e., min bary value)
                 float edge = min(min(i.bary.x, i.bary.y), i.bary.z);

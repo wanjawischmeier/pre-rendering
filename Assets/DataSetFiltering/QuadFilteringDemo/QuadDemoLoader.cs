@@ -10,12 +10,11 @@ public class QuadDemoLoader : MonoBehaviour
     public float nearClip, farClip;
     public Vector2Int rescaledInputResolution, dispatchResolution, transformedVertexResolution;
     public Vector2 uvOffset;
-    public int[] args;
-
+    public uint[] args;
+    public int maxHardwareRasterizedTriangles = 32000;
     private ComputeBuffer vertexBuffer, argsBuffer;
 
     private int transformVerticesKernelHandle, renderQuadsKernelHandle;
-    private int maxVertices = 65536; // Must be multiple of 3
 
     private void Start()
     {
@@ -39,13 +38,8 @@ public class QuadDemoLoader : MonoBehaviour
         rasterOutputTexture.Create();
         hardwareRasterDebug.mainTexture = rasterOutputTexture;
 
-        vertexBuffer = new ComputeBuffer(maxVertices, sizeof(float) * 4, ComputeBufferType.Append);
-        // argsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
+        vertexBuffer = new ComputeBuffer(maxHardwareRasterizedTriangles, 9 * sizeof(float), ComputeBufferType.Append);
         argsBuffer = new ComputeBuffer(1, 4 * sizeof(int), ComputeBufferType.IndirectArguments);
-
-        // args = { vertexCount, instanceCount, startVertex, startInstance }
-        // int[] args = new int[4] { 0, 1, 0, 0 };
-        // argsBuffer.SetData(args);
 
         transformVerticesKernelHandle = computeShader.FindKernel("TranformVertices");
         renderQuadsKernelHandle = computeShader.FindKernel("RenderQuads");
@@ -78,12 +72,15 @@ public class QuadDemoLoader : MonoBehaviour
         computeShader.SetBuffer(transformVerticesKernelHandle, "_HardwareVertices", vertexBuffer);
         computeShader.Dispatch(transformVerticesKernelHandle, dispatchResolution.x / 8, dispatchResolution.y / 8, 1);
         
-        args = new int[] { 0, 1, 0, 0 };
-        argsBuffer.SetData(args);
-
         // Copy count from append buffer to args[0] (vertex count)
         ComputeBuffer.CopyCount(vertexBuffer, argsBuffer, 0);
+
+        args = new uint[] { 0, 1, 0, 0 };
         argsBuffer.GetData(args);
+        args[0] *= 3; // vertex count = triangle count * 3
+        args[1] = 1;
+        argsBuffer.SetData(args);
+
 
 
         var cmd = new CommandBuffer();
