@@ -20,10 +20,12 @@ public class QuadDemoLoader : MonoBehaviour
     {
         if (inputTexture.width != rescaledInputResolution.x || inputTexture.height != rescaledInputResolution.y)
         {
+            /*
             // Rescale the input texture to the desired resolution
             Texture2D rescaledInputTexture = new Texture2D(rescaledInputResolution.x, rescaledInputResolution.y, TextureFormat.RGBA32, false);
             Graphics.ConvertTexture(inputTexture, rescaledInputTexture);
             inputTexture = rescaledInputTexture;
+            */
         }
 
         transformedVertexTexture = new RenderTexture(transformedVertexResolution.x, transformedVertexResolution.y, 0, RenderTextureFormat.RInt);
@@ -65,6 +67,12 @@ public class QuadDemoLoader : MonoBehaviour
 
         vertexBuffer.SetCounterValue(0); // Reset append buffer
 
+        Matrix4x4 trs = Matrix4x4.TRS(transform.position, transform.rotation, Vector3.one);
+        Matrix4x4 viewMatrix = Camera.main.worldToCameraMatrix;
+        Matrix4x4 projMatrix = GL.GetGPUProjectionMatrix(Camera.main.projectionMatrix, true);
+        Matrix4x4 viewProjMatrix = projMatrix * viewMatrix;
+        computeShader.SetMatrix("_CameraViewProj", viewProjMatrix);
+
         computeShader.SetFloat("_MapNearClip", nearClip);
         computeShader.SetFloat("_MapFarClip", farClip);
         computeShader.SetVector("_UVOffset", uvOffset);
@@ -81,7 +89,9 @@ public class QuadDemoLoader : MonoBehaviour
         args[1] = 1;
         argsBuffer.SetData(args);
 
-
+        // Set hardware raster material parameters
+        hardwareRasterMaterial.SetFloat("_CameraNearClip", Camera.main.nearClipPlane);
+        hardwareRasterMaterial.SetFloat("_CameraFarClip", Camera.main.farClipPlane);
 
         var cmd = new CommandBuffer();
         /*

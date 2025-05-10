@@ -414,7 +414,7 @@ MonoBehaviour:
   transformedVertexResolution: {x: 1920, y: 1080}
   uvOffset: {x: 0, y: 0}
   args: 
-  maxHardwareRasterizedTriangles: 32000
+  maxHardwareRasterizedTriangles: 64000
 --- !u!114 &160531368
 MonoBehaviour:
   m_ObjectHideFlags: 0

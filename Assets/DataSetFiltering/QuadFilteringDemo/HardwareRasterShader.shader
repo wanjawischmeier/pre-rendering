@@ -6,10 +6,12 @@ Shader "Unlit/HardwareRasterShader_Debug"
         Tags { "RenderType"="Opaque" }
         Pass
         {
-            Cull Off
+            Cull Off // TODO: Remove this as soon as tris are properly laid out
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
+
+            uniform float _CameraNearClip, _CameraFarClip;
 
             StructuredBuffer<float3x3> _Vertices;
 
@@ -30,16 +32,18 @@ Shader "Unlit/HardwareRasterShader_Debug"
 
                 o.pos = float4(verts[vtxIndex], 1);
                 o.pos.y = -o.pos.y; // Flip Y for NDC
-                o.pos.z = 0;
+                // Rescale depth: [NCLIP, FCLIP] -> [0, 1]
+                // o.pos.z = (o.pos.z - _CameraNearClip) / (_CameraFarClip - _CameraNearClip);
 
                 o.bary = float3(vtxIndex == 0, vtxIndex == 1, vtxIndex == 2);
+                o.bary.x = verts[vtxIndex].z;
 
                 return o;
             }
 
             float4 frag(VSOutput i) : SV_Target
             {
-                // return float4(0, 1, 0, 1);
+                return float4((i.bary.x / 10).xxx, 1);
                 // Wireframe threshold
                 float edgeThreshold = 0.01;
 

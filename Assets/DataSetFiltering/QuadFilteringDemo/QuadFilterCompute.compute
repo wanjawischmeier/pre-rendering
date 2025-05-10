@@ -1,19 +1,20 @@
 #pragma kernel TranformVertices
 
+#define TILE_SIZE 32
 #define IS_DEPTH_VALID(sampled) (sampled.a > 0.001 && sampled.a != 1)
 #define IS_DEPTH_INVALID(sampled) (sampled.a < 0.01 || sampled.a == 1)
 #define IS_TARGET_OUT_OF_BOUNDS(tc) (tc.x < 0 || tc.x >= _OutputResolution.x || tc.y < 0 || tc.y >= _OutputResolution.y)
-#define IS_UV_OUT_OF_BOUNDS(uv) (uv.x < 0 || uv.x >= 1 || uv.y < 0 || uv.y >= 1)
+#define IS_UV_OUT_OF_BOUNDS(uv) (any(uv < 0.0 || uv >= 1.0))
 
 uniform float _MapNearClip, _MapFarClip;
 uniform uint2 _InputResolution, _DispatchResolution, _OutputResolution;
 uniform float2 _UVOffset;
 uniform float3 _Offset;
+uniform float4x4 _CameraViewProj;
 uniform float4x4 _OrientationMatricies[6];
 
 Texture2D<float4> _InputColorBuffer;
 RWTexture2D<int> RW_OutputDepthBuffer;
-// RWTexture2D<int2> RW_VertexLookupBuffer;
 AppendStructuredBuffer<float3x3> _HardwareVertices;
 
 float3 GetTransformedVertexUV(float2 uv, float normalizedDepth)
@@ -25,31 +26,39 @@ float3 GetTransformedVertexUV(float2 uv, float normalizedDepth)
     float3 pos = dir * depth; // Scale direction by depth
 
     float4 worldPosition = float4(pos, 1); // World space position
+    float4 clipPos = mul(_CameraViewProj, worldPosition);
+
+    // Perspective divide
+    float3 ndc = clipPos.xyz / clipPos.w;
+    return ndc * 0.5 + 0.5; // Map NDC [-1, 1] to UV [0, 1]
+    // Map NDC [-1, 1] to UV [0, 1]
+    uv = ndc.xy * 0.5 + 0.5;
+    /*
     worldPosition.xyz /= worldPosition.w;
     worldPosition.xyz += _Offset;
+    */
+    // depth = length(worldPosition);
     
-    depth = length(worldPosition);
-    
-    return float3(worldPosition.xy / worldPosition.z, depth);
+    return float3(uv, depth);
 }
 
 void PushTriangleToAdequateRenderPipeline(float3 v0, float3 v1, float3 v2)
 {
-    if (IS_UV_OUT_OF_BOUNDS(v0.xy) && IS_UV_OUT_OF_BOUNDS(v1.xy) && IS_UV_OUT_OF_BOUNDS(v2.xy))
+    if (IS_UV_OUT_OF_BOUNDS(v0) && IS_UV_OUT_OF_BOUNDS(v1) && IS_UV_OUT_OF_BOUNDS(v2))
         return; // Discard if no vertices are on screen
     
     uint2 tc0 = floor(v0.xy * _OutputResolution);
     uint2 tc1 = floor(v1.xy * _OutputResolution);
     uint2 tc2 = floor(v2.xy * _OutputResolution);
     
-    /*
+    
     // Check if all three vertices lie in the same tile
     uint2 tile0 = tc0 / TILE_SIZE;
     uint2 tile1 = tc1 / TILE_SIZE;
     uint2 tile2 = tc2 / TILE_SIZE;
-    */
-    // if (all(tile0 == tile1) && all(tile1 == tile2))
-    if (false)
+    
+    if (all(tile0 == tile1) && all(tile1 == tile2))
+    // if (false)
     {
         // All vertices are in the same tile, so we can push to the software rasterizer
     }
@@ -62,7 +71,12 @@ void PushTriangleToAdequateRenderPipeline(float3 v0, float3 v1, float3 v2)
         // v2 = float3(0.0, 0.5, 0);
         // v1 = v0 + float3(0.01, 0, 0);
         // v2 = v0 + float3(0.005, 0.01, 0);
-        
+        /*
+        float depth = 0.2;
+        v0.z = depth;
+        v1.z = depth;
+        v2.z = depth;
+        */
         // float3x3 tri = float3x3(v0, v1, v2);
         float3x3 tri = float3x3(v0 * 2 - 1, v1 * 2 - 1, v2 * 2 - 1); // Convert to NDC
         _HardwareVertices.Append(tri);
@@ -198,7 +212,6 @@ void TranformVertices(uint3 id : SV_DispatchThreadID)
 
 
 #pragma kernel RenderQuads
-#define TILE_SIZE 16
 #define MAX_VALID_TEXELS 8
 #define COPRIME_MULTIPLIER 109
 #define VALIDITY_DETECTION_THRESHOLD 0.05
