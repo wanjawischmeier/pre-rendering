@@ -1,6 +1,7 @@
 #pragma kernel TransformVertices
 
 #define TILE_SIZE 16
+#define MAX_VERTS_PER_TILE  256
 #define IS_DEPTH_VALID(sampled) (sampled.a > 0.001 && sampled.a != 1)
 #define IS_DEPTH_INVALID(sampled) (sampled.a < 0.01 || sampled.a == 1)
 #define IS_TARGET_OUT_OF_BOUNDS(tc) (tc.x < 0 || tc.x >= _OutputResolution.x || tc.y < 0 || tc.y >= _OutputResolution.y)
@@ -16,6 +17,8 @@ uniform float4x4 _OrientationMatricies[6];
 Texture2D<float4> _InputColorBuffer;
 RWTexture2D<int> RW_OutputDepthBuffer;
 AppendStructuredBuffer<float3x3> _HWVerts0, _HWVerts1, _HWVerts2, _HWVerts3;
+RWStructuredBuffer<float3x2> g_SWVerts;
+RWStructuredBuffer<uint> g_SWTileCounters;
 
 float3 GetTransformedVertexUV(float2 uv, float normalizedDepth)
 {
@@ -65,7 +68,6 @@ bool IsDegenerateTriangle(float3 v0, float3 v1, float3 v2)
     return areaSquared < 1e-14;
 }
 
-
 bool TryPushTriangleToHardwareRasterizer(float3 v0, float3 v1, float3 v2, uint3 threadID)
 {
     if (IsDegenerateTriangle(v0, v1, v2))
@@ -113,14 +115,54 @@ bool TryPushTriangleToHardwareRasterizer(float3 v0, float3 v1, float3 v2, uint3 
     return false;
 }
 
+bool IsOnePixelQuad(float3 v0, float3 v1, float3 v2, float3 v3)
+{
+    uint2 p0 = floor(v0.xy * _OutputResolution); // TODO: Remove redunant calculation and pass as argument
+    uint2 p1 = floor(v1.xy * _OutputResolution);
+    uint2 p2 = floor(v2.xy * _OutputResolution);
+    uint2 p3 = floor(v3.xy * _OutputResolution);
+
+    return all(p0 == p1) && all(p1 == p2) && all(p2 == p3);
+}
+
+void BinSoftwareVertex(float3x2 vertex, uint2 screenPos)
+{
+    uint2 tileCoord = screenPos / TILE_SIZE;
+    uint tileIndex = tileCoord.y * (_OutputResolution.x / TILE_SIZE) + tileCoord.x;
+
+    // Atomically increment the tile counter and get the vertex index
+    uint localIndex;
+    InterlockedAdd(g_SWTileCounters[tileIndex], 1, localIndex);
+
+    if (localIndex < MAX_VERTS_PER_TILE)
+    {
+        uint globalIndex = tileIndex * MAX_VERTS_PER_TILE + localIndex;
+        g_SWVerts[globalIndex] = vertex;
+    }
+    // Else: drop vertex (tile overflow)
+}
+
 void PushQuadToSoftwareRasterizer(float3 v0, float3 v1, float3 v2, float3 v3)
 {
+    if (IsOnePixelQuad(v0, v1, v2, v3) && false)
+    {
+        // One pixel quad, so we can just write to the depth buffer
+        int depthInt = asint(v0.z); // InterlockedMin works only on int, so convert depth to int
+        int oldDepthInt;
+    
+        uint2 targetIndex = floor(v0.xy * _OutputResolution);
+    
+        InterlockedMin(RW_OutputDepthBuffer[targetIndex], depthInt, oldDepthInt);
+        return;
+    }
+    
     float3 bounds = ComputeCheapAABB(v0, v1, v2, v3);
     
     int depthInt = asint(v0.z); // InterlockedMin works only on int, so convert depth to int
     int oldDepthInt;
     
     uint2 targetIndex = floor(v0.xy * _OutputResolution);
+    
     InterlockedMin(RW_OutputDepthBuffer[targetIndex], depthInt, oldDepthInt);
 }
 
