@@ -9,12 +9,15 @@ public class QuadDemoLoader : MonoBehaviour
     public RenderTexture transformedVertexTexture, vertexLookupTexture, rasterOutputTexture;
     public float nearClip, farClip;
     public Vector2Int rescaledInputResolution, dispatchResolution, transformedVertexResolution;
+    public bool autoResolution = true;
     public Vector2 uvOffset;
-    public uint[] args;
-    public int maxHardwareRasterizedTriangles = 32000;
+    public uint[] triangleCounts;
+    public int maxHardwareRasterizedTrianglesPerBatch = 131072;
+    private ComputeBuffer[] vertexBuffers, argsBuffers;
     private ComputeBuffer vertexBuffer, argsBuffer;
 
     private int transformVerticesKernelHandle, renderQuadsKernelHandle;
+    const uint vertexBufferCount = 4;
 
     private void Start()
     {
@@ -26,6 +29,11 @@ public class QuadDemoLoader : MonoBehaviour
             Graphics.ConvertTexture(inputTexture, rescaledInputTexture);
             inputTexture = rescaledInputTexture;
             */
+        }
+
+        if (autoResolution)
+        {
+            dispatchResolution = new Vector2Int(inputTexture.width, inputTexture.height);
         }
 
         transformedVertexTexture = new RenderTexture(transformedVertexResolution.x, transformedVertexResolution.y, 0, RenderTextureFormat.RInt);
@@ -40,7 +48,15 @@ public class QuadDemoLoader : MonoBehaviour
         rasterOutputTexture.Create();
         hardwareRasterDebug.mainTexture = rasterOutputTexture;
 
-        vertexBuffer = new ComputeBuffer(maxHardwareRasterizedTriangles, 9 * sizeof(float), ComputeBufferType.Append);
+        triangleCounts = new uint[vertexBufferCount + 1]; // Last entry is total count
+        vertexBuffers = new ComputeBuffer[vertexBufferCount];
+        argsBuffers = new ComputeBuffer[vertexBufferCount];
+        for (int i = 0; i < vertexBufferCount; i++)
+        {
+            vertexBuffers[i] = new ComputeBuffer(maxHardwareRasterizedTrianglesPerBatch, 9 * sizeof(float), ComputeBufferType.Append);
+            argsBuffers[i] = new ComputeBuffer(1, 4 * sizeof(int), ComputeBufferType.IndirectArguments);
+        }
+        vertexBuffer = new ComputeBuffer(maxHardwareRasterizedTrianglesPerBatch, 9 * sizeof(float), ComputeBufferType.Append);
         argsBuffer = new ComputeBuffer(1, 4 * sizeof(int), ComputeBufferType.IndirectArguments);
 
         transformVerticesKernelHandle = computeShader.FindKernel("TransformVertices");
@@ -55,7 +71,7 @@ public class QuadDemoLoader : MonoBehaviour
         softwareRasterDebug.SetVector("_InputResolution", new Vector2(transformedVertexResolution.x, transformedVertexResolution.y));
         softwareRasterDebug.SetTexture("_InputDepthBuffer", transformedVertexTexture);
 
-        hardwareRasterMaterial.SetBuffer("_Vertices", vertexBuffer);
+        // hardwareRasterMaterial.SetBuffer("_Vertices", vertexBuffer);
     }
 
     private void Update()
@@ -65,7 +81,7 @@ public class QuadDemoLoader : MonoBehaviour
         GL.Clear(true, true, new Color(int.MaxValue, 0, 0));
         RenderTexture.active = rt;
 
-        vertexBuffer.SetCounterValue(0); // Reset append buffer
+        // vertexBuffer.SetCounterValue(0); // Reset append buffer
 
         Matrix4x4 trs = Matrix4x4.TRS(transform.position, transform.rotation, Vector3.one);
         Matrix4x4 viewMatrix = Camera.main.worldToCameraMatrix;
@@ -77,23 +93,34 @@ public class QuadDemoLoader : MonoBehaviour
         computeShader.SetFloat("_MapFarClip", farClip);
         computeShader.SetVector("_UVOffset", uvOffset);
         computeShader.SetVector("_Offset", transform.position);
-        computeShader.SetBuffer(transformVerticesKernelHandle, "_HardwareVertices", vertexBuffer);
+
+        for (int i = 0; i < vertexBufferCount; i++)
+        {
+            vertexBuffers[i].SetCounterValue(0); // Reset append buffer
+            computeShader.SetBuffer(transformVerticesKernelHandle, $"_HWVerts{i}", vertexBuffers[i]);
+        }
+
         computeShader.Dispatch(transformVerticesKernelHandle, dispatchResolution.x / 8, dispatchResolution.y / 8, 1);
-        
-        // Copy count from append buffer to args[0] (vertex count)
-        ComputeBuffer.CopyCount(vertexBuffer, argsBuffer, 0);
 
-        args = new uint[] { 0, 1, 0, 0 };
-        argsBuffer.GetData(args);
-        args[0] *= 3; // vertex count = triangle count * 3
-        args[1] = 1;
-        argsBuffer.SetData(args);
+        uint totalTriangleCount = 0;
+        uint[] args = new uint[4];
+        for (int i = 0; i < vertexBufferCount; i++)
+        {
+            // Copy count from append buffer to args[0] (vertex count)
+            ComputeBuffer.CopyCount(vertexBuffers[i], argsBuffers[i], 0);
 
-        // Set hardware raster material parameters
-        hardwareRasterMaterial.SetFloat("_CameraNearClip", Camera.main.nearClipPlane);
-        hardwareRasterMaterial.SetFloat("_CameraFarClip", Camera.main.farClipPlane);
+            argsBuffers[i].GetData(args);
+            args[0] *= 3; // vertex count = triangle count * 3
+            args[1] = 1;
+            argsBuffers[i].SetData(args);
+
+            triangleCounts[i] = args[0]; // For debugging
+            totalTriangleCount += args[0];
+        }
+        triangleCounts[vertexBufferCount] = totalTriangleCount;
 
         var cmd = new CommandBuffer();
+        cmd.name = "Draw Hardware Raster Batches";
         /*
         // Set parameters and dispatch compute shader (can run in parallel)
         cmd.SetComputeFloatParam(computeShader, "_MapNearClip", nearClip);
@@ -110,12 +137,27 @@ public class QuadDemoLoader : MonoBehaviour
         cmd.SetRenderTarget(rasterOutputTexture);
         cmd.ClearRenderTarget(true, true, Color.clear);
 
-        cmd.DrawProceduralIndirect(Matrix4x4.identity,
+        // For each buffer group
+        for (int i = 0; i < 4; i++)
+        {
+            if (triangleCounts[i] == 0)
+                continue; // Skip empty buffers
+
+            // Set hardware raster material parameters
+            var props = new MaterialPropertyBlock();
+            props.SetFloat("_CameraNearClip", Camera.main.nearClipPlane);
+            props.SetFloat("_CameraFarClip", Camera.main.farClipPlane);
+            props.SetBuffer("_Vertices", vertexBuffers[i]);
+
+            cmd.DrawProceduralIndirect(Matrix4x4.identity,
                                    hardwareRasterMaterial,
                                    0,
                                    MeshTopology.Triangles,
-                                   argsBuffer);
-
+                                   argsBuffers[i],
+                                   0,
+                                   props);
+        }
+        
         // (Optional) Insert a second fence if you need to wait on both before post-processing
         // var drawFence = cmd.CreateGraphicsFence(GraphicsFenceType.AsyncQueueSynchronisation, SynchronisationStageFlags.PixelProcessing);
 
@@ -145,6 +187,12 @@ public class QuadDemoLoader : MonoBehaviour
 
     private void OnDestroy()
     {
+        for (int i = 0; i < vertexBufferCount; i++)
+        {
+            vertexBuffers[i].Release();
+            argsBuffers[i].Release();
+        }
+
         vertexBuffer.Release();
         argsBuffer.Release();
     }

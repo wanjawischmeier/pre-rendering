@@ -1,10 +1,10 @@
 #pragma kernel TransformVertices
 
-#define TILE_SIZE 32
+#define TILE_SIZE 16
 #define IS_DEPTH_VALID(sampled) (sampled.a > 0.001 && sampled.a != 1)
 #define IS_DEPTH_INVALID(sampled) (sampled.a < 0.01 || sampled.a == 1)
 #define IS_TARGET_OUT_OF_BOUNDS(tc) (tc.x < 0 || tc.x >= _OutputResolution.x || tc.y < 0 || tc.y >= _OutputResolution.y)
-#define IS_UV_OUT_OF_BOUNDS(uv) any(uv < 0.0 || uv > 1.2) // Allow some leeway for out-of-bounds UVs, idk wtf
+#define IS_UV_OUT_OF_BOUNDS(uv) any(uv < 0.0 || uv > 1.0)
 
 uniform float _MapNearClip, _MapFarClip;
 uniform uint2 _InputResolution, _DispatchResolution, _OutputResolution;
@@ -15,7 +15,7 @@ uniform float4x4 _OrientationMatricies[6];
 
 Texture2D<float4> _InputColorBuffer;
 RWTexture2D<int> RW_OutputDepthBuffer;
-AppendStructuredBuffer<float3x3> _HardwareVertices;
+AppendStructuredBuffer<float3x3> _HWVerts0, _HWVerts1, _HWVerts2, _HWVerts3;
 
 float3 GetTransformedVertexUV(float2 uv, float normalizedDepth)
 {
@@ -29,21 +29,51 @@ float3 GetTransformedVertexUV(float2 uv, float normalizedDepth)
     float4 clipPos = mul(_CameraViewProj, worldPosition);
     if (clipPos.w <= 0)
         return float3(0, 0, -1); // Invalid position, return a sentinel value
-
+    
     // Perspective divide
     float3 ndc = clipPos.xyz / clipPos.w;
     return ndc * 0.5 + 0.5; // Map NDC [-1, 1] to UV [0, 1]
 }
 
-void PushTriangleToAdequateRenderPipeline(float3 v0, float3 v1, float3 v2)
+float3 ComputeCheapAABB(float3 v0, float3 v1, float3 v2, float3 v3)
 {
-    if (IS_UV_OUT_OF_BOUNDS(v0) && IS_UV_OUT_OF_BOUNDS(v1) && IS_UV_OUT_OF_BOUNDS(v2))
-        return; // Discard if no vertices are on screen
+    float2 d1 = v1.xy - v0.xy;
+    float2 d2 = v2.xy - v0.xy;
+    float2 d3 = v3.xy - v0.xy;
+
+    float minX = min(0.0, min(d1.x, min(d2.x, d3.x)));
+    float maxX = max(0.0, max(d1.x, max(d2.x, d3.x)));
+    float minY = min(0.0, min(d1.y, min(d2.y, d3.y)));
+    float maxY = max(0.0, max(d1.y, max(d2.y, d3.y)));
+
+    float2 maxOffset = float2(maxX, maxY);
+    float minOffset = max(-minX, -minY); // Shared min extent, to be able to pack quad in 3x2 matrix
+
+    return float3(maxOffset, minOffset);
+}
+
+bool IsDegenerateTriangle(float3 v0, float3 v1, float3 v2)
+{
+    float3 edge1 = v1 - v0;
+    float3 edge2 = v2 - v0;
+    float3 crossProduct = cross(edge1, edge2);
+
+    // Use the squared length of the cross product (area of parallelogram)
+    float areaSquared = dot(crossProduct, crossProduct);
+
+    // Epsilon depends on your scale, this is a safe default
+    return areaSquared < 1e-14;
+}
+
+
+bool TryPushTriangleToHardwareRasterizer(float3 v0, float3 v1, float3 v2, uint3 threadID)
+{
+    if (IsDegenerateTriangle(v0, v1, v2))
+        return true; // Discard degenerate triangles, but mark as pushed
     
     uint2 tc0 = floor(v0.xy * _OutputResolution);
     uint2 tc1 = floor(v1.xy * _OutputResolution);
     uint2 tc2 = floor(v2.xy * _OutputResolution);
-    
     
     // Check if all three vertices lie in the same tile
     uint2 tile0 = tc0 / TILE_SIZE;
@@ -51,16 +81,47 @@ void PushTriangleToAdequateRenderPipeline(float3 v0, float3 v1, float3 v2)
     uint2 tile2 = tc2 / TILE_SIZE;
     
     // if (all(tile0 == tile1) && all(tile1 == tile2))
-    if (false)
-    {
-        // All vertices are in the same tile, so we can push to the software rasterizer
-    }
-    else
-    {
+    if (!(all(tile0 == tile1) && all(tile1 == tile2)))
+    // if (true)
+    {   
         // Vertices are in different tiles, so we need to push to the hardware rasterizer
         float3x3 tri = float3x3(v0 * 2 - 1, v1 * 2 - 1, v2 * 2 - 1); // Convert to NDC
-        _HardwareVertices.Append(tri);
+        // _HWVerts0.Append(tri);
+        
+        // Push to the appropriate buffer group
+        uint bufferGroupIndex = (threadID.x ^ threadID.y ^ threadID.z) & 3;
+        switch (bufferGroupIndex)
+        {
+            case 0:
+                _HWVerts0.Append(tri);
+                break;
+            case 1:
+                _HWVerts1.Append(tri);
+                break;
+            case 2:
+                _HWVerts2.Append(tri);
+                break;
+            case 3:
+                _HWVerts3.Append(tri);
+                break;
+        }
+        
+        return true;
     }
+    
+    // All vertices are in the same tile, so we can push to the software rasterizer
+    return false;
+}
+
+void PushQuadToSoftwareRasterizer(float3 v0, float3 v1, float3 v2, float3 v3)
+{
+    float3 bounds = ComputeCheapAABB(v0, v1, v2, v3);
+    
+    int depthInt = asint(v0.z); // InterlockedMin works only on int, so convert depth to int
+    int oldDepthInt;
+    
+    uint2 targetIndex = floor(v0.xy * _OutputResolution);
+    InterlockedMin(RW_OutputDepthBuffer[targetIndex], depthInt, oldDepthInt);
 }
 
 
@@ -96,31 +157,29 @@ void TransformVertices(uint3 id : SV_DispatchThreadID)
     float3 transformedVertex01 = GetTransformedVertexUV(uv01, sampled01.a);
     
     float4 sampled00 = _InputColorBuffer[tc00];
+    
+    // TODO: Determine if and when we need to calculate this
+    uint2 tc11 = tc00 + tcOff.xy;
+    float2 uv11 = float2(tc11) / _InputResolution;
+    float4 sampled11 = _InputColorBuffer[tc11];
+    float3 transformedVertex11 = GetTransformedVertexUV(uv11, sampled11.a);
+    
     if (!IS_DEPTH_INVALID(sampled00))
     {
         float3 transformedVertex00 = GetTransformedVertexUV(uv00, sampled00.a);
-        PushTriangleToAdequateRenderPipeline(transformedVertex01, transformedVertex10, transformedVertex00);
-        
-        if (IS_UV_OUT_OF_BOUNDS(transformedVertex00))
+        if (!IS_UV_OUT_OF_BOUNDS(transformedVertex00) || !IS_UV_OUT_OF_BOUNDS(transformedVertex10) || !IS_UV_OUT_OF_BOUNDS(transformedVertex01))
         {
-            // Discard if out of bounds
-            return;
+            bool pushed = TryPushTriangleToHardwareRasterizer(transformedVertex01, transformedVertex10, transformedVertex00, id);
+            if (!pushed && !IS_UV_OUT_OF_BOUNDS(transformedVertex00)) // TODO: Combine bounds checks
+            {
+                PushQuadToSoftwareRasterizer(transformedVertex00, transformedVertex10, transformedVertex01, transformedVertex11);
+            }
         }
-    
-        int depthInt = asint(transformedVertex00.z); // InterlockedMin works only on int, so convert depth to int
-        int oldDepthInt;
-    
-        uint2 targetIndex = floor(transformedVertex00.xy * _OutputResolution);    
-        InterlockedMin(RW_OutputDepthBuffer[targetIndex], depthInt, oldDepthInt);
     }
     
-    uint2 tc11 = tc00 + tcOff.xy;
-    float4 sampled11 = _InputColorBuffer[tc11];
     if (!IS_DEPTH_INVALID(sampled11))
     {
-        float2 uv11 = float2(tc11) / _InputResolution;
-        float3 transformedVertex11 = GetTransformedVertexUV(uv11, sampled11.a);
-        PushTriangleToAdequateRenderPipeline(transformedVertex11, transformedVertex10, transformedVertex01);
+        TryPushTriangleToHardwareRasterizer(transformedVertex11, transformedVertex10, transformedVertex01, id);
     }
 }
 

@@ -1,6 +1,9 @@
 Shader "Unlit/HardwareRasterShader_Debug"
 {
-    Properties {}
+    Properties
+    {
+        _EdgeThreshold ("Triangle Edge Threshold", Range(0.01, 0.2)) = 0.02
+    }
     SubShader
     {
         Tags { "RenderType"="Opaque" }
@@ -11,7 +14,7 @@ Shader "Unlit/HardwareRasterShader_Debug"
             #pragma vertex vert
             #pragma fragment frag
 
-            uniform float _CameraNearClip, _CameraFarClip;
+            uniform float _CameraNearClip, _CameraFarClip, _EdgeThreshold;
 
             StructuredBuffer<float3x3> _Vertices;
 
@@ -42,13 +45,11 @@ Shader "Unlit/HardwareRasterShader_Debug"
             float4 frag(VSOutput i) : SV_Target
             {
                 // return float4((i.bary.x / 10).xxx, 1);
-                // Wireframe threshold
-                float edgeThreshold = 0.01;
 
                 // Distance from edge (i.e., min bary value)
                 float edge = min(min(i.bary.x, i.bary.y), i.bary.z);
 
-                if (edge < edgeThreshold)
+                if (edge < _EdgeThreshold)
                 {
                     return float4(1, 0, 0, 1); // Red edges
                 }
