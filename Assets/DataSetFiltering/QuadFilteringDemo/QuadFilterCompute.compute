@@ -15,10 +15,10 @@ uniform float4x4 _CameraViewProj;
 uniform float4x4 _OrientationMatricies[6];
 
 Texture2D<float4> _InputColorBuffer;
-RWTexture2D<int> RW_OutputDepthBuffer;
+RWTexture2D<int> RW_SWDepthBuffer;
 AppendStructuredBuffer<float3x3> _HWVerts0, _HWVerts1, _HWVerts2, _HWVerts3;
-RWStructuredBuffer<float3x2> g_SWVerts;
-RWStructuredBuffer<uint> g_SWTileCounters;
+RWStructuredBuffer<float2x3> g_SWTris;
+RWTexture2D<uint> g_SWTileCounters;
 
 float3 GetTransformedVertexUV(float2 uv, float normalizedDepth)
 {
@@ -38,7 +38,7 @@ float3 GetTransformedVertexUV(float2 uv, float normalizedDepth)
     return ndc * 0.5 + 0.5; // Map NDC [-1, 1] to UV [0, 1]
 }
 
-float3 ComputeCheapAABB(float3 v0, float3 v1, float3 v2, float3 v3)
+float3 ComputeAABB(float3 v0, float3 v1, float3 v2, float3 v3)
 {
     float2 d1 = v1.xy - v0.xy;
     float2 d2 = v2.xy - v0.xy;
@@ -125,45 +125,46 @@ bool IsOnePixelQuad(float3 v0, float3 v1, float3 v2, float3 v3)
     return all(p0 == p1) && all(p1 == p2) && all(p2 == p3);
 }
 
-void BinSoftwareVertex(float3x2 vertex, uint2 screenPos)
+void BinSoftwareQuadApproximation(float2x3 quadApprox, uint2 screenPos)
 {
     uint2 tileCoord = screenPos / TILE_SIZE;
     uint tileIndex = tileCoord.y * (_OutputResolution.x / TILE_SIZE) + tileCoord.x;
 
     // Atomically increment the tile counter and get the vertex index
     uint localIndex;
-    InterlockedAdd(g_SWTileCounters[tileIndex], 1, localIndex);
+    InterlockedAdd(g_SWTileCounters[tileCoord], 1, localIndex);
 
     if (localIndex < MAX_VERTS_PER_TILE)
     {
         uint globalIndex = tileIndex * MAX_VERTS_PER_TILE + localIndex;
-        g_SWVerts[globalIndex] = vertex;
+        g_SWTris[globalIndex] = quadApprox;
     }
     // Else: drop vertex (tile overflow)
 }
 
 void PushQuadToSoftwareRasterizer(float3 v0, float3 v1, float3 v2, float3 v3)
 {
+    uint2 targetIndex = floor(v0.xy * _OutputResolution);
+    
     if (IsOnePixelQuad(v0, v1, v2, v3) && false)
     {
         // One pixel quad, so we can just write to the depth buffer
         int depthInt = asint(v0.z); // InterlockedMin works only on int, so convert depth to int
         int oldDepthInt;
     
-        uint2 targetIndex = floor(v0.xy * _OutputResolution);
-    
-        InterlockedMin(RW_OutputDepthBuffer[targetIndex], depthInt, oldDepthInt);
+        InterlockedMin(RW_SWDepthBuffer[targetIndex], depthInt, oldDepthInt);
         return;
     }
     
-    float3 bounds = ComputeCheapAABB(v0, v1, v2, v3);
+    float3 aabb = ComputeAABB(v0, v1, v2, v3);
+    float2x3 quadApprox = float2x3(v0, aabb);
+    
+    BinSoftwareQuadApproximation(quadApprox, targetIndex);
     
     int depthInt = asint(v0.z); // InterlockedMin works only on int, so convert depth to int
     int oldDepthInt;
     
-    uint2 targetIndex = floor(v0.xy * _OutputResolution);
-    
-    InterlockedMin(RW_OutputDepthBuffer[targetIndex], depthInt, oldDepthInt);
+    InterlockedMin(RW_SWDepthBuffer[targetIndex], depthInt, oldDepthInt);
 }
 
 
@@ -226,7 +227,7 @@ void TransformVertices(uint3 id : SV_DispatchThreadID)
 }
 
 
-#pragma kernel RenderQuads
+#pragma kernel RasterizeTileBinnedQuads
 #define MAX_VALID_TEXELS 8
 #define COPRIME_MULTIPLIER 109
 #define VALIDITY_DETECTION_THRESHOLD 0.05
@@ -256,9 +257,54 @@ uint2 ScrambleID_Permuted(uint3 groupID, uint3 groupThreadID)
     return tileOrigin + uint2(offsetX, offsetY);
 }
 
-[numthreads(TILE_SIZE, TILE_SIZE, 1)]
-void RenderQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadID)
+bool IsInAABB(float2 uv, float3 v0, float3 aabb)
 {
+    // Reconstruct the min and max corners of the AABB from v0 and the float3
+    float2 minOffset = -aabb.z;
+    float2 maxOffset = aabb.xy;
+
+    float2 local = uv - v0.xy;
+
+    // Check bounds
+    return all(local >= minOffset) && all(local <= maxOffset);
+}
+
+[numthreads(TILE_SIZE, TILE_SIZE, 1)]
+void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadID)
+{
+    // Calculate coords
+    uint2 globalPixel = groupID.xy * TILE_SIZE + groupThreadID.xy;
+    uint2 tileCoord = globalPixel / TILE_SIZE;
+    uint tileIndex = tileCoord.y * (_OutputResolution.x / TILE_SIZE) + tileCoord.x;
+    
+    uint numTris = g_SWTileCounters[tileCoord];
+    if (numTris == 0)
+    {
+        // No triangles in this tile, so skip
+        return;
+    }
+    
+    // Iterate over the triangles in this tile
+    uint tileOffset = tileIndex * MAX_VERTS_PER_TILE;
+    for (uint i = 0; i < numTris; i++)
+    {
+        // Load the triangle from the buffer
+        float2x3 tri = g_SWTris[tileOffset + i];
+        float3 v0 = tri[0];
+        float3 aabb = tri[1];
+
+        // Check if the pixel is within the AABB
+        float2 uv = float2(globalPixel) / _OutputResolution;
+        if (IsInAABB(uv, v0, aabb))
+        {
+            int depthInt = asint(v0.z);
+            
+            RW_SWDepthBuffer[globalPixel] = depthInt;
+            return;
+        }
+    }
+    
+    
     /*
     uint2 scrambledID = ScrambleID_Permuted(groupID, groupThreadID);
     float2 uv = float2(scrambledID) / _HighResWidth;
