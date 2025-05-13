@@ -413,11 +413,11 @@ MonoBehaviour:
   farClip: 6
   rescaledInputResolution: {x: 1024, y: 1024}
   dispatchResolution: {x: 1024, y: 1024}
-  renderTargetResolution: {x: 1024, y: 1024}
+  renderTargetResolution: {x: 2048, y: 2048}
   autoResolution: 1
   uvOffset: {x: 0, y: 0}
   triangleCounts: 
-  maxHardwareRasterizedTrianglesPerBatch: 131072
+  maxHardwareRasterizedTrianglesPerBatch: 256000
 --- !u!114 &160531368
 MonoBehaviour:
   m_ObjectHideFlags: 0

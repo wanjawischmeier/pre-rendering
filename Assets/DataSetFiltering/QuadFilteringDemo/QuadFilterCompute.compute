@@ -1,6 +1,6 @@
 #pragma kernel TransformVertices
 
-#define TILE_SIZE 16
+#define TILE_SIZE 32
 #define MAX_VERTS_PER_TILE  256
 #define IS_DEPTH_VALID(sampled) (sampled.a > 0.001 && sampled.a != 1)
 #define IS_DEPTH_INVALID(sampled) (sampled.a < 0.01 || sampled.a == 1)
@@ -17,7 +17,7 @@ uniform float4x4 _OrientationMatricies[6];
 Texture2D<float4> _InputColorBuffer;
 RWTexture2D<int> RW_SWDepthBuffer;
 AppendStructuredBuffer<float3x3> _HWVerts0, _HWVerts1, _HWVerts2, _HWVerts3;
-RWStructuredBuffer<float2x3> g_SWTris;
+RWStructuredBuffer<float2x3> g_SWQuads;
 RWTexture2D<uint> g_SWTileCounters;
 
 float3 GetTransformedVertexUV(float2 uv, float normalizedDepth)
@@ -68,6 +68,39 @@ bool IsDegenerateTriangle(float3 v0, float3 v1, float3 v2)
     return areaSquared < 1e-14;
 }
 
+int ClassifyTriangle(float3 v0, float3 v1, float3 v2)
+{
+    // 0. Degenerate triangle check
+    if (IsDegenerateTriangle(v0, v1, v2))
+        return 0;
+
+    // Convert vertex positions to pixel coordinates
+    uint2 tc0 = floor(v0.xy * _OutputResolution);
+    uint2 tc1 = floor(v1.xy * _OutputResolution);
+    uint2 tc2 = floor(v2.xy * _OutputResolution);
+
+    // 1. Regular tile classification
+    uint2 tile0 = tc0 / TILE_SIZE;
+    uint2 tile1 = tc1 / TILE_SIZE;
+    uint2 tile2 = tc2 / TILE_SIZE;
+
+    if (all(tile0 == tile1) && all(tile1 == tile2))
+        return 1;
+
+    // 2. Offset tile classification
+    int halfTile = TILE_SIZE / 2;
+    tile0 = (tc0 + halfTile) / TILE_SIZE;
+    tile1 = (tc1 + halfTile) / TILE_SIZE;
+    tile2 = (tc2 + halfTile) / TILE_SIZE;
+
+    if (all(tile0 == tile1) && all(tile1 == tile2))
+        return 2;
+
+    // 3. Triangle spans multiple tiles
+    return 3;
+}
+
+
 bool TryPushTriangleToHardwareRasterizer(float3 v0, float3 v1, float3 v2, uint3 threadID)
 {
     if (IsDegenerateTriangle(v0, v1, v2))
@@ -82,7 +115,6 @@ bool TryPushTriangleToHardwareRasterizer(float3 v0, float3 v1, float3 v2, uint3 
     uint2 tile1 = tc1 / TILE_SIZE;
     uint2 tile2 = tc2 / TILE_SIZE;
     
-    // if (all(tile0 == tile1) && all(tile1 == tile2))
     if (!(all(tile0 == tile1) && all(tile1 == tile2)))
     // if (true)
     {   
@@ -125,7 +157,7 @@ bool IsOnePixelQuad(float3 v0, float3 v1, float3 v2, float3 v3)
     return all(p0 == p1) && all(p1 == p2) && all(p2 == p3);
 }
 
-void BinSoftwareQuadApproximation(float2x3 quadApprox, uint2 screenPos)
+void BinSoftwareQuadApproximation(float2x3 quadApprox, uint2 screenPos, bool useOffsetTileBuffer)
 {
     uint2 tileCoord = screenPos / TILE_SIZE;
     uint tileIndex = tileCoord.y * (_OutputResolution.x / TILE_SIZE) + tileCoord.x;
@@ -137,7 +169,7 @@ void BinSoftwareQuadApproximation(float2x3 quadApprox, uint2 screenPos)
     if (localIndex < MAX_VERTS_PER_TILE)
     {
         uint globalIndex = tileIndex * MAX_VERTS_PER_TILE + localIndex;
-        g_SWTris[globalIndex] = quadApprox;
+        g_SWQuads[globalIndex] = quadApprox;
     }
     // Else: drop vertex (tile overflow)
 }
@@ -146,7 +178,7 @@ void PushQuadToSoftwareRasterizer(float3 v0, float3 v1, float3 v2, float3 v3)
 {
     uint2 targetIndex = floor(v0.xy * _OutputResolution);
     
-    if (IsOnePixelQuad(v0, v1, v2, v3) && false)
+    if (IsOnePixelQuad(v0, v1, v2, v3))
     {
         // One pixel quad, so we can just write to the depth buffer
         int depthInt = asint(v0.z); // InterlockedMin works only on int, so convert depth to int
@@ -159,14 +191,8 @@ void PushQuadToSoftwareRasterizer(float3 v0, float3 v1, float3 v2, float3 v3)
     float3 aabb = ComputeAABB(v0, v1, v2, v3);
     float2x3 quadApprox = float2x3(v0, aabb);
     
-    BinSoftwareQuadApproximation(quadApprox, targetIndex);
-    
-    int depthInt = asint(v0.z); // InterlockedMin works only on int, so convert depth to int
-    int oldDepthInt;
-    
-    InterlockedMin(RW_SWDepthBuffer[targetIndex], depthInt, oldDepthInt);
+    BinSoftwareQuadApproximation(quadApprox, targetIndex, 0);
 }
-
 
 [numthreads(8, 8, 1)]
 void TransformVertices(uint3 id : SV_DispatchThreadID)
@@ -228,34 +254,8 @@ void TransformVertices(uint3 id : SV_DispatchThreadID)
 
 
 #pragma kernel RasterizeTileBinnedQuads
-#define MAX_VALID_TEXELS 8
-#define COPRIME_MULTIPLIER 109
-#define VALIDITY_DETECTION_THRESHOLD 0.05
 
-Texture2D<int> InputDepthBuffer;
-
-// Shared memory for each thread group
-groupshared float2 localUVs[MAX_VALID_TEXELS];
-groupshared uint localCount;
-
-// Apply a linear index shuffle
-uint2 ScrambleID_Permuted(uint3 groupID, uint3 groupThreadID)
-{
-    // Flatten 2D local thread ID into 1D index
-    uint flatIndex = groupThreadID.y * TILE_SIZE + groupThreadID.x;
-    const uint tileArea = TILE_SIZE * TILE_SIZE;
-
-    // Apply permutation
-    uint permutedIndex = (flatIndex * COPRIME_MULTIPLIER) % tileArea;
-
-    // Unflatten to 2D
-    uint offsetX = permutedIndex % TILE_SIZE;
-    uint offsetY = permutedIndex / TILE_SIZE;
-
-    // Compute global ID
-    uint2 tileOrigin = groupID.xy * TILE_SIZE;
-    return tileOrigin + uint2(offsetX, offsetY);
-}
+uniform bool _IsBufferOffset;
 
 bool IsInAABB(float2 uv, float3 v0, float3 aabb)
 {
@@ -267,6 +267,29 @@ bool IsInAABB(float2 uv, float3 v0, float3 aabb)
 
     // Check bounds
     return all(local >= minOffset) && all(local <= maxOffset);
+}
+
+bool IsInTriangle(float2 uv, float3 v0, float3 v1, float3 v2)
+{
+    float2 v0v1 = v1.xy - v0.xy;
+    float2 v0v2 = v2.xy - v0.xy;
+    float2 v0uv = uv - v0.xy;
+
+    float d00 = dot(v0v1, v0v1);
+    float d01 = dot(v0v1, v0v2);
+    float d11 = dot(v0v2, v0v2);
+    float d20 = dot(v0uv, v0v1);
+    float d21 = dot(v0uv, v0v2);
+
+    float denom = d00 * d11 - d01 * d01;
+    if (denom == 0)
+        return false; // Degenerate triangle
+
+    float v = (d11 * d20 - d01 * d21) / denom;
+    float w = (d00 * d21 - d01 * d20) / denom;
+    float u = 1.0 - v - w;
+
+    return u >= 0 && v >= 0 && w >= 0;
 }
 
 [numthreads(TILE_SIZE, TILE_SIZE, 1)]
@@ -286,10 +309,10 @@ void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : 
     
     // Iterate over the triangles in this tile
     uint tileOffset = tileIndex * MAX_VERTS_PER_TILE;
-    for (uint i = 0; i < numTris; i++)
+    for (uint i = 0; i < min(numTris, MAX_VERTS_PER_TILE); i++)
     {
         // Load the triangle from the buffer
-        float2x3 tri = g_SWTris[tileOffset + i];
+        float2x3 tri = g_SWQuads[tileOffset + i];
         float3 v0 = tri[0];
         float3 aabb = tri[1];
 
@@ -303,34 +326,4 @@ void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : 
             return;
         }
     }
-    
-    
-    /*
-    uint2 scrambledID = ScrambleID_Permuted(groupID, groupThreadID);
-    float2 uv = float2(scrambledID) / _HighResWidth;
-    
-    // First thread initializes the shared counter
-    if (groupThreadID.x == 0 && groupThreadID.y == 0)
-        localCount = 0;
-    
-    // Ensure counter is zero before anyone adds
-    GroupMemoryBarrierWithGroupSync();
-
-    float value = _HighResTexture.Load(int3(scrambledID, 0)).r;
-    if (value > VALIDITY_DETECTION_THRESHOLD)
-    {
-        // Texel is valid, use atomic add on shared counter to get a slot index
-        uint index = 0;
-        InterlockedAdd(localCount, 1, index);
-        
-        if (index < MAX_VALID_TEXELS)
-        {
-            // Store the UV if we have space
-            localUVs[index] = uv;
-        }
-    }
-    
-    // Wait until all threads are done writing to shared memory
-    GroupMemoryBarrierWithGroupSync();
-    */
 }

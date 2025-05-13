@@ -18,7 +18,7 @@ public class QuadDemoLoader : MonoBehaviour
 
     private int transformVerticesKernelHandle, rasterizeBinnedQuadsKernelHandle;
     const int vertexBufferCount = 4;
-    const int swTileSize = 16;
+    const int swTileSize = 32;
     const int swMaxVertsPerTile = 256; // 16x16 tile
 
     private void Start()
@@ -72,8 +72,8 @@ public class QuadDemoLoader : MonoBehaviour
         computeShader.SetMatrixArray("_OrientationMatricies", CubeMapConversion.orientationMatricies);
 
         computeShader.SetTexture(transformVerticesKernelHandle, "_InputColorBuffer", inputTexture);
-        computeShader.SetBuffer(transformVerticesKernelHandle, "g_SWTris", softwareRasterizerVertexBuffer);
-        computeShader.SetBuffer(rasterizeBinnedQuadsKernelHandle, "g_SWTris", softwareRasterizerVertexBuffer);
+        computeShader.SetBuffer(transformVerticesKernelHandle, "g_SWQuads", softwareRasterizerVertexBuffer);
+        computeShader.SetBuffer(rasterizeBinnedQuadsKernelHandle, "g_SWQuads", softwareRasterizerVertexBuffer);
         computeShader.SetTexture(transformVerticesKernelHandle, "g_SWTileCounters", softwareRasterizerTileCounters);
         computeShader.SetTexture(rasterizeBinnedQuadsKernelHandle, "g_SWTileCounters", softwareRasterizerTileCounters);
         computeShader.SetTexture(transformVerticesKernelHandle, "RW_SWDepthBuffer", softwareRasterizedDepth);
@@ -133,9 +133,7 @@ public class QuadDemoLoader : MonoBehaviour
         var cmd = new CommandBuffer();
         cmd.name = "Draw Hardware & Software Raster Batches";
 
-        // cmd.SetRenderTarget(softwareRasterizedDepth);
-        // cmd.ClearRenderTarget(true, true, Color.clear);
-        // cmd.DispatchCompute(computeShader, rasterizeBinnedQuadsKernelHandle, renderTargetResolution.x / swTileSize, renderTargetResolution.y / swTileSize, 1);
+        cmd.DispatchCompute(computeShader, rasterizeBinnedQuadsKernelHandle, renderTargetResolution.x / swTileSize, renderTargetResolution.y / swTileSize, 1);
 
 
         // Set render target and draw procedurally

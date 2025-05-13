@@ -56,7 +56,9 @@
                 uint2 tileCoord = uint2(pixel / _TileSize);
 
                 uint count = _TileCounts[tileCoord];
-                if (count >= _MaxVertsPerTile)
+                if (count == 0)
+                    return float4(0, 0, 0, 1); // Black for empty tiles
+                else if (count >= _MaxVertsPerTile)
                     return float4(1, 0, 1, 1); // Pink warning for tile overflow
 
                 float norm = saturate((float)count / _MaxVertsPerTile);
