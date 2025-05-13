@@ -41,7 +41,7 @@
 
             float4 HeatmapColor(float t)
             {
-                // Green → Yellow → Red gradient
+                // Green -> Yellow -> Red gradient
                 float3 color;
                 if (t < 0.5)
                     color = lerp(float3(0, 1, 0), float3(1, 1, 0), t * 2.0); // Green to Yellow
@@ -55,7 +55,7 @@
                 float2 pixel = i.uv * _OutputResolution.xy;
                 uint2 tileCoord = uint2(pixel / _TileSize);
 
-                uint count = _TileCounts[tileCoord];
+                int count = _TileCounts[tileCoord];
                 if (count == 0)
                     return float4(0, 0, 0, 1); // Black for empty tiles
                 else if (count >= _MaxVertsPerTile)

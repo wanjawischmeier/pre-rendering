@@ -4,9 +4,9 @@ using UnityEngine.Rendering;
 public class QuadDemoLoader : MonoBehaviour
 {
     public ComputeShader computeShader;
-    public Material softwareRasterDebug, hardwareRasterDebug, hardwareRasterMaterial, tileOccupancyDebug;
+    public Material softwareRasterDebug, hardwareRasterDebug, hardwareRasterMaterial, tileOccupancyDebug, vertexLookupDebug;
     public Texture2D inputTexture;
-    public RenderTexture softwareRasterizedDepth, hardwareRasterizedDepth, softwareRasterizerTileCounters;
+    public RenderTexture vertexLookup, softwareRasterizedDepth, hardwareRasterizedDepth, softwareRasterizerTileCounters;
     public float nearClip, farClip;
     public Vector2Int rescaledInputResolution, dispatchResolution, renderTargetResolution;
     public bool autoResolution = true;
@@ -42,6 +42,10 @@ public class QuadDemoLoader : MonoBehaviour
         softwareRasterizedDepth.enableRandomWrite = true;
         softwareRasterizedDepth.Create();
 
+        vertexLookup = new RenderTexture(softwareRasterizedDepth);
+        vertexLookup.format = RenderTextureFormat.RGInt;
+        vertexLookup.Create();
+
         int tileCountX = Mathf.CeilToInt((float)renderTargetResolution.x / swTileSize);
         int tileCountY = Mathf.CeilToInt((float)renderTargetResolution.y / swTileSize);
         softwareRasterizerTileCounters = new RenderTexture(tileCountX, tileCountY, 0, RenderTextureFormat.RInt);
@@ -72,6 +76,7 @@ public class QuadDemoLoader : MonoBehaviour
         computeShader.SetMatrixArray("_OrientationMatricies", CubeMapConversion.orientationMatricies);
 
         computeShader.SetTexture(transformVerticesKernelHandle, "_InputColorBuffer", inputTexture);
+        computeShader.SetTexture(transformVerticesKernelHandle, "RW_VertexLookup", vertexLookup);
         computeShader.SetBuffer(transformVerticesKernelHandle, "g_SWQuads", softwareRasterizerVertexBuffer);
         computeShader.SetBuffer(rasterizeBinnedQuadsKernelHandle, "g_SWQuads", softwareRasterizerVertexBuffer);
         computeShader.SetTexture(transformVerticesKernelHandle, "g_SWTileCounters", softwareRasterizerTileCounters);
@@ -81,8 +86,9 @@ public class QuadDemoLoader : MonoBehaviour
 
         softwareRasterDebug.SetVector("_InputResolution", new Vector2(renderTargetResolution.x, renderTargetResolution.y));
         softwareRasterDebug.SetTexture("_InputDepthBuffer", softwareRasterizedDepth);
-
         tileOccupancyDebug.SetTexture("_TileCounts", softwareRasterizerTileCounters);
+        vertexLookupDebug.SetTexture("_VertexLookup", vertexLookup);
+        vertexLookupDebug.SetVector("_Resolution", new Vector2(renderTargetResolution.x, renderTargetResolution.y));
     }
 
     private void Update()
@@ -91,6 +97,8 @@ public class QuadDemoLoader : MonoBehaviour
         RenderTexture.active = softwareRasterizedDepth;
         GL.Clear(true, true, new Color(int.MaxValue, 0, 0));
         RenderTexture.active = softwareRasterizerTileCounters;
+        GL.Clear(true, true, new Color(0, 0, 0));
+        RenderTexture.active = vertexLookup;
         GL.Clear(true, true, new Color(0, 0, 0));
         RenderTexture.active = rt;
 

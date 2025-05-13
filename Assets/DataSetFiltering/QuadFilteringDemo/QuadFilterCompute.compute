@@ -16,6 +16,7 @@ uniform float4x4 _OrientationMatricies[6];
 
 Texture2D<float4> _InputColorBuffer;
 RWTexture2D<int> RW_SWDepthBuffer;
+RWTexture2D<int2> RW_VertexLookup;
 AppendStructuredBuffer<float3x3> _HWVerts0, _HWVerts1, _HWVerts2, _HWVerts3;
 RWStructuredBuffer<float2x3> g_SWQuads;
 RWTexture2D<uint> g_SWTileCounters;
@@ -222,8 +223,8 @@ void TransformVertices(uint3 id : SV_DispatchThreadID)
     float2 uv10 = float2(tc10) / _InputResolution;
     float2 uv01 = float2(tc01) / _InputResolution;
     
-    float3 transformedVertex10 = GetTransformedVertexUV(uv10, sampled10.a);
-    float3 transformedVertex01 = GetTransformedVertexUV(uv01, sampled01.a);
+    float3 uv10_t = GetTransformedVertexUV(uv10, sampled10.a);
+    float3 uv01_t = GetTransformedVertexUV(uv01, sampled01.a);
     
     float4 sampled00 = _InputColorBuffer[tc00];
     
@@ -231,24 +232,29 @@ void TransformVertices(uint3 id : SV_DispatchThreadID)
     uint2 tc11 = tc00 + tcOff.xy;
     float2 uv11 = float2(tc11) / _InputResolution;
     float4 sampled11 = _InputColorBuffer[tc11];
-    float3 transformedVertex11 = GetTransformedVertexUV(uv11, sampled11.a);
+    float3 uv11_t = GetTransformedVertexUV(uv11, sampled11.a);
     
     if (!IS_DEPTH_INVALID(sampled00))
     {
-        float3 transformedVertex00 = GetTransformedVertexUV(uv00, sampled00.a);
-        if (!IS_UV_OUT_OF_BOUNDS(transformedVertex00) || !IS_UV_OUT_OF_BOUNDS(transformedVertex10) || !IS_UV_OUT_OF_BOUNDS(transformedVertex01))
+        float3 uv00_t = GetTransformedVertexUV(uv00, sampled00.a);
+        if (!IS_UV_OUT_OF_BOUNDS(uv00_t) || !IS_UV_OUT_OF_BOUNDS(uv10_t) || !IS_UV_OUT_OF_BOUNDS(uv01_t))
         {
-            bool pushed = TryPushTriangleToHardwareRasterizer(transformedVertex01, transformedVertex10, transformedVertex00, id);
-            if (!pushed && !IS_UV_OUT_OF_BOUNDS(transformedVertex00)) // TODO: Combine bounds checks
+            int2 tc00_p = floor(uv00_t.xy * _OutputResolution);
+            int tc00_pIndex = tc00_p.x + tc00_p.y * _OutputResolution.x;
+            int depthInt = asint(uv00_t.z);
+            RW_VertexLookup[id.xy] = int2(tc00_pIndex, depthInt);
+            
+            bool pushed = TryPushTriangleToHardwareRasterizer(uv01_t, uv10_t, uv00_t, id);
+            if (!pushed && !IS_UV_OUT_OF_BOUNDS(uv00_t)) // TODO: Combine bounds checks
             {
-                PushQuadToSoftwareRasterizer(transformedVertex00, transformedVertex10, transformedVertex01, transformedVertex11);
+                PushQuadToSoftwareRasterizer(uv00_t, uv10_t, uv01_t, uv11_t);
             }
         }
     }
     
     if (!IS_DEPTH_INVALID(sampled11))
     {
-        TryPushTriangleToHardwareRasterizer(transformedVertex11, transformedVertex10, transformedVertex01, id);
+        TryPushTriangleToHardwareRasterizer(uv11_t, uv10_t, uv01_t, id);
     }
 }
 
