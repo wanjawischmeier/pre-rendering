@@ -108,7 +108,7 @@ public class QuadDemoLoader : MonoBehaviour
         for (int i = 0; i < vertexBufferCount; i++)
         {
             hardwareRasterizerVertexBuffers[i].SetCounterValue(0); // Reset append buffer
-            computeShader.SetBuffer(transformVerticesKernelHandle, $"_HWVerts{i}", hardwareRasterizerVertexBuffers[i]);
+            computeShader.SetBuffer(transformVerticesKernelHandle, $"_HWTriBuffer{i}", hardwareRasterizerVertexBuffers[i]);
         }
 
         computeShader.Dispatch(transformVerticesKernelHandle, dispatchResolution.x / 8, dispatchResolution.y / 8, 1);
