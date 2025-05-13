@@ -66,20 +66,20 @@ public class QuadDemoLoader : MonoBehaviour
 
         transformVerticesKernelHandle = computeShader.FindKernel("TransformVertices");
         rasterizeBinnedQuadsKernelHandle = computeShader.FindKernel("RasterizeTileBinnedQuads");
-        computeShader.SetVector("_InputResolution", new Vector2(inputTexture.width, inputTexture.height));
-        computeShader.SetVector("_DispatchResolution", new Vector2(dispatchResolution.x, dispatchResolution.y));
-        computeShader.SetVector("_OutputResolution", new Vector2(renderTargetResolution.x, renderTargetResolution.y));
-        computeShader.SetMatrixArray("_OrientationMatricies", CubeMapConversion.orientationMatricies);
+        computeShader.SetVector("_InputRes", new Vector2(inputTexture.width, inputTexture.height));
+        computeShader.SetVector("_DispatchRes", new Vector2(dispatchResolution.x, dispatchResolution.y));
+        computeShader.SetVector("_OutputRes", new Vector2(renderTargetResolution.x, renderTargetResolution.y));
+        computeShader.SetMatrixArray("_FaceViewMatrices", CubeMapConversion.orientationMatricies);
 
-        computeShader.SetTexture(transformVerticesKernelHandle, "_InputColorBuffer", inputTexture);
-        computeShader.SetBuffer(transformVerticesKernelHandle, "g_SWQuads", softwareRasterizerVertexBuffer);
-        computeShader.SetBuffer(rasterizeBinnedQuadsKernelHandle, "g_SWQuads", softwareRasterizerVertexBuffer);
-        computeShader.SetTexture(transformVerticesKernelHandle, "g_SWTileCounters", softwareRasterizerTileCounters);
-        computeShader.SetTexture(rasterizeBinnedQuadsKernelHandle, "g_SWTileCounters", softwareRasterizerTileCounters);
-        computeShader.SetTexture(transformVerticesKernelHandle, "RW_SWDepthBuffer", softwareRasterizedDepth);
-        computeShader.SetTexture(rasterizeBinnedQuadsKernelHandle, "RW_SWDepthBuffer", softwareRasterizedDepth);
+        computeShader.SetTexture(transformVerticesKernelHandle, "_InputColorTex", inputTexture);
+        computeShader.SetBuffer(transformVerticesKernelHandle, "_QuadBuffer_SW", softwareRasterizerVertexBuffer);
+        computeShader.SetBuffer(rasterizeBinnedQuadsKernelHandle, "_QuadBuffer_SW", softwareRasterizerVertexBuffer);
+        computeShader.SetTexture(transformVerticesKernelHandle, "_TileCounterTex_SW", softwareRasterizerTileCounters);
+        computeShader.SetTexture(rasterizeBinnedQuadsKernelHandle, "_TileCounterTex_SW", softwareRasterizerTileCounters);
+        computeShader.SetTexture(transformVerticesKernelHandle, "RW_DepthTex_SW", softwareRasterizedDepth);
+        computeShader.SetTexture(rasterizeBinnedQuadsKernelHandle, "RW_DepthTex_SW", softwareRasterizedDepth);
 
-        softwareRasterDebug.SetVector("_InputResolution", new Vector2(renderTargetResolution.x, renderTargetResolution.y));
+        softwareRasterDebug.SetVector("_InputRes", new Vector2(renderTargetResolution.x, renderTargetResolution.y));
         softwareRasterDebug.SetTexture("_InputDepthBuffer", softwareRasterizedDepth);
 
         tileOccupancyDebug.SetTexture("_TileCounts", softwareRasterizerTileCounters);
@@ -98,12 +98,12 @@ public class QuadDemoLoader : MonoBehaviour
         Matrix4x4 viewMatrix = Camera.main.worldToCameraMatrix;
         Matrix4x4 projMatrix = GL.GetGPUProjectionMatrix(Camera.main.projectionMatrix, true);
         Matrix4x4 viewProjMatrix = projMatrix * viewMatrix;
-        computeShader.SetMatrix("_CameraViewProj", viewProjMatrix);
+        computeShader.SetMatrix("_CameraVP", viewProjMatrix);
 
-        computeShader.SetFloat("_MapNearClip", nearClip);
-        computeShader.SetFloat("_MapFarClip", farClip);
+        computeShader.SetFloat("_NearClip", nearClip);
+        computeShader.SetFloat("_FarClip", farClip);
         computeShader.SetVector("_UVOffset", uvOffset);
-        computeShader.SetVector("_Offset", transform.position);
+        computeShader.SetVector("_WorldOffset", transform.position);
 
         for (int i = 0; i < vertexBufferCount; i++)
         {

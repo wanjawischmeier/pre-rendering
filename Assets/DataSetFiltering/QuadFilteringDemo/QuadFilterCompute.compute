@@ -4,32 +4,48 @@
 #define MAX_VERTS_PER_TILE  256
 #define IS_DEPTH_VALID(sampled) (sampled.a > 0.001 && sampled.a != 1)
 #define IS_DEPTH_INVALID(sampled) (sampled.a < 0.01 || sampled.a == 1)
-#define IS_TARGET_OUT_OF_BOUNDS(tc) (tc.x < 0 || tc.x >= _OutputResolution.x || tc.y < 0 || tc.y >= _OutputResolution.y)
+#define IS_TARGET_OUT_OF_BOUNDS(tc) (tc.x < 0 || tc.x >= _OutputRes.x || tc.y < 0 || tc.y >= _OutputRes.y)
 #define IS_UV_OUT_OF_BOUNDS(uv) any(uv < 0.0 || uv > 1.0)
 
-uniform float _MapNearClip, _MapFarClip;
-uniform uint2 _InputResolution, _DispatchResolution, _OutputResolution;
-uniform float2 _UVOffset;
-uniform float3 _Offset;
-uniform float4x4 _CameraViewProj;
-uniform float4x4 _OrientationMatricies[6];
+// Depth range
+float _NearClip;
+float _FarClip;
 
-Texture2D<float4> _InputColorBuffer;
-RWTexture2D<int> RW_SWDepthBuffer;
-AppendStructuredBuffer<float3x3> _HWVerts0, _HWVerts1, _HWVerts2, _HWVerts3;
-RWStructuredBuffer<float2x3> g_SWQuads;
-RWTexture2D<uint> g_SWTileCounters;
+// Resolution info
+uint2 _InputRes;
+uint2 _DispatchRes;
+uint2 _OutputRes;
+
+// UV, position, camera
+float2 _UVOffset;
+float3 _WorldOffset;
+float4x4 _CameraVP;
+float4x4 _FaceViewMatrices[6];
+
+// Textures
+Texture2D<float4> _InputColorTex;
+RWTexture2D<int> RW_DepthTex_SW;
+
+// Append buffers (hardware raster)
+AppendStructuredBuffer<float3x3> _HWTriBuffer0;
+AppendStructuredBuffer<float3x3> _HWTriBuffer1;
+AppendStructuredBuffer<float3x3> _HWTriBuffer2;
+AppendStructuredBuffer<float3x3> _HWTriBuffer3;
+
+// Software quad binning
+RWStructuredBuffer<float2x3> _QuadBuffer_SW;
+RWTexture2D<uint> _TileCounterTex_SW;
 
 float3 GetTransformedVertexUV(float2 uv, float normalizedDepth)
 {
-    float depth = normalizedDepth * (_MapFarClip - _MapNearClip) + _MapNearClip; // Rescale depth
+    float depth = normalizedDepth * (_FarClip - _NearClip) + _NearClip; // Rescale depth
     
     float2 viewSpace = uv * 2 - 1; // To [-1, 1] NDC
     float3 dir = float3(viewSpace, 1); // Assume direction vector
     float3 pos = dir * depth; // Scale direction by depth
 
     float4 worldPosition = float4(pos, 1); // World space position
-    float4 clipPos = mul(_CameraViewProj, worldPosition);
+    float4 clipPos = mul(_CameraVP, worldPosition);
     if (clipPos.w <= 0)
         return float3(0, 0, -1); // Invalid position, return a sentinel value
     
@@ -75,9 +91,9 @@ int ClassifyTriangle(float3 v0, float3 v1, float3 v2)
         return 0;
 
     // Convert vertex positions to pixel coordinates
-    uint2 tc0 = floor(v0.xy * _OutputResolution);
-    uint2 tc1 = floor(v1.xy * _OutputResolution);
-    uint2 tc2 = floor(v2.xy * _OutputResolution);
+    uint2 tc0 = floor(v0.xy * _OutputRes);
+    uint2 tc1 = floor(v1.xy * _OutputRes);
+    uint2 tc2 = floor(v2.xy * _OutputRes);
 
     // 1. Regular tile classification
     uint2 tile0 = tc0 / TILE_SIZE;
@@ -106,9 +122,9 @@ bool TryPushTriangleToHardwareRasterizer(float3 v0, float3 v1, float3 v2, uint3 
     if (IsDegenerateTriangle(v0, v1, v2))
         return true; // Discard degenerate triangles, but mark as pushed
     
-    uint2 tc0 = floor(v0.xy * _OutputResolution);
-    uint2 tc1 = floor(v1.xy * _OutputResolution);
-    uint2 tc2 = floor(v2.xy * _OutputResolution);
+    uint2 tc0 = floor(v0.xy * _OutputRes);
+    uint2 tc1 = floor(v1.xy * _OutputRes);
+    uint2 tc2 = floor(v2.xy * _OutputRes);
     
     // Check if all three vertices lie in the same tile
     uint2 tile0 = tc0 / TILE_SIZE;
@@ -120,23 +136,23 @@ bool TryPushTriangleToHardwareRasterizer(float3 v0, float3 v1, float3 v2, uint3 
     {   
         // Vertices are in different tiles, so we need to push to the hardware rasterizer
         float3x3 tri = float3x3(v0 * 2 - 1, v1 * 2 - 1, v2 * 2 - 1); // Convert to NDC
-        // _HWVerts0.Append(tri);
+        // _HWTriBuffer0.Append(tri);
         
         // Push to the appropriate buffer group
         uint bufferGroupIndex = (threadID.x ^ threadID.y ^ threadID.z) & 3;
         switch (bufferGroupIndex)
         {
             case 0:
-                _HWVerts0.Append(tri);
+                _HWTriBuffer0.Append(tri);
                 break;
             case 1:
-                _HWVerts1.Append(tri);
+                _HWTriBuffer1.Append(tri);
                 break;
             case 2:
-                _HWVerts2.Append(tri);
+                _HWTriBuffer2.Append(tri);
                 break;
             case 3:
-                _HWVerts3.Append(tri);
+                _HWTriBuffer3.Append(tri);
                 break;
         }
         
@@ -149,10 +165,10 @@ bool TryPushTriangleToHardwareRasterizer(float3 v0, float3 v1, float3 v2, uint3 
 
 bool IsOnePixelQuad(float3 v0, float3 v1, float3 v2, float3 v3)
 {
-    uint2 p0 = floor(v0.xy * _OutputResolution); // TODO: Remove redunant calculation and pass as argument
-    uint2 p1 = floor(v1.xy * _OutputResolution);
-    uint2 p2 = floor(v2.xy * _OutputResolution);
-    uint2 p3 = floor(v3.xy * _OutputResolution);
+    uint2 p0 = floor(v0.xy * _OutputRes); // TODO: Remove redunant calculation and pass as argument
+    uint2 p1 = floor(v1.xy * _OutputRes);
+    uint2 p2 = floor(v2.xy * _OutputRes);
+    uint2 p3 = floor(v3.xy * _OutputRes);
 
     return all(p0 == p1) && all(p1 == p2) && all(p2 == p3);
 }
@@ -160,23 +176,23 @@ bool IsOnePixelQuad(float3 v0, float3 v1, float3 v2, float3 v3)
 void BinSoftwareQuadApproximation(float2x3 quadApprox, uint2 screenPos, bool useOffsetTileBuffer)
 {
     uint2 tileCoord = screenPos / TILE_SIZE;
-    uint tileIndex = tileCoord.y * (_OutputResolution.x / TILE_SIZE) + tileCoord.x;
+    uint tileIndex = tileCoord.y * (_OutputRes.x / TILE_SIZE) + tileCoord.x;
 
     // Atomically increment the tile counter and get the vertex index
     uint localIndex;
-    InterlockedAdd(g_SWTileCounters[tileCoord], 1, localIndex);
+    InterlockedAdd(_TileCounterTex_SW[tileCoord], 1, localIndex);
 
     if (localIndex < MAX_VERTS_PER_TILE)
     {
         uint globalIndex = tileIndex * MAX_VERTS_PER_TILE + localIndex;
-        g_SWQuads[globalIndex] = quadApprox;
+        _QuadBuffer_SW[globalIndex] = quadApprox;
     }
     // Else: drop vertex (tile overflow)
 }
 
 void PushQuadToSoftwareRasterizer(float3 v0, float3 v1, float3 v2, float3 v3)
 {
-    uint2 targetIndex = floor(v0.xy * _OutputResolution);
+    uint2 targetIndex = floor(v0.xy * _OutputRes);
     
     if (IsOnePixelQuad(v0, v1, v2, v3))
     {
@@ -184,7 +200,7 @@ void PushQuadToSoftwareRasterizer(float3 v0, float3 v1, float3 v2, float3 v3)
         int depthInt = asint(v0.z); // InterlockedMin works only on int, so convert depth to int
         int oldDepthInt;
     
-        InterlockedMin(RW_SWDepthBuffer[targetIndex], depthInt, oldDepthInt);
+        InterlockedMin(RW_DepthTex_SW[targetIndex], depthInt, oldDepthInt);
         return;
     }
     
@@ -198,39 +214,39 @@ void PushQuadToSoftwareRasterizer(float3 v0, float3 v1, float3 v2, float3 v3)
 void TransformVertices(uint3 id : SV_DispatchThreadID)
 {
     // Check if bottom or right is out of bounds
-    if (id.x >= _InputResolution.x - 1 || id.y >= _InputResolution.y - 1)
+    if (id.x >= _InputRes.x - 1 || id.y >= _InputRes.y - 1)
     {
         // Can't construct quad
         return;
     }
     
     // Compute texel coordinates
-    uint3 tcOff = uint3(_InputResolution / _DispatchResolution, 0);
-    float2 uv00 = float2(id.xy) / _DispatchResolution;
-    uint2 tc00 = all(_InputResolution == _DispatchResolution) ? id.xy : uv00 * _InputResolution;
+    uint3 tcOff = uint3(_InputRes / _DispatchRes, 0);
+    float2 uv00 = float2(id.xy) / _DispatchRes;
+    uint2 tc00 = all(_InputRes == _DispatchRes) ? id.xy : uv00 * _InputRes;
     
     uint2 tc10 = tc00 + tcOff.xz;
-    float4 sampled10 = _InputColorBuffer[tc10];
+    float4 sampled10 = _InputColorTex[tc10];
     if (!IS_DEPTH_VALID(sampled10))
         return;
     
     uint2 tc01 = tc00 + tcOff.zy;
-    float4 sampled01 = _InputColorBuffer[tc01];
+    float4 sampled01 = _InputColorTex[tc01];
     if (!IS_DEPTH_VALID(sampled01))
         return;
     
-    float2 uv10 = float2(tc10) / _InputResolution;
-    float2 uv01 = float2(tc01) / _InputResolution;
+    float2 uv10 = float2(tc10) / _InputRes;
+    float2 uv01 = float2(tc01) / _InputRes;
     
     float3 transformedVertex10 = GetTransformedVertexUV(uv10, sampled10.a);
     float3 transformedVertex01 = GetTransformedVertexUV(uv01, sampled01.a);
     
-    float4 sampled00 = _InputColorBuffer[tc00];
+    float4 sampled00 = _InputColorTex[tc00];
     
     // TODO: Determine if and when we need to calculate this
     uint2 tc11 = tc00 + tcOff.xy;
-    float2 uv11 = float2(tc11) / _InputResolution;
-    float4 sampled11 = _InputColorBuffer[tc11];
+    float2 uv11 = float2(tc11) / _InputRes;
+    float4 sampled11 = _InputColorTex[tc11];
     float3 transformedVertex11 = GetTransformedVertexUV(uv11, sampled11.a);
     
     if (!IS_DEPTH_INVALID(sampled00))
@@ -298,9 +314,9 @@ void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : 
     // Calculate coords
     uint2 globalPixel = groupID.xy * TILE_SIZE + groupThreadID.xy;
     uint2 tileCoord = globalPixel / TILE_SIZE;
-    uint tileIndex = tileCoord.y * (_OutputResolution.x / TILE_SIZE) + tileCoord.x;
+    uint tileIndex = tileCoord.y * (_OutputRes.x / TILE_SIZE) + tileCoord.x;
     
-    uint numTris = g_SWTileCounters[tileCoord];
+    uint numTris = _TileCounterTex_SW[tileCoord];
     if (numTris == 0)
     {
         // No triangles in this tile, so skip
@@ -312,17 +328,17 @@ void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : 
     for (uint i = 0; i < min(numTris, MAX_VERTS_PER_TILE); i++)
     {
         // Load the triangle from the buffer
-        float2x3 tri = g_SWQuads[tileOffset + i];
+        float2x3 tri = _QuadBuffer_SW[tileOffset + i];
         float3 v0 = tri[0];
         float3 aabb = tri[1];
 
         // Check if the pixel is within the AABB
-        float2 uv = float2(globalPixel) / _OutputResolution;
+        float2 uv = float2(globalPixel) / _OutputRes;
         if (IsInAABB(uv, v0, aabb))
         {
             int depthInt = asint(v0.z);
             
-            RW_SWDepthBuffer[globalPixel] = depthInt;
+            RW_DepthTex_SW[globalPixel] = depthInt;
             return;
         }
     }

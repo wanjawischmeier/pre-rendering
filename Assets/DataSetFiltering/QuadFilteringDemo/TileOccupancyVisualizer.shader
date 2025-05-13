@@ -2,9 +2,9 @@
 {
     Properties
     {
-        _OutputResolution ("Output Resolution", Vector) = (1024, 1024, 0, 0)
+        _OutputRes ("Output Resolution", Vector) = (1024, 1024, 0, 0)
         _TileSize ("Tile Size", Float) = 16
-        _MaxVertsPerTile ("Max Verts Per Tile", Float) = 256
+        _MaxVertsPerTile ("Max Verts Per Tile", Integer) = 256
     }
     SubShader
     {
@@ -21,9 +21,9 @@
 
             Texture2D<uint> _TileCounts;
 
-            float4 _OutputResolution;
+            float4 _OutputRes;
             float _TileSize;
-            float _MaxVertsPerTile;
+            uint _MaxVertsPerTile;
 
             struct v2f
             {
@@ -52,7 +52,7 @@
 
             float4 frag(v2f i) : SV_Target
             {
-                float2 pixel = i.uv * _OutputResolution.xy;
+                float2 pixel = i.uv * _OutputRes.xy;
                 uint2 tileCoord = uint2(pixel / _TileSize);
 
                 uint count = _TileCounts[tileCoord];
