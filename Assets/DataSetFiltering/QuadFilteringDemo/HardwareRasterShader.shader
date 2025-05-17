@@ -16,9 +16,18 @@ Shader "Unlit/HardwareRasterShader_Debug"
             uniform float _CameraNearClip, _CameraFarClip, _EdgeThreshold;
             uniform uint2 _InputResolution, _OutputResolution;
 
-            Texture2D<int2> _VertexLookup;
-            StructuredBuffer<uint> _Quads;
+            Texture2D<int2> _VertexBuffer;
+            StructuredBuffer<uint> _QuadIndexBuffer;
             
+            bool IsVertexUsed(uint quadType, uint vtxOffsetIndex)
+            {
+                if (quadType == 3) return true; // both
+                if (quadType == 1 && vtxOffsetIndex < 3) return true; // top only
+                if (quadType == 2 && vtxOffsetIndex >= 3) return true; // bottom only
+
+                return false;
+            }
+
             // Maps index i <- [0,5] to the corresponding vertex offset and index in unit quad
             uint3 GetQuadVertexOffset(uint index)
             {
@@ -48,7 +57,16 @@ Shader "Unlit/HardwareRasterShader_Debug"
                 // Which quad does this vertex belong to?
                 uint quadIndex = id / 6;
                 uint vtxOffsetIndex = id % 6;
-                uint quadBaseIndex = _Quads[quadIndex];
+                uint packedIndex = _QuadIndexBuffer[quadIndex];
+                uint quadType = packedIndex & 0x3;
+                uint quadBaseIndex = packedIndex >> 2;
+
+                if (!IsVertexUsed(quadType, vtxOffsetIndex))
+                {
+                    o.pos = float4(0, 0, 0, 0);
+                    o.bary = float3(0, 0, 0);
+                    return o;
+                }
 
                 // Convert flat index back into 2D coordinates
                 uint2 baseCoords;
@@ -60,7 +78,7 @@ Shader "Unlit/HardwareRasterShader_Debug"
                 uint2 sampleCoords = baseCoords + uint2(quadVertex.xy);
 
                 // Use that to fetch final screen-space info from the lookup
-                int2 vertLookup = _VertexLookup[sampleCoords];
+                int2 vertLookup = _VertexBuffer[sampleCoords];
                 uint2 vertCoords;
                 vertCoords.x = vertLookup.x % _OutputResolution.x;
                 vertCoords.y = vertLookup.x / _OutputResolution.x;
@@ -76,7 +94,7 @@ Shader "Unlit/HardwareRasterShader_Debug"
                 // Assume triangles are laid out consecutively
                 uint vtxIndex = id % 3;
                 uint triIndex = (id - vtxIndex) / 3;
-                float3x3 verts = _Quads[triIndex];
+                float3x3 verts = _QuadIndexBuffer[triIndex];
 
                 o.pos = float4(verts[vtxIndex], 1);
                 o.pos.y = -o.pos.y; // Flip Y for NDC
