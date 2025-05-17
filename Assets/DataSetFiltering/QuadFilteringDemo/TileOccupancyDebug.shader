@@ -1,4 +1,4 @@
-﻿Shader "Unlit/TileOccupancyHeatmap"
+﻿Shader "Unlit/TileOccupancyDebug"
 {
     Properties
     {

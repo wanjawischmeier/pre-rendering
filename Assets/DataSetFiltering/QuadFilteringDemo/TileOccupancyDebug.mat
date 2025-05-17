@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: TileOccupancyVisualizer
+  m_Name: TileOccupancyDebug
   m_Shader: {fileID: 4800000, guid: 934d057f39a42894f86f3c7645de5872, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0

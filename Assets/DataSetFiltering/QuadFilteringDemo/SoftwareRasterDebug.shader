@@ -1,4 +1,4 @@
-Shader "Unlit/QuadDebugShader"
+Shader "Unlit/SoftwareRasterDebug"
 {
     Properties
     {
