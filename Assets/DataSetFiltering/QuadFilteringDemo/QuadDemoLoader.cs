@@ -4,7 +4,7 @@ using UnityEngine.Rendering;
 public class QuadDemoLoader : MonoBehaviour
 {
     public ComputeShader computeShader;
-    public Material softwareRasterDebug, hardwareRasterDebug, hardwareRasterMaterial, tileOccupancyDebug, vertexLookupDebug;
+    public Material softwareRasterDebug, hardwareRasterDebug, hardwareRasterMaterial, postProcessingPass, tileOccupancyDebug, vertexLookupDebug;
     public Texture2D inputTexture;
     public RenderTexture vertexLookup, softwareRasterizedDepth, hardwareRasterizedDepth, softwareRasterizerTileCounters;
     public float nearClip, farClip;
@@ -18,7 +18,7 @@ public class QuadDemoLoader : MonoBehaviour
     private int transformVerticesKernelHandle, binQuadsKernel, rasterizeBinnedQuadsKernelHandle;
     const int vertexBufferCount = 4;
     const int swTileSize = 32;
-    const int swMaxVertsPerTile = 256; // 16x16 tile
+    const int swMaxVertsPerTile = 256;
 
     private void Start()
     {
@@ -77,17 +77,22 @@ public class QuadDemoLoader : MonoBehaviour
 
         computeShader.SetTexture(transformVerticesKernelHandle, "_InputColorBuffer", inputTexture);
         computeShader.SetTexture(transformVerticesKernelHandle, "RW_VertexBuffer", vertexLookup);
+
         computeShader.SetTexture(binQuadsKernel, "RW_VertexBuffer", vertexLookup);
-        // computeShader.SetBuffer(transformVerticesKernelHandle, "g_SWQuads", softwareRasterizerVertexBuffer);
-        // computeShader.SetBuffer(rasterizeBinnedQuadsKernelHandle, "g_SWQuads", softwareRasterizerVertexBuffer);
-        // computeShader.SetTexture(transformVerticesKernelHandle, "g_SWTileCounters", softwareRasterizerTileCounters);
-        // computeShader.SetTexture(rasterizeBinnedQuadsKernelHandle, "g_SWTileCounters", softwareRasterizerTileCounters);
-        // computeShader.SetTexture(transformVerticesKernelHandle, "RW_SWDepthBuffer", softwareRasterizedDepth);
-        // computeShader.SetTexture(rasterizeBinnedQuadsKernelHandle, "RW_SWDepthBuffer", softwareRasterizedDepth);
+        computeShader.SetTexture(binQuadsKernel, "RW_DepthBuffer_SW", softwareRasterizedDepth);
+        computeShader.SetTexture(binQuadsKernel, "_TileCounters_SW", softwareRasterizerTileCounters);
+        computeShader.SetBuffer(binQuadsKernel, "_QuadIndexBuffer_SW", softwareRasterizerVertexBuffer);
+
+        computeShader.SetTexture(rasterizeBinnedQuadsKernelHandle, "RW_DepthBuffer_SW", softwareRasterizedDepth);
+        computeShader.SetTexture(rasterizeBinnedQuadsKernelHandle, "_TileCounters_SW", softwareRasterizerTileCounters);
+        computeShader.SetBuffer(rasterizeBinnedQuadsKernelHandle, "_QuadIndexBuffer_SW", softwareRasterizerVertexBuffer);
+
+        postProcessingPass.SetTexture("_DepthBuffer_SW", softwareRasterizedDepth);
+        postProcessingPass.SetTexture("_DepthBuffer_HW", hardwareRasterizedDepth);
 
         softwareRasterDebug.SetVector("_InputResolution", new Vector2(renderTargetResolution.x, renderTargetResolution.y));
         softwareRasterDebug.SetTexture("_InputDepthBuffer", softwareRasterizedDepth);
-        tileOccupancyDebug.SetTexture("_TileCounts", softwareRasterizerTileCounters);
+        tileOccupancyDebug.SetTexture("_TileCounters", softwareRasterizerTileCounters);
         vertexLookupDebug.SetTexture("_VertexBuffer", vertexLookup);
         vertexLookupDebug.SetVector("_InputResolution", new Vector2(inputTexture.width, inputTexture.height));
         vertexLookupDebug.SetVector("_OutputResolution", new Vector2(renderTargetResolution.x, renderTargetResolution.y));
@@ -140,8 +145,7 @@ public class QuadDemoLoader : MonoBehaviour
         var cmd = new CommandBuffer();
         cmd.name = "Draw Hardware & Software Raster Batches";
 
-        // cmd.DispatchCompute(computeShader, rasterizeBinnedQuadsKernelHandle, renderTargetResolution.x / swTileSize, renderTargetResolution.y / swTileSize, 1);
-        // cmd.DispatchCompute(computeShader, rasterizeBinnedQuadsKernelHandle, renderTargetResolution.x / swTileSize, renderTargetResolution.y / swTileSize, 1);
+        cmd.DispatchCompute(computeShader, rasterizeBinnedQuadsKernelHandle, renderTargetResolution.x / swTileSize, renderTargetResolution.y / swTileSize, 1);
 
 
         // Set render target and draw procedurally
@@ -182,7 +186,7 @@ public class QuadDemoLoader : MonoBehaviour
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
-        
+        // Graphics.Blit(null, destination, postProcessingPass);
     }
 
     private void OnDestroy()

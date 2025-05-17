@@ -89,18 +89,7 @@ Shader "Unlit/HardwareRasterShader_Debug"
                 float depth = asfloat(vertLookup.y);
 
                 o.pos = float4(ndc, depth, 1.0);
-
-                /*
-                // Assume triangles are laid out consecutively
-                uint vtxIndex = id % 3;
-                uint triIndex = (id - vtxIndex) / 3;
-                float3x3 verts = _QuadIndexBuffer[triIndex];
-
-                o.pos = float4(verts[vtxIndex], 1);
-                o.pos.y = -o.pos.y; // Flip Y for NDC
-                */
                 o.bary = float3(quadVertex.z == 0 || quadVertex.z == 3, quadVertex.z == 1 || quadVertex.z == 3, quadVertex.z == 2);
-                // o.bary.x = verts[vtxIndex].z;
 
                 return o;
             }
@@ -112,7 +101,6 @@ Shader "Unlit/HardwareRasterShader_Debug"
 
                 // Distance from edge (i.e., min bary value)
                 float edge = min(min(i.bary.x, i.bary.y), i.bary.z);
-
                 if (edge < _EdgeThreshold)
                 {
                     return float4(1, 0, 0, 1); // Red edges

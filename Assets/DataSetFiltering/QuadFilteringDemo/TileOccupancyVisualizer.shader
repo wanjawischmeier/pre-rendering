@@ -19,7 +19,7 @@
 
             #include "UnityCG.cginc"
 
-            Texture2D<uint> _TileCounts;
+            Texture2D<uint> _TileCounters;
 
             float4 _OutputResolution;
             float _TileSize;
@@ -52,10 +52,13 @@
 
             float4 frag(v2f i) : SV_Target
             {
-                float2 pixel = i.uv * _OutputResolution.xy;
+                float2 uv = i.uv;
+                uv.y = 1 - uv.y; // Flip Y coordinate for correct UV mapping
+
+                float2 pixel = uv * _OutputResolution.xy;
                 uint2 tileCoord = uint2(pixel / _TileSize);
 
-                int count = _TileCounts[tileCoord];
+                int count = _TileCounters[tileCoord];
                 if (count == 0)
                     return float4(0, 0, 0, 1); // Black for empty tiles
                 else if (count >= _MaxVertsPerTile)

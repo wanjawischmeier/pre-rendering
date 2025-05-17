@@ -14,7 +14,7 @@ Shader "Unlit/VertexLookupDebug"
 
             #include "UnityCG.cginc"
 
-            Texture2D<int2> _VertexLookup;
+            Texture2D<int2> _VertexBuffer;
 
             uniform uint2 _InputResolution, _OutputResolution;
 
@@ -35,7 +35,7 @@ Shader "Unlit/VertexLookupDebug"
             float4 frag(v2f i) : SV_Target
             {
                 uint2 tc = floor(i.uv * _InputResolution);
-                int2 lookup = _VertexLookup[tc];
+                int2 lookup = _VertexBuffer[tc];
                 if (lookup.x == -1)
                 {
                     return float4(0, 0, 0, 1); // No data
