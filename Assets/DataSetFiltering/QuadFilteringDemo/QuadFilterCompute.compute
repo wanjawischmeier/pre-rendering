@@ -132,7 +132,7 @@ void TransformVertices(uint3 id : SV_DispatchThreadID)
 AppendStructuredBuffer<uint> _QuadIndexBuffer_HW0, _QuadIndexBuffer_HW1, _QuadIndexBuffer_HW2, _QuadIndexBuffer_HW3;
 
 RWTexture2D<int> RW_DepthBuffer_SW;
-RWStructuredBuffer<uint2> _QuadIndexBuffer_SW;
+RWStructuredBuffer<uint3> _QuadIndexBuffer_SW;
 RWTexture2D<uint> _TileCounters_SW;
 
 // Quad types:
@@ -180,10 +180,10 @@ bool IsQuadSoftwareRasterizable(uint quadType, uint2 tc00, uint2 tc10, uint2 tc0
     }
 }
 
-uint2 GetTexCoordFromIndex(int index)
+uint2 GetTexCoordFromIndex(int index, uint2 resolution)
 {
-    uint x = index % _OutputResolution.x;
-    uint y = index / _OutputResolution.x;
+    uint x = index % resolution.x;
+    uint y = index / resolution.x;
     return uint2(x, y);
 }
 
@@ -285,7 +285,7 @@ int ClassifyTriangle(float3 v0, float3 v1, float3 v2)
 }
 */
 
-void PushQuadToSoftwareRasterizer(uint2 tc00, uint2 tc10, uint2 tc01, uint2 tc11, uint quadType)
+void PushQuadToSoftwareRasterizer(uint3 id, uint2 tc00, uint2 tc10, uint2 tc01, uint2 tc11, uint quadType)
 {
     // Compute AABB offsets for the quad
     uint aabb;
@@ -314,9 +314,11 @@ void PushQuadToSoftwareRasterizer(uint2 tc00, uint2 tc10, uint2 tc01, uint2 tc11
     if (localIndex < MAX_VERTS_PER_TILE)
     {
         uint globalIndex = tileIndex * MAX_VERTS_PER_TILE + localIndex;
+        uint idIndex = id.x + id.y * _InputResolution.x;
         uint texelIndex = tc00.x + tc00.y * _OutputResolution.x;
+        uint packedIdIndex = (idIndex << 2) | (quadType & 0x3);
         
-        _QuadIndexBuffer_SW[globalIndex] = uint2(texelIndex, aabb);
+        _QuadIndexBuffer_SW[globalIndex] = uint3(texelIndex, aabb, packedIdIndex);
     }
     // Else: drop vertex (tile overflow)
 }
@@ -337,10 +339,10 @@ void BinQuads(uint3 id : SV_DispatchThreadID)
     int2 v01 = RW_VertexBuffer[id.xy + off.yx];
     int2 v11 = RW_VertexBuffer[id.xy + off.xx];
     
-    uint2 tc00 = GetTexCoordFromIndex(v00.x);
-    uint2 tc10 = GetTexCoordFromIndex(v10.x);
-    uint2 tc01 = GetTexCoordFromIndex(v01.x);
-    uint2 tc11 = GetTexCoordFromIndex(v11.x);
+    uint2 tc00 = GetTexCoordFromIndex(v00.x, _OutputResolution);
+    uint2 tc10 = GetTexCoordFromIndex(v10.x, _OutputResolution);
+    uint2 tc01 = GetTexCoordFromIndex(v01.x, _OutputResolution);
+    uint2 tc11 = GetTexCoordFromIndex(v11.x, _OutputResolution);
     
     if (IN_SAME_PIXEL(tc00, tc10, tc01, tc11))
     {
@@ -364,7 +366,7 @@ void BinQuads(uint3 id : SV_DispatchThreadID)
     if (isSoftwareRasterizable)
     {
         // Prefer software rasterization for quads that fit in a tile
-        PushQuadToSoftwareRasterizer(tc00, tc10, tc01, tc11, quadType);
+        PushQuadToSoftwareRasterizer(id, tc00, tc10, tc01, tc11, quadType);
     }
     else
     {
@@ -384,40 +386,95 @@ bool PointInPackedAABB(uint2 tc00, uint2 p, uint packedAABB)
     uint minY = (packedAABB >> 8) & 0xFF;
     uint maxX = (packedAABB >> 16) & 0xFF;
     uint maxY = (packedAABB >> 24) & 0xFF;
-    /* Scary version, try later if this freaks out at screen borders
+
     uint2 minBounds = tc00 - uint2(minX, minY);
     uint2 maxBounds = tc00 + uint2(maxX, maxY);
-    */
-    int2 minBounds = int2(tc00) - int2(minX, minY);
-    int2 maxBounds = int2(tc00) + int2(maxX, maxY);
-    int2 pInt = int2(p);
     
-    return all(pInt >= minBounds) && all(pInt <= maxBounds);
-    // return all(p >= minBounds) && all(p <= maxBounds);
+    return all(p >= minBounds) && all(p <= maxBounds);
 }
 
-bool IsInTriangle(float2 uv, float3 v0, float3 v1, float3 v2)
+int3 VertexCoord(uint2 tc)
 {
-    float2 v0v1 = v1.xy - v0.xy;
-    float2 v0v2 = v2.xy - v0.xy;
-    float2 v0uv = uv - v0.xy;
+    int2 packed = RW_VertexBuffer[tc];
+    int index = packed.x;
 
-    float d00 = dot(v0v1, v0v1);
-    float d01 = dot(v0v1, v0v2);
-    float d11 = dot(v0v2, v0v2);
-    float d20 = dot(v0uv, v0v1);
-    float d21 = dot(v0uv, v0v2);
+    int3 coord;
+    coord.x = index % _OutputResolution.x;
+    coord.y = index / _OutputResolution.x;
+    coord.z = packed.y; // depth value
+    
+    return coord; // screen-space coordinate (in pixels)
+}
+
+bool IsPointInTriangle(int2 p, int3 a, int3 b, int3 c, out float3 bary)
+{
+    float2 v0 = b.xy - a.xy;
+    float2 v1 = c.xy - a.xy;
+    float2 v2 = p - a.xy;
+
+    float d00 = dot(v0, v0);
+    float d01 = dot(v0, v1);
+    float d11 = dot(v1, v1);
+    float d20 = dot(v2, v0);
+    float d21 = dot(v2, v1);
 
     float denom = d00 * d11 - d01 * d01;
-    if (denom == 0)
-        return false; // Degenerate triangle
+    if (denom == 0.0)
+    {
+        bary = float3(0, 0, 0);
+        return false;
+    }
 
     float v = (d11 * d20 - d01 * d21) / denom;
     float w = (d00 * d21 - d01 * d20) / denom;
     float u = 1.0 - v - w;
 
-    return u >= 0 && v >= 0 && w >= 0;
+    bary = float3(u, v, w);
+    return (u >= 0 && v >= 0 && w >= 0);
 }
+
+bool IsPixelInQuad(uint2 globalPixel, uint quadType, uint2 tc00_lookup, out float3 bary, out int3 v0, out int3 v1, out int3 v2)
+{
+    float2 p = float2(globalPixel);
+    uint2 off = uint2(1, 0);
+
+    if (quadType == 1) // Top triangle
+    {
+        v0 = VertexCoord(tc00_lookup);
+        v1 = VertexCoord(tc00_lookup + off);
+        v2 = VertexCoord(tc00_lookup + off.yx);
+        
+        return IsPointInTriangle(p, v0, v1, v2, bary);
+    }
+    else if (quadType == 2) // Bottom triangle
+    {
+        v0 = VertexCoord(tc00_lookup + off.yx);
+        v1 = VertexCoord(tc00_lookup + off);
+        v2 = VertexCoord(tc00_lookup + off.xx);
+        
+        return IsPointInTriangle(p, v0, v1, v2, bary);
+    }
+    else if (quadType == 3) // Full quad (both triangles)
+    {
+        v0 = VertexCoord(tc00_lookup);
+        v1 = VertexCoord(tc00_lookup + off);
+        v2 = VertexCoord(tc00_lookup + off.yx);
+        
+        if (IsPointInTriangle(p, v0, v1, v2, bary))
+            return true;
+        
+        v0 = v2;
+        v2 = VertexCoord(tc00_lookup + off.xx);
+        return IsPointInTriangle(p, v0, v1, v2, bary);
+    }
+
+    // Invalid quad
+    bary = float3(0, 0, 0);
+    v0 = v1 = v2 = int3(0, 0, 0);
+    return false;
+}
+
+
 
 [numthreads(TILE_SIZE, TILE_SIZE, 1)]
 void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadID)
@@ -439,17 +496,27 @@ void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : 
     for (uint i = 0; i < min(numTris, MAX_VERTS_PER_TILE); i++)
     {
         // Load the quad approx from the buffer
-        uint2 quadApprox = _QuadIndexBuffer_SW[tileOffset + i];
-        uint2 tc00 = GetTexCoordFromIndex(quadApprox.x);
+        uint3 quadApprox = _QuadIndexBuffer_SW[tileOffset + i];
+        uint2 tc00 = GetTexCoordFromIndex(quadApprox.x, _OutputResolution);
 
         // Check if the pixel is within the AABB
-        float2 uv = float2(globalPixel) / _OutputResolution;
         if (PointInPackedAABB(tc00, globalPixel, quadApprox.y))
         {
-            // int depthInt = asint(v0.z);
+            uint quadType = quadApprox.z & 0x3;
+            uint idIndex = quadApprox.z >> 2;
+            uint2 tc00_lookup = GetTexCoordFromIndex(idIndex, _InputResolution);
+            
+            int3 a, b, c;
+            float3 bary;
+            bool isPixelInQuadResult = IsPixelInQuad(globalPixel, quadType, tc00_lookup, bary, a, b, c);
+            if (!isPixelInQuadResult)
+            {
+                // Pixel is not in the quad, skip
+                continue;
+            }
             
             globalPixel.y = _OutputResolution.y - globalPixel.y - 1; // Flip Y for depth buffer
-            RW_DepthBuffer_SW[globalPixel] = asint(0.5);
+            RW_DepthBuffer_SW[globalPixel] = a.z;
             return;
         }
     }

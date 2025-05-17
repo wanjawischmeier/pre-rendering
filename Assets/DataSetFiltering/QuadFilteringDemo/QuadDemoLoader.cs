@@ -6,7 +6,7 @@ public class QuadDemoLoader : MonoBehaviour
     public ComputeShader computeShader;
     public Material softwareRasterDebug, hardwareRasterDebug, hardwareRasterMaterial, postProcessingPass, tileOccupancyDebug, vertexLookupDebug;
     public Texture2D inputTexture;
-    public RenderTexture vertexLookup, softwareRasterizedDepth, hardwareRasterizedDepth, softwareRasterizerTileCounters;
+    public RenderTexture vertexBuffer, softwareRasterizedDepth, hardwareRasterizedDepth, softwareRasterizerTileCounters;
     public float nearClip, farClip;
     public Vector2Int rescaledInputResolution, dispatchResolution, renderTargetResolution;
     public bool autoResolution = true;
@@ -41,9 +41,9 @@ public class QuadDemoLoader : MonoBehaviour
         softwareRasterizedDepth.enableRandomWrite = true;
         softwareRasterizedDepth.Create();
 
-        vertexLookup = new RenderTexture(inputTexture.width, inputTexture.height, 0, RenderTextureFormat.RGInt);
-        vertexLookup.enableRandomWrite = true;
-        vertexLookup.Create();
+        vertexBuffer = new RenderTexture(inputTexture.width, inputTexture.height, 0, RenderTextureFormat.RGInt);
+        vertexBuffer.enableRandomWrite = true;
+        vertexBuffer.Create();
 
         int tileCountX = Mathf.CeilToInt((float)renderTargetResolution.x / swTileSize);
         int tileCountY = Mathf.CeilToInt((float)renderTargetResolution.y / swTileSize);
@@ -64,25 +64,24 @@ public class QuadDemoLoader : MonoBehaviour
             hardwareRasterizerArgsBuffers[i] = new ComputeBuffer(1, 4 * sizeof(int), ComputeBufferType.IndirectArguments);
         }
 
-        softwareRasterizerVertexBuffer = new ComputeBuffer(swMaxVertsPerTile * tileCountX * tileCountY, 6 * sizeof(float), ComputeBufferType.Structured);
-        Debug.Log($"Software Rasterizer Vertex Buffer Size: {swMaxVertsPerTile * tileCountX * tileCountY * 6 * sizeof(float) / (1024f * 1024f)} MB");
+        softwareRasterizerVertexBuffer = new ComputeBuffer(swMaxVertsPerTile * tileCountX * tileCountY, 3 * sizeof(uint), ComputeBufferType.Structured);
+        Debug.Log($"Software Rasterizer Vertex Buffer Size: {softwareRasterizerVertexBuffer.count * softwareRasterizerVertexBuffer.stride / (1024f * 1024f)} MB");
 
         transformVerticesKernelHandle = computeShader.FindKernel("TransformVertices");
         binQuadsKernel = computeShader.FindKernel("BinQuads");
         rasterizeBinnedQuadsKernelHandle = computeShader.FindKernel("RasterizeTileBinnedQuads");
         computeShader.SetVector("_InputResolution", new Vector2(inputTexture.width, inputTexture.height));
-        // computeShader.SetVector("_DispatchResolution", new Vector2(dispatchResolution.x, dispatchResolution.y));
         computeShader.SetVector("_OutputResolution", new Vector2(renderTargetResolution.x, renderTargetResolution.y));
-        // computeShader.SetMatrixArray("_OrientationMatricies", CubeMapConversion.orientationMatricies);
 
         computeShader.SetTexture(transformVerticesKernelHandle, "_InputColorBuffer", inputTexture);
-        computeShader.SetTexture(transformVerticesKernelHandle, "RW_VertexBuffer", vertexLookup);
+        computeShader.SetTexture(transformVerticesKernelHandle, "RW_VertexBuffer", vertexBuffer);
 
-        computeShader.SetTexture(binQuadsKernel, "RW_VertexBuffer", vertexLookup);
+        computeShader.SetTexture(binQuadsKernel, "RW_VertexBuffer", vertexBuffer);
         computeShader.SetTexture(binQuadsKernel, "RW_DepthBuffer_SW", softwareRasterizedDepth);
         computeShader.SetTexture(binQuadsKernel, "_TileCounters_SW", softwareRasterizerTileCounters);
         computeShader.SetBuffer(binQuadsKernel, "_QuadIndexBuffer_SW", softwareRasterizerVertexBuffer);
 
+        computeShader.SetTexture(rasterizeBinnedQuadsKernelHandle, "RW_VertexBuffer", vertexBuffer);
         computeShader.SetTexture(rasterizeBinnedQuadsKernelHandle, "RW_DepthBuffer_SW", softwareRasterizedDepth);
         computeShader.SetTexture(rasterizeBinnedQuadsKernelHandle, "_TileCounters_SW", softwareRasterizerTileCounters);
         computeShader.SetBuffer(rasterizeBinnedQuadsKernelHandle, "_QuadIndexBuffer_SW", softwareRasterizerVertexBuffer);
@@ -94,7 +93,7 @@ public class QuadDemoLoader : MonoBehaviour
         softwareRasterDebug.SetVector("_InputResolution", new Vector2(renderTargetResolution.x, renderTargetResolution.y));
         softwareRasterDebug.SetTexture("_InputDepthBuffer", softwareRasterizedDepth);
         tileOccupancyDebug.SetTexture("_TileCounters", softwareRasterizerTileCounters);
-        vertexLookupDebug.SetTexture("_VertexBuffer", vertexLookup);
+        vertexLookupDebug.SetTexture("_VertexBuffer", vertexBuffer);
         vertexLookupDebug.SetVector("_InputResolution", new Vector2(inputTexture.width, inputTexture.height));
         vertexLookupDebug.SetVector("_OutputResolution", new Vector2(renderTargetResolution.x, renderTargetResolution.y));
     }
@@ -166,7 +165,7 @@ public class QuadDemoLoader : MonoBehaviour
             props.SetVector("_InputResolution", new Vector2(inputTexture.width, inputTexture.height));
             props.SetVector("_OutputResolution", new Vector2(renderTargetResolution.x, renderTargetResolution.y));
             props.SetBuffer("_QuadIndexBuffer", hardwareRasterizerQuadBuffers[i]);
-            props.SetTexture("_VertexBuffer", vertexLookup);
+            props.SetTexture("_VertexBuffer", vertexBuffer);
 
             cmd.DrawProceduralIndirect(Matrix4x4.identity,
                                    hardwareRasterMaterial,
