@@ -10,6 +10,7 @@ public class QuadDemoLoader : MonoBehaviour
     public float nearClip, farClip;
     public Vector2Int rescaledInputResolution, dispatchResolution, renderTargetResolution;
     public bool autoResolution = true;
+    public bool blitToScreen = true;
     public uint[] triangleCounts;
     public int maxHardwareRasterizedTrianglesPerBatch = 131072;
     private ComputeBuffer[] hardwareRasterizerQuadBuffers, hardwareRasterizerArgsBuffers;
@@ -53,7 +54,6 @@ public class QuadDemoLoader : MonoBehaviour
 
         hardwareRasterizedDepth = new RenderTexture(renderTargetResolution.x, renderTargetResolution.y, 0, RenderTextureFormat.ARGB32);
         hardwareRasterizedDepth.Create();
-        hardwareRasterDebug.mainTexture = hardwareRasterizedDepth;
 
         triangleCounts = new uint[vertexBufferCount + 1]; // Last entry is total count
         hardwareRasterizerQuadBuffers = new ComputeBuffer[vertexBufferCount];
@@ -65,7 +65,8 @@ public class QuadDemoLoader : MonoBehaviour
         }
 
         softwareRasterizerVertexBuffer = new ComputeBuffer(swMaxVertsPerTile * tileCountX * tileCountY, 3 * sizeof(uint), ComputeBufferType.Structured);
-        Debug.Log($"Software Rasterizer Vertex Buffer Size: {softwareRasterizerVertexBuffer.count * softwareRasterizerVertexBuffer.stride / (1024f * 1024f)} MB");
+        int softwareRasterizerVertexBufferSizeMb = Mathf.CeilToInt(softwareRasterizerVertexBuffer.count * softwareRasterizerVertexBuffer.stride / (1024 * 1024));
+        Debug.Log($"Software Rasterizer Vertex Buffer Size: {softwareRasterizerVertexBufferSizeMb} MB");
 
         transformVerticesKernelHandle = computeShader.FindKernel("TransformVertices");
         binQuadsKernel = computeShader.FindKernel("BinQuads");
@@ -90,12 +91,29 @@ public class QuadDemoLoader : MonoBehaviour
         postProcessingPass.SetTexture("_DepthBuffer_SW", softwareRasterizedDepth);
         postProcessingPass.SetTexture("_DepthBuffer_HW", hardwareRasterizedDepth);
 
-        softwareRasterDebug.SetVector("_InputResolution", new Vector2(renderTargetResolution.x, renderTargetResolution.y));
-        softwareRasterDebug.SetTexture("_InputDepthBuffer", softwareRasterizedDepth);
-        tileOccupancyDebug.SetTexture("_TileCounters", softwareRasterizerTileCounters);
-        vertexLookupDebug.SetTexture("_VertexBuffer", vertexBuffer);
-        vertexLookupDebug.SetVector("_InputResolution", new Vector2(inputTexture.width, inputTexture.height));
-        vertexLookupDebug.SetVector("_OutputResolution", new Vector2(renderTargetResolution.x, renderTargetResolution.y));
+        // Debugging materials
+        if (softwareRasterDebug != null)
+        {
+            softwareRasterDebug.SetVector("_InputResolution", new Vector2(renderTargetResolution.x, renderTargetResolution.y));
+            softwareRasterDebug.SetTexture("_InputDepthBuffer", softwareRasterizedDepth);
+        }
+
+        if (hardwareRasterDebug != null)
+        {
+            hardwareRasterDebug.mainTexture = hardwareRasterizedDepth;
+        }
+
+        if (tileOccupancyDebug != null)
+        {
+            tileOccupancyDebug.SetTexture("_TileCounters", softwareRasterizerTileCounters);
+        }
+
+        if (vertexLookupDebug != null)
+        {
+            vertexLookupDebug.SetTexture("_VertexBuffer", vertexBuffer);
+            vertexLookupDebug.SetVector("_InputResolution", new Vector2(inputTexture.width, inputTexture.height));
+            vertexLookupDebug.SetVector("_OutputResolution", new Vector2(renderTargetResolution.x, renderTargetResolution.y));
+        }
     }
 
     private void Update()
@@ -186,7 +204,10 @@ public class QuadDemoLoader : MonoBehaviour
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
-        // Graphics.Blit(null, destination, postProcessingPass);
+        if (blitToScreen)
+        {
+            Graphics.Blit(null, destination, postProcessingPass);
+        }
     }
 
     private void OnDestroy()
