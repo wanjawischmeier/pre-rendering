@@ -1,9 +1,5 @@
-Shader "Unlit/PostProcessingPass"
+Shader "Unlit/CombinedPass"
 {
-    Properties
-    {
-        _MainTex ("Texture", 2D) = "white" {}
-    }
     SubShader
     {
         Tags { "RenderType"="Opaque" }
@@ -30,8 +26,8 @@ Shader "Unlit/PostProcessingPass"
                 float4 vertex : SV_POSITION;
             };
 
-            sampler2D _MainTex;
-            float4 _MainTex_ST;
+            uniform int2 _OutputResolution;
+
             Texture2D<int> _DepthBuffer_SW;
             Texture2D<float4> _DepthBuffer_HW;
 
@@ -39,17 +35,16 @@ Shader "Unlit/PostProcessingPass"
             {
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
-                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
+                o.uv = v.uv;
                 return o;
             }
 
             fixed4 frag (v2f i) : SV_Target
             {
-                // Berechne Pixelposition aus der Vertexposition
-                uint2 pixelPos = uint2(i.vertex.xy);
+                int3 tc = int3(i.uv * _OutputResolution, 0); // Texture coordinates in uint3 format
                 
                 // Lade Wert aus dem Software-Tiefenpuffer
-                int swDepth = _DepthBuffer_SW.Load(int3(pixelPos, 0));
+                int swDepth = _DepthBuffer_SW.Load(tc);
                 
                 // Prüfe ob er gleich int.MaxValue ist
                 if (swDepth != 2147483647) // int.MaxValue
@@ -61,7 +56,7 @@ Shader "Unlit/PostProcessingPass"
                 else
                 {
                     // Gib den Hardware-Tiefenwert zurück
-                    return _DepthBuffer_HW.Load(int3(pixelPos, 0));
+                    return _DepthBuffer_HW.Load(tc);
                 }
             }
             ENDCG

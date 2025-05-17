@@ -87,6 +87,7 @@ public class QuadDemoLoader : MonoBehaviour
         computeShader.SetTexture(rasterizeBinnedQuadsKernelHandle, "_TileCounters_SW", softwareRasterizerTileCounters);
         computeShader.SetBuffer(rasterizeBinnedQuadsKernelHandle, "_QuadIndexBuffer_SW", softwareRasterizerVertexBuffer);
 
+        postProcessingPass.SetVector("_OutputResolution", new Vector2(renderTargetResolution.x, renderTargetResolution.y));
         postProcessingPass.SetTexture("_DepthBuffer_SW", softwareRasterizedDepth);
         postProcessingPass.SetTexture("_DepthBuffer_HW", hardwareRasterizedDepth);
 

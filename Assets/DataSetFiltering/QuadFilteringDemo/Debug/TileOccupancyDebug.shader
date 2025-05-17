@@ -21,9 +21,8 @@
 
             Texture2D<uint> _TileCounters;
 
-            float4 _OutputResolution;
-            float _TileSize;
-            float _MaxVertsPerTile;
+            uniform uint2 _OutputResolution;
+            uniform float _TileSize, _MaxVertsPerTile;
 
             struct v2f
             {
@@ -55,8 +54,8 @@
                 float2 uv = i.uv;
                 uv.y = 1 - uv.y; // Flip Y coordinate for correct UV mapping
 
-                float2 pixel = uv * _OutputResolution.xy;
-                uint2 tileCoord = uint2(pixel / _TileSize);
+                uint2 pixel = uv * _OutputResolution;
+                uint2 tileCoord = pixel / _TileSize;
 
                 int count = _TileCounters[tileCoord];
                 if (count == 0)
