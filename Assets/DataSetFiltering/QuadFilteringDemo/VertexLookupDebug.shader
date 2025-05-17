@@ -16,7 +16,7 @@ Shader "Unlit/VertexLookupDebug"
 
             Texture2D<int2> _VertexLookup;
 
-            float2 _Resolution;
+            uniform uint2 _InputResolution, _OutputResolution;
 
             struct v2f
             {
@@ -34,14 +34,18 @@ Shader "Unlit/VertexLookupDebug"
 
             float4 frag(v2f i) : SV_Target
             {
-                uint2 tc = floor(i.uv * _Resolution);
+                uint2 tc = floor(i.uv * _InputResolution);
                 int2 lookup = _VertexLookup[tc];
+                if (lookup.x == -1)
+                {
+                    return float4(0, 0, 0, 1); // No data
+                }
 
                 uint2 tc_p;
-                tc_p.x = lookup.x % _Resolution.x;
-                tc_p.y = (lookup.x - tc_p.x) / _Resolution.x;
+                tc_p.x = lookup.x % _OutputResolution.x;
+                tc_p.y = (lookup.x - tc_p.x) / _OutputResolution.x;
 
-                float2 uv_p = float2(tc_p) / _Resolution;
+                float2 uv_p = float2(tc_p) / _OutputResolution;
                 float depth = asfloat(lookup.y);
 
                 return float4(uv_p, depth, 1);

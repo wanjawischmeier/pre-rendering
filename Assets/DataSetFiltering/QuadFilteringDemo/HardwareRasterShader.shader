@@ -9,14 +9,31 @@ Shader "Unlit/HardwareRasterShader_Debug"
         Tags { "RenderType"="Opaque" }
         Pass
         {
-            // Cull Off // TODO: Remove this as soon as tris are properly laid out
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
 
             uniform float _CameraNearClip, _CameraFarClip, _EdgeThreshold;
+            uniform uint2 _InputResolution, _OutputResolution;
 
-            StructuredBuffer<float3x3> _Vertices;
+            Texture2D<int2> _VertexLookup;
+            StructuredBuffer<uint> _Quads;
+            
+            // Maps index i <- [0,5] to the corresponding vertex offset and index in unit quad
+            uint3 GetQuadVertexOffset(uint index)
+            {
+                static const uint3 offsets[6] = {
+                    uint3(0, 0, 0),
+                    uint3(1, 0, 1),
+                    uint3(0, 1, 2),
+
+                    uint3(0, 1, 2),
+                    uint3(1, 0, 1),
+                    uint3(1, 1, 3)
+                };
+
+                return offsets[index];
+            }
 
             struct VSOutput
             {
@@ -27,16 +44,44 @@ Shader "Unlit/HardwareRasterShader_Debug"
             VSOutput vert(uint id : SV_VertexID)
             {
                 VSOutput o;
+                
+                // Which quad does this vertex belong to?
+                uint quadIndex = id / 6;
+                uint vtxOffsetIndex = id % 6;
+                uint quadBaseIndex = _Quads[quadIndex];
 
+                // Convert flat index back into 2D coordinates
+                uint2 baseCoords;
+                baseCoords.x = quadBaseIndex % _InputResolution.x;
+                baseCoords.y = quadBaseIndex / _InputResolution.x;
+
+                // Add vertex-specific offset (0–5) for this triangle vertex
+                uint3 quadVertex = GetQuadVertexOffset(vtxOffsetIndex);
+                uint2 sampleCoords = baseCoords + uint2(quadVertex.xy);
+
+                // Use that to fetch final screen-space info from the lookup
+                int2 vertLookup = _VertexLookup[sampleCoords];
+                uint2 vertCoords;
+                vertCoords.x = vertLookup.x % _OutputResolution.x;
+                vertCoords.y = vertLookup.x / _OutputResolution.x;
+
+                float2 uv = float2(vertCoords) / _OutputResolution;
+                float2 ndc = uv * 2.0 - 1.0;
+
+                float depth = asfloat(vertLookup.y);
+
+                o.pos = float4(ndc, depth, 1.0);
+
+                /*
                 // Assume triangles are laid out consecutively
                 uint vtxIndex = id % 3;
                 uint triIndex = (id - vtxIndex) / 3;
-                float3x3 verts = _Vertices[triIndex];
+                float3x3 verts = _Quads[triIndex];
 
                 o.pos = float4(verts[vtxIndex], 1);
                 o.pos.y = -o.pos.y; // Flip Y for NDC
-
-                o.bary = float3(vtxIndex == 0, vtxIndex == 1, vtxIndex == 2);
+                */
+                o.bary = float3(quadVertex.z == 0 || quadVertex.z == 3, quadVertex.z == 1 || quadVertex.z == 3, quadVertex.z == 2);
                 // o.bary.x = verts[vtxIndex].z;
 
                 return o;
@@ -44,6 +89,7 @@ Shader "Unlit/HardwareRasterShader_Debug"
 
             float4 frag(VSOutput i) : SV_Target
             {
+                // return float4(0, 1, 0, 1);
                 // return float4((i.bary.x / 10).xxx, 1);
 
                 // Distance from edge (i.e., min bary value)

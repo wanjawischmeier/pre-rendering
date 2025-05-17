@@ -9,15 +9,14 @@
 
 uniform float _MapNearClip, _MapFarClip;
 uniform uint2 _InputResolution, _DispatchResolution, _OutputResolution;
-uniform float2 _UVOffset;
 uniform float3 _Offset;
 uniform float4x4 _CameraViewProj;
-uniform float4x4 _OrientationMatricies[6];
+// uniform float4x4 _OrientationMatricies[6];
 
 Texture2D<float4> _InputColorBuffer;
 RWTexture2D<int> RW_SWDepthBuffer;
 RWTexture2D<int2> RW_VertexLookup;
-AppendStructuredBuffer<float3x3> _HWVerts0, _HWVerts1, _HWVerts2, _HWVerts3;
+// AppendStructuredBuffer<float3x3> _HWQuads0, _HWQuads1, _HWQuads2, _HWQuads3;
 RWStructuredBuffer<float2x3> g_SWQuads;
 RWTexture2D<uint> g_SWTileCounters;
 
@@ -101,7 +100,7 @@ int ClassifyTriangle(float3 v0, float3 v1, float3 v2)
     return 3;
 }
 
-
+/*
 bool TryPushTriangleToHardwareRasterizer(float3 v0, float3 v1, float3 v2, uint3 threadID)
 {
     if (IsDegenerateTriangle(v0, v1, v2))
@@ -118,26 +117,26 @@ bool TryPushTriangleToHardwareRasterizer(float3 v0, float3 v1, float3 v2, uint3 
     
     if (!(all(tile0 == tile1) && all(tile1 == tile2)))
     // if (true)
-    {   
+    {
         // Vertices are in different tiles, so we need to push to the hardware rasterizer
         float3x3 tri = float3x3(v0 * 2 - 1, v1 * 2 - 1, v2 * 2 - 1); // Convert to NDC
-        // _HWVerts0.Append(tri);
+        // _HWQuads0.Append(tri);
         
         // Push to the appropriate buffer group
         uint bufferGroupIndex = (threadID.x ^ threadID.y ^ threadID.z) & 3;
         switch (bufferGroupIndex)
         {
             case 0:
-                _HWVerts0.Append(tri);
+                _HWQuads0.Append(tri);
                 break;
             case 1:
-                _HWVerts1.Append(tri);
+                _HWQuads1.Append(tri);
                 break;
             case 2:
-                _HWVerts2.Append(tri);
+                _HWQuads2.Append(tri);
                 break;
             case 3:
-                _HWVerts3.Append(tri);
+                _HWQuads3.Append(tri);
                 break;
         }
         
@@ -147,6 +146,7 @@ bool TryPushTriangleToHardwareRasterizer(float3 v0, float3 v1, float3 v2, uint3 
     // All vertices are in the same tile, so we can push to the software rasterizer
     return false;
 }
+*/
 
 bool IsOnePixelQuad(float3 v0, float3 v1, float3 v2, float3 v3)
 {
@@ -206,37 +206,20 @@ void TransformVertices(uint3 id : SV_DispatchThreadID)
     }
     
     // Compute texel coordinates
-    uint3 tcOff = uint3(_InputResolution / _DispatchResolution, 0);
-    float2 uv00 = float2(id.xy) / _DispatchResolution;
-    uint2 tc00 = all(_InputResolution == _DispatchResolution) ? id.xy : uv00 * _InputResolution;
+    float2 uv00 = float2(id.xy) / _InputResolution;
+    float4 sampled00 = _InputColorBuffer[id.xy];
     
-    uint2 tc10 = tc00 + tcOff.xz;
-    float4 sampled10 = _InputColorBuffer[tc10];
-    if (!IS_DEPTH_VALID(sampled10))
-        return;
-    
-    uint2 tc01 = tc00 + tcOff.zy;
-    float4 sampled01 = _InputColorBuffer[tc01];
-    if (!IS_DEPTH_VALID(sampled01))
-        return;
-    
-    float2 uv10 = float2(tc10) / _InputResolution;
-    float2 uv01 = float2(tc01) / _InputResolution;
-    
-    float3 uv10_t = GetTransformedVertexUV(uv10, sampled10.a);
-    float3 uv01_t = GetTransformedVertexUV(uv01, sampled01.a);
-    
-    float4 sampled00 = _InputColorBuffer[tc00];
-    
-    // TODO: Determine if and when we need to calculate this
-    uint2 tc11 = tc00 + tcOff.xy;
-    float2 uv11 = float2(tc11) / _InputResolution;
-    float4 sampled11 = _InputColorBuffer[tc11];
-    float3 uv11_t = GetTransformedVertexUV(uv11, sampled11.a);
-    
+    int2 lookup = int2(-1, 0);
     if (!IS_DEPTH_INVALID(sampled00))
     {
         float3 uv00_t = GetTransformedVertexUV(uv00, sampled00.a);
+        if (!IS_UV_OUT_OF_BOUNDS(uv00_t))
+        {
+            int2 tc00_t = floor(uv00_t.xy * _OutputResolution);
+            lookup.x = tc00_t.x + tc00_t.y * _OutputResolution.x; // Projected texel index
+            lookup.y = asint(uv00_t.z); // Depth value
+        }
+        /*
         if (!IS_UV_OUT_OF_BOUNDS(uv00_t) || !IS_UV_OUT_OF_BOUNDS(uv10_t) || !IS_UV_OUT_OF_BOUNDS(uv01_t))
         {
             int2 tc00_p = floor(uv00_t.xy * _OutputResolution);
@@ -250,11 +233,68 @@ void TransformVertices(uint3 id : SV_DispatchThreadID)
                 PushQuadToSoftwareRasterizer(uv00_t, uv10_t, uv01_t, uv11_t);
             }
         }
+        */
     }
     
+    RW_VertexLookup[id.xy] = lookup;
+    /*
     if (!IS_DEPTH_INVALID(sampled11))
     {
         TryPushTriangleToHardwareRasterizer(uv11_t, uv10_t, uv01_t, id);
+    }
+    */
+}
+
+
+#pragma kernel BinQuads
+
+AppendStructuredBuffer<uint> _HWQuads0, _HWQuads1, _HWQuads2, _HWQuads3;
+
+void PushQuadToHardwareRasterizer(uint2 tc00, uint3 threadID)
+{
+    uint vertexIndex = tc00.x + tc00.y * _InputResolution.x;
+        
+    // Push to the appropriate buffer group
+    uint bufferGroupIndex = (threadID.x ^ threadID.y ^ threadID.z) & 3;
+    switch (bufferGroupIndex)
+    {
+        case 0:
+            _HWQuads0.Append(vertexIndex);
+            break;
+        case 1:
+            _HWQuads1.Append(vertexIndex);
+            break;
+        case 2:
+            _HWQuads2.Append(vertexIndex);
+            break;
+        case 3:
+            _HWQuads3.Append(vertexIndex);
+            break;
+    }
+}
+
+[numthreads(8, 8, 1)]
+void BinQuads(uint3 id : SV_DispatchThreadID)
+{
+    // Check if bottom or right is out of bounds
+    if (id.x >= _InputResolution.x - 1 || id.y >= _InputResolution.y - 1)
+    {
+        // Can't construct quad
+        return;
+    }
+    
+    int2 v00 = RW_VertexLookup[id.xy];
+    if (v00.x == -1)
+        return; // No valid vertex
+    
+    uint2 off = uint2(1, 0);
+    int2 v10 = RW_VertexLookup[id.xy + off];
+    int2 v01 = RW_VertexLookup[id.xy + off.yx];
+    int2 v11 = RW_VertexLookup[id.xy + off.xx];
+    
+    if (v10.x != -1 && v01.x != -1 && v11.x != -1)
+    {
+        PushQuadToHardwareRasterizer(id.xy, id);
     }
 }
 
