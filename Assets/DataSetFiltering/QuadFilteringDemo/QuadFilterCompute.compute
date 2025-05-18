@@ -349,12 +349,20 @@ void BinQuads(uint3 id : SV_DispatchThreadID)
     if (IN_SAME_PIXEL(tc00, tc10, tc01, tc11))
     {
         // One pixel quad, so we can just write to the depth buffer
-        int depthInt = v00.y;
-        int oldDepthInt;
     
             
         tc00.y = _OutputResolution.y - tc00.y - 1; // Flip Y for depth buffer
+        
+        #ifdef _DEBUG_WIREFRAME
+        float2 uv = float2(id.xy) / _InputResolution;
+        RW_DebugBuffer_SW[tc00] = float4(uv, 0, 1);
+        #else
+        // InterlockedMin only works on int
+        int depthInt = v00.y;
+        int oldDepthInt;
+        
         InterlockedMin(RW_DepthBuffer_SW[tc00], depthInt, oldDepthInt);
+        #endif
         return;
     }
     
@@ -378,6 +386,7 @@ void BinQuads(uint3 id : SV_DispatchThreadID)
 
 
 #pragma kernel RasterizeTileBinnedQuads
+#define OVERDRAW_EPSILON -9 // This should not exist
 
 uniform bool _IsBufferOffset;
 
@@ -408,35 +417,32 @@ int3 VertexCoord(uint2 tc)
     return coord; // screen-space coordinate (in pixels)
 }
 
-bool IsPointInTriangle(int2 p, int3 a, int3 b, int3 c, out float3 bary)
+float Edge(float2 a, float2 b, float2 p)
 {
-    float2 v0 = float2(b.xy - a.xy);
-    float2 v1 = float2(c.xy - a.xy);
-    float2 v2 = float2(p - a.xy);
+    return (p.x - a.x) * (b.y - a.y) - (p.y - a.y) * (b.x - a.x);
+}
 
-    float d00 = dot(v0, v0);
-    float d01 = dot(v0, v1);
-    float d11 = dot(v1, v1);
-    float d20 = dot(v2, v0);
-    float d21 = dot(v2, v1);
+bool IsPixelInTriangle(float2 p, float2 a, float2 b, float2 c, bool useEdgeEpsilon, out float3 bary)
+{
+    float w0 = Edge(b, c, p);
+    float w1 = Edge(c, a, p);
+    float w2 = Edge(a, b, p);
+    
+    int area = (b.y - a.y) * (c.x - a.x) - (b.x - a.x) * (c.y - a.y); // No clue why this needs to be inverted
+    if (area <= 0)
+        return false; // Backfacing or degenerate
 
-    float denom = d00 * d11 - d01 * d01;
-
-    // Early out if triangle is degenerate
-    if (denom <= 1e-14)
-    {
-        bary = float3(0, 0, 0);
-        // return false;
-    }
-
-    float invDenom = 1.0 / denom;
-    float v = (d11 * d20 - d01 * d21) * invDenom;
-    float w = (d00 * d21 - d01 * d20) * invDenom;
-    float u = 1.0 - v - w;
-
-    bary = float3(u, v, w);
-    return true;
-    return (u >= 0 && v >= 0 && w >= 0);
+    float invArea = 1.0 / float(area);
+    bary = float3(float(w0), float(w1), float(w2)) * invArea;
+    
+    // Epsilon handling:
+    float eps0 = useEdgeEpsilon * OVERDRAW_EPSILON;
+    float eps1 = 0.0; // No epsilon on second edge
+    float eps2 = useEdgeEpsilon * OVERDRAW_EPSILON;
+    
+    // Please find forgiveness for this terrible hack (that doesn't even work, really)
+    // but I've spend long enough on point in tri algorithms
+    return (w0 >= eps0 && w1 >= 0.0 && w2 >= eps2);    
 }
 
 
@@ -451,48 +457,50 @@ bool IsPixelInQuad(
     uint2 off = uint2(1, 0);
 
     // Shared quad vertices
-    int3 a = VertexCoord(tc00_lookup);             // v00
-    int3 b = VertexCoord(tc00_lookup + off);       // v10
-    int3 c = VertexCoord(tc00_lookup + off.yx);     // v01
-    int3 d = VertexCoord(tc00_lookup + off.xx);     // v11
-
-    // Early exit: Diagonal test (c to b)
-    int2 diag = b.xy - c.xy;
-    int2 toP  = int2(p) - c.xy;
+    int3 v10 = VertexCoord(tc00_lookup + off);
+    int3 v01 = VertexCoord(tc00_lookup + off.yx);
+    
+    // Early exit: Diagonal test (v01 to v10)
+    int2 diag = v10.xy - v01.xy;
+    int2 toP  = int2(p) - v01.xy;
     int cross = diag.x * toP.y - diag.y * toP.x;
+    
+    v0 = v1 = v2 = int3(0, 0, 0); // Make the compiler shut up
+    bary = float3(0, 0, 0);
 
-    if (cross >= 0)
+    if (cross < 0)
     {
-        // Point is in top triangle (v00, v10, v01)
-        if ((quadType & 1) == 0) // Top tri not valid
+        // Point is in top ccw triangle (v00, v01, v10)
+        if (quadType == 2) // Top tri not valid
             return false;
-
-        v0 = a;
-        v1 = b;
-        v2 = c;
-        return IsPointInTriangle(p, v0, v1, v2, bary);
+        
+        v0 = VertexCoord(tc00_lookup); // v00
+        v1 = v01;
+        v2 = v10;
     }
     else
     {
-        // Point is in bottom triangle (v01, v10, v11)
-        if ((quadType & 2) == 0) // Bottom tri not valid
+        // Point is in bottom ccw triangle (v01, v11, v10)
+        if (quadType == 1) // Bottom tri not valid
             return false;
-
-        v0 = c;
-        v1 = b;
-        v2 = d;
-        return IsPointInTriangle(p, v0, v1, v2, bary);
+        
+        v0 = v01;
+        v1 = VertexCoord(tc00_lookup + off.xx); // v11
+        v2 = v10;
     }
+    
+    return IsPixelInTriangle(p, v0.xy, v1.xy, v2.xy, cross >= 0, bary);
 }
 
 
 
 
 [numthreads(TILE_SIZE, TILE_SIZE, 1)]
-void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadID)
+void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadID, uint3 id : SV_DispatchThreadID)
 {
     // Calculate coords
     uint2 globalPixel = groupID.xy * TILE_SIZE + groupThreadID.xy;
+    globalPixel = id.xy;
     uint2 tileCoord = globalPixel / TILE_SIZE;
     uint tileIndex = tileCoord.y * (_OutputResolution.x / TILE_SIZE) + tileCoord.x;
     

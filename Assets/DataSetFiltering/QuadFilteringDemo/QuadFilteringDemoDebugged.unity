@@ -415,13 +415,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 160531363}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
-  m_LocalPosition: {x: 0, y: 0, z: 6}
+  m_LocalRotation: {x: -0.04726551, y: 0.94494736, z: -0.15804516, w: -0.28259906}
+  m_LocalPosition: {x: 0.15202793, y: -0.36460334, z: 4.5982766}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
+  m_LocalEulerAnglesHint: {x: 18.99, y: 213.3, z: 0}
 --- !u!114 &160531367
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -445,6 +445,8 @@ MonoBehaviour:
   vertexBuffer: {fileID: 0}
   softwareRasterizedDepth: {fileID: 0}
   hardwareRasterizedDepth: {fileID: 0}
+  softwareRasterizedDebugTexture: {fileID: 0}
+  hardwareRasterizedDebugTexture: {fileID: 0}
   softwareRasterizerTileCounters: {fileID: 0}
   nearClip: 2.5
   farClip: 6
@@ -453,6 +455,7 @@ MonoBehaviour:
   renderTargetResolution: {x: 2048, y: 2048}
   autoResolution: 1
   blitToScreen: 0
+  debugWireframe: 1
   triangleCounts: 
   maxHardwareRasterizedTrianglesPerBatch: 256000
 --- !u!114 &160531368
