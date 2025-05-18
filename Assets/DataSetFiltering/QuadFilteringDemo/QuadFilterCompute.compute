@@ -1,5 +1,6 @@
 #pragma multi_compile _ _DEBUG_WIREFRAME
 #pragma multi_compile _TILE_SIZE_4 _TILE_SIZE_8 _TILE_SIZE_16 _TILE_SIZE_32
+#pragma multi_compile _MAX_VERTS_PER_TILE_64 _MAX_VERTS_PER_TILE_128 _MAX_VERTS_PER_TILE_256 _MAX_VERTS_PER_TILE_512
 
 #pragma kernel TransformVertices
 
@@ -15,7 +16,18 @@
     #define TILE_SIZE 32 // Default to 32x32
 #endif
 
-#define MAX_VERTS_PER_TILE  256
+#if defined(_MAX_VERTS_PER_TILE_64)
+    #define MAX_VERTS_PER_TILE 64
+#elif defined(_MAX_VERTS_PER_TILE_128)
+    #define MAX_VERTS_PER_TILE 128
+#elif defined(_MAX_VERTS_PER_TILE_256)
+    #define MAX_VERTS_PER_TILE 256
+#elif defined(_MAX_VERTS_PER_TILE_512)
+    #define MAX_VERTS_PER_TILE 512
+#else
+    #define MAX_VERTS_PER_TILE 256 // Default to 256 vertices per tile
+#endif
+
 #define IS_DEPTH_VALID(sampled) (sampled.a > 0.001 && sampled.a != 1)
 #define IS_DEPTH_INVALID(sampled) (sampled.a < 0.01 || sampled.a == 1)
 #define IS_TARGET_OUT_OF_BOUNDS(tc) (tc.x < 0 || tc.x >= _OutputResolution.x || tc.y < 0 || tc.y >= _OutputResolution.y)

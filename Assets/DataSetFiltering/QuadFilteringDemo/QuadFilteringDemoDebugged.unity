@@ -461,6 +461,7 @@ MonoBehaviour:
   triangleCounts: 
   maxHardwareRasterizedTrianglesPerBatch: 100000
   tileSize: 16
+  tileCapacity: 128
 --- !u!114 &160531368
 MonoBehaviour:
   m_ObjectHideFlags: 0

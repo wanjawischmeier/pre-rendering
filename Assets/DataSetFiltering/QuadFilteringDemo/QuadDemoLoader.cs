@@ -12,6 +12,14 @@ public class QuadDemoLoader : MonoBehaviour
         _TILE_SIZE_32 = 32
     }
 
+    public enum TileCapacity
+    {
+        _MAX_VERTS_PER_TILE_64 = 64,
+        _MAX_VERTS_PER_TILE_128 = 128,
+        _MAX_VERTS_PER_TILE_256 = 256,
+        _MAX_VERTS_PER_TILE_512 = 512
+    }
+
     public ComputeShader computeShader;
     public Material softwareRasterDebug, hardwareRasterDebug, hardwareRasterMaterial, postProcessingPass, tileOccupancyDebug0, tileOccupancyDebug1, vertexLookupDebug;
     public Texture2D inputTexture;
@@ -25,6 +33,7 @@ public class QuadDemoLoader : MonoBehaviour
     public uint[] triangleCounts;
     public int maxHardwareRasterizedTrianglesPerBatch = 131072;
     public TileSize tileSize = TileSize._TILE_SIZE_8;
+    public TileCapacity tileCapacity = TileCapacity._MAX_VERTS_PER_TILE_256;
 
     private int transformVerticesKernelHandle, binQuadsKernel, rasterizeBinnedQuadsKernelHandle;
     private ComputeBuffer[] hardwareRasterizerQuadBuffers, hardwareRasterizerArgsBuffers;
@@ -33,7 +42,6 @@ public class QuadDemoLoader : MonoBehaviour
     private LocalKeyword debugWireframeComputeKeyword;
 
     const int vertexBufferCount = 4;
-    const int swMaxVertsPerTile = 256;
 
     private void Start()
     {
@@ -87,8 +95,8 @@ public class QuadDemoLoader : MonoBehaviour
             hardwareRasterizerArgsBuffers[i] = new ComputeBuffer(1, 4 * sizeof(int), ComputeBufferType.IndirectArguments);
         }
 
-        softwareRasterizerVertexBuffer0 = new ComputeBuffer(swMaxVertsPerTile * tileCountX * tileCountY, 3 * sizeof(uint), ComputeBufferType.Structured);
-        softwareRasterizerVertexBuffer1 = new ComputeBuffer(swMaxVertsPerTile * tileCountX * tileCountY, 3 * sizeof(uint), ComputeBufferType.Structured);
+        softwareRasterizerVertexBuffer0 = new ComputeBuffer((int)tileCapacity * tileCountX * tileCountY, 3 * sizeof(uint), ComputeBufferType.Structured);
+        softwareRasterizerVertexBuffer1 = new ComputeBuffer((int)tileCapacity * tileCountX * tileCountY, 3 * sizeof(uint), ComputeBufferType.Structured);
         int softwareRasterizerVertexBufferSizeMb = Mathf.CeilToInt(softwareRasterizerVertexBuffer0.count * softwareRasterizerVertexBuffer0.stride * 2 / (1024 * 1024));
         Debug.Log($"Software Rasterizer Vertex Buffer Size: {softwareRasterizerVertexBufferSizeMb} MB");
 
@@ -107,6 +115,17 @@ public class QuadDemoLoader : MonoBehaviour
             else
             {
                 computeShader.SetKeyword(new LocalKeyword(computeShader, tileSizeEnum.ToString()), false);
+            }
+        }
+        foreach (var tileCapacityEnum in System.Enum.GetValues(typeof(TileCapacity)))
+        {
+            if (tileCapacityEnum.Equals(tileCapacity))
+            {
+                computeShader.SetKeyword(new LocalKeyword(computeShader, tileCapacityEnum.ToString()), true);
+            }
+            else
+            {
+                computeShader.SetKeyword(new LocalKeyword(computeShader, tileCapacityEnum.ToString()), false);
             }
         }
 
@@ -163,12 +182,12 @@ public class QuadDemoLoader : MonoBehaviour
         if (tileOccupancyDebug0 != null && tileOccupancyDebug1 != null)
         {
             tileOccupancyDebug0.SetInt("_TileSize", (int)tileSize);
-            tileOccupancyDebug0.SetInt("_MaxVertsPerTile", swMaxVertsPerTile);
+            tileOccupancyDebug0.SetInt("_MaxVertsPerTile", (int)tileCapacity);
             tileOccupancyDebug0.SetVector("_OutputResolution", outputResolution);
             tileOccupancyDebug0.SetTexture("_TileCounters", softwareRasterizerTileCounters0);
 
             tileOccupancyDebug1.SetInt("_TileSize", (int)tileSize);
-            tileOccupancyDebug1.SetInt("_MaxVertsPerTile", swMaxVertsPerTile);
+            tileOccupancyDebug1.SetInt("_MaxVertsPerTile", (int)tileCapacity);
             tileOccupancyDebug1.SetVector("_OutputResolution", outputResolution);
             tileOccupancyDebug1.SetTexture("_TileCounters", softwareRasterizerTileCounters1);
         }
