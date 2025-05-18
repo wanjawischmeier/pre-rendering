@@ -163,6 +163,7 @@ RWTexture2D<float4> RW_DebugBuffer_SW;
 RWStructuredBuffer<uint3> _QuadIndexBuffer_SW0, _QuadIndexBuffer_SW1;
 RWTexture2D<uint> _TileCounters_SW0, _TileCounters_SW1;
 
+// TODO: Remove duplicate aabb calculation?
 bool IsDegenerateQuad(uint2 tc00, uint2 tc10, uint2 tc01, uint2 tc11, uint threshold)
 {
     // Compute bounding box of the quad
@@ -487,7 +488,6 @@ void BinQuads(uint3 id : SV_DispatchThreadID)
 #pragma kernel RasterizeTileBinnedQuads
 #define OVERDRAW_EPSILON -9 // This should not exist
 
-uniform bool _IsBufferOffset;
 Texture2D<uint> _TileCounters_SW;
 RWStructuredBuffer<uint3> _QuadIndexBuffer_SW;
 
@@ -523,11 +523,11 @@ float Edge(float2 a, float2 b, float2 p)
     return (p.x - a.x) * (b.y - a.y) - (p.y - a.y) * (b.x - a.x);
 }
 
-bool IsPixelInTriangle(float2 p, float2 a, float2 b, float2 c, bool useEdgeEpsilon, out float3 bary)
+int IsPixelInTriangle(float2 p, int3 a, int3 b, int3 c, bool useEdgeEpsilon, out float3 bary)
 {
-    float w0 = Edge(b, c, p);
-    float w1 = Edge(c, a, p);
-    float w2 = Edge(a, b, p);
+    float w0 = Edge(b.xy, c.xy, p);
+    float w1 = Edge(c.xy, a.xy, p);
+    float w2 = Edge(a.xy, b.xy, p);
     
     int area = (b.y - a.y) * (c.x - a.x) - (b.x - a.x) * (c.y - a.y); // No clue why this needs to be inverted
     if (area <= 0)
@@ -543,11 +543,13 @@ bool IsPixelInTriangle(float2 p, float2 a, float2 b, float2 c, bool useEdgeEpsil
     
     // Please find forgiveness for this terrible hack (that doesn't even work, really)
     // but I've spend long enough on point in tri algorithms
-    return (w0 >= eps0 && w1 >= 0.0 && w2 >= eps2);    
+    // return (w0 >= eps0 && w1 >= 0.0 && w2 >= eps2);
+    bool isInTriangle = (w0 >= eps0 && w1 >= 0.0 && w2 >= eps2);
+    return isInTriangle ? asint(asfloat(a.z) * bary.x + asfloat(b.z) * bary.y + asfloat(c.z) * bary.z) : -1; // Return depth value
 }
 
 
-bool IsPixelInQuad(
+int IsPixelInQuad(
     uint2 globalPixel,
     uint quadType,
     uint2 tc00_lookup,
@@ -590,7 +592,7 @@ bool IsPixelInQuad(
         v2 = v10;
     }
     
-    return IsPixelInTriangle(p, v0.xy, v1.xy, v2.xy, cross >= 0, bary);
+    return IsPixelInTriangle(p, v0, v1, v2, cross >= 0, bary);
 }
 
 
@@ -629,8 +631,8 @@ void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : 
             
             int3 a, b, c;
             float3 bary;
-            bool isPixelInQuadResult = IsPixelInQuad(id.xy, quadType, tc00_lookup, bary, a, b, c);
-            if (!isPixelInQuadResult)
+            int depthInt = IsPixelInQuad(id.xy, quadType, tc00_lookup, bary, a, b, c);
+            if (depthInt == -1)
             {
                 // Pixel is not in the quad, skip
                 continue;
@@ -641,7 +643,10 @@ void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : 
             #ifdef _DEBUG_WIREFRAME
             RW_DebugBuffer_SW[id.xy] = float4(bary, 1);
             #else
-            RW_DepthBuffer_SW[id.xy] = a.z;
+            // RW_DepthBuffer_SW[id.xy] = depthInt;
+            int oldDepthInt;
+            // TODO: Handle this in groupshared memory and a single dispatch instead of global atomics
+            InterlockedMin(RW_DepthBuffer_SW[id.xy], depthInt, oldDepthInt);
             #endif
             
             return;

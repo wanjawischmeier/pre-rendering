@@ -268,6 +268,8 @@ public class QuadDemoLoader : MonoBehaviour
         cmd.SetComputeBufferParam(computeShader, rasterizeBinnedQuadsKernelHandle, "_QuadIndexBuffer_SW", softwareRasterizerVertexBuffer0);
         cmd.DispatchCompute(computeShader, rasterizeBinnedQuadsKernelHandle, renderTargetResolution.x / (int)tileSize, renderTargetResolution.y / (int)tileSize, 1);
 
+        // var drawFence = cmd.CreateGraphicsFence(GraphicsFenceType.AsyncQueueSynchronisation, SynchronisationStageFlags.ComputeProcessing);
+
         cmd.SetComputeTextureParam(computeShader, rasterizeBinnedQuadsKernelHandle, "_TileCounters_SW", softwareRasterizerTileCounters1);
         cmd.SetComputeBufferParam(computeShader, rasterizeBinnedQuadsKernelHandle, "_QuadIndexBuffer_SW", softwareRasterizerVertexBuffer1);
         cmd.DispatchCompute(computeShader, rasterizeBinnedQuadsKernelHandle, renderTargetResolution.x / (int)tileSize, renderTargetResolution.y / (int)tileSize, 1);
@@ -305,7 +307,7 @@ public class QuadDemoLoader : MonoBehaviour
         // var drawFence = cmd.CreateGraphicsFence(GraphicsFenceType.AsyncQueueSynchronisation, SynchronisationStageFlags.PixelProcessing);
 
         // Submit all to GPU
-        Graphics.ExecuteCommandBuffer(cmd);
+        Graphics.ExecuteCommandBuffer(cmd); // TODO: Some async dispatches and draw calls instead?
         cmd.Release();
     }
 
