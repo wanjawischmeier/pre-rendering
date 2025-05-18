@@ -12,7 +12,7 @@
 #elif defined(_TILE_SIZE_32)
     #define TILE_SIZE 32
 #else
-    #define TILE_SIZE 32 // Default falls kein Keyword definiert ist
+    #define TILE_SIZE 32 // Default to 32x32
 #endif
 
 #define MAX_VERTS_PER_TILE  256
@@ -140,6 +140,7 @@ void TransformVertices(uint3 id : SV_DispatchThreadID)
 
 
 #pragma kernel BinQuads
+#pragma target 5.0 // TODO: Reduce to 8 uav's so we can support Direct3D11
 
 #define IN_SAME_PIXEL(tc00, tc10, tc01, tc11) (all(tc00 == tc10) && all(tc00 == tc01) && all(tc00 == tc11))
 
@@ -147,8 +148,20 @@ AppendStructuredBuffer<uint> _QuadIndexBuffer_HW0, _QuadIndexBuffer_HW1, _QuadIn
 
 RWTexture2D<int> RW_DepthBuffer_SW;
 RWTexture2D<float4> RW_DebugBuffer_SW;
-RWStructuredBuffer<uint3> _QuadIndexBuffer_SW;
-RWTexture2D<uint> _TileCounters_SW;
+RWStructuredBuffer<uint3> _QuadIndexBuffer_SW0, _QuadIndexBuffer_SW1;
+RWTexture2D<uint> _TileCounters_SW0, _TileCounters_SW1;
+
+bool IsDegenerateQuad(uint2 tc00, uint2 tc10, uint2 tc01, uint2 tc11, uint threshold)
+{
+    // Compute bounding box of the quad
+    uint2 minCoord = min(min(tc00, tc10), min(tc01, tc11));
+    uint2 maxCoord = max(max(tc00, tc10), max(tc01, tc11));
+
+    // Check if the quad spans more than `threshold` pixels in either dimension
+    uint2 size = maxCoord - minCoord;
+
+    return (size.x <= threshold && size.y <= threshold);
+}
 
 // Quad types:
 // 0: No valid vertices (invalid quad)
@@ -168,7 +181,7 @@ uint ComputeQuadType(int2 v00, int2 v10, int2 v01, int2 v11, uint2 tc00, uint2 t
 
     return quadType; // Values: 0, 1, 2, or 3
 }
-
+/*
 bool IsQuadSoftwareRasterizable(uint quadType, uint2 tc00, uint2 tc10, uint2 tc01, uint2 tc11)
 {
     // Calculate tile coordinates for each vertex
@@ -193,6 +206,45 @@ bool IsQuadSoftwareRasterizable(uint quadType, uint2 tc00, uint2 tc10, uint2 tc0
         default: // No valid vertices (quadType == 0) or invalid value
             return false;
     }
+}
+*/
+uint IsQuadSoftwareRasterizable(uint quadType, uint2 tc00, uint2 tc10, uint2 tc01, uint2 tc11)
+{
+    const uint2 halfTile = TILE_SIZE >> 1;
+
+    // Grid A (origin at 0,0)
+    uint2 tile00_A = tc00 / TILE_SIZE;
+    uint2 tile10_A = tc10 / TILE_SIZE;
+    uint2 tile01_A = tc01 / TILE_SIZE;
+    uint2 tile11_A = tc11 / TILE_SIZE;
+
+    // Grid B (offset by TILE_SIZE / 2)
+    uint2 tile00_B = (tc00 - halfTile) / TILE_SIZE;
+    uint2 tile10_B = (tc10 - halfTile) / TILE_SIZE;
+    uint2 tile01_B = (tc01 - halfTile) / TILE_SIZE;
+    uint2 tile11_B = (tc11 - halfTile) / TILE_SIZE;
+
+    bool fitsA = false;
+    bool fitsB = false;
+
+    if (quadType == 1)
+    {
+        fitsA = all(tile00_A == tile10_A) && all(tile00_A == tile01_A);
+        fitsB = all(tile00_B == tile10_B) && all(tile00_B == tile01_B);
+    }
+    else if (quadType == 2)
+    {
+        fitsA = all(tile11_A == tile10_A) && all(tile11_A == tile01_A);
+        fitsB = all(tile11_B == tile10_B) && all(tile11_B == tile01_B);
+    }
+    else if (quadType == 3)
+    {
+        fitsA = all(tile00_A == tile10_A) && all(tile00_A == tile01_A) && all(tile00_A == tile11_A);
+        fitsB = all(tile00_B == tile10_B) && all(tile00_B == tile01_B) && all(tile00_B == tile11_B);
+    }
+
+    // Return tile mode: 0 = none, 1 = grid A, 2 = grid B
+    return fitsA ? 1 : (fitsB ? 2 : 0);
 }
 
 uint2 GetTexCoordFromIndex(int index, uint2 resolution)
@@ -300,7 +352,24 @@ int ClassifyTriangle(float3 v0, float3 v1, float3 v2)
 }
 */
 
-void PushQuadToSoftwareRasterizer(uint3 id, uint2 tc00, uint2 tc10, uint2 tc01, uint2 tc11, uint quadType)
+void AtomicallyInsertQuadIntoIndexBuffer(RWTexture2D<uint> tileCounter, RWStructuredBuffer<uint3> quadIndexBuffer, uint3 id, uint2 tc00, uint quadType, uint2 tileCoord, uint tileIndex, uint aabb)
+{
+    // Atomically increment counter and write if within limit
+    uint localIndex;
+    InterlockedAdd(tileCounter[tileCoord], 1, localIndex);
+
+    if (localIndex < MAX_VERTS_PER_TILE)
+    {
+        uint globalIndex = tileIndex * MAX_VERTS_PER_TILE + localIndex;
+        uint idIndex = id.x + id.y * _InputResolution.x;
+        uint texelIndex = tc00.x + tc00.y * _OutputResolution.x;
+        uint packedIdIndex = (idIndex << 2) | (quadType & 0x3);
+
+        quadIndexBuffer[globalIndex] = uint3(texelIndex, aabb, packedIdIndex);
+    }
+}
+
+void PushQuadToSoftwareRasterizer(uint3 id, uint2 tc00, uint2 tc10, uint2 tc01, uint2 tc11, uint quadType, uint tileGridMode)
 {
     // Compute AABB offsets for the quad
     uint aabb;
@@ -319,23 +388,29 @@ void PushQuadToSoftwareRasterizer(uint3 id, uint2 tc00, uint2 tc10, uint2 tc01, 
             break;
     }
     
-    uint2 tileCoord = tc00 / TILE_SIZE;
-    uint tileIndex = tileCoord.y * (_OutputResolution.x / TILE_SIZE) + tileCoord.x;
-
-    // Atomically increment tile counter and get the vertex index
-    uint localIndex;
-    InterlockedAdd(_TileCounters_SW[tileCoord], 1, localIndex);
-
-    if (localIndex < MAX_VERTS_PER_TILE)
+    // Compute tile coordinate based on tile grid mode
+    uint hash = id.x * 73856093 ^ id.y * 19349663; // Basic spatial hash
+    bool isGridOffset = tileGridMode == 1 || (tileGridMode == 3 && (hash & 1) == 0);
+    uint2 tileCoord;
+    if (!isGridOffset) // Original grid
     {
-        uint globalIndex = tileIndex * MAX_VERTS_PER_TILE + localIndex;
-        uint idIndex = id.x + id.y * _InputResolution.x;
-        uint texelIndex = tc00.x + tc00.y * _OutputResolution.x;
-        uint packedIdIndex = (idIndex << 2) | (quadType & 0x3);
-        
-        _QuadIndexBuffer_SW[globalIndex] = uint3(texelIndex, aabb, packedIdIndex);
+        tileCoord = tc00 / TILE_SIZE;
     }
-    // Else: drop vertex (tile overflow)
+    else // Offset grid
+    {
+        tileCoord = (tc00 - (TILE_SIZE >> 1)) / TILE_SIZE;
+    }
+
+    // Compute flat tile index
+    uint tileIndex = tileCoord.y * (_OutputResolution.x / TILE_SIZE) + tileCoord.x;
+    if (!isGridOffset)
+    {
+        AtomicallyInsertQuadIntoIndexBuffer(_TileCounters_SW0, _QuadIndexBuffer_SW0, id, tc00, quadType, tileCoord, tileIndex, aabb);
+    }
+    else
+    {
+        AtomicallyInsertQuadIntoIndexBuffer(_TileCounters_SW1, _QuadIndexBuffer_SW1, id, tc00, quadType, tileCoord, tileIndex, aabb);
+    }
 }
 
 [numthreads(8, 8, 1)]
@@ -359,11 +434,9 @@ void BinQuads(uint3 id : SV_DispatchThreadID)
     uint2 tc01 = GetTexCoordFromIndex(v01.x, _OutputResolution);
     uint2 tc11 = GetTexCoordFromIndex(v11.x, _OutputResolution);
     
-    if (IN_SAME_PIXEL(tc00, tc10, tc01, tc11))
+    if (IsDegenerateQuad(tc00, tc10, tc01, tc11, 1))
     {
-        // One pixel quad, so we can just write to the depth buffer
-    
-            
+        // One pixel quad, so we can just write to the depth buffer        
         tc00.y = _OutputResolution.y - tc00.y - 1; // Flip Y for depth buffer
         
         #ifdef _DEBUG_WIREFRAME
@@ -385,15 +458,16 @@ void BinQuads(uint3 id : SV_DispatchThreadID)
         return;
     }
     
-    bool isSoftwareRasterizable = IsQuadSoftwareRasterizable(quadType, tc00, tc10, tc01, tc11); // Choose render path
-    if (isSoftwareRasterizable)
+    uint tileGridMode = IsQuadSoftwareRasterizable(quadType, tc00, tc10, tc01, tc11); // Choose render path
+    if (tileGridMode == 0)
     {
-        // Prefer software rasterization for quads that fit in a tile
-        PushQuadToSoftwareRasterizer(id, tc00, tc10, tc01, tc11, quadType);
+        // Quad does not fit into software raster tile, push to hardware rasterizer
+        PushQuadToHardwareRasterizer(id.xy, quadType);
     }
     else
     {
-        PushQuadToHardwareRasterizer(id.xy, quadType);
+        // Prefer software rasterization for quads that fit in a tile
+        PushQuadToSoftwareRasterizer(id, tc00, tc10, tc01, tc11, quadType, tileGridMode);
     }
 }
 
@@ -402,6 +476,8 @@ void BinQuads(uint3 id : SV_DispatchThreadID)
 #define OVERDRAW_EPSILON -9 // This should not exist
 
 uniform bool _IsBufferOffset;
+Texture2D<uint> _TileCounters_SW;
+RWStructuredBuffer<uint3> _QuadIndexBuffer_SW;
 
 bool IsPointInPackedAABB(uint2 tc00, uint2 p, uint packedAABB)
 {
@@ -514,9 +590,7 @@ void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : 
     // TODO: loat verts in tile atomically
     
     // Calculate coords
-    uint2 globalPixel = groupID.xy * TILE_SIZE + groupThreadID.xy;
-    globalPixel = id.xy;
-    uint2 tileCoord = globalPixel / TILE_SIZE;
+    uint2 tileCoord = id.xy / TILE_SIZE;
     uint tileIndex = tileCoord.y * (_OutputResolution.x / TILE_SIZE) + tileCoord.x;
     
     uint numTris = _TileCounters_SW[tileCoord];
@@ -535,7 +609,7 @@ void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : 
         uint2 tc00 = GetTexCoordFromIndex(quadApprox.x, _OutputResolution);
 
         // Check if the pixel is within the AABB
-        if (IsPointInPackedAABB(tc00, globalPixel, quadApprox.y))
+        if (IsPointInPackedAABB(tc00, id.xy, quadApprox.y))
         {
             uint quadType = quadApprox.z & 0x3;
             uint idIndex = quadApprox.z >> 2;
@@ -543,19 +617,19 @@ void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : 
             
             int3 a, b, c;
             float3 bary;
-            bool isPixelInQuadResult = IsPixelInQuad(globalPixel, quadType, tc00_lookup, bary, a, b, c);
+            bool isPixelInQuadResult = IsPixelInQuad(id.xy, quadType, tc00_lookup, bary, a, b, c);
             if (!isPixelInQuadResult)
             {
                 // Pixel is not in the quad, skip
                 continue;
             }
             
-            globalPixel.y = _OutputResolution.y - globalPixel.y - 1; // Flip Y for depth buffer
+            id.y = _OutputResolution.y - id.y - 1; // Flip Y for depth buffer
             
             #ifdef _DEBUG_WIREFRAME
-            RW_DebugBuffer_SW[globalPixel] = float4(bary, 1);
+            RW_DebugBuffer_SW[id.xy] = float4(bary, 1);
             #else
-            RW_DepthBuffer_SW[globalPixel] = a.z;
+            RW_DepthBuffer_SW[id.xy] = a.z;
             #endif
             
             return;

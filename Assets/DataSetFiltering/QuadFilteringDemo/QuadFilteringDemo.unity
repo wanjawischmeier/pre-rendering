@@ -303,15 +303,17 @@ MonoBehaviour:
   hardwareRasterDebug: {fileID: 0}
   hardwareRasterMaterial: {fileID: 2100000, guid: 2d9fd6062a2da4543a415e6bea0ca19a, type: 2}
   postProcessingPass: {fileID: 2100000, guid: 6d4b11031c5e5594b83c9de28257c39b, type: 2}
-  tileOccupancyDebug: {fileID: 0}
+  tileOccupancyDebug0: {fileID: 0}
+  tileOccupancyDebug1: {fileID: 0}
   vertexLookupDebug: {fileID: 0}
   inputTexture: {fileID: 2800000, guid: cd4f6f7a628e95846892f84bdf830366, type: 3}
   vertexBuffer: {fileID: 0}
   softwareRasterizedDepth: {fileID: 0}
   hardwareRasterizedDepth: {fileID: 0}
+  softwareRasterizerTileCounters0: {fileID: 0}
+  softwareRasterizerTileCounters1: {fileID: 0}
   softwareRasterizedDebugTexture: {fileID: 0}
   hardwareRasterizedDebugTexture: {fileID: 0}
-  softwareRasterizerTileCounters: {fileID: 0}
   nearClip: 2.5
   farClip: 6
   rescaledInputResolution: {x: 1024, y: 1024}
@@ -322,6 +324,7 @@ MonoBehaviour:
   debugWireframe: 0
   triangleCounts: 
   maxHardwareRasterizedTrianglesPerBatch: 256000
+  tileSize: 8
 --- !u!114 &160531368
 MonoBehaviour:
   m_ObjectHideFlags: 0

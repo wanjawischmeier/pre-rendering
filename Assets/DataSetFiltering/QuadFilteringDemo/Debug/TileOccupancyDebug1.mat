@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: TileOccupancyDebug
+  m_Name: TileOccupancyDebug1
   m_Shader: {fileID: 4800000, guid: 934d057f39a42894f86f3c7645de5872, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -112,7 +112,7 @@ Material:
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
     - _Surface: 0
-    - _TileSize: 32
+    - _TileSize: 16
     - _WorkflowMode: 1
     - _ZWrite: 1
     m_Colors:
