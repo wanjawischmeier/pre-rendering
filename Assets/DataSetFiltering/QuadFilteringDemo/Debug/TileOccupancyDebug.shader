@@ -1,11 +1,5 @@
 ﻿Shader "Unlit/TileOccupancyDebug"
 {
-    Properties
-    {
-        _OutputResolution ("Output Resolution", Vector) = (1024, 1024, 0, 0)
-        _TileSize ("Tile Size", Float) = 16
-        _MaxVertsPerTile ("Max Verts Per Tile", Float) = 256
-    }
     SubShader
     {
         Tags { "RenderType"="Opaque" }
@@ -22,7 +16,7 @@
             Texture2D<uint> _TileCounters;
 
             uniform uint2 _OutputResolution;
-            uniform float _TileSize, _MaxVertsPerTile;
+            uniform int _TileSize, _MaxVertsPerTile;
 
             struct v2f
             {

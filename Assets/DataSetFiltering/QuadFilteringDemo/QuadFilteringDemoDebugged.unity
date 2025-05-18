@@ -441,7 +441,7 @@ MonoBehaviour:
   postProcessingPass: {fileID: 2100000, guid: 6d4b11031c5e5594b83c9de28257c39b, type: 2}
   tileOccupancyDebug: {fileID: 2100000, guid: 1e1ce3b2e2a7c6a428dd59d8063a6953, type: 2}
   vertexLookupDebug: {fileID: 2100000, guid: 3fdef5e065f74954781f93ff1653d584, type: 2}
-  inputTexture: {fileID: 2800000, guid: cd4f6f7a628e95846892f84bdf830366, type: 3}
+  inputTexture: {fileID: 2800000, guid: dfa50a1c658dbd24cadccb9b968cab13, type: 3}
   vertexBuffer: {fileID: 0}
   softwareRasterizedDepth: {fileID: 0}
   hardwareRasterizedDepth: {fileID: 0}
@@ -458,6 +458,7 @@ MonoBehaviour:
   debugWireframe: 1
   triangleCounts: 
   maxHardwareRasterizedTrianglesPerBatch: 256000
+  tileSize: 8
 --- !u!114 &160531368
 MonoBehaviour:
   m_ObjectHideFlags: 0

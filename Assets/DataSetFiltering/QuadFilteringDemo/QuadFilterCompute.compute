@@ -1,7 +1,20 @@
 #pragma multi_compile _ _DEBUG_WIREFRAME
+#pragma multi_compile _TILE_SIZE_4 _TILE_SIZE_8 _TILE_SIZE_16 _TILE_SIZE_32
+
 #pragma kernel TransformVertices
 
-#define TILE_SIZE 32
+#if defined(_TILE_SIZE_4)
+    #define TILE_SIZE 4
+#elif defined(_TILE_SIZE_8)
+    #define TILE_SIZE 8
+#elif defined(_TILE_SIZE_16)
+    #define TILE_SIZE 16
+#elif defined(_TILE_SIZE_32)
+    #define TILE_SIZE 32
+#else
+    #define TILE_SIZE 32 // Default falls kein Keyword definiert ist
+#endif
+
 #define MAX_VERTS_PER_TILE  256
 #define IS_DEPTH_VALID(sampled) (sampled.a > 0.001 && sampled.a != 1)
 #define IS_DEPTH_INVALID(sampled) (sampled.a < 0.01 || sampled.a == 1)
@@ -498,6 +511,8 @@ bool IsPixelInQuad(
 [numthreads(TILE_SIZE, TILE_SIZE, 1)]
 void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadID, uint3 id : SV_DispatchThreadID)
 {
+    // TODO: loat verts in tile atomically
+    
     // Calculate coords
     uint2 globalPixel = groupID.xy * TILE_SIZE + groupThreadID.xy;
     globalPixel = id.xy;

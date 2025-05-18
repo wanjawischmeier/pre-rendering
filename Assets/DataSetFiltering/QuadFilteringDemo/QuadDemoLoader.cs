@@ -4,6 +4,14 @@ using UnityEngine.Rendering;
 
 public class QuadDemoLoader : MonoBehaviour
 {
+    public enum TileSize
+    {
+        _TILE_SIZE_4 = 4,
+        _TILE_SIZE_8 = 8,
+        _TILE_SIZE_16 = 16,
+        _TILE_SIZE_32 = 32
+    }
+
     public ComputeShader computeShader;
     public Material softwareRasterDebug, hardwareRasterDebug, hardwareRasterMaterial, postProcessingPass, tileOccupancyDebug, vertexLookupDebug;
     public Texture2D inputTexture;
@@ -15,6 +23,7 @@ public class QuadDemoLoader : MonoBehaviour
     public bool debugWireframe = false;
     public uint[] triangleCounts;
     public int maxHardwareRasterizedTrianglesPerBatch = 131072;
+    public TileSize tileSize = TileSize._TILE_SIZE_8;
 
     private int transformVerticesKernelHandle, binQuadsKernel, rasterizeBinnedQuadsKernelHandle;
     private ComputeBuffer[] hardwareRasterizerQuadBuffers, hardwareRasterizerArgsBuffers;
@@ -23,7 +32,6 @@ public class QuadDemoLoader : MonoBehaviour
     private LocalKeyword debugWireframeComputeKeyword;
 
     const int vertexBufferCount = 4;
-    const int swTileSize = 32;
     const int swMaxVertsPerTile = 256;
 
     private void Start()
@@ -61,8 +69,8 @@ public class QuadDemoLoader : MonoBehaviour
         vertexBuffer.enableRandomWrite = true;
         vertexBuffer.Create();
 
-        int tileCountX = Mathf.CeilToInt((float)renderTargetResolution.x / swTileSize);
-        int tileCountY = Mathf.CeilToInt((float)renderTargetResolution.y / swTileSize);
+        int tileCountX = Mathf.CeilToInt((float)renderTargetResolution.x / (int)tileSize);
+        int tileCountY = Mathf.CeilToInt((float)renderTargetResolution.y / (int)tileSize);
         softwareRasterizerTileCounters = new RenderTexture(tileCountX, tileCountY, 0, RenderTextureFormat.RInt);
         softwareRasterizerTileCounters.enableRandomWrite = true;
         softwareRasterizerTileCounters.Create();
@@ -86,6 +94,17 @@ public class QuadDemoLoader : MonoBehaviour
             { postProcessingPass, new LocalKeyword(postProcessingPass.shader, "_DEBUG_WIREFRAME") }
         };
         debugWireframeComputeKeyword = new LocalKeyword(computeShader, "_DEBUG_WIREFRAME");
+        foreach (var tileSizeEnum in System.Enum.GetValues(typeof(TileSize)))
+        {
+            if (tileSizeEnum.Equals(tileSize))
+            {
+                computeShader.SetKeyword(new LocalKeyword(computeShader, tileSizeEnum.ToString()), true);
+            }
+            else
+            {
+                computeShader.SetKeyword(new LocalKeyword(computeShader, tileSizeEnum.ToString()), false);
+            }
+        }
 
         transformVerticesKernelHandle = computeShader.FindKernel("TransformVertices");
         binQuadsKernel = computeShader.FindKernel("BinQuads");
@@ -139,6 +158,9 @@ public class QuadDemoLoader : MonoBehaviour
 
         if (tileOccupancyDebug != null)
         {
+            tileOccupancyDebug.SetInt("_TileSize", (int)tileSize);
+            tileOccupancyDebug.SetInt("_MaxVertsPerTile", swMaxVertsPerTile);
+            tileOccupancyDebug.SetVector("_OutputResolution", outputResolution);
             tileOccupancyDebug.SetTexture("_TileCounters", softwareRasterizerTileCounters);
         }
 
@@ -212,7 +234,7 @@ public class QuadDemoLoader : MonoBehaviour
         var cmd = new CommandBuffer();
         cmd.name = "Draw Hardware & Software Raster Batches";
 
-        cmd.DispatchCompute(computeShader, rasterizeBinnedQuadsKernelHandle, renderTargetResolution.x / swTileSize, renderTargetResolution.y / swTileSize, 1);
+        cmd.DispatchCompute(computeShader, rasterizeBinnedQuadsKernelHandle, renderTargetResolution.x / (int)tileSize, renderTargetResolution.y / (int)tileSize, 1);
 
 
         // Set render target and draw procedurally
