@@ -9,6 +9,7 @@ public class FlyMovementController : MonoBehaviour
     public bool lockCursor = true;
 
     private CharacterController characterController;
+    private QuadDemoLoader quadDemoLoader;
 
     private float horizontalRotation = 0f;
     private float verticalRotation = 0f;
@@ -16,6 +17,8 @@ public class FlyMovementController : MonoBehaviour
     private void Start()
     {
         characterController = GetComponent<CharacterController>();
+        quadDemoLoader = GetComponent<QuadDemoLoader>();
+
         TryApplyMapSpeedMultiplier();
 
         if (lockCursor)
@@ -49,6 +52,11 @@ public class FlyMovementController : MonoBehaviour
             {
                 return;
             }
+        }
+
+        if (quadDemoLoader != null && Input.GetKeyDown(KeyCode.Tab))
+        {
+            quadDemoLoader.debugWireframe = !quadDemoLoader.debugWireframe;
         }
 
         float speed = Input.GetKey(KeyCode.LeftShift) ? flySpeed / 4 : flySpeed;

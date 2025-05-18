@@ -1,3 +1,4 @@
+#pragma multi_compile _ _DEBUG_WIREFRAME
 #pragma kernel TransformVertices
 
 #define TILE_SIZE 32
@@ -132,6 +133,7 @@ void TransformVertices(uint3 id : SV_DispatchThreadID)
 AppendStructuredBuffer<uint> _QuadIndexBuffer_HW0, _QuadIndexBuffer_HW1, _QuadIndexBuffer_HW2, _QuadIndexBuffer_HW3;
 
 RWTexture2D<int> RW_DepthBuffer_SW;
+RWTexture2D<float4> RW_DebugBuffer_SW;
 RWStructuredBuffer<uint3> _QuadIndexBuffer_SW;
 RWTexture2D<uint> _TileCounters_SW;
 
@@ -379,7 +381,7 @@ void BinQuads(uint3 id : SV_DispatchThreadID)
 
 uniform bool _IsBufferOffset;
 
-bool PointInPackedAABB(uint2 tc00, uint2 p, uint packedAABB)
+bool IsPointInPackedAABB(uint2 tc00, uint2 p, uint packedAABB)
 {
     // Unpack offsets
     uint minX = packedAABB & 0xFF;
@@ -408,9 +410,9 @@ int3 VertexCoord(uint2 tc)
 
 bool IsPointInTriangle(int2 p, int3 a, int3 b, int3 c, out float3 bary)
 {
-    float2 v0 = b.xy - a.xy;
-    float2 v1 = c.xy - a.xy;
-    float2 v2 = p - a.xy;
+    float2 v0 = float2(b.xy - a.xy);
+    float2 v1 = float2(c.xy - a.xy);
+    float2 v2 = float2(p - a.xy);
 
     float d00 = dot(v0, v0);
     float d01 = dot(v0, v1);
@@ -419,60 +421,70 @@ bool IsPointInTriangle(int2 p, int3 a, int3 b, int3 c, out float3 bary)
     float d21 = dot(v2, v1);
 
     float denom = d00 * d11 - d01 * d01;
-    if (denom == 0.0)
+
+    // Early out if triangle is degenerate
+    if (denom <= 1e-14)
     {
         bary = float3(0, 0, 0);
-        return false;
+        // return false;
     }
 
-    float v = (d11 * d20 - d01 * d21) / denom;
-    float w = (d00 * d21 - d01 * d20) / denom;
+    float invDenom = 1.0 / denom;
+    float v = (d11 * d20 - d01 * d21) * invDenom;
+    float w = (d00 * d21 - d01 * d20) * invDenom;
     float u = 1.0 - v - w;
 
     bary = float3(u, v, w);
+    return true;
     return (u >= 0 && v >= 0 && w >= 0);
 }
 
-bool IsPixelInQuad(uint2 globalPixel, uint quadType, uint2 tc00_lookup, out float3 bary, out int3 v0, out int3 v1, out int3 v2)
+
+bool IsPixelInQuad(
+    uint2 globalPixel,
+    uint quadType,
+    uint2 tc00_lookup,
+    out float3 bary,
+    out int3 v0, out int3 v1, out int3 v2)
 {
     float2 p = float2(globalPixel);
     uint2 off = uint2(1, 0);
 
-    if (quadType == 1) // Top triangle
-    {
-        v0 = VertexCoord(tc00_lookup);
-        v1 = VertexCoord(tc00_lookup + off);
-        v2 = VertexCoord(tc00_lookup + off.yx);
-        
-        return IsPointInTriangle(p, v0, v1, v2, bary);
-    }
-    else if (quadType == 2) // Bottom triangle
-    {
-        v0 = VertexCoord(tc00_lookup + off.yx);
-        v1 = VertexCoord(tc00_lookup + off);
-        v2 = VertexCoord(tc00_lookup + off.xx);
-        
-        return IsPointInTriangle(p, v0, v1, v2, bary);
-    }
-    else if (quadType == 3) // Full quad (both triangles)
-    {
-        v0 = VertexCoord(tc00_lookup);
-        v1 = VertexCoord(tc00_lookup + off);
-        v2 = VertexCoord(tc00_lookup + off.yx);
-        
-        if (IsPointInTriangle(p, v0, v1, v2, bary))
-            return true;
-        
-        v0 = v2;
-        v2 = VertexCoord(tc00_lookup + off.xx);
-        return IsPointInTriangle(p, v0, v1, v2, bary);
-    }
+    // Shared quad vertices
+    int3 a = VertexCoord(tc00_lookup);             // v00
+    int3 b = VertexCoord(tc00_lookup + off);       // v10
+    int3 c = VertexCoord(tc00_lookup + off.yx);     // v01
+    int3 d = VertexCoord(tc00_lookup + off.xx);     // v11
 
-    // Invalid quad
-    bary = float3(0, 0, 0);
-    v0 = v1 = v2 = int3(0, 0, 0);
-    return false;
+    // Early exit: Diagonal test (c to b)
+    int2 diag = b.xy - c.xy;
+    int2 toP  = int2(p) - c.xy;
+    int cross = diag.x * toP.y - diag.y * toP.x;
+
+    if (cross >= 0)
+    {
+        // Point is in top triangle (v00, v10, v01)
+        if ((quadType & 1) == 0) // Top tri not valid
+            return false;
+
+        v0 = a;
+        v1 = b;
+        v2 = c;
+        return IsPointInTriangle(p, v0, v1, v2, bary);
+    }
+    else
+    {
+        // Point is in bottom triangle (v01, v10, v11)
+        if ((quadType & 2) == 0) // Bottom tri not valid
+            return false;
+
+        v0 = c;
+        v1 = b;
+        v2 = d;
+        return IsPointInTriangle(p, v0, v1, v2, bary);
+    }
 }
+
 
 
 
@@ -500,7 +512,7 @@ void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : 
         uint2 tc00 = GetTexCoordFromIndex(quadApprox.x, _OutputResolution);
 
         // Check if the pixel is within the AABB
-        if (PointInPackedAABB(tc00, globalPixel, quadApprox.y))
+        if (IsPointInPackedAABB(tc00, globalPixel, quadApprox.y))
         {
             uint quadType = quadApprox.z & 0x3;
             uint idIndex = quadApprox.z >> 2;
@@ -516,7 +528,13 @@ void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : 
             }
             
             globalPixel.y = _OutputResolution.y - globalPixel.y - 1; // Flip Y for depth buffer
+            
+            #ifdef _DEBUG_WIREFRAME
+            RW_DebugBuffer_SW[globalPixel] = float4(bary, 1);
+            #else
             RW_DepthBuffer_SW[globalPixel] = a.z;
+            #endif
+            
             return;
         }
     }

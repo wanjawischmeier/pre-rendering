@@ -8,6 +8,7 @@ Shader "Unlit/CombinedPass"
         Pass
         {
             CGPROGRAM
+            #pragma multi_compile _ _DEBUG_WIREFRAME
             #pragma vertex vert
             #pragma fragment frag
             #pragma target 5.0
@@ -29,7 +30,9 @@ Shader "Unlit/CombinedPass"
             uniform int2 _OutputResolution;
 
             Texture2D<int> _DepthBuffer_SW;
-            Texture2D<float4> _DepthBuffer_HW;
+            Texture2D<float4> _DebugBuffer_SW;
+            Texture2D<float> _DepthBuffer_HW;
+            Texture2D<float4> _DebugBuffer_HW;
 
             v2f vert (appdata v)
             {
@@ -42,22 +45,37 @@ Shader "Unlit/CombinedPass"
             fixed4 frag (v2f i) : SV_Target
             {
                 int3 tc = int3(i.uv * _OutputResolution, 0); // Texture coordinates in uint3 format
+
+                #ifdef _DEBUG_WIREFRAME
+
+                float4 debug = _DebugBuffer_SW.Load(tc);
+                if (debug.a == 0.0f)
+                {
+                    debug = _DebugBuffer_HW.Load(tc);
+                }
+
+                return debug;
+
+                #else
                 
                 // Lade Wert aus dem Software-Tiefenpuffer
                 int swDepth = _DepthBuffer_SW.Load(tc);
+                float depth;
                 
                 // Prüfe ob er gleich int.MaxValue ist
-                if (swDepth != 2147483647) // int.MaxValue
+                if (swDepth < 2147483647) // int.MaxValue
                 {
-                    // Konvertiere int zu float4 für die Rückgabe
-                    float depth = asfloat(swDepth);
-                    return fixed4(depth.xxx, 1);
+                    depth = asfloat(swDepth);
+                    
                 }
                 else
                 {
-                    // Gib den Hardware-Tiefenwert zurück
-                    return _DepthBuffer_HW.Load(tc);
+                    depth = _DepthBuffer_HW.Load(tc);
                 }
+                
+                return fixed4(depth.xxx, 1);
+
+                #endif
             }
             ENDCG
         }

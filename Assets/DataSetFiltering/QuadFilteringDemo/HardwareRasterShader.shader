@@ -10,6 +10,7 @@ Shader "Unlit/HardwareRasterShader_Debug"
         Pass
         {
             HLSLPROGRAM
+            #pragma multi_compile _ _DEBUG_WIREFRAME
             #pragma vertex vert
             #pragma fragment frag
 
@@ -93,7 +94,7 @@ Shader "Unlit/HardwareRasterShader_Debug"
 
                 return o;
             }
-
+            #ifdef _DEBUG_WIREFRAME
             float4 frag(VSOutput i) : SV_Target
             {
                 // return float4(0, 1, 0, 1);
@@ -109,6 +110,13 @@ Shader "Unlit/HardwareRasterShader_Debug"
                 // Fill with bary UV for debugging
                 return float4(i.bary.xy, 1.0 - i.bary.x - i.bary.y, 1);
             }
+            #else
+            float frag(VSOutput i) : SV_Depth
+            {
+                // TODO: Remove this and use the depth output from the vertex shader instead
+                return i.pos.z;
+            }
+            #endif
             ENDHLSL
         }
     }

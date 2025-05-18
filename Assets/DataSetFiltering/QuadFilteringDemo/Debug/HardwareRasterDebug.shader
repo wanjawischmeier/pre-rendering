@@ -1,5 +1,9 @@
-Shader "Unlit/SoftwareRasterDebug"
+Shader "Unlit/HardwareRasterDebug"
 {
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+    }
     SubShader
     {
         Tags { "RenderType"="Opaque" }
@@ -25,10 +29,10 @@ Shader "Unlit/SoftwareRasterDebug"
                 float2 uv : TEXCOORD0;
                 float4 vertex : SV_POSITION;
             };
-
+            
             uniform int2 _OutputResolution;
 
-            Texture2D<int> _InputDepthBuffer;
+            Texture2D<float> _InputDepthBuffer;
             Texture2D<float4> _InputDebugBuffer;
 
             v2f vert (appdata v)
@@ -49,10 +53,9 @@ Shader "Unlit/SoftwareRasterDebug"
                 return _InputDebugBuffer[tc];
 
                 #else
-                
+
                 // sample the depth buffer
-                int rDepth = _InputDepthBuffer[tc];
-                float depth = asfloat(rDepth);
+                float depth = _InputDepthBuffer[tc];
 
                 return float4(depth.xxx, 1);
                 #endif
