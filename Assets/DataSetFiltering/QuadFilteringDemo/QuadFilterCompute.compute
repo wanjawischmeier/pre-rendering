@@ -154,6 +154,7 @@ void TransformVertices(uint3 id : SV_DispatchThreadID)
 #pragma kernel BinQuads
 #pragma target 5.0 // TODO: Reduce to 8 uav's so we can support Direct3D11
 
+#define MIN_BINNED_SIZE 5 // Minimum size of a binned quad to be processed in software rasterizer
 #define IS_QUAD_VALID(v00, v10, v01, v11) (v00.x != -1 && v10.x != -1 && v01.x != -1 && v11.x != -1)
 #define IN_SAME_PIXEL(tc00, tc10, tc01, tc11) (all(tc00 == tc10) && all(tc00 == tc01) && all(tc00 == tc11))
 
@@ -176,19 +177,6 @@ bool IsBackfacingQuad(uint2 tc00, uint2 tc10, uint2 tc01, uint2 tc11)
 
     // Cull if the triangle is backfacing (i.e., negative area)
     return cross <= 0;
-}
-
-// TODO: Remove duplicate aabb calculation?
-bool IsDegenerateQuad(uint2 tc00, uint2 tc10, uint2 tc01, uint2 tc11, uint threshold)
-{
-    // Compute bounding box of the quad
-    uint2 minCoord = min(min(tc00, tc10), min(tc01, tc11));
-    uint2 maxCoord = max(max(tc00, tc10), max(tc01, tc11));
-
-    // Check if the quad spans more than `threshold` pixels in either dimension
-    uint2 size = maxCoord - minCoord;
-
-    return (size.x <= threshold && size.y <= threshold);
 }
 
 // Quad types:
@@ -440,6 +428,92 @@ void PushQuadToSoftwareRasterizer(uint3 id, uint2 tc00, uint2 tc10, uint2 tc01, 
     }
 }
 
+void RasterPixel(uint3 id, uint2 tc, int depthInt)
+{
+    tc.y = _OutputResolution.y - tc.y - 1; // Flip Y for depth buffer
+        
+    #ifdef _DEBUG_WIREFRAME
+    float2 uv = float2(id.xy) / _InputResolution;
+    RW_DebugBuffer_SW[tc] = float4(uv, 0, 1);
+    #else
+    depthInt |= 0x1; // Set the LSB to indicate a priority pixel
+    int oldDepthInt;
+    InterlockedMin(RW_DepthBuffer_SW[tc], depthInt, oldDepthInt);
+    #endif
+}
+
+void RasterizeQuadIteratively(
+    uint3 id,
+    uint2 minCoord,
+    uint2 maxCoord,
+    uint2 tc00, uint2 tc10, uint2 tc01, uint2 tc11,
+    int d00, int d10, int d01, int d11)
+{
+    // Convert depths from int to float (as they are stored as int via asint)
+    float fd00 = asfloat(d00);
+    float fd10 = asfloat(d10);
+    float fd01 = asfloat(d01);
+    float fd11 = asfloat(d11);
+
+    // Triangle 0: (tc00, tc10, tc01)
+    float area0 = float((tc10.x - tc00.x) * (tc01.y - tc00.y) - (tc10.y - tc00.y) * (tc01.x - tc00.x));
+    // Triangle 1: (tc01, tc10, tc11)
+    float area1 = float((tc10.x - tc01.x) * (tc11.y - tc01.y) - (tc10.y - tc01.y) * (tc11.x - tc01.x));
+
+    [unroll(MIN_BINNED_SIZE)]
+    for (uint y = minCoord.y; y <= maxCoord.y; ++y)
+    {
+        [unroll(MIN_BINNED_SIZE)]
+        for (uint x = minCoord.x; x <= maxCoord.x; ++x)
+        {
+            uint2 p = uint2(x, y);
+            bool inside = false;
+            float depthF = 0.0;
+
+            // --- First triangle: (tc00, tc10, tc01) ---
+            int w0 = (tc10.x - p.x) * (tc01.y - p.y) - (tc10.y - p.y) * (tc01.x - p.x);
+            int w1 = (tc01.x - p.x) * (tc00.y - p.y) - (tc01.y - p.y) * (tc00.x - p.x);
+            int w2 = (tc00.x - p.x) * (tc10.y - p.y) - (tc00.y - p.y) * (tc10.x - p.x);
+
+            if ((w0 | w1 | w2) >= 0 && area0 != 0)
+            {
+                float invArea = 1.0 / area0;
+                float b0 = float(w0) * invArea;
+                float b1 = float(w1) * invArea;
+                float b2 = float(w2) * invArea;
+
+                depthF = b0 * fd00 + b1 * fd10 + b2 * fd01;
+                inside = true;
+            }
+            else
+            {
+                // --- Second triangle: (tc01, tc10, tc11) ---
+                w0 = (tc10.x - p.x) * (tc11.y - p.y) - (tc10.y - p.y) * (tc11.x - p.x);
+                w1 = (tc11.x - p.x) * (tc01.y - p.y) - (tc11.y - p.y) * (tc01.x - p.x);
+                w2 = (tc01.x - p.x) * (tc10.y - p.y) - (tc01.y - p.y) * (tc10.x - p.x);
+
+                if ((w0 | w1 | w2) >= 0 && area1 != 0)
+                {
+                    float invArea = 1.0 / area1;
+                    float b0 = float(w0) * invArea;
+                    float b1 = float(w1) * invArea;
+                    float b2 = float(w2) * invArea;
+
+                    depthF = b0 * fd01 + b1 * fd10 + b2 * fd11;
+                    inside = true;
+                }
+            }
+
+            if (inside)
+            {
+                int depthPacked = asint(depthF);
+                RasterPixel(id, p, depthPacked);
+            }
+        }
+    }
+}
+
+
 [numthreads(8, 8, 1)]
 void BinQuads(uint3 id : SV_DispatchThreadID)
 {
@@ -471,21 +545,29 @@ void BinQuads(uint3 id : SV_DispatchThreadID)
         return;
     }
     
-    if (IsDegenerateQuad(tc00, tc10, tc01, tc11, 4))
+    // Compute bounding box of the quad
+    uint2 minCoord = min(min(tc00, tc10), min(tc01, tc11));
+    uint2 maxCoord = max(max(tc00, tc10), max(tc01, tc11));
+    
+    // Check if the quad spans more than `threshold` pixels in either dimension
+    uint2 size = maxCoord - minCoord;
+    if (size.x < MIN_BINNED_SIZE && size.y < MIN_BINNED_SIZE)
     {
-        // One pixel quad, so we can just write to the depth buffer        
-        tc00.y = _OutputResolution.y - tc00.y - 1; // Flip Y for depth buffer
-        
-        #ifdef _DEBUG_WIREFRAME
-        float2 uv = float2(id.xy) / _InputResolution;
-        RW_DebugBuffer_SW[tc00] = float4(uv, 0, 1);
-        #else
-        // InterlockedMin only works on int
-        int depthInt = v00.y;
-        int oldDepthInt;
-        
-        InterlockedMin(RW_DepthBuffer_SW[tc00], depthInt, oldDepthInt);
-        #endif
+        if (size.x == 0 || size.y == 0)
+        {
+            // Quad is too small, skip
+            return;
+        }
+        else if (size.x == 1 && size.y == 1)
+        {
+            // One pixel quad, so we can just write to the depth buffer
+            RasterPixel(id, tc00, v00.y);
+        }
+        else
+        {
+            // Quad is small enough to be rasterized iteratively
+            RasterizeQuadIteratively(id, minCoord, maxCoord, tc00, tc10, tc01, tc11, v00.y, v10.y, v01.y, v11.y);
+        }
         return;
     }
     
@@ -626,6 +708,13 @@ int IsPixelInQuad(
 [numthreads(TILE_SIZE, TILE_SIZE, 1)]
 void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadID, uint3 id : SV_DispatchThreadID)
 {
+    int oldDepthInt = RW_DepthBuffer_SW[id.xy];
+    if (oldDepthInt & 0x1 != 0)
+    {
+        // Pixel is already marked as a priority pixel, skip
+        return;
+    }
+    
     // TODO: loat verts in tile atomically
     
     // Calculate coords
@@ -657,9 +746,9 @@ void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : 
             int3 a, b, c;
             float3 bary;
             int depthInt = IsPixelInQuad(id.xy, quadType, tc00_lookup, bary, a, b, c);
-            if (depthInt == -1)
+            if (depthInt == -1 || depthInt >= oldDepthInt)
             {
-                // Pixel is not in the quad, skip
+                // Pixel is not in the quad or further away than already rasterized pixel, skip
                 continue;
             }
             
