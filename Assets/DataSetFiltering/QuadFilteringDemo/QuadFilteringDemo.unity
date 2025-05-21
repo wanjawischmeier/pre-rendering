@@ -310,12 +310,11 @@ MonoBehaviour:
   vertexBuffer: {fileID: 0}
   softwareRasterizedDepth: {fileID: 0}
   hardwareRasterizedDepth: {fileID: 0}
-  softwareRasterizerTileCounters0: {fileID: 0}
-  softwareRasterizerTileCounters1: {fileID: 0}
+  softwareRasterizerTileCounters: {fileID: 0}
   softwareRasterizedDebugTexture: {fileID: 0}
   hardwareRasterizedDebugTexture: {fileID: 0}
-  nearClip: 2.5
-  farClip: 6
+  nearClip: 2.4
+  farClip: 5
   rescaledInputResolution: {x: 1024, y: 1024}
   dispatchResolution: {x: 1024, y: 1024}
   renderTargetResolution: {x: 1920, y: 1080}
