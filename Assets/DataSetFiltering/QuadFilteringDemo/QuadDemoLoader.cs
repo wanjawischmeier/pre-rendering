@@ -264,12 +264,12 @@ public class QuadDemoLoader : MonoBehaviour
         var cmd = new CommandBuffer();
         cmd.name = "Draw Hardware & Software Raster Batches";
 
+        cmd.SetComputeIntParam(computeShader, "_IsBufferOffset", 0); // SetComputeBoolParam doesn't exist for some reason
         cmd.SetComputeTextureParam(computeShader, rasterizeBinnedQuadsKernelHandle, "_TileCounters_SW", softwareRasterizerTileCounters0);
         cmd.SetComputeBufferParam(computeShader, rasterizeBinnedQuadsKernelHandle, "_QuadIndexBuffer_SW", softwareRasterizerVertexBuffer0);
         cmd.DispatchCompute(computeShader, rasterizeBinnedQuadsKernelHandle, renderTargetResolution.x / (int)tileSize, renderTargetResolution.y / (int)tileSize, 1);
 
-        // var drawFence = cmd.CreateGraphicsFence(GraphicsFenceType.AsyncQueueSynchronisation, SynchronisationStageFlags.ComputeProcessing);
-
+        cmd.SetComputeIntParam(computeShader, "_IsBufferOffset", 1);
         cmd.SetComputeTextureParam(computeShader, rasterizeBinnedQuadsKernelHandle, "_TileCounters_SW", softwareRasterizerTileCounters1);
         cmd.SetComputeBufferParam(computeShader, rasterizeBinnedQuadsKernelHandle, "_QuadIndexBuffer_SW", softwareRasterizerVertexBuffer1);
         cmd.DispatchCompute(computeShader, rasterizeBinnedQuadsKernelHandle, renderTargetResolution.x / (int)tileSize, renderTargetResolution.y / (int)tileSize, 1);

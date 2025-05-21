@@ -306,7 +306,7 @@ MonoBehaviour:
   tileOccupancyDebug0: {fileID: 0}
   tileOccupancyDebug1: {fileID: 0}
   vertexLookupDebug: {fileID: 0}
-  inputTexture: {fileID: 2800000, guid: 3b24e9e1782d82b4bb51eaec1ccd64b5, type: 3}
+  inputTexture: {fileID: 2800000, guid: dfa50a1c658dbd24cadccb9b968cab13, type: 3}
   vertexBuffer: {fileID: 0}
   softwareRasterizedDepth: {fileID: 0}
   hardwareRasterizedDepth: {fileID: 0}

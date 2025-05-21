@@ -232,10 +232,10 @@ uint IsQuadSoftwareRasterizable(uint quadType, uint2 tc00, uint2 tc10, uint2 tc0
     uint2 tile11_A = tc11 / TILE_SIZE;
 
     // Grid B (offset by TILE_SIZE / 2)
-    uint2 tile00_B = (tc00 - halfTile) / TILE_SIZE;
-    uint2 tile10_B = (tc10 - halfTile) / TILE_SIZE;
-    uint2 tile01_B = (tc01 - halfTile) / TILE_SIZE;
-    uint2 tile11_B = (tc11 - halfTile) / TILE_SIZE;
+    uint2 tile00_B = (tc00 + halfTile) / TILE_SIZE;
+    uint2 tile10_B = (tc10 + halfTile) / TILE_SIZE;
+    uint2 tile01_B = (tc01 + halfTile) / TILE_SIZE;
+    uint2 tile11_B = (tc11 + halfTile) / TILE_SIZE;
 
     bool fitsA = false;
     bool fitsB = false;
@@ -255,9 +255,9 @@ uint IsQuadSoftwareRasterizable(uint quadType, uint2 tc00, uint2 tc10, uint2 tc0
         fitsA = all(tile00_A == tile10_A) && all(tile00_A == tile01_A) && all(tile00_A == tile11_A);
         fitsB = all(tile00_B == tile10_B) && all(tile00_B == tile01_B) && all(tile00_B == tile11_B);
     }
-
-    // Return tile mode: 0 = none, 1 = grid A, 2 = grid B
-    return fitsA ? 1 : (fitsB ? 2 : 0);
+    
+    // Return tile mode: 0 = none, 1 = grid A, 2 = grid B, 3 = both
+    return (fitsA ? 1 : 0) | (fitsB ? 2 : 0);
 }
 
 uint2 GetTexCoordFromIndex(int index, uint2 resolution)
@@ -402,8 +402,7 @@ void PushQuadToSoftwareRasterizer(uint3 id, uint2 tc00, uint2 tc10, uint2 tc01, 
     }
     
     // Compute tile coordinate based on tile grid mode
-    uint hash = id.x * 73856093 ^ id.y * 19349663; // Basic spatial hash
-    bool isGridOffset = tileGridMode == 1 || (tileGridMode == 3 && (hash & 1) == 0);
+    bool isGridOffset = tileGridMode == 2 || (tileGridMode == 3 && id.x % 2 == 0); // TODO: id.x & 1 == 0
     uint2 tileCoord;
     if (!isGridOffset) // Original grid
     {
@@ -411,7 +410,7 @@ void PushQuadToSoftwareRasterizer(uint3 id, uint2 tc00, uint2 tc10, uint2 tc01, 
     }
     else // Offset grid
     {
-        tileCoord = (tc00 - (TILE_SIZE >> 1)) / TILE_SIZE;
+        tileCoord = (tc00 + (TILE_SIZE >> 1)) / TILE_SIZE;
     }
 
     // Compute flat tile index
@@ -488,6 +487,7 @@ void BinQuads(uint3 id : SV_DispatchThreadID)
 #pragma kernel RasterizeTileBinnedQuads
 #define OVERDRAW_EPSILON -9 // This should not exist
 
+uniform int _IsBufferOffset;
 Texture2D<uint> _TileCounters_SW;
 RWStructuredBuffer<uint3> _QuadIndexBuffer_SW;
 
@@ -604,7 +604,7 @@ void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : 
     // TODO: loat verts in tile atomically
     
     // Calculate coords
-    uint2 tileCoord = id.xy / TILE_SIZE;
+    uint2 tileCoord = (_IsBufferOffset == 0 ? id.xy : (id.xy + (TILE_SIZE >> 1))) / TILE_SIZE;
     uint tileIndex = tileCoord.y * (_OutputResolution.x / TILE_SIZE) + tileCoord.x;
     
     uint numTris = _TileCounters_SW[tileCoord];
