@@ -58,56 +58,8 @@ float3 GetTransformedVertexUV(float2 uv, float normalizedDepth)
     return ndc * 0.5 + 0.5; // Map NDC [-1, 1] to UV [0, 1]
 }
 
-/*
-bool TryPushTriangleToHardwareRasterizer(float3 v0, float3 v1, float3 v2, uint3 threadID)
-{
-    if (IsDegenerateTriangle(v0, v1, v2))
-        return true; // Discard degenerate triangles, but mark as pushed
-    
-    uint2 tc0 = floor(v0.xy * _OutputResolution);
-    uint2 tc1 = floor(v1.xy * _OutputResolution);
-    uint2 tc2 = floor(v2.xy * _OutputResolution);
-    
-    // Check if all three vertices lie in the same tile
-    uint2 tile0 = tc0 / TILE_SIZE;
-    uint2 tile1 = tc1 / TILE_SIZE;
-    uint2 tile2 = tc2 / TILE_SIZE;
-    
-    if (!(all(tile0 == tile1) && all(tile1 == tile2)))
-    // if (true)
-    {
-        // Vertices are in different tiles, so we need to push to the hardware rasterizer
-        float3x3 tri = float3x3(v0 * 2 - 1, v1 * 2 - 1, v2 * 2 - 1); // Convert to NDC
-        // _QuadIndexBuffer_HW0.Append(tri);
-        
-        // Push to the appropriate buffer group
-        uint bufferGroupIndex = (threadID.x ^ threadID.y ^ threadID.z) & 3;
-        switch (bufferGroupIndex)
-        {
-            case 0:
-                _QuadIndexBuffer_HW0.Append(tri);
-                break;
-            case 1:
-                _QuadIndexBuffer_HW1.Append(tri);
-                break;
-            case 2:
-                _QuadIndexBuffer_HW2.Append(tri);
-                break;
-            case 3:
-                _QuadIndexBuffer_HW3.Append(tri);
-                break;
-        }
-        
-        return true;
-    }
-    
-    // All vertices are in the same tile, so we can push to the software rasterizer
-    return false;
-}
-*/
-
 [numthreads(8, 8, 1)]
-void TransformVertices(uint3 id : SV_DispatchThreadID)
+void TransformVertices(uint3 id : SV_DispatchThreadID) // TODO: Blit this instead
 {
     // Check if bottom or right is out of bounds
     if (id.x >= _InputResolution.x - 1 || id.y >= _InputResolution.y - 1)
@@ -130,21 +82,6 @@ void TransformVertices(uint3 id : SV_DispatchThreadID)
             lookup.x = tc00_t.x + tc00_t.y * _OutputResolution.x; // Projected texel index
             lookup.y = asint(uv00_t.z); // Depth value
         }
-        /*
-        if (!IS_UV_OUT_OF_BOUNDS(uv00_t) || !IS_UV_OUT_OF_BOUNDS(uv10_t) || !IS_UV_OUT_OF_BOUNDS(uv01_t))
-        {
-            int2 tc00_p = floor(uv00_t.xy * _OutputResolution);
-            int tc00_pIndex = tc00_p.x + tc00_p.y * _OutputResolution.x;
-            int depthInt = asint(uv00_t.z);
-            RW_VertexBuffer[id.xy] = int2(tc00_pIndex, depthInt);
-            
-            bool pushed = TryPushTriangleToHardwareRasterizer(uv01_t, uv10_t, uv00_t, id);
-            if (!pushed && !IS_UV_OUT_OF_BOUNDS(uv00_t)) // TODO: Combine bounds checks
-            {
-                PushQuadToSoftwareRasterizer(uv00_t, uv10_t, uv01_t, uv11_t);
-            }
-        }
-        */
     }
     
     RW_VertexBuffer[id.xy] = lookup;
@@ -152,11 +89,9 @@ void TransformVertices(uint3 id : SV_DispatchThreadID)
 
 
 #pragma kernel BinQuads
-#pragma target 5.0 // TODO: Reduce to 8 uav's so we can support Direct3D11
 
 #define MIN_BINNED_SIZE 5 // Minimum size of a binned quad to be processed in software rasterizer
 #define IS_QUAD_VALID(v00, v10, v01, v11) (v00.x != -1 && v10.x != -1 && v01.x != -1 && v11.x != -1)
-#define IN_SAME_PIXEL(tc00, tc10, tc01, tc11) (all(tc00 == tc10) && all(tc00 == tc01) && all(tc00 == tc11))
 
 AppendStructuredBuffer<uint> _QuadIndexBuffer_HW0, _QuadIndexBuffer_HW1, _QuadIndexBuffer_HW2, _QuadIndexBuffer_HW3;
 
@@ -197,33 +132,7 @@ uint ComputeQuadType(int2 v00, int2 v10, int2 v01, int2 v11, uint2 tc00, uint2 t
 
     return quadType; // Values: 0, 1, 2, or 3
 }
-/*
-bool IsQuadSoftwareRasterizable(uint quadType, uint2 tc00, uint2 tc10, uint2 tc01, uint2 tc11)
-{
-    // Calculate tile coordinates for each vertex
-    uint2 tile00 = tc00 / TILE_SIZE;
-    uint2 tile10 = tc10 / TILE_SIZE;
-    uint2 tile01 = tc01 / TILE_SIZE;
-    uint2 tile11 = tc11 / TILE_SIZE;
-        
-    // Check based on quad type
-    switch(quadType)
-    {
-        case 1: // Top valid vertices (v00, v10, v01)
-            return all(tile00 == tile10) && all(tile00 == tile01);
-            
-        case 2: // Bottom valid vertices (v11, v10, v01)
-            return all(tile11 == tile10) && all(tile11 == tile01);
-            
-        case 3: // All valid vertices
-            // All vertices must be in the same tile
-            return all(tile00 == tile10) && all(tile00 == tile01) && all(tile00 == tile11);
-            
-        default: // No valid vertices (quadType == 0) or invalid value
-            return false;
-    }
-}
-*/
+
 uint IsQuadSoftwareRasterizable(uint quadType, uint2 tc00, uint2 tc10, uint2 tc01, uint2 tc11)
 {
     const uint2 halfTile = TILE_SIZE >> 1;
@@ -333,40 +242,6 @@ uint ComputeAABBOffsets8_Quad(uint2 tc00, uint2 tc10, uint2 tc01, uint2 tc11)
     // Pack: [maxY | maxX | minY | minX] (each 8 bits)
     return (maxY_u8 << 24) | (maxX_u8 << 16) | (minY_u8 << 8) | minX_u8;
 }
-
-/*
-int ClassifyTriangle(float3 v0, float3 v1, float3 v2)
-{
-    // 0. Degenerate triangle check
-    if (IsDegenerateTriangle(v0, v1, v2))
-        return 0;
-
-    // Convert vertex positions to pixel coordinates
-    uint2 tc0 = floor(v0.xy * _OutputResolution);
-    uint2 tc1 = floor(v1.xy * _OutputResolution);
-    uint2 tc2 = floor(v2.xy * _OutputResolution);
-
-    // 1. Regular tile classification
-    uint2 tile0 = tc0 / TILE_SIZE;
-    uint2 tile1 = tc1 / TILE_SIZE;
-    uint2 tile2 = tc2 / TILE_SIZE;
-
-    if (all(tile0 == tile1) && all(tile1 == tile2))
-        return 1;
-
-    // 2. Offset tile classification
-    int halfTile = TILE_SIZE / 2;
-    tile0 = (tc0 + halfTile) / TILE_SIZE;
-    tile1 = (tc1 + halfTile) / TILE_SIZE;
-    tile2 = (tc2 + halfTile) / TILE_SIZE;
-
-    if (all(tile0 == tile1) && all(tile1 == tile2))
-        return 2;
-
-    // 3. Triangle spans multiple tiles
-    return 3;
-}
-*/
 
 void PushQuadToSoftwareRasterizer(uint3 id, uint2 tc00, uint2 tc10, uint2 tc01, uint2 tc11, uint quadType, uint tileGridMode)
 {
@@ -502,7 +377,6 @@ void RasterizeQuadIteratively(
         }
     }
 }
-
 
 [numthreads(8, 8, 1)]
 void BinQuads(uint3 id : SV_DispatchThreadID)
@@ -746,7 +620,6 @@ void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : 
             #ifdef _DEBUG_WIREFRAME
             RW_DebugBuffer_SW[id.xy] = float4(bary, 1);
             #else
-            // RW_DepthBuffer_SW[id.xy] = depthInt;
             int oldDepthInt;
             // TODO: Handle this in groupshared memory and a single dispatch instead of global atomics
             InterlockedMin(RW_DepthBuffer_SW[id.xy], depthInt, oldDepthInt);

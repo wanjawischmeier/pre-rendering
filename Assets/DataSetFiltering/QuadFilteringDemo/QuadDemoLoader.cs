@@ -3,7 +3,6 @@ using UnityEngine;
 using UnityEngine.Rendering;
 
 
-
 public class QuadDemoLoader : MonoBehaviour
 {
     public enum TileSize
@@ -47,16 +46,6 @@ public class QuadDemoLoader : MonoBehaviour
 
     private void Start()
     {
-        if (inputTexture.width != rescaledInputResolution.x || inputTexture.height != rescaledInputResolution.y)
-        {
-            /*
-            // Rescale the input texture to the desired resolution
-            Texture2D rescaledInputTexture = new Texture2D(rescaledInputResolution.x, rescaledInputResolution.y, TextureFormat.RGBA32, false);
-            Graphics.ConvertTexture(inputTexture, rescaledInputTexture);
-            inputTexture = rescaledInputTexture;
-            */
-        }
-
         if (autoResolution)
         {
             dispatchResolution = new Vector2Int(inputTexture.width, inputTexture.height);
@@ -180,11 +169,13 @@ public class QuadDemoLoader : MonoBehaviour
 
         if (tileOccupancyDebug0 != null && tileOccupancyDebug1 != null)
         {
+            tileOccupancyDebug0.SetInt("_BufferIndex", 0);
             tileOccupancyDebug0.SetInt("_TileSize", (int)tileSize);
             tileOccupancyDebug0.SetInt("_MaxVertsPerTile", (int)tileCapacity);
             tileOccupancyDebug0.SetVector("_OutputResolution", outputResolution);
             tileOccupancyDebug0.SetTexture("_TileCounters", softwareRasterizerTileCounters);
 
+            tileOccupancyDebug0.SetInt("_BufferIndex", 1);
             tileOccupancyDebug1.SetInt("_TileSize", (int)tileSize);
             tileOccupancyDebug1.SetInt("_MaxVertsPerTile", (int)tileCapacity);
             tileOccupancyDebug1.SetVector("_OutputResolution", outputResolution);
@@ -295,9 +286,6 @@ public class QuadDemoLoader : MonoBehaviour
                                    0,
                                    props);
         }
-
-        // (Optional) Insert a second fence if you need to wait on both before post-processing
-        // var drawFence = cmd.CreateGraphicsFence(GraphicsFenceType.AsyncQueueSynchronisation, SynchronisationStageFlags.PixelProcessing);
 
         // Submit all to GPU
         Graphics.ExecuteCommandBuffer(cmd); // TODO: Some async dispatches and draw calls instead?
