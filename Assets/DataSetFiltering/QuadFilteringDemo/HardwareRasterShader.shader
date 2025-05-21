@@ -6,6 +6,7 @@ Shader "Unlit/HardwareRasterShader_Debug"
     }
     SubShader
     {
+        Cull Off
         Tags { "RenderType"="Opaque" }
         Pass
         {

@@ -154,6 +154,7 @@ void TransformVertices(uint3 id : SV_DispatchThreadID)
 #pragma kernel BinQuads
 #pragma target 5.0 // TODO: Reduce to 8 uav's so we can support Direct3D11
 
+#define IS_QUAD_VALID(v00, v10, v01, v11) (v00.x != -1 && v10.x != -1 && v01.x != -1 && v11.x != -1)
 #define IN_SAME_PIXEL(tc00, tc10, tc01, tc11) (all(tc00 == tc10) && all(tc00 == tc01) && all(tc00 == tc11))
 
 AppendStructuredBuffer<uint> _QuadIndexBuffer_HW0, _QuadIndexBuffer_HW1, _QuadIndexBuffer_HW2, _QuadIndexBuffer_HW3;
@@ -162,6 +163,20 @@ RWTexture2D<int> RW_DepthBuffer_SW;
 RWTexture2D<float4> RW_DebugBuffer_SW;
 RWStructuredBuffer<uint3> _QuadIndexBuffer_SW0, _QuadIndexBuffer_SW1;
 RWTexture2D<uint> _TileCounters_SW0, _TileCounters_SW1;
+
+bool IsBackfacingQuad(uint2 tc00, uint2 tc10, uint2 tc01, uint2 tc11)
+{
+    // Backface culling via signed area
+    int2 a = tc00;
+    int2 b = tc10;
+    int2 c = tc01;
+
+    // Compute signed area of triangle abc
+    int cross = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+
+    // Cull if the triangle is backfacing (i.e., negative area)
+    return cross <= 0;
+}
 
 // TODO: Remove duplicate aabb calculation?
 bool IsDegenerateQuad(uint2 tc00, uint2 tc10, uint2 tc01, uint2 tc11, uint threshold)
@@ -402,7 +417,7 @@ void PushQuadToSoftwareRasterizer(uint3 id, uint2 tc00, uint2 tc10, uint2 tc01, 
     }
     
     // Compute tile coordinate based on tile grid mode
-    bool isGridOffset = tileGridMode == 2 || (tileGridMode == 3 && id.x % 2 == 0); // TODO: id.x & 1 == 0
+    bool isGridOffset = tileGridMode == 2 || (tileGridMode == 3 && id.x % 2 == 0);
     uint2 tileCoord;
     if (!isGridOffset) // Original grid
     {
@@ -440,13 +455,23 @@ void BinQuads(uint3 id : SV_DispatchThreadID)
     int2 v10 = RW_VertexBuffer[id.xy + off];
     int2 v01 = RW_VertexBuffer[id.xy + off.yx];
     int2 v11 = RW_VertexBuffer[id.xy + off.xx];
+    if (!IS_QUAD_VALID(v00, v10, v01, v11))
+    {
+        // Can't construct quad
+        return;
+    }
     
     uint2 tc00 = GetTexCoordFromIndex(v00.x, _OutputResolution);
     uint2 tc10 = GetTexCoordFromIndex(v10.x, _OutputResolution);
     uint2 tc01 = GetTexCoordFromIndex(v01.x, _OutputResolution);
     uint2 tc11 = GetTexCoordFromIndex(v11.x, _OutputResolution);
+    if (IsBackfacingQuad(tc00, tc10, tc01, tc11))
+    {
+        // Cull backfacing quads
+        return;
+    }
     
-    if (IsDegenerateQuad(tc00, tc10, tc01, tc11, 1))
+    if (IsDegenerateQuad(tc00, tc10, tc01, tc11, 4))
     {
         // One pixel quad, so we can just write to the depth buffer        
         tc00.y = _OutputResolution.y - tc00.y - 1; // Flip Y for depth buffer
@@ -649,7 +674,7 @@ void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : 
             InterlockedMin(RW_DepthBuffer_SW[id.xy], depthInt, oldDepthInt);
             #endif
             
-            return;
+            // return; cant return here :/ cause of random depth
         }
     }
 }

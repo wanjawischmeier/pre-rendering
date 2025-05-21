@@ -49,7 +49,7 @@ Shader "Unlit/CombinedPass"
                 #ifdef _DEBUG_WIREFRAME
 
                 float4 debug = _DebugBuffer_SW.Load(tc);
-                if (debug.a == 0.0f && false)
+                if (debug.a == 0.0f)
                 {
                     debug = _DebugBuffer_HW.Load(tc);
                 }
