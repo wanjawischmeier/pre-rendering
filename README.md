@@ -57,7 +57,7 @@ Getting the shader right was actually quite tricky, here are some of the iterati
 </table>
 
 ### [Downhill simplex approximation of a projection](https://github.com/wanjawischmeier/pre-rendering/tree/6fc489015d1e897872070886efa8850eea368496/src/unity/concept/Assets/DownhillSimplexAbstract)
-So in retrospect i don't really see why I thought this could work, but it still made for a really interesting experiment. Especially the visuals were stunning. More can be found [here](https://mega.nz/folder/G9lE0QIY#6BS4I_LkFfoOj8BjSzC4Ag).
+So in retrospect i don't really see why I thought this could work (the algorithm just ended up not nearly converging fast enough), but it still made for a really interesting experiment. Especially the visuals were stunning. More can be found [here](https://mega.nz/folder/G9lE0QIY#6BS4I_LkFfoOj8BjSzC4Ag).
 
 <table>
   <tr>
@@ -72,13 +72,9 @@ So in retrospect i don't really see why I thought this could work, but it still 
   </tr>
 </table>
 
-
-
-
-
-
 ### Camera robot
-I tried building a Lego Mindstorms robot that is able to have a 2 axis camera arm and still drive around using tank steering. But I only had 3 motors. Eventually got it working using a ratcheting mechanism, but it was pretty janky and wobbly. 
+A way to generate panorama images in a scanline path (as the [blender plugin](###blender-plugin) does virtually) in the real world would be nice. I tried building a Lego Mindstorms robot that is able to have a 2 axis camera arm and still drive around using tank steering. But I only had 3 motors. Eventually got it working using a ratcheting mechanism, but it was pretty janky and wobbly. 
+
 <img src="https://github.com/user-attachments/assets/71352b08-d8a9-4d1f-bc65-a334cbb41fc2" alt="output" style="height:250px; display:inline-block;">
 <img src="https://github.com/user-attachments/assets/0a12bb30-4a9c-4650-a694-09bc81ae93f2" alt="PXL_20210723_083920526" style="height:250px; display:inline-block;">
 
