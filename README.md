@@ -57,7 +57,99 @@ Getting the shader right was actually quite tricky, here are some of the iterati
 </table>
 
 ### [Downhill simplex approximation of a projection](https://github.com/wanjawischmeier/pre-rendering/tree/6fc489015d1e897872070886efa8850eea368496/src/unity/concept/Assets/DownhillSimplexAbstract)
-So in retrospect i don't really see why I thought this could work (the algorithm just ended up not nearly converging fast enough), but it still made for a really interesting experiment. Especially the visuals were stunning. More can be found [here](https://mega.nz/folder/G9lE0QIY#6BS4I_LkFfoOj8BjSzC4Ag).
+So in retrospect i don't really see why I thought this could work (the algorithm just ended up not nearly converging fast enough), but it still made for a really interesting experiment. Especially the visuals were stunning. More images can be found [here](https://mega.nz/folder/G9lE0QIY#6BS4I_LkFfoOj8BjSzC4Ag).
+
+<details>
+  <summary>The basic downhill simplex algorithm used</summary>
+
+```hlsl
+float2 downhillSimplex(float2 x0, float2 x1, float2 x2) {
+  // initialization
+  float3 b = float3(x0, objective(x0));
+  float3 g = float3(x1, objective(x1));
+  float3 w = float3(x2, objective(x2));
+
+  [unroll(ITERATIONS)] for (int i = 0; i < ITERATIONS; i++) {
+    // sort
+    float3 t;
+
+    if (b.z > g.z) {
+      t = g;
+      g = b;
+      b = t;
+    }
+
+    if (g.z > w.z) {
+      t = g;
+      g = w;
+      w = t;
+
+      if (b.z > g.z) {
+        t = g;
+        g = b;
+        b = t;
+      }
+    }
+
+    // midpoint
+    float3 m;
+    m.xy = (g + b) / 2;
+
+    // reflection
+    float3 r;
+    r.xy = m.xy + ALPHA * (m.xy - w.xy);
+    r.z = objective(r.xy);
+
+    if (r.z < g.z)
+      w = r;
+
+    else {
+      if (r.z < w.z) w = r;
+
+      float3 h;
+      h.xy = (w.xy + m.xy) / 2.0;  // try int 2
+      h.z = objective(h.xy);
+
+      if (h.z < w.z) w = h;
+    }
+
+    // expansion
+    if (r.z < b.z) {
+      float3 e;
+      e.xy = m.xy + GAMMA * (r.xy - m.xy);
+      e.z = objective(e.xy);
+
+      if (e.z < r.z)
+        w = e;
+
+      else
+        w = r;
+    }
+
+    // contraction
+    if (r.z > g.z) {
+      float3 c;
+      c.xy = m.xy + BETA * (w.xy - m.xy);
+      c.z = objective(c.xy);
+
+      if (c.z < w.z) w = c;
+    }
+  }
+
+  return b.xy;
+}
+
+fixed4 frag(v2f i) : SV_Target {
+  // fixed4 col = tex2D(_MainTex, i.uv);
+  float err = objective(i.uv);
+  float2 opt = downhillSimplex(i.uv, X1, X2);
+
+  fixed4 col = fixed4(opt.xy * FAC + OFF, tan(1 - opt.x), 1);
+  return col;
+}
+```
+More details can be found [here](https://github.com/wanjawischmeier/pre-rendering/tree/67f97403e655963fdde4d20cd524f7da77558d9c/src/unity/concept/Assets/DownhillSimplexAbstract).
+</details>
 
 <table>
   <tr>
