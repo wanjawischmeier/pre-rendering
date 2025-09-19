@@ -45,6 +45,12 @@ Getting the shader right was actually quite tricky, here are some of the iterati
   </tr>
 </table>
 
+### Optimal chunk width and decoding times
+The ideal size of a chunk is heavily dependent on seek and frame times (frame time = time to decode one frame). Below is a look at how the optimal chunk size changes with different resolutions and decoding stats:
+<img width="756" height="425" alt="Image" src="https://github.com/user-attachments/assets/eec84842-9ec7-4615-ab9f-302a5607764f" />
+
+![Image](https://github.com/user-attachments/assets/7c4e3ea9-f266-4c50-8ee4-1c4607b41f16)
+
 ### Installation and Setup
 <details>
 	<summary>Setting up the build environment</summary>
