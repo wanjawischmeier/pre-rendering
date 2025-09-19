@@ -233,6 +233,11 @@ The idea was to maybe not store diffuse color as is usually the case. But rather
 
 <br>
 
+# Codec testing
+Losless storage isn't viable in most cases, so depth information stored in images will also be subjected to compression artifacts. I tried to take a look at how different file formats compress depth and normal information (particularly at the edges). The files can be found [here](https://mega.nz/folder/7o1CjKbS#mbZdCKbwdRgMa86xMrvJoA).
+
+<img width="1548" height="548" alt="Image" src="https://github.com/user-attachments/assets/ec9f9f6f-63b6-4ba2-9951-7b9bc1d7f6b2" />
+
 # More data
 More extensive data from various tests (about 10GB as of now) can be found [here](https://mega.nz/folder/GpNBXDaB#RRB_icj2zn0b7b5NIU4keQ). Feel free to check it out (the `Images` folder has lots of interesting screenshots from the different experiments).
 
