@@ -8,7 +8,7 @@ Reprojection of high-res depth maps is a very computationally intense task. But 
 1. Pass (gets dispatched with one thread per pixel in input texture)
    - Sample the depth texture for each pixel
    - Compute and transform the respective 3d vetex position
-   - Store it in lookup texture (shown as "Vertex Buffer" in example images
+   - Store it in lookup texture (shown as "Vertex Buffer" in example images)
 2. Pass (gets dispatched with one thread per entry in vertex buffer)
    - Each point in the vertex buffer is responsible for handling the quad that it shares with its bottom, right and bottom right neighbors. This ensures complete coverage of the surface.
    - A thread samples the 4 vertices that create the quad
@@ -22,6 +22,7 @@ Reprojection of high-res depth maps is a very computationally intense task. But 
    - This thread just has to iterate over the all quads in the tile it's contained in (just the aabb's could be loaded into groupshared memory in the future, one by each thread).
    - For each quad, it first checks if it contains the point with an extremely fast check of the quad's aabb. The actual vertices only need to get sampled from the vertex buffer if a quad passes that check.
    - If the actual quad vertices also contain the texel, an InterlockMin write to the output texture is performed (could be done within a tile's groupshared memory in the future to reduce writes operations on the global target texture to a single non-atomic write).
+4. Final post processing shader (responsible for combining the hardware and software rasterizer output).
 
 ## Memory layout
 The **hardware vertex buffer** is comprized of simple uints, where each one holds the quad type (which partial triangles are valid) in the last 2 bits and the index in the vertex buffer in the remaining bits. The **software vertex buffer** packs tile index, vertex buffer index, quad type and aabb into a uint3. The uint **tile counters** are responsible for keeping track of the number of quads being binned into each tile (using a simple InterlockedAdd).
