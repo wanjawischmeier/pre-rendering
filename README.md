@@ -2,7 +2,7 @@
 A testing ground for various niche rendering techniques and approaches. Mostly focussed on unity and the idea of precomputing certain aspects of the rendering pipeline. Not well organized and without a clear roadmap. Just the results of messing around with and learning about computer graphics.
 
 # [Hybrid Rasterizer](https://github.com/wanjawischmeier/pre-rendering/tree/adcfa5ddda5241009e47674efa02a5fcc1522af2/Assets/DataSetFiltering/QuadFilteringDemo)
-Reprojection of high-res depth maps is a very computationally intense task. But an hybrid rasterizer (a tile binned software rasterizer for regions of small tris and the hardware rasterization pipeline for the rest) might be able to provide a fast and efficient way to archieve this. The basic flow of the compute shader is as follows:
+Reprojection of high-res depth maps is a very computationally intense task. But a hybrid rasterizer (a tile binned software rasterizer for regions of small tris and the hardware rasterization pipeline for the rest) might be able to provide a fast and efficient way to archieve this. The basic flow of the compute shader is as follows:
 
 ## Basic flow
 1. Pass (gets dispatched with one thread per pixel in input texture)
