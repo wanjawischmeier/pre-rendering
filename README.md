@@ -17,7 +17,7 @@ Reprojection of high-res depth maps is a very computationally intense task. But 
    - Quad type gets computed (allows for some optimizations if none or only on tri of the quad need(s) to be rasterized)
    - The target texture is covered by 2 grids that are offset by half the tile size. A method checks if the quad fits into a cell of either of those grids.
        - If it fits into Grid A or Grid B, it is small enough to get tile binned and therefore efficiently software rasterized using the next compute shader pass. The quad gets stored in the respective tile buffer (before that, a packed aabb bounding box gets calculated and stored alongside).
-       - Otherwise, the quad gets pushed to an AppendStructuredBuffer (has support for atomic operations).
+       - Otherwise, the quad gets pushed to an AppendStructuredBuffer (has support for atomic operations) for rasterization using unitys standard rendering pipeline.
 3. Pass (one dispatch per pixel in output texture)
    - This thread just has to iterate over the all quads in the tile it's contained in (just the aabb's could be loaded into groupshared memory in the future, one by each thread).
    - For each quad, it first checks if it contains the point with an extremely fast check of the quad's aabb. The actual vertices only need to get sampled from the vertex buffer if a quad passes that check.
