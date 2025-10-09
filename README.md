@@ -1,6 +1,38 @@
 # What is this?
 A testing ground for various niche rendering techniques and approaches. Mostly focussed on unity and the idea of precomputing certain aspects of the rendering pipeline. Not well organized and without a clear roadmap. Just the results of messing around with and learning about computer graphics.
 
+# [Hybrid Rasterizer](https://github.com/wanjawischmeier/pre-rendering/tree/adcfa5ddda5241009e47674efa02a5fcc1522af2/Assets/DataSetFiltering/QuadFilteringDemo)
+Reprojection of high-res depth maps is a very computationally intense task. But an hybrid rasterizer (a tile binned software rasterizer for regions of small tris and the hardware rasterization pipeline for the rest) might be able to provide a fast and efficient way to archieve this. The basic flow of the compute shader is as follows:
+
+## Basic flow
+1. Pass (gets dispatched with one thread per pixel in input texture)
+   - Sample the depth texture for each pixel
+   - Compute and transform the respective 3d vetex position
+   - Store it in lookup texture (shown as "Vertex Buffer" in example images
+2. Pass (gets dispatched with one thread per entry in vertex buffer)
+   - Each point in the vertex buffer is responsible for handling the quad that it shares with its bottom, right and bottom right neighbors. This ensures complete coverage of the surface.
+   - A thread samples the 4 vertices that create the quad
+       - Backfacing quads get culled here
+       - Degenerate quads get filled with a single InterlockedMin operation on the target texture
+   - Quad type gets computed (allows for some optimizations if none or only on tri of the quad need(s) to be rasterized)
+   - The target texture is covered by 2 grids that are offset by half the tile size. A method checks if the quad fits into a cell of either of those grids.
+       - If it fits into Grid A or Grid B, it is small enough to get tile binned and therefor efficiently software rasterized using the next compute shader pass. The quad gets stored in the respective tile buffer (before that, a packed aabb bounding box gets calculated and stored alongside).
+       - Otherwise, the quad gets pushed to an AppendStructuredBuffer (has support for atomic operations).
+3. Pass (one dispatch per pixel in output texture)
+   - This thread just has to iterate over the all quads in the tile it's contained in (just the aabb's could be loaded into groupshared memory in the future, one by each thread).
+   - For each quad, it first checks if it contains the point with an extremely fast check of the quad's aabb. The actual vertices only need to get sampled from the vertex buffer if a quad passes that check.
+   - If the actual quad vertices also contain the texel, an InterlockMin write to the output texture is performed (could be done within a tile's groupshared memory in the future to reduce writes operations on the global target texture to a single non-atomic write).
+
+## Memory layout
+The **hardware vertex buffer** is comprized of simple uints, where each one holds the quad type (which partial triangles are valid) in the last 2 bits and the index in the vertex buffer in the remaining bits. The **software vertex buffer** packs tile index, vertex buffer index, quad type and aabb into a uint3. The uint **tile counters** are responsible for keeping track of the number of quads being binned into each tile (using a simple InterlockedAdd).
+
+## Images
+<img height="400" alt="Screenshot 2025-10-09 202712" src="https://github.com/user-attachments/assets/aa20085a-851b-4377-a443-34305f214f9f" />
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/1b441819-7db2-4c19-bcc7-74d4d1cbf7f2" height="250">
+  <img src="https://github.com/user-attachments/assets/9682b6bb-e6cc-4e84-969d-1cc7d3efdbce" height="250">
+</p>
+
 
 # [C++ Video decoder](https://github.com/wanjawischmeier/pre-rendering/tree/6fc489015d1e897872070886efa8850eea368496/src/video-decoder)
 A simple video decoder using OpenCV in C++. The idea was to create a decoder that can be integrated asynchronously into a potential unity render pipeline. That can run in another thread and pass decoded data to a shader running within the unity environment with minimal overhead. This actually ended up working pretty well by utilizing the following structure:
