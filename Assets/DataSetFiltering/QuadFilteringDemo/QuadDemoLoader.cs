@@ -253,11 +253,15 @@ public class QuadDemoLoader : MonoBehaviour
         cmd.name = "Draw Hardware & Software Raster Batches";
 
         cmd.SetComputeIntParam(computeShader, "_IsBufferOffset", 0); // SetComputeBoolParam doesn't exist for some reason
+        cmd.SetComputeTextureParam(computeShader, rasterizeBinnedQuadsKernelHandle, "RW_VertexBuffer", vertexBuffer);
+        cmd.SetComputeTextureParam(computeShader, rasterizeBinnedQuadsKernelHandle, "RW_DepthBuffer_SW", softwareRasterizedDepth);
+        cmd.SetComputeTextureParam(computeShader, rasterizeBinnedQuadsKernelHandle, "RW_DebugBuffer_SW", softwareRasterizedDebugTexture);
+        cmd.SetComputeTextureParam(computeShader, rasterizeBinnedQuadsKernelHandle, "_TileCounters_SW", softwareRasterizerTileCounters);
+        cmd.SetComputeBufferParam(computeShader, rasterizeBinnedQuadsKernelHandle, "_QuadIndexBuffer_SW", softwareRasterizerVertexBuffer);
         cmd.DispatchCompute(computeShader, rasterizeBinnedQuadsKernelHandle, renderTargetResolution.x / (int)tileSize, renderTargetResolution.y / (int)tileSize, 1);
 
         cmd.SetComputeIntParam(computeShader, "_IsBufferOffset", 1);
         cmd.DispatchCompute(computeShader, rasterizeBinnedQuadsKernelHandle, renderTargetResolution.x / (int)tileSize, renderTargetResolution.y / (int)tileSize, 1);
-
 
         // Set render target and draw procedurally
         cmd.SetRenderTarget(debugWireframe ? hardwareRasterizedDebugTexture : hardwareRasterizedDepth);

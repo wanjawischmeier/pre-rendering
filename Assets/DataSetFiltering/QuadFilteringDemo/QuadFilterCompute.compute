@@ -169,6 +169,7 @@ uint IsQuadSoftwareRasterizable(uint quadType, uint2 tc00, uint2 tc10, uint2 tc0
     }
     
     // Return tile mode: 0 = none, 1 = grid A, 2 = grid B, 3 = both
+    return fitsA ? 1 : 0;
     return (fitsA ? 1 : 0) | (fitsB ? 2 : 0);
 }
 
@@ -445,7 +446,7 @@ void BinQuads(uint3 id : SV_DispatchThreadID)
     if (tileGridMode == 0)
     {
         // Quad does not fit into software raster tile, push to hardware rasterizer
-        PushQuadToHardwareRasterizer(id.xy, quadType);
+        // PushQuadToHardwareRasterizer(id.xy, quadType);
     }
     else
     {
@@ -568,7 +569,7 @@ int IsPixelInQuad(
 void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadID, uint3 id : SV_DispatchThreadID)
 {
     int oldDepthInt = RW_DepthBuffer_SW[id.xy];
-    if (oldDepthInt & 0x1 != 0)
+    if (oldDepthInt & 0x1 != 0 && false)
     {
         // Pixel is already marked as a priority pixel, skip
         return;
@@ -577,11 +578,13 @@ void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : 
     // TODO: loat verts in tile atomically
     
     // Calculate coords
-    uint2 tileCoord = (_IsBufferOffset == 0 ? id.xy : (id.xy + (TILE_SIZE >> 1))) / TILE_SIZE;
+    uint2 tileCoord = (_IsBufferOffset == 0 ? id.xy : (id.xy + (TILE_SIZE >> 1))) / TILE_SIZE; // TODO: make this more straightforward
     if (_IsBufferOffset == 1)
     {
         tileCoord.y += _OutputResolution.y / TILE_SIZE;
+        return;
     }
+    // tileCoord = id.xy / TILE_SIZE;
     uint tileIndex = tileCoord.y * (_OutputResolution.x / TILE_SIZE) + tileCoord.x;
     
     uint numTris = _TileCounters_SW[tileCoord];
@@ -609,7 +612,7 @@ void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : 
             int3 a, b, c;
             float3 bary;
             int depthInt = IsPixelInQuad(id.xy, quadType, tc00_lookup, bary, a, b, c);
-            if (depthInt == -1 || depthInt >= oldDepthInt)
+            if (depthInt == -1 || (depthInt >= oldDepthInt && false))
             {
                 // Pixel is not in the quad or further away than already rasterized pixel, skip
                 continue;
@@ -620,12 +623,11 @@ void RasterizeTileBinnedQuads(uint3 groupID : SV_GroupID, uint3 groupThreadID : 
             #ifdef _DEBUG_WIREFRAME
             RW_DebugBuffer_SW[id.xy] = float4(bary, 1);
             #else
-            int oldDepthInt;
             // TODO: Handle this in groupshared memory and a single dispatch instead of global atomics
             InterlockedMin(RW_DepthBuffer_SW[id.xy], depthInt, oldDepthInt);
             #endif
             
-            // return; cant return here :/ cause of random depth
+            // return; // cant return here :/ cause of random depth
         }
     }
 }
