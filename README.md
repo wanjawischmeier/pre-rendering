@@ -274,6 +274,154 @@ Losless storage isn't viable in most cases, so depth information stored in image
 
 <img width="1548" height="548" alt="Image" src="https://github.com/user-attachments/assets/ec9f9f6f-63b6-4ba2-9951-7b9bc1d7f6b2" />
 
+# Live demos
+
+Below are the available demos from /demos. Each demo is in a collapsible section; open one to load the demo inline.
+
+> Note: these point to the GitHub Pages URLs under https://wanjawischmeier.github.io/pre-rendering/demos/. If a demo does not load it's either not a web demo (e.g. contains only scripts) or there is no index.html in that folder.
+
+<details>
+<summary>bounding-box — symmetric</summary>
+
+<iframe src="https://wanjawischmeier.github.io/pre-rendering/demos/bounding-box/symmetric/" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>
+
+</details>
+
+<details>
+<summary>bounding-box — full</summary>
+
+<iframe src="https://wanjawischmeier.github.io/pre-rendering/demos/bounding-box/full/" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>
+
+</details>
+
+<details>
+<summary>bounding-box — directional</summary>
+
+<iframe src="https://wanjawischmeier.github.io/pre-rendering/demos/bounding-box/directional/" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>
+
+</details>
+
+<details>
+<summary>buffering-order (main)</summary>
+
+<iframe src="https://wanjawischmeier.github.io/pre-rendering/demos/buffering-order/" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>
+
+</details>
+
+<details>
+<summary>buffering-order — alternate (pure2)</summary>
+
+<iframe src="https://wanjawischmeier.github.io/pre-rendering/demos/buffering-order/pure2.html" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>
+
+</details>
+
+<details>
+<summary>buffering-order-webgl</summary>
+
+<iframe src="https://wanjawischmeier.github.io/pre-rendering/demos/buffering-order-webgl/" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>
+
+</details>
+
+<details>
+<summary>initial-buffering-order</summary>
+
+<iframe src="https://wanjawischmeier.github.io/pre-rendering/demos/initial-buffering-order/" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>
+
+</details>
+
+<details>
+<summary>chunk-system</summary>
+
+<iframe src="https://wanjawischmeier.github.io/pre-rendering/demos/chunk-system/" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>
+
+</details>
+
+<details>
+<summary>cubemap-bounding-box</summary>
+
+<iframe src="https://wanjawischmeier.github.io/pre-rendering/demos/cubemap-bounding-box/" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>
+
+</details>
+
+<details>
+<summary>grid-filtering</summary>
+
+<iframe src="https://wanjawischmeier.github.io/pre-rendering/demos/grid-filtering/" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>
+
+</details>
+
+<details>
+<summary>kd-tree</summary>
+
+<iframe src="https://wanjawischmeier.github.io/pre-rendering/demos/kd-tree/" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>
+
+</details>
+
+<details>
+<summary>latitude-crossection</summary>
+
+<iframe src="https://wanjawischmeier.github.io/pre-rendering/demos/latitude-crossection/" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>
+
+</details>
+
+<details>
+<summary>line-equation</summary>
+
+<iframe src="https://wanjawischmeier.github.io/pre-rendering/demos/line-equation/" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>
+
+</details>
+
+<details>
+<summary>line-renderer</summary>
+
+<iframe src="https://wanjawischmeier.github.io/pre-rendering/demos/line-renderer/" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>
+
+</details>
+
+<details>
+<summary>quadtree-optimization</summary>
+
+<iframe src="https://wanjawischmeier.github.io/pre-rendering/demos/quadtree-optimization/" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>
+
+</details>
+
+<details>
+<summary>scanline-rasterization</summary>
+
+<iframe src="https://wanjawischmeier.github.io/pre-rendering/demos/scanline-rasterization/" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>
+
+</details>
+
+<details>
+<summary>sphere-intersection</summary>
+
+<iframe src="https://wanjawischmeier.github.io/pre-rendering/demos/sphere-intersection/" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>
+
+</details>
+
+<details>
+<summary>transform-visualization</summary>
+
+<iframe src="https://wanjawischmeier.github.io/pre-rendering/demos/transform-visualization/" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>
+
+</details>
+
+<details>
+<summary>triangle-translation</summary>
+
+<iframe src="https://wanjawischmeier.github.io/pre-rendering/demos/triangle-translation/" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>
+
+</details>
+
+---
+
+### Items that are not embedded above
+- gpu-friendly-triangulation/ (contains subfolders; I did not confirm a top-level web index for these — if there is an index.html under each subfolder, you can embed them the same way at /demos/gpu-friendly-triangulation/delaunay/ etc.)
+- projection/ (contains Python scripts — not a web page)
+- demos/index.html (present but minimal)
+
+
+
 # More data
 More extensive data from various tests (about 10GB as of now) can be found [here](https://mega.nz/folder/GpNBXDaB#RRB_icj2zn0b7b5NIU4keQ). Feel free to check it out (the `Images` folder has lots of interesting screenshots from the different experiments).
 
