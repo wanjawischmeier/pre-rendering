@@ -11,7 +11,8 @@
       --muted:#9aa6b2;
       --accent:#6ad3ff;
       --glass: rgba(255,255,255,0.03);
-      --gap:18px;
+      --gap:20px;
+      --iframe-scale: 0.90; /* adjust zoom for embedded demos (1.0 = normal, <1 = zoom out) */
     }
     html,body{height:100%}
     body{
@@ -29,12 +30,13 @@
       max-width:1200px;
       margin:0 auto 24px;
     }
-    h1{margin:0 0 6px; font-size:20px}
+    h1{margin:0 0 6px; font-size:22px}
     p.lead{margin:0 0 18px; color:var(--muted); font-size:13px}
 
     .grid{
       display:grid;
-      grid-template-columns:repeat(auto-fit, minmax(320px,1fr));
+      /* make cards larger by increasing the min column size */
+      grid-template-columns:repeat(auto-fit, minmax(380px,1fr));
       gap: var(--gap);
       max-width:1280px;
       margin:0 auto;
@@ -42,51 +44,51 @@
 
     .card{
       background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-      border-radius:12px;
-      padding:12px;
-      border:1px solid rgba(255,255,255,0.03);
-      box-shadow: 0 6px 20px rgba(2,6,12,0.5);
+      border-radius:14px;
+      padding:14px;
+      border:1px solid rgba(255,255,255,0.04);
+      box-shadow: 0 8px 26px rgba(2,6,12,0.55);
       display:flex;
       flex-direction:column;
-      gap:10px;
-      min-height:140px;
+      gap:12px;
+      min-height:180px;
       overflow:hidden;
     }
 
-    .card .meta{display:flex; align-items:center; justify-content:space-between; gap:8px}
-    .title{font-weight:600; font-size:15px}
-    .sub{color:var(--muted); font-size:12px}
+    .card .meta{display:flex; align-items:center; justify-content:space-between; gap:10px}
+    .title{font-weight:700; font-size:16px}
+    .sub{color:var(--muted); font-size:13px}
 
-    .actions{display:flex; gap:8px; align-items:center}
+    .actions{display:flex; gap:10px; align-items:center}
     .btn{
       display:inline-flex;
       align-items:center;
       gap:8px;
-      padding:8px 10px;
+      padding:8px 12px;
       background:transparent;
-      border-radius:8px;
-      border:1px solid rgba(255,255,255,0.04);
+      border-radius:9px;
+      border:1px solid rgba(255,255,255,0.05);
       color:inherit;
       text-decoration:none;
       font-size:13px;
-      cursor:pointer;
     }
     .btn.primary{
-      background:linear-gradient(90deg, rgba(106,211,255,0.12), rgba(106,211,255,0.06));
+      background:linear-gradient(90deg, rgba(106,211,255,0.10), rgba(106,211,255,0.05));
       border:1px solid rgba(106,211,255,0.14);
       color:var(--accent);
     }
 
     .preview{
       width:100%;
-      height:260px;
-      border-radius:8px;
+      height:340px; /* increase preview height */
+      border-radius:10px;
       overflow:hidden;
       background:linear-gradient(180deg,#051018,#06121a);
       display:flex;
       align-items:center;
       justify-content:center;
       border:1px dashed rgba(255,255,255,0.03);
+      position:relative;
     }
     .preview .placeholder{
       text-align:center;
@@ -94,11 +96,15 @@
       padding:16px;
       font-size:13px;
     }
+    /* iframe scaling approach: make iframe larger than container and scale it down so content "zooms out" */
     .preview iframe{
-      width:100%;
-      height:100%;
       border:0;
       display:block;
+      position:absolute;
+      left:0;
+      top:0;
+      /* width/height will be set in JS based on --iframe-scale */
+      transform-origin: 0 0;
       background:white;
     }
 
@@ -111,23 +117,22 @@
 
     footer{max-width:1200px;margin:20px auto;color:var(--muted);font-size:13px;text-align:center}
     @media (max-width:420px){
-      .preview{height:200px}
+      .preview{height:240px}
+      .grid{grid-template-columns:repeat(auto-fit, minmax(260px,1fr));}
     }
   </style>
 </head>
 <body>
   <header>
     <h1>pre-rendering — Demos</h1>
-    <p class="lead">A responsive index of demos. All previews load automatically. If a demo refuses to be embedded (X-Frame-Options / Content-Security-Policy), use the "Open" link to view it in a new tab.</p>
+    <p class="lead">If a demo refuses to be embedded (X-Frame-Options / Content-Security-Policy), use the "Open" link to view it in a new tab.</p>
   </header>
 
   <main class="grid" id="grid"></main>
 
-  <footer>
-    Built automatically. Note: some embedded pages may request external fonts or resources that are blocked by browser/CSP settings — this is coming from the demo pages themselves, not from this index. See the console for details.
-  </footer>
-
   <script>
+    const iframeScale = 0.90;
+
     // Data: list of demos. Paths are relative to this index.html (located in /demos/)
     const demos = [
       {group:'bounding-box', title:'symmetric', path:'./bounding-box/symmetric/'},
@@ -160,8 +165,6 @@
       {group:'line-equation', title:'index', path:'./line-equation/'},
 
       {group:'line-renderer', title:'index', path:'./line-renderer/'},
-
-      {group:'projection', title:'scripts (not a web build)', path:'./projection/'},
 
       {group:'quadtree-optimization', title:'index', path:'./quadtree-optimization/'},
 
@@ -218,13 +221,21 @@
       const preview = document.createElement('div');
       preview.className = 'preview';
 
-      // Immediately load iframe (user requested all iframes loaded on page load)
+      // Immediately load iframe (all iframes loaded on page load)
       const ifr = document.createElement('iframe');
       ifr.src = demo.path;
       ifr.title = demo.group + ' / ' + demo.title;
-      ifr.loading = 'eager'; // ensure immediate load
-      preview.appendChild(ifr);
+      ifr.loading = 'eager';
+      
+      const scale = iframeScale;
+      const inv = (1 / scale) * 100;
+      ifr.style.width = inv + '%';
+      ifr.style.height = inv + '%';
+      ifr.style.transform = 'scale(' + scale + ')';
+      ifr.style.transformOrigin = '0 0';
 
+      // Do not set iframe.allow or sandbox to avoid Feature Policy warnings and excessive restrictions.
+      preview.appendChild(ifr);
       card.appendChild(preview);
       return card;
     }
