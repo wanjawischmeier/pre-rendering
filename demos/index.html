@@ -1,3 +1,345 @@
-<pre>
-    
-</pre>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>pre-rendering — Demos</title>
+  <style>
+    :root{
+      --bg:#0f1720;
+      --card:#0b1220;
+      --muted:#9aa6b2;
+      --accent:#6ad3ff;
+      --glass: rgba(255,255,255,0.03);
+      --gap:18px;
+    }
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+      background:linear-gradient(180deg,#071019 0%, #071217 50%, #071019 100%);
+      color:#e6eef6;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding:28px;
+    }
+
+    header{
+      max-width:1200px;
+      margin:0 auto 24px;
+    }
+    h1{margin:0 0 6px; font-size:20px}
+    p.lead{margin:0 0 18px; color:var(--muted); font-size:13px}
+
+    .controls{display:flex; gap:12px; align-items:center; margin-bottom:18px; flex-wrap:wrap}
+    .search{
+      flex:1 1 320px;
+      min-width:180px;
+    }
+    .search input{
+      width:100%;
+      padding:10px 12px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.06);
+      background:var(--glass);
+      color:inherit;
+      outline:none;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(320px,1fr));
+      gap: var(--gap);
+      max-width:1200px;
+      margin:0 auto;
+    }
+
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:12px;
+      padding:12px;
+      border:1px solid rgba(255,255,255,0.03);
+      box-shadow: 0 6px 20px rgba(2,6,12,0.5);
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      min-height:120px;
+      overflow:hidden;
+    }
+
+    .card .meta{display:flex; align-items:center; justify-content:space-between; gap:8px}
+    .title{font-weight:600; font-size:15px}
+    .sub{color:var(--muted); font-size:12px}
+
+    .actions{display:flex; gap:8px; align-items:center}
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      background:transparent;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.04);
+      color:inherit;
+      text-decoration:none;
+      font-size:13px;
+      cursor:pointer;
+    }
+    .btn.primary{
+      background:linear-gradient(90deg, rgba(106,211,255,0.12), rgba(106,211,255,0.06));
+      border:1px solid rgba(106,211,255,0.14);
+      color:var(--accent);
+    }
+
+    .preview{
+      width:100%;
+      height:260px;
+      border-radius:8px;
+      overflow:hidden;
+      background:linear-gradient(180deg,#051018,#06121a);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border:1px dashed rgba(255,255,255,0.03);
+    }
+    .preview .placeholder{
+      text-align:center;
+      color:var(--muted);
+      padding:16px;
+      font-size:13px;
+    }
+    .preview iframe{
+      width:100%;
+      height:100%;
+      border:0;
+      display:block;
+      background:white;
+    }
+
+    .group-title{
+      grid-column:1/-1;
+      color:var(--muted);
+      font-size:13px;
+      margin:8px 0 0;
+    }
+
+    footer{max-width:1200px;margin:20px auto;color:var(--muted);font-size:13px;text-align:center}
+    @media (max-width:420px){
+      .preview{height:200px}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>pre-rendering — Demos</h1>
+    <p class="lead">A responsive index of demos. Click "Preview" to load an inline preview (iframes are lazy-loaded). If your browser blocks embedding, use "Open" to view the demo in a new tab.</p>
+
+    <div class="controls">
+      <div class="search">
+        <input id="filter" placeholder="Filter demos (type to search) — e.g. bounding, quadtree, gpu" />
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn" id="collapseAll">Collapse previews</button>
+        <button class="btn primary" id="expandAll">Open all previews</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="grid" id="grid"></main>
+
+  <footer>
+    Built automatically. Note: GitHub Pages or some browsers may refuse to embed pages with X-Frame-Options; use the Open link when that happens.
+  </footer>
+
+  <script>
+    // Data: list of demos. Paths are relative to this index.html (located in /demos/)
+    // This list was generated from the repository folder structure.
+    const demos = [
+      {group:'bounding-box', title:'symmetric', path:'./bounding-box/symmetric/'},
+      {group:'bounding-box', title:'full', path:'./bounding-box/full/'},
+      {group:'bounding-box', title:'directional', path:'./bounding-box/directional/'},
+
+      {group:'buffering-order', title:'main (index.html)', path:'./buffering-order/'},
+      {group:'buffering-order', title:'pure2.html', path:'./buffering-order/pure2.html'},
+      {group:'buffering-order', title:'sketch.html', path:'./buffering-order/sketch.html'},
+      {group:'buffering-order', title:'webgl (folder)', path:'./buffering-order/webgl/'},
+
+      {group:'buffering-order-webgl', title:'webgl demo', path:'./buffering-order-webgl/'},
+
+      {group:'initial-buffering-order', title:'index', path:'./initial-buffering-order/'},
+
+      {group:'chunk-system', title:'index', path:'./chunk-system/'},
+
+      {group:'cubemap-bounding-box', title:'index', path:'./cubemap-bounding-box/'},
+
+      {group:'gpu-friendly-triangulation', title:'delaunay', path:'./gpu-friendly-triangulation/delaunay/'},
+      {group:'gpu-friendly-triangulation', title:'vertex-grid', path:'./gpu-friendly-triangulation/vertex-grid/'},
+      {group:'gpu-friendly-triangulation', title:'voronoi', path:'./gpu-friendly-triangulation/voronoi/'},
+
+      {group:'grid-filtering', title:'index', path:'./grid-filtering/'},
+
+      {group:'kd-tree', title:'index', path:'./kd-tree/'},
+
+      {group:'latitude-crossection', title:'index', path:'./latitude-crossection/'},
+
+      {group:'line-equation', title:'index', path:'./line-equation/'},
+
+      {group:'line-renderer', title:'index', path:'./line-renderer/'},
+
+      {group:'projection', title:'scripts (not a web build)', path:'./projection/'},
+
+      {group:'quadtree-optimization', title:'index', path:'./quadtree-optimization/'},
+
+      {group:'scanline-rasterization', title:'index', path:'./scanline-rasterization/'},
+
+      {group:'sphere-intersection', title:'index', path:'./sphere-intersection/'},
+
+      {group:'transform-visualization', title:'index', path:'./transform-visualization/'},
+
+      {group:'triangle-translation', title:'index', path:'./triangle-translation/'}
+    ];
+
+    const grid = document.getElementById('grid');
+    const filterInput = document.getElementById('filter');
+
+    // Group demos by group for structural display
+    const groups = demos.reduce((acc,d)=>{
+      acc[d.group] = acc[d.group] || [];
+      acc[d.group].push(d);
+      return acc;
+    }, {});
+
+    function createCard(demo){
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.dataset.title = (demo.group + ' ' + demo.title).toLowerCase();
+
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+
+      const left = document.createElement('div');
+      const title = document.createElement('div');
+      title.className = 'title';
+      title.textContent = demo.group + (demo.title && demo.title !== 'index' ? ' — ' + demo.title : '');
+      left.appendChild(title);
+      const sub = document.createElement('div');
+      sub.className = 'sub';
+      sub.textContent = demo.path.replace(/^\.\//,'');
+      left.appendChild(sub);
+
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+
+      const open = document.createElement('a');
+      open.className = 'btn';
+      open.href = demo.path;
+      open.target = '_blank';
+      open.rel = 'noopener';
+      open.textContent = 'Open';
+      actions.appendChild(open);
+
+      const previewBtn = document.createElement('button');
+      previewBtn.className = 'btn primary';
+      previewBtn.type = 'button';
+      previewBtn.textContent = 'Preview';
+      actions.appendChild(previewBtn);
+
+      meta.appendChild(left);
+      meta.appendChild(actions);
+      card.appendChild(meta);
+
+      const preview = document.createElement('div');
+      preview.className = 'preview';
+      const placeholder = document.createElement('div');
+      placeholder.className = 'placeholder';
+      placeholder.innerHTML = '<div style="font-weight:600;margin-bottom:6px">Preview not loaded</div><div style="font-size:12px;color:var(--muted)">Click Preview to load inline (lazy)</div>';
+      preview.appendChild(placeholder);
+      card.appendChild(preview);
+
+      // Toggle preview
+      let iframeLoaded = false;
+      previewBtn.addEventListener('click', ()=>{
+        if(iframeLoaded){
+          // collapse
+          preview.innerHTML = '';
+          preview.appendChild(placeholder);
+          iframeLoaded = false;
+          previewBtn.textContent = 'Preview';
+          return;
+        }
+        // create iframe
+        const ifr = document.createElement('iframe');
+        ifr.src = demo.path;
+        ifr.loading = 'lazy';
+        ifr.allow = 'accelerometer; autoplay; encrypted-media; fullscreen; gyroscope; picture-in-picture';
+        ifr.referrerPolicy = 'no-referrer-when-downgrade';
+        ifr.sandbox = ''; // leave empty to try to avoid some restrictions; some pages will still refuse to be framed
+        // If sandbox breaks functionality you can remove the line above. Left intentionally to reduce risk.
+        preview.innerHTML = '';
+        preview.appendChild(ifr);
+        iframeLoaded = true;
+        previewBtn.textContent = 'Hide';
+      });
+
+      return card;
+    }
+
+    function render(filterText = ''){
+      grid.innerHTML = '';
+      const groupsKeys = Object.keys(groups).sort();
+      groupsKeys.forEach(g=>{
+        const items = groups[g].filter(d=>{
+          return (g + ' ' + d.title + ' ' + d.path).toLowerCase().includes(filterText.toLowerCase());
+        });
+        if(items.length === 0) return;
+
+        // group title row spanning the grid
+        const gt = document.createElement('div');
+        gt.className = 'group-title';
+        gt.textContent = g;
+        grid.appendChild(gt);
+
+        items.forEach(it=>{
+          const card = createCard(it);
+          grid.appendChild(card);
+        });
+      });
+    }
+
+    // initial render
+    render('');
+
+    // filter
+    filterInput.addEventListener('input', ()=> render(filterInput.value.trim()));
+
+    // expand/collapse all
+    document.getElementById('expandAll').addEventListener('click', ()=>{
+      // click Preview buttons for each card to load iframe if not loaded
+      const buttons = Array.from(document.querySelectorAll('.card .btn.primary'));
+      buttons.forEach(btn=>{
+        if(btn.textContent.trim().toLowerCase() === 'preview'){
+          btn.click();
+        }
+      });
+    });
+    document.getElementById('collapseAll').addEventListener('click', ()=>{
+      const buttons = Array.from(document.querySelectorAll('.card .btn.primary'));
+      buttons.forEach(btn=>{
+        if(btn.textContent.trim().toLowerCase() === 'hide'){
+          btn.click();
+        }
+      });
+    });
+
+    // small UX: open demo in new tab on Ctrl+click of card title
+    grid.addEventListener('click', (e)=>{
+      const card = e.target.closest('.card');
+      if(!card) return;
+      const titleEl = e.target.closest('.title');
+      if(titleEl && (e.ctrlKey || e.metaKey)){
+        const path = card.querySelector('.sub').textContent;
+        window.open(path, '_blank', 'noopener');
+      }
+    });
+  </script>
+</body>
+</html>
