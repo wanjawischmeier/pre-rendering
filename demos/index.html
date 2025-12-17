@@ -16,7 +16,8 @@
     html,body{height:100%}
     body{
       margin:0;
-      font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+      /* avoid requesting external fonts (prevents extra font loads that can trigger CSP messages) */
+      font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
       background:linear-gradient(180deg,#071019 0%, #071217 50%, #071019 100%);
       color:#e6eef6;
       -webkit-font-smoothing:antialiased;
@@ -31,25 +32,11 @@
     h1{margin:0 0 6px; font-size:20px}
     p.lead{margin:0 0 18px; color:var(--muted); font-size:13px}
 
-    .controls{display:flex; gap:12px; align-items:center; margin-bottom:18px; flex-wrap:wrap}
-    .search{
-      flex:1 1 320px;
-      min-width:180px;
-    }
-    .search input{
-      width:100%;
-      padding:10px 12px;
-      border-radius:10px;
-      border:1px solid rgba(255,255,255,0.06);
-      background:var(--glass);
-      color:inherit;
-      outline:none;
-    }
     .grid{
       display:grid;
       grid-template-columns:repeat(auto-fit, minmax(320px,1fr));
       gap: var(--gap);
-      max-width:1200px;
+      max-width:1280px;
       margin:0 auto;
     }
 
@@ -62,7 +49,7 @@
       display:flex;
       flex-direction:column;
       gap:10px;
-      min-height:120px;
+      min-height:140px;
       overflow:hidden;
     }
 
@@ -131,28 +118,17 @@
 <body>
   <header>
     <h1>pre-rendering — Demos</h1>
-    <p class="lead">A responsive index of demos. Click "Preview" to load an inline preview (iframes are lazy-loaded). If your browser blocks embedding, use "Open" to view the demo in a new tab.</p>
-
-    <div class="controls">
-      <div class="search">
-        <input id="filter" placeholder="Filter demos (type to search) — e.g. bounding, quadtree, gpu" />
-      </div>
-      <div style="display:flex;gap:8px">
-        <button class="btn" id="collapseAll">Collapse previews</button>
-        <button class="btn primary" id="expandAll">Open all previews</button>
-      </div>
-    </div>
+    <p class="lead">A responsive index of demos. All previews load automatically. If a demo refuses to be embedded (X-Frame-Options / Content-Security-Policy), use the "Open" link to view it in a new tab.</p>
   </header>
 
   <main class="grid" id="grid"></main>
 
   <footer>
-    Built automatically. Note: GitHub Pages or some browsers may refuse to embed pages with X-Frame-Options; use the Open link when that happens.
+    Built automatically. Note: some embedded pages may request external fonts or resources that are blocked by browser/CSP settings — this is coming from the demo pages themselves, not from this index. See the console for details.
   </footer>
 
   <script>
     // Data: list of demos. Paths are relative to this index.html (located in /demos/)
-    // This list was generated from the repository folder structure.
     const demos = [
       {group:'bounding-box', title:'symmetric', path:'./bounding-box/symmetric/'},
       {group:'bounding-box', title:'full', path:'./bounding-box/full/'},
@@ -199,7 +175,6 @@
     ];
 
     const grid = document.getElementById('grid');
-    const filterInput = document.getElementById('filter');
 
     // Group demos by group for structural display
     const groups = demos.reduce((acc,d)=>{
@@ -211,7 +186,6 @@
     function createCard(demo){
       const card = document.createElement('div');
       card.className = 'card';
-      card.dataset.title = (demo.group + ' ' + demo.title).toLowerCase();
 
       const meta = document.createElement('div');
       meta.className = 'meta';
@@ -237,59 +211,29 @@
       open.textContent = 'Open';
       actions.appendChild(open);
 
-      const previewBtn = document.createElement('button');
-      previewBtn.className = 'btn primary';
-      previewBtn.type = 'button';
-      previewBtn.textContent = 'Preview';
-      actions.appendChild(previewBtn);
-
       meta.appendChild(left);
       meta.appendChild(actions);
       card.appendChild(meta);
 
       const preview = document.createElement('div');
       preview.className = 'preview';
-      const placeholder = document.createElement('div');
-      placeholder.className = 'placeholder';
-      placeholder.innerHTML = '<div style="font-weight:600;margin-bottom:6px">Preview not loaded</div><div style="font-size:12px;color:var(--muted)">Click Preview to load inline (lazy)</div>';
-      preview.appendChild(placeholder);
+
+      // Immediately load iframe (user requested all iframes loaded on page load)
+      const ifr = document.createElement('iframe');
+      ifr.src = demo.path;
+      ifr.title = demo.group + ' / ' + demo.title;
+      ifr.loading = 'eager'; // ensure immediate load
+      preview.appendChild(ifr);
+
       card.appendChild(preview);
-
-      // Toggle preview
-      let iframeLoaded = false;
-      previewBtn.addEventListener('click', ()=>{
-        if(iframeLoaded){
-          // collapse
-          preview.innerHTML = '';
-          preview.appendChild(placeholder);
-          iframeLoaded = false;
-          previewBtn.textContent = 'Preview';
-          return;
-        }
-        // create iframe
-        const ifr = document.createElement('iframe');
-        ifr.src = demo.path;
-        ifr.loading = 'lazy';
-        ifr.allow = 'accelerometer; autoplay; encrypted-media; fullscreen; gyroscope; picture-in-picture';
-        ifr.referrerPolicy = 'no-referrer-when-downgrade';
-        ifr.sandbox = ''; // leave empty to try to avoid some restrictions; some pages will still refuse to be framed
-        // If sandbox breaks functionality you can remove the line above. Left intentionally to reduce risk.
-        preview.innerHTML = '';
-        preview.appendChild(ifr);
-        iframeLoaded = true;
-        previewBtn.textContent = 'Hide';
-      });
-
       return card;
     }
 
-    function render(filterText = ''){
+    function render(){
       grid.innerHTML = '';
       const groupsKeys = Object.keys(groups).sort();
       groupsKeys.forEach(g=>{
-        const items = groups[g].filter(d=>{
-          return (g + ' ' + d.title + ' ' + d.path).toLowerCase().includes(filterText.toLowerCase());
-        });
+        const items = groups[g];
         if(items.length === 0) return;
 
         // group title row spanning the grid
@@ -305,41 +249,8 @@
       });
     }
 
-    // initial render
-    render('');
-
-    // filter
-    filterInput.addEventListener('input', ()=> render(filterInput.value.trim()));
-
-    // expand/collapse all
-    document.getElementById('expandAll').addEventListener('click', ()=>{
-      // click Preview buttons for each card to load iframe if not loaded
-      const buttons = Array.from(document.querySelectorAll('.card .btn.primary'));
-      buttons.forEach(btn=>{
-        if(btn.textContent.trim().toLowerCase() === 'preview'){
-          btn.click();
-        }
-      });
-    });
-    document.getElementById('collapseAll').addEventListener('click', ()=>{
-      const buttons = Array.from(document.querySelectorAll('.card .btn.primary'));
-      buttons.forEach(btn=>{
-        if(btn.textContent.trim().toLowerCase() === 'hide'){
-          btn.click();
-        }
-      });
-    });
-
-    // small UX: open demo in new tab on Ctrl+click of card title
-    grid.addEventListener('click', (e)=>{
-      const card = e.target.closest('.card');
-      if(!card) return;
-      const titleEl = e.target.closest('.title');
-      if(titleEl && (e.ctrlKey || e.metaKey)){
-        const path = card.querySelector('.sub').textContent;
-        window.open(path, '_blank', 'noopener');
-      }
-    });
+    // initial render and immediate iframe loading
+    render();
   </script>
 </body>
 </html>
